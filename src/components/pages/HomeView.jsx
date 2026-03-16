@@ -6,6 +6,7 @@ import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { MATERIALS } from '../../data/materials';
+import { STORY_STAGES } from '../../data/story-stages';
 import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
@@ -23,6 +24,9 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
 
+  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
+  const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
+
   const isCraftUnlocked = learnedCount >= 3;
   const isTownEditorUnlocked = learnedCount >= 1;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
@@ -37,6 +41,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-sm font-bold text-[var(--text)] opacity-60">{badge} {title}</span>
             <span className="text-lg font-black text-[var(--text)]">Lv.{level}</span>
+            <span className="text-xs font-bold text-[var(--text)] opacity-50">{stage.emoji} {stage.title}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs font-bold text-[var(--text)] opacity-60 flex items-center gap-0.5"><Users size={12} />{stats.population || 0}人</span>
