@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Map, Coins, Eraser, Undo2, ArrowLeft } from 'lucide-react';
+import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS } from '../../data/town-items';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
@@ -13,10 +13,14 @@ const TownEditorView = ({ setView, stats, setStats }) => {
   const [localMap, setLocalMap] = useState({ ...(stats.townMap || {}) });
   const [history, setHistory] = useState([{ ...(stats.townMap || {}) }]); // undo履歴
   const [historyIdx, setHistoryIdx] = useState(0);
+  const [placementError, setPlacementError] = useState(null);
+
+  const playerGrade = stats.targetGrade || 1;
+  const biomeMap = stats.biomeMap || {};
 
   const pushHistory = (newMap) => {
     const trimmed = history.slice(0, historyIdx + 1);
-    const next = [...trimmed, { ...newMap }].slice(-20); // 最大20ステップ
+    const next = [...trimmed, { ...newMap }].slice(-20);
     setHistory(next); setHistoryIdx(next.length - 1);
   };
 
@@ -26,9 +30,15 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     setLocalMap({ ...prev }); setHistoryIdx(historyIdx - 1); audioCtrl.playSE('click');
   };
 
+  const showError = (msg) => {
+    setPlacementError(msg);
+    setTimeout(() => setPlacementError(null), 2000);
+  };
+
   // 地形タイル以外でインベントリにあるものだけパレット表示
   const availableItems = TOWN_ITEMS.filter(item => {
-    if (item.type === 'terrain') return false; // 地形は非表示
+    if (item.type === 'terrain') return false;
+    // 学年未達のアイテムもパレットには表示する（ロック表示付き）
     const count = stats.townItems?.[item.id] || 0;
     const inMap = Object.values(localMap).filter(v => v === item.id).length;
     return count > inMap;
@@ -45,7 +55,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
       const terrainDef = TOWN_ITEMS.find(i => i.id === currentTile);
       const cost = terrainDef?.cultivateCost || 5;
-      if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); return; }
+      if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}🪙必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
       setLocalMap(newMap); pushHistory(newMap);
       const newStats = { ...stats, coins: stats.coins - cost };
@@ -68,12 +78,31 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     if (!selectedItem) return;
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') { audioCtrl.playSE('stamp_bad'); return; }
 
-    // 在庫チェック：手持ちの数を超えて配置できないようにする
+    const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+
+    // 学年チェック
+    if (itemDef?.minGrade && playerGrade < itemDef.minGrade) {
+      audioCtrl.playSE('stamp_bad');
+      showError(`${itemDef.minGrade}年生で解放されます`);
+      return;
+    }
+
+    // バイオームチェック
+    if (itemDef?.biomes) {
+      const cellBiome = biomeMap[key];
+      if (cellBiome && !itemDef.biomes.includes(cellBiome)) {
+        audioCtrl.playSE('stamp_bad');
+        showError(`このバイオームには配置できません`);
+        return;
+      }
+    }
+
+    // 在庫チェック
     const ownedCount = stats.townItems?.[selectedItem] || 0;
     const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
     if (ownedCount <= placedCount) {
       audioCtrl.playSE('stamp_bad');
-      setSelectedItem(null); // 在庫切れなので選択解除
+      setSelectedItem(null);
       return;
     }
 
@@ -86,7 +115,6 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     audioCtrl.playSE('success'); setView('home');
   };
 
-  // コインで購入（priceのあるアイテム用）
   const handleBuy = (item) => {
     if ((stats.coins || 0) < item.price) { audioCtrl.playSE('stamp_bad'); return; }
     const newStats = { ...stats, coins: stats.coins - item.price, townItems: { ...stats.townItems, [item.id]: (stats.townItems?.[item.id] || 0) + 1 } };
@@ -108,12 +136,18 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        <DraggableTownMap mapData={localMap} biomeMap={stats.biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+        <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         {/* 操作ヒント */}
         <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
           🟫 地形タップ → 開拓（🪙10〜30枚）<br/>
           👥 人口 {stats.population}人
         </div>
+        {/* 配置エラーメッセージ */}
+        {placementError && (
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
+            {placementError}
+          </div>
+        )}
         {selectedItem && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap z-40">
             {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を配置中</>}
@@ -137,11 +171,24 @@ const TownEditorView = ({ setView, stats, setStats }) => {
             const isSelected = selectedItem === item.id;
             const canAfford = stats.coins >= item.price;
             const owned = count > 0;
+            const isGradeLocked = item.minGrade && playerGrade < item.minGrade;
             return (
-              <div key={item.id} onClick={() => { if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); } else if (canAfford) { handleBuy(item); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex flex-col items-center gap-1 shrink-0 cursor-pointer rounded-xl border-[3px] w-16 h-20 overflow-hidden transition-all select-none ${isSelected ? 'border-[var(--primary)] scale-110 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
-                <div className="w-12 h-12 flex items-center justify-center pointer-events-none"><item.svg /></div>
+              <div key={item.id} onClick={() => {
+                if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`${item.minGrade}年生で解放`); return; }
+                if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
+                else if (canAfford) { handleBuy(item); }
+                else { audioCtrl.playSE('stamp_bad'); }
+              }} className={`flex flex-col items-center gap-1 shrink-0 cursor-pointer rounded-xl border-[3px] w-16 h-20 overflow-hidden transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-110 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
+                <div className="w-12 h-12 flex items-center justify-center pointer-events-none relative">
+                  <item.svg />
+                  {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
+                </div>
                 <div className="text-[8px] font-black text-[var(--text)] px-1 text-center leading-tight">{item.name}</div>
-                {owned ? <div className="text-[9px] font-black bg-white/70 px-1.5 rounded-full">×{count}</div> : <div className={`text-[9px] font-black px-1.5 rounded-full flex items-center gap-0.5 ${canAfford ? 'bg-yellow-200' : 'bg-gray-200 opacity-50'}`}><Coins size={8} />{item.price}</div>}
+                {isGradeLocked
+                  ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">{item.minGrade}年生</div>
+                  : owned ? <div className="text-[9px] font-black bg-white/70 px-1.5 rounded-full">×{count}</div>
+                  : <div className={`text-[9px] font-black px-1.5 rounded-full flex items-center gap-0.5 ${canAfford ? 'bg-yellow-200' : 'bg-gray-200 opacity-50'}`}><Coins size={8} />{item.price}</div>
+                }
               </div>
             );
           })}

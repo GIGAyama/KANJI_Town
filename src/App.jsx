@@ -105,31 +105,25 @@ export default function App() {
           setStats(s => ({ ...s, unlockedKanji: [...(s.unlockedKanji || []), id] }));
         }
 
-        const C = 10;
+        const C = 25; // 50×50マップの中心
         const clearedKeys = Object.keys(stats.townMap || {}).filter(k => {
           const v = stats.townMap[k];
-          return v === 't_cleared' || v === 't_grass' || v === 't_road';
+          const [cx, cy] = k.split(',').map(Number);
+          const d = Math.max(Math.abs(cx - C), Math.abs(cy - C));
+          return d <= (stats.exploredRadius || 3) && (v === 't_cleared' || v === 't_grass' || v === 't_road');
         });
         const spawnKey = clearedKeys[Math.floor(Math.random() * clearedKeys.length)] || `${C},${C}`;
         const [vx, vy] = spawnKey.split(',').map(Number);
         newVillager = { id: `v_${Date.now()}`, x: vx, y: vy, kanjiChar: kanjiObj.char, born: Date.now() };
 
+        // 漢字1字習得ごとに探索半径 +0.5 (最大25 = 50×50全域)
         setStats(s => {
           const masteredCount = Object.values({ ...s.kanjiStats, [id]: { status: 'mastered' } }).filter(v => v.status === 'mastered').length;
-          const targetStage = STORY_STAGES.slice().reverse().find(st => masteredCount >= st.minKanji) || STORY_STAGES[0];
-          const newRadius = Math.max(s.exploredRadius || 2, targetStage.radius);
-          if (newRadius <= (s.exploredRadius || 2)) return s;
-
-          const newMap = { ...s.townMap };
-          for (let dy = -newRadius; dy <= newRadius; dy++) {
-            for (let dx = -newRadius; dx <= newRadius; dx++) {
-              const nx = C + dx; const ny = C + dy;
-              if (nx < 0 || nx > 19 || ny < 0 || ny > 19) continue;
-              const key = `${nx},${ny}`;
-              if (newMap[key] === 't_bedrock') newMap[key] = 't_roughland';
-            }
-          }
-          return { ...s, exploredRadius: newRadius, townMap: newMap };
+          // 1字あたり+0.5、初期半径3、最大25（1026字全習得で半径25に到達するペース）
+          const calcRadius = Math.min(25, 3 + masteredCount * 0.5);
+          const newRadius = Math.max(s.exploredRadius || 3, calcRadius);
+          if (newRadius <= (s.exploredRadius || 3)) return s;
+          return { ...s, exploredRadius: newRadius };
         });
       }
     }
