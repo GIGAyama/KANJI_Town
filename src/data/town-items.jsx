@@ -27,7 +27,14 @@ const SvgTemple = () => <svg viewBox="0 0 100 100" className="w-[90%] h-[90%] dr
 const SvgDragon = () => <svg viewBox="0 0 100 100" className="w-[100%] h-[100%] drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"><path d="M20 80 Q10 50 50 20 T90 50 Q80 80 50 80" fill="none" stroke="#10b981" strokeWidth="8" strokeLinecap="round" /><circle cx="30" cy="40" r="5" fill="#ef4444" /><circle cx="70" cy="40" r="5" fill="#ef4444" /></svg>;
 const SvgGhostBoss = () => <svg viewBox="0 0 100 100" className="w-[100%] h-[100%] drop-shadow-[0_0_15px_rgba(225,29,72,0.8)]"><path d="M20 90 Q10 50 50 10 T80 90 Q70 80 50 90 Q30 80 20 90" fill="#0f172a" /><circle cx="35" cy="45" r="8" fill="#e11d48" /><circle cx="65" cy="45" r="8" fill="#e11d48" /><path d="M40 70 Q50 60 60 70" fill="none" stroke="#e11d48" strokeWidth="4" strokeLinecap="round" /></svg>;
 
-export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, SvgTree, SvgSakura, SvgPine, SvgRock, SvgRoad, SvgWater, SvgWall, SvgBridge, SvgHouse1, SvgShop, SvgSchool, SvgCastle, SvgGoldCastle, SvgTorii, SvgTemple, SvgDragon, SvgGhostBoss, SvgVillager };
+// Phase 2: 新地形タイル
+const SvgGrassland = () => <svg viewBox="0 0 100 100" className="w-full h-full"><rect width="100" height="100" fill="#86efac"/><path d="M15 85 Q15 70 20 65 M30 90 Q30 72 35 67 M55 88 Q55 74 60 68 M75 85 Q75 70 80 64 M45 92 Q45 78 48 72" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" opacity="0.6"/></svg>;
+const SvgForestFloor = () => <svg viewBox="0 0 100 100" className="w-full h-full"><rect width="100" height="100" fill="#14532d"/><circle cx="25" cy="30" r="18" fill="#166534" opacity="0.7"/><circle cx="70" cy="25" r="22" fill="#15803d" opacity="0.6"/><circle cx="50" cy="70" r="20" fill="#166534" opacity="0.7"/><circle cx="15" cy="75" r="14" fill="#15803d" opacity="0.5"/><circle cx="85" cy="65" r="16" fill="#166534" opacity="0.6"/></svg>;
+const SvgSand = () => <svg viewBox="0 0 100 100" className="w-full h-full"><rect width="100" height="100" fill="#fde68a"/><circle cx="20" cy="40" r="3" fill="#fbbf24" opacity="0.4"/><circle cx="60" cy="70" r="4" fill="#fbbf24" opacity="0.3"/><circle cx="80" cy="30" r="2" fill="#fbbf24" opacity="0.4"/><path d="M5 80 Q25 70 50 78 Q75 86 95 75" fill="none" stroke="#f59e0b" strokeWidth="1.5" opacity="0.3"/></svg>;
+const SvgShallowWater = () => <svg viewBox="0 0 100 100" className="w-full h-full"><rect width="100" height="100" fill="#7dd3fc"/><path d="M5 25 Q20 15 35 25 T65 25 T95 25" fill="none" stroke="#bae6fd" strokeWidth="3" strokeLinecap="round" opacity="0.6"/><path d="M10 55 Q30 45 50 55 T90 55" fill="none" stroke="#bae6fd" strokeWidth="3" strokeLinecap="round" opacity="0.6"/><path d="M0 80 Q20 70 40 80 T80 80" fill="none" stroke="#bae6fd" strokeWidth="2" strokeLinecap="round" opacity="0.4"/></svg>;
+const SvgHighland = () => <svg viewBox="0 0 100 100" className="w-full h-full"><rect width="100" height="100" fill="#a8a29e"/><path d="M10 90 L30 50 L50 70 L70 40 L90 80" fill="none" stroke="#78716c" strokeWidth="4" strokeLinecap="round" opacity="0.5"/><path d="M0 95 L25 65 L45 80 L65 55 L85 75 L100 90" fill="#9ca3af" opacity="0.3"/></svg>;
+
+export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, SvgTree, SvgSakura, SvgPine, SvgRock, SvgRoad, SvgWater, SvgWall, SvgBridge, SvgHouse1, SvgShop, SvgSchool, SvgCastle, SvgGoldCastle, SvgTorii, SvgTemple, SvgDragon, SvgGhostBoss, SvgVillager, SvgGrassland, SvgForestFloor, SvgSand, SvgShallowWater, SvgHighland };
 
 const TOWN_ITEMS = [
   // 地形（内部管理用・パレット非表示）
@@ -35,6 +42,12 @@ const TOWN_ITEMS = [
   { id: 't_roughland', svg: SvgRoughland, name: '荒れ地', price: 0,     pros: -2,   type: 'terrain', bg: 'bg-[#92400e]' },
   { id: 't_cleared',   svg: SvgCleared,   name: '更地',   price: 0,     pros: 0,    type: 'terrain', bg: 'bg-[#d4a96a]' },
   { id: 't_weed',      svg: SvgWeed,      name: 'ざっそう', price: 0,   pros: -5,   type: 'terrain', bg: 'bg-[#a3e635]' },
+  // Phase 2: 新地形タイル
+  { id: 't_grassland',     svg: SvgGrassland,    name: '草地',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#86efac]' },
+  { id: 't_forest_floor',  svg: SvgForestFloor,  name: '森林',     price: 0, pros: 2,  type: 'terrain', bg: 'bg-[#14532d]' },
+  { id: 't_sand',          svg: SvgSand,         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]' },
+  { id: 't_shallow_water', svg: SvgShallowWater, name: '浅瀬',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#7dd3fc]' },
+  { id: 't_highland',      svg: SvgHighland,     name: '高台',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#a8a29e]' },
   // 自然・建物・特別（既存）
   { id: 't_grass',      svg: SvgGrass,      name: 'くさ',       price: 10,    pros: 1,    type: 'nature',   bg: 'bg-[#86efac]' },
   { id: 't_flower',     svg: SvgFlower,     name: '花壇',       price: 30,    pros: 5,    type: 'nature',   bg: 'bg-[#86efac]' },

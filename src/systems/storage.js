@@ -6,6 +6,7 @@ import { TOWN_ITEMS } from '../data/town-items.jsx';
 import { KANJI_DATA } from '../data/kanji-data.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
+import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
 
 let _saveDebounceTimer = null;
 
@@ -21,14 +22,30 @@ const StorageAPI = {
     if (_saveDebounceTimer) { clearTimeout(_saveDebounceTimer); _saveDebounceTimer = null; }
     StorageAPI.safeSet('kanji_town_v7', stats);
   },
-  // 初期マップ生成: 中央2×2=更地、その外=荒れ地、端=岩盤
+  GRID_SIZE: 50,
+  // Phase 2: 50×50マップ生成（バイオーム対応）
   buildInitialMap: () => {
+    const SIZE = 50; const C = 25; const map = {}; const biomeMap = {};
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+      const biome = getBiomeAt(x, y);
+      biomeMap[`${x},${y}`] = biome;
+      map[`${x},${y}`] = getTerrainForBiome(x, y, biome);
+    }
+    // 初期拠点: 中央3×3を更地に
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      map[`${C + dx},${C + dy}`] = 't_cleared';
+    }
+    map[`${C},${C}`] = 't_house1'; // 最初の家
+    return { map, biomeMap };
+  },
+  // 旧20×20マップ生成（マイグレーション用）
+  buildLegacyMap: () => {
     const C = 10; const map = {};
     for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) {
       const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
       map[`${x},${y}`] = dist <= 1 ? 't_cleared' : dist <= 4 ? 't_roughland' : 't_bedrock';
     }
-    map['10,10'] = 't_house1'; // 最初の家
+    map['10,10'] = 't_house1';
     return map;
   },
   getStats: () => {
@@ -36,22 +53,23 @@ const StorageAPI = {
               || StorageAPI.safeGet('kanji_mega_builder_final_v6', null)
               || StorageAPI.safeGet('kanji_mega_builder_final_v5', null);
     if (!stats || !stats.targetGrade) {
+      const { map, biomeMap } = StorageAPI.buildInitialMap();
       stats = {
         totalExp: 0, streak: 0, lastDate: '', coins: 500, targetGrade: 1,
-        townMap: StorageAPI.buildInitialMap(),
+        townMap: map,
+        biomeMap: biomeMap,
         townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3 },
         daily: {}, kanjiStats: {}, unlockedKanji: [],
         kakejiku: null, achievements: {}, perfectCountTotal: 0, myDrills: [],
-        // 新フィールド
         population: 0,
-        villagers: [],        // [{id, x, y, kanjiChar, born}]
-        exploredRadius: 2,    // 現在の探索半径
-        schemaVersion: 7,
+        villagers: [],
+        exploredRadius: 3,
+        schemaVersion: 8,
+        mapSize: 50,
       };
     }
     // フィールド補完
     if (!stats.myDrills) stats.myDrills = [];
-    if (!stats.townMap) stats.townMap = StorageAPI.buildInitialMap();
     if (!stats.townItems) stats.townItems = {};
     if (!stats.kanjiStats) stats.kanjiStats = {};
     if (!stats.unlockedKanji) stats.unlockedKanji = [];
@@ -59,18 +77,60 @@ const StorageAPI = {
     if (stats.coins === undefined) stats.coins = 0;
     if (!stats.population) stats.population = 0;
     if (!stats.villagers) stats.villagers = [];
-    if (!stats.exploredRadius) stats.exploredRadius = 2;
+    if (!stats.exploredRadius) stats.exploredRadius = 3;
 
-    // 旧データ移行：地形なしのマップに地形タイルを注入
-    if (!Object.values(stats.townMap).some(v => v === 't_bedrock' || v === 't_roughland' || v === 't_cleared')) {
-      const freshMap = StorageAPI.buildInitialMap();
-      // 旧配置アイテムを更地の上に重ねる
-      Object.entries(stats.townMap).forEach(([key, val]) => {
+    // ── 20×20 → 50×50 マイグレーション ──
+    if (!stats.mapSize || stats.mapSize < 50) {
+      const oldMap = stats.townMap || {};
+      const { map: freshMap, biomeMap } = StorageAPI.buildInitialMap();
+      // 旧マップの建物を新マップ中央に移植 (旧center=10,10 → 新center=25,25, offset=+15)
+      Object.entries(oldMap).forEach(([key, val]) => {
         const item = TOWN_ITEMS.find(i => i.id === val);
-        if (item && item.type !== 'terrain') freshMap[key] = val;
+        if (item && item.type !== 'terrain') {
+          const [ox, oy] = key.split(',').map(Number);
+          const nx = ox + 15;
+          const ny = oy + 15;
+          if (nx >= 0 && nx < 50 && ny >= 0 && ny < 50) {
+            freshMap[`${nx},${ny}`] = val;
+          }
+        }
+      });
+      // 旧更地タイルも移植
+      Object.entries(oldMap).forEach(([key, val]) => {
+        if (val === 't_cleared') {
+          const [ox, oy] = key.split(',').map(Number);
+          const nx = ox + 15;
+          const ny = oy + 15;
+          if (nx >= 0 && nx < 50 && ny >= 0 && ny < 50 && freshMap[`${nx},${ny}`] !== 't_cleared') {
+            const item = TOWN_ITEMS.find(i => i.id === freshMap[`${nx},${ny}`]);
+            if (!item || item.type === 'terrain') freshMap[`${nx},${ny}`] = 't_cleared';
+          }
+        }
       });
       stats.townMap = freshMap;
-      stats.exploredRadius = 6; // 旧データは広めに開放
+      stats.biomeMap = biomeMap;
+      stats.mapSize = 50;
+      stats.schemaVersion = 8;
+      // 旧データは少し広めに探索済みにする
+      if (stats.exploredRadius < 6) stats.exploredRadius = 6;
+      // 旧住民座標もオフセット
+      if (stats.villagers) {
+        stats.villagers = stats.villagers.map(v => ({ ...v, x: (v.x || 0) + 15, y: (v.y || 0) + 15 }));
+      }
+    }
+
+    if (!stats.townMap) {
+      const { map, biomeMap } = StorageAPI.buildInitialMap();
+      stats.townMap = map;
+      stats.biomeMap = biomeMap;
+    }
+    if (!stats.biomeMap) {
+      // Generate biome map for existing save
+      const biomeMap = {};
+      for (let y = 0; y < 50; y++) for (let x = 0; x < 50; x++) {
+        biomeMap[`${x},${y}`] = getBiomeAt(x, y);
+      }
+      stats.biomeMap = biomeMap;
     }
 
     // データ整合性チェック
