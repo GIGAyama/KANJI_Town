@@ -47,6 +47,31 @@ const TownEditorView = ({ setView, stats, setStats }) => {
 
   const filteredItems = availableItems.filter(item => filterType === 'all' || item.type === filterType);
 
+  // Helper: check if all cells in a multi-tile area are cleared/weed
+  const canPlaceMultiTile = (x, y, w, h) => {
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        const tile = localMap[`${x + dx},${y + dy}`];
+        if (tile !== 't_cleared' && tile !== 't_weed') return false;
+      }
+    }
+    return true;
+  };
+
+  // Helper: find anchor cell for a mega building sub-cell
+  const findMegaAnchor = (x, y) => {
+    // Check surrounding cells to find the anchor of a mega building that covers (x,y)
+    for (const [key, itemId] of Object.entries(localMap)) {
+      const item = TOWN_ITEMS.find(i => i.id === itemId);
+      if (!item || !item.size) continue;
+      const [ax, ay] = key.split(',').map(Number);
+      if (x >= ax && x < ax + item.size.w && y >= ay && y < ay + item.size.h) {
+        return { anchorKey: key, ax, ay, item };
+      }
+    }
+    return null;
+  };
+
   // 更地・雑草にのみ配置可。荒れ地タップで開拓。
   const handleCellTap = (x, y) => {
     const key = `${x},${y}`;
@@ -66,6 +91,22 @@ const TownEditorView = ({ setView, stats, setStats }) => {
 
     // けしゴム：地形以外を更地に戻してインベントリ返却
     if (selectedItem === 'eraser') {
+      // Check if this cell is part of a mega building
+      const megaAnchor = findMegaAnchor(x, y);
+      if (megaAnchor) {
+        const { anchorKey, ax, ay, item } = megaAnchor;
+        const newMap = { ...localMap };
+        for (let dy = 0; dy < item.size.h; dy++) {
+          for (let dx = 0; dx < item.size.w; dx++) {
+            newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
+          }
+        }
+        setLocalMap(newMap); pushHistory(newMap);
+        setStats(s => ({ ...s, townItems: { ...s.townItems, [item.id]: (s.townItems?.[item.id] || 0) + 1 } }));
+        audioCtrl.playSE('click');
+        return;
+      }
+
       const item = TOWN_ITEMS.find(i => i.id === currentTile);
       if (item && item.type !== 'terrain') {
         const newMap = { ...localMap, [key]: 't_cleared' };
@@ -104,6 +145,27 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     if (ownedCount <= placedCount) {
       audioCtrl.playSE('stamp_bad');
       setSelectedItem(null);
+      return;
+    }
+
+    // Multi-tile placement check
+    if (itemDef?.size) {
+      const { w, h } = itemDef.size;
+      if (!canPlaceMultiTile(x, y, w, h)) {
+        audioCtrl.playSE('stamp_bad');
+        showError(`${w}×${h}マスの更地が必要です`);
+        return;
+      }
+      const newMap = { ...localMap };
+      // Place anchor at (x,y) and mark sub-cells as cleared (anchor renders over them)
+      newMap[key] = selectedItem;
+      for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          newMap[`${x + dx},${y + dy}`] = 't_cleared';
+        }
+      }
+      setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
       return;
     }
 
@@ -166,7 +228,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       <div className="shrink-0 bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 shadow-[4px_4px_0_var(--text)]">
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
           {[
-            { key: 'all', label: 'すべて' }, { key: 'nature', label: '自然' }, { key: 'building', label: '建物' }, { key: 'special', label: '特別' }
+            { key: 'all', label: 'すべて' }, { key: 'nature', label: '自然' }, { key: 'building', label: '建物' }, { key: 'mega', label: '大型' }, { key: 'rare', label: 'レア' }, { key: 'special', label: '特別' }
           ].map(f => (
             <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all min-h-[36px] ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
           ))}

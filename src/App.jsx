@@ -12,6 +12,7 @@ import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
 import { STORY_STAGES } from './data/story-stages';
 import { TOWN_ITEMS } from './data/town-items';
 import { createVillager } from './systems/residents';
+import { calculateMaterialDrops } from './systems/crafting';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
@@ -24,6 +25,7 @@ import StatsView from './components/pages/StatsView';
 import ResultView from './components/pages/ResultView';
 import MyDrillsView from './components/pages/MyDrillsView';
 import DrillEditorView from './components/pages/DrillEditorView';
+import CraftView from './components/pages/CraftView';
 
 // Town
 import TownEditorView from './components/town/TownEditorView';
@@ -99,6 +101,18 @@ export default function App() {
 
     if (evalType !== 'again') {
       exp = wasNew ? 50 : evalType === 'easy' ? 15 : evalType === 'good' ? 10 : 5;
+
+      // 素材ドロップ（漢字回答成功時）
+      const drops = calculateMaterialDrops(kanjiObj);
+      if (Object.keys(drops).length > 0) {
+        setStats(s => {
+          const newMats = { ...(s.materials || {}) };
+          Object.entries(drops).forEach(([matId, amount]) => {
+            newMats[matId] = (newMats[matId] || 0) + amount;
+          });
+          return { ...s, materials: newMats };
+        });
+      }
 
       if (isMastering && cur.status !== 'mastered') {
         const unlockId = kanjiObj.unlocks || KANJI_UNLOCK_EXTRA[id];
@@ -197,6 +211,7 @@ export default function App() {
           {view === 'dictionary' && <PageWrapper key="dict"><ErrorBoundary onReset={() => setView('home')}><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
           {view === 'townEditor' && <FullScreenWrapper key="townEditor"><ErrorBoundary onReset={() => setView('home')}><TownEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
+          {view === 'craft' && <PageWrapper key="craft"><ErrorBoundary onReset={() => setView('home')}><CraftView stats={stats} setStats={setStats} setView={setView} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}

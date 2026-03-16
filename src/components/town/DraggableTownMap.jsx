@@ -88,6 +88,28 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     });
   }, [isDanger, isEditing, reviewCount, exploredRadius, safeMapData]);
 
+  // Build a set of sub-cells occupied by mega buildings (multi-tile)
+  // Format: mapData["x,y"] = "t_mega_xxx" for anchor cell, "x,y" = "__sub:anchorX,anchorY" for sub-cells
+  const megaAnchors = useMemo(() => {
+    const anchors = {};
+    const subCells = new Set();
+    for (const [key, itemId] of Object.entries(safeMapData)) {
+      if (!itemId || typeof itemId !== 'string') continue;
+      const item = TOWN_ITEMS.find(i => i.id === itemId);
+      if (item && item.size) {
+        const [ax, ay] = key.split(',').map(Number);
+        anchors[key] = { item, ax, ay, w: item.size.w, h: item.size.h };
+        for (let dy = 0; dy < item.size.h; dy++) {
+          for (let dx = 0; dx < item.size.w; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            subCells.add(`${ax + dx},${ay + dy}`);
+          }
+        }
+      }
+    }
+    return { anchors, subCells };
+  }, [safeMapData]);
+
   // Only render visible cells (viewport culling for 50×50 performance)
   const cells = useMemo(() => {
     const result = [];
@@ -104,6 +126,9 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         const isTerrain = item && item.type === 'terrain';
         const biome = safeBiomeMap[key];
 
+        // Skip sub-cells of mega buildings (they are rendered by the anchor)
+        if (megaAnchors.subCells.has(key)) continue;
+
         const cellStyle = {
           position: 'absolute',
           left: x * CELL_SIZE,
@@ -115,6 +140,28 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         // 未探索 → フォグ
         if (!isVisible) {
           result.push(<div key={key} style={cellStyle} className="bg-[#0f172a]" />);
+          continue;
+        }
+
+        // メガ建築のアンカーセル → 複数マスにまたがって描画
+        const megaInfo = megaAnchors.anchors[key];
+        if (megaInfo) {
+          const megaStyle = {
+            position: 'absolute',
+            left: x * CELL_SIZE,
+            top: y * CELL_SIZE,
+            width: CELL_SIZE * megaInfo.w,
+            height: CELL_SIZE * megaInfo.h,
+            zIndex: 5,
+          };
+          result.push(
+            <div key={key} style={megaStyle} onPointerUp={(e) => handlePointerUp(e, x, y)}
+              className={`flex items-center justify-center relative select-none border-2 border-amber-400/50 rounded-lg overflow-hidden ${megaInfo.item.bg} ${isEditing ? 'cursor-pointer hover:brightness-110' : ''}`}>
+              <motion.div key={itemId} initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute inset-0 flex items-center justify-center">
+                <megaInfo.item.svg />
+              </motion.div>
+            </div>
+          );
           continue;
         }
 
@@ -172,7 +219,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       }
     }
     return result;
-  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange]);
+  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors]);
 
   // Biome indicator for current view center
   const centerBiome = useMemo(() => {

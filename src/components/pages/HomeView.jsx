@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users } from 'lucide-react';
+import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer } from 'lucide-react';
 import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
 import { KANJI_DATA } from '../../data/kanji-data';
@@ -109,9 +109,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         <div className="flex gap-2 mt-1">
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('townEditor')}><Map size={16} className="text-[var(--accent)]" /> まちづくり</MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('residents')}><Users size={16} className="text-[var(--primary)]" /> 住民</MotionButton>
+          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('craft')}><Hammer size={16} className="text-amber-600" /> クラフト</MotionButton>
         </div>
         <div className="flex gap-2">
+          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('residents')}><Users size={16} className="text-[var(--primary)]" /> 住民</MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> 実績</MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
         </div>
