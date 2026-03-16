@@ -24,126 +24,140 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
 
-  // 段階的機能解放
   const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
   const isCraftUnlocked = learnedCount >= 3;
   const isTownEditorUnlocked = learnedCount >= 1;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
+  const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
+
   return (
-    <div className="flex flex-col items-center gap-4 pb-6 h-full overflow-y-auto no-scrollbar">
-      <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] shadow-[4px_4px_0_var(--text)] p-4 flex flex-col gap-3 shrink-0">
-        <div className="flex justify-between items-end shrink-0">
-          <div className="text-left">
-            <div className="text-xs font-bold text-[var(--text)] opacity-70 mb-0.5">{badge} {title}</div>
-            <div className="text-2xl md:text-3xl font-black text-[var(--text)] tracking-wide">マイタウン Lv.{level}</div>
+    <div className="flex h-full gap-3 overflow-hidden">
+      {/* === LEFT: Town Map === */}
+      <div className="flex-1 flex flex-col gap-2 min-w-0 h-full">
+        {/* Town header bar */}
+        <div className="flex items-center justify-between shrink-0 px-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-bold text-[var(--text)] opacity-60">{badge} {title}</span>
+            <span className="text-lg font-black text-[var(--text)]">Lv.{level}</span>
           </div>
-          <div className="text-right text-xs font-bold text-[var(--text)] opacity-60 mb-1 flex flex-col items-end gap-1">
-            <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-[2px_2px_0_rgba(0,0,0,0.2)]"><Coins size={16} />{stats.coins}</span>
-            <span className="font-bold flex items-center gap-1 text-[var(--primary)]"><TrendingUp size={14} /> 繁栄度: {prosperity}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1 bg-[var(--accent)] px-2.5 py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={14} />{stats.coins}</span>
+            <span className="text-xs font-bold text-[var(--primary)] flex items-center gap-1"><TrendingUp size={12} />{prosperity}</span>
           </div>
         </div>
-        <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]"></motion.div></div>
-        <div className="w-full h-[150px] relative">
+
+        {/* EXP bar */}
+        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)] shrink-0">
+          <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]" />
+        </div>
+
+        {/* Town map - clickable to enter town editor */}
+        <div
+          className={`flex-1 min-h-0 relative rounded-2xl overflow-hidden border-[4px] ${isTownEditorUnlocked ? 'border-[var(--text)] cursor-pointer hover:border-[var(--secondary)] transition-colors' : 'border-[var(--text)]'}`}
+          onClick={() => { if (isTownEditorUnlocked) { audioCtrl.playSE('click'); setView('townEditor'); } }}
+          role={isTownEditorUnlocked ? "button" : undefined}
+          aria-label={isTownEditorUnlocked ? "まちづくりモードへ" : undefined}
+        >
           <DraggableTownMap mapData={stats.townMap} biomeMap={stats.biomeMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+          {/* Overlay label */}
+          {isTownEditorUnlocked && (
+            <div className="absolute bottom-2 right-2 bg-[var(--panel)]/90 backdrop-blur-sm border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 flex items-center gap-1.5 z-10 pointer-events-none shadow-sm">
+              <Map size={14} className="text-[var(--accent)]" />
+              <span className="text-xs font-black text-[var(--text)]">タップでまちづくり</span>
+            </div>
+          )}
+          {!isTownEditorUnlocked && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-10">
+              <span className="bg-[var(--panel)] border-[2px] border-[var(--text)] rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1"><Lock size={12} /> 漢字を覚えると開放</span>
+            </div>
+          )}
         </div>
-        {(() => {
-          const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
-          const nextStage = STORY_STAGES.find(s => s.id === stage.id + 1);
-          return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-[var(--bg)] rounded-xl px-3 py-2 border-[2px] border-[var(--text)] flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xl shrink-0">{stage.emoji}</span>
-                <div className="min-w-0">
-                  <div className="font-black text-[var(--text)] text-sm truncate">{stage.title}</div>
-                  <div className="text-[10px] text-[var(--text)] opacity-50 leading-tight truncate">{stage.desc}</div>
-                </div>
-              </div>
-              <div className="shrink-0 text-right">
-                <div className="text-xs font-black text-[var(--text)] opacity-60">👥 {stats.population || 0}人</div>
-                <div className="text-[10px] font-bold" style={{ color: satLabel.color }}>{satLabel.emoji} {satLabel.text}</div>
-                {nextStage && <div className="text-[9px] text-[var(--text)] opacity-40">次: {nextStage.minKanji}字・{nextStage.minPop}人</div>}
-              </div>
-            </motion.div>
-          );
-        })()}
+
+        {/* Story stage bar */}
+        <div className="bg-[var(--panel)] rounded-xl px-3 py-2 border-[2px] border-[var(--text)] flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-lg shrink-0">{stage.emoji}</span>
+            <span className="font-black text-[var(--text)] text-sm truncate">{stage.title}</span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0 text-xs font-bold">
+            <span className="text-[var(--text)] opacity-60">👥{stats.population || 0}人</span>
+            <span style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>
+          </div>
+        </div>
       </div>
 
-      {/* 住民の収集報告 */}
-      {stats.lastCollectionResult && Object.keys(stats.lastCollectionResult.materials || {}).length > 0 && (
-        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="w-full bg-emerald-50 border-[3px] border-emerald-400 rounded-[16px] px-4 py-2.5 shadow-sm">
-          <div className="text-xs font-black text-emerald-700 mb-1.5">🌾 住民が素材を集めてくれたよ！</div>
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(stats.lastCollectionResult.materials).map(([matId, amount]) => {
-              const mat = MATERIALS[matId];
-              return mat ? <span key={matId} className="text-[10px] bg-white rounded-full px-2 py-0.5 font-bold border border-emerald-300">{mat.icon} {mat.name} +{amount}</span> : null;
-            })}
-            {stats.lastCollectionResult.coins > 0 && <span className="text-[10px] bg-yellow-100 rounded-full px-2 py-0.5 font-bold border border-yellow-300">🪙 +{stats.lastCollectionResult.coins}</span>}
+      {/* === RIGHT: Controls === */}
+      <div className="w-[340px] shrink-0 flex flex-col gap-2 h-full overflow-y-auto no-scrollbar">
+        {/* Resource collection */}
+        {stats.lastCollectionResult && Object.keys(stats.lastCollectionResult.materials || {}).length > 0 && (
+          <div className="bg-emerald-50 border-[2px] border-emerald-400 rounded-xl px-3 py-2 shrink-0">
+            <div className="text-xs font-black text-emerald-700 mb-1">住民が素材を集めたよ！</div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(stats.lastCollectionResult.materials).map(([matId, amount]) => {
+                const mat = MATERIALS[matId];
+                return mat ? <span key={matId} className="text-[10px] bg-white rounded-full px-2 py-0.5 font-bold border border-emerald-300">{mat.icon} {mat.name} +{amount}</span> : null;
+              })}
+              {stats.lastCollectionResult.coins > 0 && <span className="text-[10px] bg-yellow-100 rounded-full px-2 py-0.5 font-bold border border-yellow-300">+{stats.lastCollectionResult.coins}</span>}
+            </div>
           </div>
-        </motion.div>
-      )}
+        )}
 
-      {/* デイリーミッション */}
-      {dailyMissions && dailyMissions.length > 0 && (
-        <DailyMissionsPanel missions={dailyMissions} onClaim={onClaimMission} />
-      )}
+        {/* Daily missions */}
+        {dailyMissions && dailyMissions.length > 0 && (
+          <div className="shrink-0">
+            <DailyMissionsPanel missions={dailyMissions} onClaim={onClaimMission} />
+          </div>
+        )}
 
-      <div className="flex flex-col w-full gap-2 shrink-0">
-        <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)]">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+        {/* Grade selector + Main action */}
+        <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)] shrink-0">
+          <div className="flex gap-1">
             {[1, 2, 3, 4, 5, 6].map(g => (
-              <button key={g} onClick={() => { audioCtrl.playSE('click'); handleGradeChange(g); }} className={`flex-1 py-2 font-black text-sm rounded-xl border-[2px] transition-all whitespace-nowrap px-1 ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
+              <button key={g} onClick={() => { audioCtrl.playSE('click'); handleGradeChange(g); }} className={`flex-1 py-2 font-black text-base rounded-xl border-[2px] transition-all ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
             ))}
           </div>
-          <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_rgba(0,0,0,0.3)] mt-1" onClick={() => startSession(selectedGrade)}>
-            {isReviewNeeded ? <><ShieldAlert size={24} /> おばけを たいじする！</> : <><PenTool size={24} /> {selectedGrade}年生の 漢字を覚える！</>}
+          <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
+            {isReviewNeeded ? <><ShieldAlert size={22} /> おばけを たいじする！</> : <><PenTool size={22} /> {selectedGrade}年生の漢字を覚える！</>}
           </MotionButton>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 w-full mt-1">
-          <MotionButton variant="success" className="py-4 flex-col gap-1 text-sm border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]" onClick={() => setView('myDrills')}><FileText size={24} /> マイドリル</MotionButton>
-          <MotionButton variant="accent" className="py-4 flex-col gap-1 text-sm border-[4px] border-[var(--text)] shadow-[0_4px_0_#b45309]" onClick={() => setView('peerClient')}><Download size={24} /> 通信でもらう</MotionButton>
+        {/* Drill buttons */}
+        <div className="grid grid-cols-2 gap-2 shrink-0">
+          <MotionButton variant="success" className="py-3 flex-col gap-1 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#065f46]" onClick={() => setView('myDrills')}><FileText size={20} /> マイドリル</MotionButton>
+          <MotionButton variant="accent" className="py-3 flex-col gap-1 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309]" onClick={() => setView('peerClient')}><Download size={20} /> 通信でもらう</MotionButton>
         </div>
 
-        <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 flex flex-col gap-2 mt-1 relative overflow-hidden">
+        {/* Special training */}
+        <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-2.5 relative overflow-hidden shrink-0">
           {!isSpecialTrainingUnlocked && (
             <div className="absolute inset-0 z-10 bg-[var(--panel)]/80 backdrop-blur-[2px] flex items-center justify-center">
               <span className="text-xs font-bold text-[var(--text)] bg-[var(--bg)] px-3 py-1.5 rounded-full border-2 border-[var(--text)] flex items-center gap-1 shadow-sm"><AlertCircle size={14} className="text-amber-500" /> まずは漢字を覚えよう！</span>
             </div>
           )}
           <div className="grid grid-cols-3 gap-2">
-            <MotionButton variant="secondary" onClick={startFlashcard} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[3px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Zap size={20} className="text-amber-500" /> フラッシュ</MotionButton>
-            <MotionButton variant="secondary" onClick={startSurvival} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[3px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Flame size={20} className="text-rose-500" /> サバイバル</MotionButton>
-            <MotionButton variant="secondary" onClick={startBossBattle} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[3px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Ghost size={20} className="text-purple-500" /> ボスバトル</MotionButton>
+            <MotionButton variant="secondary" onClick={startFlashcard} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Zap size={18} className="text-amber-500" /> フラッシュ</MotionButton>
+            <MotionButton variant="secondary" onClick={startSurvival} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Flame size={18} className="text-rose-500" /> サバイバル</MotionButton>
+            <MotionButton variant="secondary" onClick={startBossBattle} disabled={!isSpecialTrainingUnlocked} className="flex-col py-3 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] text-xs gap-1"><Ghost size={18} className="text-purple-500" /> ボスバトル</MotionButton>
           </div>
         </div>
 
-        <div className="flex gap-2 mt-1">
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
-          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isTownEditorUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isTownEditorUnlocked) setView('townEditor'); }} disabled={!isTownEditorUnlocked}>
-            {isTownEditorUnlocked ? <><Map size={16} className="text-[var(--accent)]" /> まちづくり</> : <><Lock size={14} className="opacity-40" /> まちづくり</>}
-          </MotionButton>
-          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isCraftUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isCraftUnlocked) setView('craft'); }} disabled={!isCraftUnlocked}>
-            {isCraftUnlocked ? <><Hammer size={16} className="text-amber-600" /> クラフト</> : <><Lock size={14} className="opacity-40" /> クラフト</>}
-          </MotionButton>
-        </div>
-        <div className="flex gap-2">
-          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isResidentsUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isResidentsUnlocked) setView('residents'); }} disabled={!isResidentsUnlocked}>
-            {isResidentsUnlocked ? <><Users size={16} className="text-[var(--primary)]" /> 住民</> : <><Lock size={14} className="opacity-40" /> 住民</>}
-          </MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> 実績</MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
+        {/* Navigation buttons */}
+        <div className="grid grid-cols-3 gap-2 shrink-0">
+          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> 実績</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
         </div>
 
-        {/* 機能解放ヒント */}
+        {/* Unlock hints */}
         {!isTownEditorUnlocked && (
-          <div className="text-[10px] text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
-            漢字を1つ覚えると「まちづくり」が使えるようになるよ
+          <div className="text-xs text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
+            漢字を1つ覚えると「まちづくり」が使えるよ
           </div>
         )}
         {isTownEditorUnlocked && !isCraftUnlocked && (
-          <div className="text-[10px] text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
-            漢字を3つ覚えると「クラフト」が使えるようになるよ
+          <div className="text-xs text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
+            漢字を3つ覚えると「クラフト」が使えるよ
           </div>
         )}
       </div>

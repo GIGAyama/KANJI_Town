@@ -1,23 +1,42 @@
-import React, { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, ChevronRight, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS } from '../../data/town-items';
+import { MATERIALS } from '../../data/materials';
+import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
+import { OCCUPATIONS } from '../../data/residents';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
-import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
+import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier, getResidentStats, collectDailyResources } from '../../systems/residents';
+import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '../../systems/crafting';
+import { getCraftBonuses } from '../../data/residents';
 
-const TownEditorView = ({ setView, stats, setStats }) => {
+const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
+
+const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [localMap, setLocalMap] = useState({ ...(stats.townMap || {}) });
-  const [history, setHistory] = useState([{ ...(stats.townMap || {}) }]); // undo履歴
+  const [history, setHistory] = useState([{ ...(stats.townMap || {}) }]);
   const [historyIdx, setHistoryIdx] = useState(0);
   const [placementError, setPlacementError] = useState(null);
+  // Side panel tabs: items (default), craft, residents
+  const [sideTab, setSideTab] = useState('items');
+  // Craft state
+  const [craftCategory, setCraftCategory] = useState('material');
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [craftResult, setCraftResult] = useState(null);
+  const [filterTier, setFilterTier] = useState(0);
+  // Resident state
+  const [expandedOcc, setExpandedOcc] = useState(null);
 
   const playerGrade = stats.targetGrade || 1;
   const biomeMap = stats.biomeMap || {};
+  const learnedCount = Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new').length;
+  const isCraftUnlocked = learnedCount >= 3;
+  const isResidentsUnlocked = (stats.population || 0) >= 1;
 
   const pushHistory = (newMap) => {
     const trimmed = history.slice(0, historyIdx + 1);
@@ -36,10 +55,8 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     setTimeout(() => setPlacementError(null), 2000);
   };
 
-  // 地形タイル以外でインベントリにあるものだけパレット表示
   const availableItems = TOWN_ITEMS.filter(item => {
     if (item.type === 'terrain') return false;
-    // 学年未達のアイテムもパレットには表示する（ロック表示付き）
     const count = stats.townItems?.[item.id] || 0;
     const inMap = Object.values(localMap).filter(v => v === item.id).length;
     return count > inMap;
@@ -47,7 +64,6 @@ const TownEditorView = ({ setView, stats, setStats }) => {
 
   const filteredItems = availableItems.filter(item => filterType === 'all' || item.type === filterType);
 
-  // Helper: check if all cells in a multi-tile area are cleared/weed
   const canPlaceMultiTile = (x, y, w, h) => {
     for (let dy = 0; dy < h; dy++) {
       for (let dx = 0; dx < w; dx++) {
@@ -58,9 +74,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     return true;
   };
 
-  // Helper: find anchor cell for a mega building sub-cell
   const findMegaAnchor = (x, y) => {
-    // Check surrounding cells to find the anchor of a mega building that covers (x,y)
     for (const [key, itemId] of Object.entries(localMap)) {
       const item = TOWN_ITEMS.find(i => i.id === itemId);
       if (!item || !item.size) continue;
@@ -72,16 +86,14 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     return null;
   };
 
-  // 更地・雑草にのみ配置可。荒れ地タップで開拓。
   const handleCellTap = (x, y) => {
     const key = `${x},${y}`;
     const currentTile = localMap[key];
 
-    // 開拓可能地形 → 地形ごとのコストで更地に開拓
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
       const terrainDef = TOWN_ITEMS.find(i => i.id === currentTile);
       const cost = terrainDef?.cultivateCost || 5;
-      if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}🪙必要）`); return; }
+      if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}枚必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
       setLocalMap(newMap); pushHistory(newMap);
       const newStats = { ...stats, coins: stats.coins - cost };
@@ -89,9 +101,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       audioCtrl.playSE('place'); return;
     }
 
-    // けしゴム：地形以外を更地に戻してインベントリ返却
     if (selectedItem === 'eraser') {
-      // Check if this cell is part of a mega building
       const megaAnchor = findMegaAnchor(x, y);
       if (megaAnchor) {
         const { anchorKey, ax, ay, item } = megaAnchor;
@@ -122,14 +132,12 @@ const TownEditorView = ({ setView, stats, setStats }) => {
 
     const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
 
-    // 学年チェック
     if (itemDef?.minGrade && playerGrade < itemDef.minGrade) {
       audioCtrl.playSE('stamp_bad');
-      showError(`${itemDef.minGrade}年生で解放されます`);
+      showError(`${itemDef.minGrade}年生で解放`);
       return;
     }
 
-    // バイオームチェック
     if (itemDef?.biomes) {
       const cellBiome = biomeMap[key];
       if (cellBiome && !itemDef.biomes.includes(cellBiome)) {
@@ -139,7 +147,6 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       }
     }
 
-    // 在庫チェック
     const ownedCount = stats.townItems?.[selectedItem] || 0;
     const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
     if (ownedCount <= placedCount) {
@@ -148,16 +155,14 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       return;
     }
 
-    // Multi-tile placement check
     if (itemDef?.size) {
       const { w, h } = itemDef.size;
       if (!canPlaceMultiTile(x, y, w, h)) {
         audioCtrl.playSE('stamp_bad');
-        showError(`${w}×${h}マスの更地が必要です`);
+        showError(`${w}x${h}マスの更地が必要`);
         return;
       }
       const newMap = { ...localMap };
-      // Place anchor at (x,y) and mark sub-cells as cleared (anchor renders over them)
       newMap[key] = selectedItem;
       for (let dy = 0; dy < h; dy++) {
         for (let dx = 0; dx < w; dx++) {
@@ -184,87 +189,467 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('coin');
   };
 
+  // ── Craft logic ──
+  const materials = stats.materials || {};
+  const villagers = stats.villagers || [];
+  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
+  const perfectCount = stats.perfectCount || 0;
+
+  const craftRecipes = useMemo(() => {
+    let base;
+    switch (craftCategory) {
+      case 'material': base = MATERIAL_RECIPES; break;
+      case 'building': base = BUILDING_RECIPES; break;
+      case 'upgrade': base = UPGRADE_RECIPES; break;
+      case 'mega': base = MEGA_RECIPES; break;
+      case 'rare': base = RARE_RECIPES; break;
+      default: base = MATERIAL_RECIPES;
+    }
+    if (filterTier > 0) return base.filter(r => r.tier === filterTier);
+    return base;
+  }, [craftCategory, filterTier]);
+
+  const isRareUnlocked = (recipe) => {
+    if (!recipe.unlockCondition) return true;
+    const { type, count } = recipe.unlockCondition;
+    if (type === 'mastered_kanji') return masteredCount >= count;
+    if (type === 'perfect_count') return perfectCount >= count;
+    return false;
+  };
+
+  const hasUpgradeSource = (recipe) => {
+    if (!recipe.requires) return true;
+    return Object.values(stats.townMap || {}).includes(recipe.requires);
+  };
+
+  const craftBonuses = useMemo(() => getCraftBonuses(villagers), [villagers]);
+
+  const getDisplayIngredients = (recipe) => {
+    if (!villagers.length) return recipe.ingredients;
+    const { discountedIngredients } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
+    return discountedIngredients;
+  };
+
+  const handleCraft = (recipe) => {
+    const matsCopy = { ...(stats.materials || {}) };
+    const result = craft(matsCopy, recipe, villagers);
+    if (!result.success) { audioCtrl.playSE('stamp_bad'); return; }
+
+    audioCtrl.playSE('success');
+    const newStats = { ...stats, materials: result.materials };
+
+    if (recipe.category === 'material') {
+      newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + (result.bonusYield ? result.result.amount * 2 : result.result.amount);
+    } else {
+      const townItemId = getResultTownItemId(result.result.type);
+      if (townItemId) {
+        newStats.townItems = { ...newStats.townItems, [townItemId]: (newStats.townItems?.[townItemId] || 0) + result.result.amount };
+      }
+      if (recipe.category === 'upgrade' && recipe.requires) {
+        const oldCount = newStats.townItems?.[recipe.requires] || 0;
+        if (oldCount > 0) newStats.townItems[recipe.requires] = oldCount - 1;
+      }
+    }
+
+    if (result.coinBonus > 0) newStats.coins = (newStats.coins || 0) + result.coinBonus;
+    newStats.craftCount = (newStats.craftCount || 0) + 1;
+
+    setStats(newStats);
+    StorageAPI.saveStats(newStats);
+    if (onCraft) onCraft();
+    setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, discount: result.discount, coinBonus: result.coinBonus });
+    setTimeout(() => setCraftResult(null), 2500);
+  };
+
+  // ── Resident logic ──
+  const satisfaction = useMemo(() => calculateSatisfaction(stats), [stats]);
+  const satLabel = getSatisfactionLabel(satisfaction);
+  const multiplier = getSatisfactionMultiplier(satisfaction);
+  const residentStats = useMemo(() => getResidentStats(stats.villagers), [stats.villagers]);
+  const dailyPreview = useMemo(() => collectDailyResources(stats), [stats]);
+
   return (
-    <div className="flex flex-col h-full gap-3 p-3 md:p-4">
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={22} /></button>
-          <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-1"><Map size={20} className="text-[var(--accent)]" /> まちをつくる</h2>
+    <div className="flex h-full gap-3 p-3 md:p-4">
+      {/* === LEFT: Map Area === */}
+      <div className="flex-1 flex flex-col gap-2 min-w-0 h-full">
+        {/* Header bar */}
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={22} /></button>
+            <h2 className="text-lg font-black text-[var(--text)] flex items-center gap-1"><Map size={18} className="text-[var(--accent)]" /> まちをつくる</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 bg-[var(--accent)] px-2.5 py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={14} />{stats.coins}</span>
+            <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`p-2 rounded-full border-[2px] border-[var(--text)] min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:bg-[var(--bg)]'}`}><Undo2 size={18} /></button>
+            <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_#065f46] min-h-[40px]">保存</MotionButton>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={16} />{stats.coins}</span>
-          <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`p-2 rounded-full border-[2px] border-[var(--text)] min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:bg-[var(--bg)]'}`}><Undo2 size={18} /></button>
-          <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#065f46] min-h-[40px]">保存</MotionButton>
-        </div>
-      </div>
 
-      <div className="flex-1 min-h-0 relative">
-        <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
-        {/* 操作ヒント */}
-        {(() => {
-          const sat = calculateSatisfaction(stats);
-          const sl = getSatisfactionLabel(sat);
-          return (
-            <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
-              🟫 地形タップ → 開拓（🪙10〜30枚）<br/>
-              👥 人口 {stats.population}人　{sl.emoji} 満足度{sat}
+        {/* Map */}
+        <div className="flex-1 min-h-0 relative">
+          <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+          {/* Info overlay */}
+          <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
+            地形タップで開拓　👥{stats.population || 0}人　{satLabel.emoji}{satisfaction}
+          </div>
+          {/* Placement error */}
+          {placementError && (
+            <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
+              {placementError}
             </div>
-          );
-        })()}
-        {/* 配置エラーメッセージ */}
-        {placementError && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
-            {placementError}
-          </div>
-        )}
-        {selectedItem && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap z-40">
-            {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を配置中</>}
-            <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
-          </div>
-        )}
+          )}
+          {/* Selected item indicator */}
+          {selectedItem && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap z-40">
+              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を配置中</>}
+              <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="shrink-0 bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 shadow-[4px_4px_0_var(--text)]">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
-          {[
-            { key: 'all', label: 'すべて' }, { key: 'nature', label: '自然' }, { key: 'building', label: '建物' }, { key: 'mega', label: '大型' }, { key: 'rare', label: 'レア' }, { key: 'special', label: '特別' }
-          ].map(f => (
-            <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all min-h-[36px] ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
-          ))}
-          <button onClick={() => setSelectedItem('eraser')} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 flex items-center gap-1 transition-all min-h-[36px] ${selectedItem === 'eraser' ? 'bg-rose-500 text-white border-rose-700' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}><Eraser size={12} /> けす</button>
+      {/* === RIGHT: Side Panel with Tabs === */}
+      <div className="w-[320px] shrink-0 flex flex-col h-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] shadow-[4px_4px_0_var(--text)] overflow-hidden">
+        {/* Tab buttons */}
+        <div className="flex border-b-[3px] border-[var(--text)] shrink-0">
+          <button onClick={() => { setSideTab('items'); audioCtrl.playSE('click'); }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'items' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'}`}>
+            <Package size={16} /> アイテム
+          </button>
+          <button onClick={() => { if (isCraftUnlocked) { setSideTab('craft'); audioCtrl.playSE('click'); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'craft' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'} ${!isCraftUnlocked ? 'opacity-30' : ''}`}>
+            <Hammer size={16} /> クラフト
+          </button>
+          <button onClick={() => { if (isResidentsUnlocked) { setSideTab('residents'); audioCtrl.playSE('click'); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'residents' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'} ${!isResidentsUnlocked ? 'opacity-30' : ''}`}>
+            <Users size={16} /> 住民
+          </button>
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {filteredItems.map(item => {
-            const count = (stats.townItems?.[item.id] || 0) - Object.values(localMap).filter(v => v === item.id).length;
-            const isSelected = selectedItem === item.id;
-            const canAfford = stats.coins >= item.price;
-            const owned = count > 0;
-            const isGradeLocked = item.minGrade && playerGrade < item.minGrade;
-            return (
-              <div key={item.id} onClick={() => {
-                if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`${item.minGrade}年生で解放`); return; }
-                if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
-                else if (canAfford) { handleBuy(item); }
-                else { audioCtrl.playSE('stamp_bad'); }
-              }} className={`flex flex-col items-center gap-1 shrink-0 cursor-pointer rounded-xl border-[3px] w-16 h-20 overflow-hidden transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-110 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
-                <div className="w-12 h-12 flex items-center justify-center pointer-events-none relative">
-                  <item.svg />
-                  {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
-                </div>
-                <div className="text-[8px] font-black text-[var(--text)] px-1 text-center leading-tight">{item.name}</div>
-                {isGradeLocked
-                  ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">{item.minGrade}年生</div>
-                  : owned ? <div className="text-[9px] font-black bg-white/70 px-1.5 rounded-full">×{count}</div>
-                  : <div className={`text-[9px] font-black px-1.5 rounded-full flex items-center gap-0.5 ${canAfford ? 'bg-yellow-200' : 'bg-gray-200 opacity-50'}`}><Coins size={8} />{item.price}</div>
-                }
-              </div>
-            );
-          })}
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3">
+          {sideTab === 'items' && <ItemsPanel
+            filteredItems={filteredItems}
+            filterType={filterType}
+            setFilterType={setFilterType}
+            selectedItem={selectedItem}
+            setSelectedItem={setSelectedItem}
+            stats={stats}
+            localMap={localMap}
+            playerGrade={playerGrade}
+            handleBuy={handleBuy}
+            showError={showError}
+          />}
+          {sideTab === 'craft' && <CraftPanel
+            craftCategory={craftCategory}
+            setCraftCategory={setCraftCategory}
+            craftRecipes={craftRecipes}
+            selectedRecipe={selectedRecipe}
+            setSelectedRecipe={setSelectedRecipe}
+            filterTier={filterTier}
+            setFilterTier={setFilterTier}
+            materials={materials}
+            villagers={villagers}
+            playerGrade={playerGrade}
+            stats={stats}
+            isRareUnlocked={isRareUnlocked}
+            hasUpgradeSource={hasUpgradeSource}
+            getDisplayIngredients={getDisplayIngredients}
+            handleCraft={handleCraft}
+            craftBonuses={craftBonuses}
+          />}
+          {sideTab === 'residents' && <ResidentsPanel
+            stats={stats}
+            satisfaction={satisfaction}
+            satLabel={satLabel}
+            multiplier={multiplier}
+            residentStats={residentStats}
+            dailyPreview={dailyPreview}
+            villagers={villagers}
+            expandedOcc={expandedOcc}
+            setExpandedOcc={setExpandedOcc}
+          />}
         </div>
       </div>
+
+      {/* Craft success animation */}
+      <AnimatePresence>
+        {craftResult && (
+          <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-2">
+              <Sparkles size={32} className="text-[var(--accent)]" />
+              <div className="text-lg font-black text-[var(--text)]">完成！</div>
+              <div className="text-sm font-bold text-[var(--primary)]">{craftResult.recipe.name} x{craftResult.result.amount}</div>
+              {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! 2倍生産!</div>}
+              {craftResult.coinBonus > 0 && <div className="text-xs font-bold text-yellow-600">+{craftResult.coinBonus}コイン</div>}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// ── Items Panel ──
+const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerGrade, handleBuy, showError }) => (
+  <div className="flex flex-col gap-3">
+    {/* Filter tabs */}
+    <div className="flex flex-wrap gap-1.5">
+      {[
+        { key: 'all', label: 'すべて' }, { key: 'nature', label: '自然' }, { key: 'building', label: '建物' }, { key: 'mega', label: '大型' }, { key: 'rare', label: 'レア' }, { key: 'special', label: '特別' }
+      ].map(f => (
+        <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
+      ))}
+      <button onClick={() => setSelectedItem('eraser')} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 flex items-center gap-1 transition-all ${selectedItem === 'eraser' ? 'bg-rose-500 text-white border-rose-700' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}><Eraser size={12} /> けす</button>
+    </div>
+
+    {/* Item grid */}
+    <div className="grid grid-cols-4 gap-2">
+      {filteredItems.map(item => {
+        const count = (stats.townItems?.[item.id] || 0) - Object.values(localMap).filter(v => v === item.id).length;
+        const isSelected = selectedItem === item.id;
+        const canAfford = stats.coins >= item.price;
+        const owned = count > 0;
+        const isGradeLocked = item.minGrade && playerGrade < item.minGrade;
+        return (
+          <div key={item.id} onClick={() => {
+            if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`${item.minGrade}年生で解放`); return; }
+            if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
+            else if (canAfford) { handleBuy(item); }
+            else { audioCtrl.playSE('stamp_bad'); }
+          }} className={`flex flex-col items-center gap-0.5 cursor-pointer rounded-xl border-[3px] p-1.5 transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-105 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
+            <div className="w-12 h-12 flex items-center justify-center pointer-events-none relative">
+              <item.svg />
+              {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
+            </div>
+            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate w-full">{item.name}</div>
+            {isGradeLocked
+              ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">{item.minGrade}年</div>
+              : owned ? <div className="text-[9px] font-black bg-white/70 px-1.5 rounded-full">x{count}</div>
+              : <div className={`text-[9px] font-black px-1.5 rounded-full flex items-center gap-0.5 ${canAfford ? 'bg-yellow-200' : 'bg-gray-200 opacity-50'}`}><Coins size={8} />{item.price}</div>
+            }
+          </div>
+        );
+      })}
+    </div>
+    {filteredItems.length === 0 && <div className="text-center text-sm text-[var(--text)] opacity-40 py-4">アイテムがありません</div>}
+  </div>
+);
+
+// ── Craft Panel ──
+const CRAFT_CATEGORIES = [
+  { key: 'material', label: '加工素材', icon: '🔧' },
+  { key: 'building', label: '建物', icon: '🏠' },
+  { key: 'upgrade', label: '強化', icon: '⬆' },
+  { key: 'mega', label: '大型', icon: '🏰' },
+  { key: 'rare', label: 'レア', icon: '✨' },
+];
+
+const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRecipe, setSelectedRecipe, filterTier, setFilterTier, materials, villagers, playerGrade, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => (
+  <div className="flex flex-col gap-3">
+    {/* Materials inventory */}
+    <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
+      <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> 手持ちの素材</h3>
+      <div className="flex flex-wrap gap-1">
+        {Object.entries(MATERIALS).map(([id, mat]) => {
+          const count = materials[id] || 0;
+          if (count === 0) return null;
+          return (
+            <span key={id} className="flex items-center gap-0.5 bg-[var(--panel)] rounded-full px-2 py-0.5 border border-[var(--text)] text-[10px] font-bold">
+              {mat.icon} {mat.name} {count}
+            </span>
+          );
+        })}
+        {Object.values(materials).every(v => !v) && <span className="text-[10px] text-[var(--text)] opacity-50">素材なし</span>}
+      </div>
+    </div>
+
+    {/* Craft bonuses */}
+    {craftBonuses.length > 0 && (
+      <div className="bg-blue-50 border-[2px] border-blue-300 rounded-xl px-2.5 py-1.5 text-[10px]">
+        <span className="font-black text-blue-700"><Users size={10} className="inline" /> 住民ボーナス: </span>
+        {craftBonuses.map(b => <span key={b.occupationId} className="text-blue-600 font-bold">{b.desc} </span>)}
+      </div>
+    )}
+
+    {/* Category tabs */}
+    <div className="flex flex-wrap gap-1">
+      {CRAFT_CATEGORIES.map(cat => (
+        <button key={cat.key} onClick={() => { setCraftCategory(cat.key); setSelectedRecipe(null); setFilterTier(0); audioCtrl.playSE('click'); }}
+          className={`px-2.5 py-1.5 rounded-lg border-[2px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-0.5 ${craftCategory === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
+          {cat.icon} {cat.label}
+        </button>
+      ))}
+    </div>
+
+    {/* Tier filter */}
+    {(craftCategory === 'building' || craftCategory === 'mega') && (
+      <div className="flex flex-wrap gap-1">
+        <button onClick={() => { setFilterTier(0); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === 0 ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}>全て</button>
+        {[1, 2, 3, 4, 5, 6].map(t => (
+          <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`} style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>{t}年</button>
+        ))}
+      </div>
+    )}
+
+    {/* Recipe list */}
+    <div className="flex flex-col gap-2">
+      {craftRecipes.map(recipe => {
+        const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
+        const isUnlocked = isGradeUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
+        const displayIngredients = getDisplayIngredients(recipe);
+        const craftable = isUnlocked && canCraft(materials, displayIngredients);
+        const isSelected = selectedRecipe?.id === recipe.id;
+        const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
+        const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
+        const resultMat = recipe.category === 'material' ? MATERIALS[recipe.result.type] : null;
+
+        return (
+          <div key={recipe.id}>
+            <button
+              onClick={() => { audioCtrl.playSE('click'); setSelectedRecipe(isSelected ? null : recipe); }}
+              className={`w-full bg-[var(--panel)] border-[2px] rounded-xl p-2.5 transition-all text-left ${!isUnlocked ? 'border-gray-300 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] shadow-md' : craftable ? 'border-[var(--text)] hover:border-[var(--secondary)]' : 'border-[var(--text)] opacity-70'}`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-10 h-10 shrink-0 rounded-lg border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
+                  {townItem ? <townItem.svg /> : resultMat ? <span className="text-xl">{resultMat.icon}</span> : <span>?</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-black text-[var(--text)]">{recipe.name}</span>
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-full border text-white" style={{ backgroundColor: TIER_COLORS[recipe.tier] || '#64748b', borderColor: TIER_COLORS[recipe.tier] || '#64748b' }}>T{recipe.tier}</span>
+                  </div>
+                  <div className="flex gap-1 mt-0.5 flex-wrap">
+                    {displayIngredients.map((ing, i) => {
+                      const mat = MATERIALS[ing.material];
+                      const have = materials[ing.material] || 0;
+                      const enough = have >= ing.amount;
+                      return (
+                        <span key={i} className={`text-[9px] font-bold px-1 py-0.5 rounded border ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                          {mat?.icon}{ing.amount}{!enough && `(${have})`}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+                <ChevronRight size={14} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isSelected && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="bg-[var(--bg)] border-[2px] border-t-0 border-[var(--text)] rounded-b-xl p-3 flex flex-col items-center gap-2">
+                    {!craftable && isUnlocked && (
+                      <div className="text-[10px] text-red-500 font-bold text-center">
+                        素材が足りません
+                      </div>
+                    )}
+                    {isUnlocked ? (
+                      <MotionButton variant={craftable ? 'primary' : 'secondary'} disabled={!craftable} onClick={() => handleCraft(recipe)} className={`px-5 py-2.5 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] ${!craftable ? 'opacity-40 grayscale' : ''}`}>
+                        <Hammer size={14} /> クラフトする
+                      </MotionButton>
+                    ) : (
+                      <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isGradeUnlocked ? `${recipe.minGrade}年生で解放` : '条件未達成'}</div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+      {craftRecipes.length === 0 && <div className="text-center text-sm text-[var(--text)] opacity-40 py-4">レシピなし</div>}
+    </div>
+  </div>
+);
+
+// ── Residents Panel ──
+const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentStats, dailyPreview, villagers, expandedOcc, setExpandedOcc }) => (
+  <div className="flex flex-col gap-3">
+    {/* Summary */}
+    <div className="bg-[var(--bg)] rounded-xl p-3 border-[2px] border-[var(--text)]">
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <div className="text-xl font-black text-[var(--text)]">👥 {residentStats.total}人</div>
+          <div className="text-xs text-[var(--text)] opacity-60">住民数</div>
+        </div>
+        <div className="text-right">
+          <div className="flex items-center gap-1.5 justify-end">
+            <span className="text-xl">{satLabel.emoji}</span>
+            <span className="text-lg font-black" style={{ color: satLabel.color }}>{satisfaction}</span>
+          </div>
+          <div className="text-xs font-bold" style={{ color: satLabel.color }}>{satLabel.text}</div>
+        </div>
+      </div>
+      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]">
+        <motion.div initial={{ width: 0 }} animate={{ width: `${satisfaction}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full" style={{ backgroundColor: satLabel.color }} />
+      </div>
+      <div className="text-[10px] text-[var(--text)] opacity-50 text-center mt-1">収集効率: x{multiplier.toFixed(1)}</div>
+    </div>
+
+    {/* Daily collection preview */}
+    {residentStats.total > 0 && (
+      <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
+        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> 毎日の収集</h3>
+        <div className="flex flex-wrap gap-1">
+          {Object.entries(dailyPreview.materials).map(([matId, amount]) => {
+            const mat = MATERIALS[matId];
+            if (!mat) return null;
+            return <span key={matId} className="text-[10px] bg-[var(--panel)] rounded-full px-2 py-0.5 font-bold border border-[var(--text)]">{mat.icon} {mat.name} +{amount}</span>;
+          })}
+          {dailyPreview.coins > 0 && <span className="text-[10px] bg-[var(--accent)] rounded-full px-2 py-0.5 font-bold border border-[var(--text)]">+{dailyPreview.coins}</span>}
+        </div>
+      </div>
+    )}
+
+    {/* Occupation list */}
+    <div className="flex flex-col gap-1.5">
+      {OCCUPATIONS.map(occ => {
+        const count = residentStats.occupationCounts[occ.id] || 0;
+        const isExpanded = expandedOcc === occ.id;
+        const isUnlocked = (stats.targetGrade || 1) >= occ.minGrade;
+        const occVillagers = villagers.filter(v => (v.occupation || 'farmer') === occ.id);
+
+        return (
+          <div key={occ.id} className={`border-[2px] border-[var(--text)] rounded-xl overflow-hidden transition-all ${!isUnlocked ? 'opacity-40 grayscale' : ''}`}>
+            <button onClick={() => { audioCtrl.playSE('click'); setExpandedOcc(isExpanded ? null : occ.id); }} className="w-full flex items-center gap-2 px-2.5 py-2 bg-[var(--bg)] hover:bg-[var(--bg)]/80 transition-colors text-left">
+              <span className="text-lg shrink-0">{occ.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-black text-[var(--text)]">{occ.name}</div>
+                <div className="text-[9px] text-[var(--text)] opacity-50 truncate">{occ.desc}</div>
+              </div>
+              <span className="text-sm font-black text-[var(--primary)] shrink-0">{count}人</span>
+              {count > 0 && (isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+            </button>
+            <AnimatePresence>
+              {isExpanded && count > 0 && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="px-2.5 py-2 bg-[var(--panel)] border-t-2 border-[var(--text)]">
+                    <div className="flex flex-wrap gap-1">
+                      {occVillagers.map(v => (
+                        <span key={v.id} className="inline-flex items-center gap-0.5 bg-[var(--bg)] rounded-full px-2 py-0.5 text-[10px] font-bold border border-[var(--text)]">
+                          <span className="text-[var(--primary)]">{v.kanjiChar}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* Tips */}
+    <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
+      <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-1.5"><Heart size={12} className="text-rose-500" /> 満足度を上げるには</h3>
+      <div className="flex flex-col gap-1 text-xs text-[var(--text)]">
+        <div>🏠 家を建てて住む場所を増やす</div>
+        <div>🏛 いろいろな建物を建てる</div>
+        <div>🌸 木や花で自然環境を整える</div>
+        <div>🔥 毎日連続で学習する</div>
+      </div>
+    </div>
+  </div>
+);
 
 export default TownEditorView;
