@@ -48,26 +48,28 @@ const TOWN_ITEMS = [
   { id: 't_sand',          svg: SvgSand,         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]',  cultivateCost: 10 },
   { id: 't_shallow_water', svg: SvgShallowWater, name: '浅瀬',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#7dd3fc]' },
   { id: 't_highland',      svg: SvgHighland,     name: '高台',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#a8a29e]',  cultivateCost: 20 },
-  // 自然・建物・特別（既存）
+  // 自然・建物・特別
+  // minGrade: 配置に必要な最低学年（未指定=制限なし）
+  // biomes: 配置可能なバイオーム（未指定=どこでも配置可能）
   { id: 't_grass',      svg: SvgGrass,      name: 'くさ',       price: 10,    pros: 1,    type: 'nature',   bg: 'bg-[#86efac]' },
   { id: 't_flower',     svg: SvgFlower,     name: '花壇',       price: 30,    pros: 5,    type: 'nature',   bg: 'bg-[#86efac]' },
   { id: 't_tree',       svg: SvgTree,       name: '木',         price: 50,    pros: 10,   type: 'nature',   bg: 'bg-[#86efac]' },
-  { id: 't_sakura',     svg: SvgSakura,     name: '桜の木',     price: 150,   pros: 25,   type: 'nature',   bg: 'bg-[#86efac]' },
+  { id: 't_sakura',     svg: SvgSakura,     name: '桜の木',     price: 150,   pros: 25,   type: 'nature',   bg: 'bg-[#86efac]',  minGrade: 3 },
   { id: 't_pine',       svg: SvgPine,       name: '松',         price: 100,   pros: 20,   type: 'nature',   bg: 'bg-[#86efac]' },
   { id: 't_rock',       svg: SvgRock,       name: '岩',         price: 20,    pros: 2,    type: 'nature',   bg: 'bg-[#86efac]' },
-  { id: 't_water',      svg: SvgWater,      name: '水路',       price: 40,    pros: 4,    type: 'nature',   bg: 'bg-[#7dd3fc]' },
+  { id: 't_water',      svg: SvgWater,      name: '水路',       price: 40,    pros: 4,    type: 'nature',   bg: 'bg-[#7dd3fc]', biomes: ['coast', 'center'] },
   { id: 't_road',       svg: SvgRoad,       name: '道',         price: 15,    pros: 3,    type: 'building', bg: 'bg-[#e2e8f0]' },
-  { id: 't_bridge',     svg: SvgBridge,     name: '橋',         price: 100,   pros: 15,   type: 'building', bg: 'bg-[#7dd3fc]' },
-  { id: 't_wall',       svg: SvgWall,       name: '城壁',       price: 80,    pros: 12,   type: 'building', bg: 'bg-[#e2e8f0]' },
+  { id: 't_bridge',     svg: SvgBridge,     name: '橋',         price: 100,   pros: 15,   type: 'building', bg: 'bg-[#7dd3fc]', minGrade: 3 },
+  { id: 't_wall',       svg: SvgWall,       name: '城壁',       price: 80,    pros: 12,   type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 4 },
   { id: 't_house1',     svg: SvgHouse1,     name: '小さな家',   price: 150,   pros: 50,   type: 'building', bg: 'bg-[#86efac]' },
-  { id: 't_shop',       svg: SvgShop,       name: 'お店',       price: 400,   pros: 150,  type: 'building', bg: 'bg-[#e2e8f0]' },
-  { id: 't_school',     svg: SvgSchool,     name: '学校',       price: 800,   pros: 300,  type: 'building', bg: 'bg-[#e2e8f0]' },
+  { id: 't_shop',       svg: SvgShop,       name: 'お店',       price: 400,   pros: 150,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 2, biomes: ['coast', 'plains', 'center'] },
+  { id: 't_school',     svg: SvgSchool,     name: '学校',       price: 800,   pros: 300,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 5, biomes: ['hills', 'center'] },
   { id: 't_kakejiku',   svg: () => <div/>,  name: 'マイ掛け軸', price: 500,   pros: 100,  type: 'special',  bg: 'bg-[#f5e6d3]' },
-  { id: 't_torii',      svg: SvgTorii,      name: '鳥居',       price: 1500,  pros: 800,  type: 'special',  bg: 'bg-[#86efac]' },
-  { id: 't_temple',     svg: SvgTemple,     name: 'お寺',       price: 2000,  pros: 1200, type: 'special',  bg: 'bg-[#e2e8f0]' },
-  { id: 't_castle',     svg: SvgCastle,     name: 'お城',       price: 3000,  pros: 2000, type: 'special',  bg: 'bg-[#86efac]' },
-  { id: 't_gold_castle',svg: SvgGoldCastle, name: '黄金の城',   price: 10000, pros: 8000, type: 'special',  bg: 'bg-[#fef08a]' },
-  { id: 't_dragon',     svg: SvgDragon,     name: '守り神',     price: 5000,  pros: 3000, type: 'special',  bg: 'bg-[#bbf7d0]' },
+  { id: 't_torii',      svg: SvgTorii,      name: '鳥居',       price: 1500,  pros: 800,  type: 'special',  bg: 'bg-[#86efac]', minGrade: 3, biomes: ['mountain', 'center'] },
+  { id: 't_temple',     svg: SvgTemple,     name: 'お寺',       price: 2000,  pros: 1200, type: 'special',  bg: 'bg-[#e2e8f0]', minGrade: 3, biomes: ['mountain', 'center'] },
+  { id: 't_castle',     svg: SvgCastle,     name: 'お城',       price: 3000,  pros: 2000, type: 'special',  bg: 'bg-[#86efac]', minGrade: 6 },
+  { id: 't_gold_castle',svg: SvgGoldCastle, name: '黄金の城',   price: 10000, pros: 8000, type: 'special',  bg: 'bg-[#fef08a]', minGrade: 6, biomes: ['volcano', 'center'] },
+  { id: 't_dragon',     svg: SvgDragon,     name: '守り神',     price: 5000,  pros: 3000, type: 'special',  bg: 'bg-[#bbf7d0]', minGrade: 6, biomes: ['volcano', 'center'] },
 ];
 
 export { TOWN_ITEMS };

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { CloudRain, Sun } from 'lucide-react';
 import { TOWN_ITEMS, SvgBedrock, SvgRoughland, SvgWeed, SvgGrassland, SvgForestFloor, SvgSand, SvgShallowWater, SvgHighland } from '../../data/town-items';
-import { BIOME_TYPES } from '../../data/biomes';
+import { BIOME_TYPES, BIOME_TERRAIN_COLORS } from '../../data/biomes';
 import VillagerDot from './VillagerDot';
 
 // Terrain SVG lookup for fast access
@@ -19,6 +19,17 @@ const TERRAIN_SVG_MAP = {
 
 // Cultivatable terrain types (can be cleared for building)
 const CULTIVATABLE_TERRAIN = new Set(['t_roughland', 't_grassland', 't_forest_floor', 't_sand', 't_highland']);
+
+// Get biome-tinted background color for a terrain tile
+// Maps tile IDs like 't_grassland' to the key 'grassland' in BIOME_TERRAIN_COLORS
+const getBiomeBg = (itemId, biome) => {
+  if (!biome || !itemId) return null;
+  const colors = BIOME_TERRAIN_COLORS[biome];
+  if (!colors) return null;
+  // Strip 't_' prefix to match BIOME_TERRAIN_COLORS keys
+  const terrainKey = itemId.replace(/^t_/, '');
+  return colors[terrainKey] || null;
+};
 
 const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 3 }) => {
   const GRID_SIZE = 50; const CELL_SIZE = 48; const MAP_SIZE = GRID_SIZE * CELL_SIZE;
@@ -115,10 +126,11 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
 
         // 開拓可能な地形（荒れ地・草地・森林・砂地・高台）
         const TerrainSvg = TERRAIN_SVG_MAP[itemId];
+        const biomeTint = getBiomeBg(itemId, biome);
         if (CULTIVATABLE_TERRAIN.has(itemId)) {
           const terrainItem = TOWN_ITEMS.find(i => i.id === itemId);
           result.push(
-            <div key={key} style={cellStyle} onPointerUp={(e) => handlePointerUp(e, x, y)}
+            <div key={key} style={{ ...cellStyle, ...(biomeTint ? { backgroundColor: biomeTint } : {}) }} onPointerUp={(e) => handlePointerUp(e, x, y)}
               className={`flex items-center justify-center relative select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
               {TerrainSvg ? <TerrainSvg /> : <SvgRoughland />}
               {isEditing && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-amber-500/40 transition-opacity rounded-sm"><span className="text-[9px] font-black text-white text-center leading-tight">開拓<br/>(-{terrainItem?.cultivateCost || 5}💰)</span></div>}
@@ -129,14 +141,17 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
 
         // 浅瀬（建設不可、表示のみ）
         if (itemId === 't_shallow_water') {
-          result.push(<div key={key} style={cellStyle} className="flex items-center justify-center"><SvgShallowWater /></div>);
+          const waterTint = getBiomeBg(itemId, biome);
+          result.push(<div key={key} style={{ ...cellStyle, ...(waterTint ? { backgroundColor: waterTint } : {}) }} className="flex items-center justify-center"><SvgShallowWater /></div>);
           continue;
         }
 
-        // 通常セル（更地・設置物・雑草）
-        const bgClass = item ? item.bg : 'bg-[#d4a96a]';
+        // 通常セル（更地・設置物・雑草）— バイオームで背景色を変化
+        const clearedTint = getBiomeBg(itemId, biome);
+        const bgClass = clearedTint ? '' : (item ? item.bg : 'bg-[#d4a96a]');
+        const bgStyle = clearedTint ? { backgroundColor: clearedTint } : {};
         result.push(
-          <div key={key} style={cellStyle} onPointerUp={(e) => handlePointerUp(e, x, y)}
+          <div key={key} style={{ ...cellStyle, ...bgStyle }} onPointerUp={(e) => handlePointerUp(e, x, y)}
             className={`border-[1px] border-black/5 flex items-center justify-center relative select-none ${bgClass} ${isEditing ? 'hover:brightness-110 cursor-pointer border-black/20' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
             <AnimatePresence mode="popLayout">
               {item && item.id === 't_kakejiku' ? (
