@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer } from 'lucide-react';
+import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock } from 'lucide-react';
 import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
+import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { STORY_STAGES } from '../../data/story-stages';
 import { MATERIALS } from '../../data/materials';
@@ -10,7 +11,7 @@ import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/sto
 import { audioCtrl } from '../../systems/audio';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
 
-const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo }) => {
+const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission }) => {
   const { level, title, badge, progress } = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
   const now = Date.now();
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
@@ -18,9 +19,16 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const reviewTargetsCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new' && stats.kanjiStats[k.id].nextReview <= now).length;
   const isReviewNeeded = reviewTargetsCount > 0;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
-  const isSpecialTrainingUnlocked = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length > 0;
+  const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;
+  const isSpecialTrainingUnlocked = learnedCount > 0;
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
+
+  // 段階的機能解放
+  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
+  const isCraftUnlocked = learnedCount >= 3;
+  const isTownEditorUnlocked = learnedCount >= 1;
+  const isResidentsUnlocked = (stats.population || 0) >= 1;
 
   return (
     <div className="flex flex-col items-center gap-4 pb-6 h-full overflow-y-auto no-scrollbar">
@@ -40,7 +48,6 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           <DraggableTownMap mapData={stats.townMap} biomeMap={stats.biomeMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         </div>
         {(() => {
-          const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
           const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
           const nextStage = STORY_STAGES.find(s => s.id === stage.id + 1);
           return (
@@ -76,6 +83,11 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         </motion.div>
       )}
 
+      {/* デイリーミッション */}
+      {dailyMissions && dailyMissions.length > 0 && (
+        <DailyMissionsPanel missions={dailyMissions} onClaim={onClaimMission} />
+      )}
+
       <div className="flex flex-col w-full gap-2 shrink-0">
         <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)]">
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
@@ -108,14 +120,32 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
 
         <div className="flex gap-2 mt-1">
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('townEditor')}><Map size={16} className="text-[var(--accent)]" /> まちづくり</MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('craft')}><Hammer size={16} className="text-amber-600" /> クラフト</MotionButton>
+          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isTownEditorUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isTownEditorUnlocked) setView('townEditor'); }} disabled={!isTownEditorUnlocked}>
+            {isTownEditorUnlocked ? <><Map size={16} className="text-[var(--accent)]" /> まちづくり</> : <><Lock size={14} className="opacity-40" /> まちづくり</>}
+          </MotionButton>
+          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isCraftUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isCraftUnlocked) setView('craft'); }} disabled={!isCraftUnlocked}>
+            {isCraftUnlocked ? <><Hammer size={16} className="text-amber-600" /> クラフト</> : <><Lock size={14} className="opacity-40" /> クラフト</>}
+          </MotionButton>
         </div>
         <div className="flex gap-2">
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('residents')}><Users size={16} className="text-[var(--primary)]" /> 住民</MotionButton>
+          <MotionButton variant="secondary" className={`py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px] ${!isResidentsUnlocked ? 'opacity-50' : ''}`} onClick={() => { if (isResidentsUnlocked) setView('residents'); }} disabled={!isResidentsUnlocked}>
+            {isResidentsUnlocked ? <><Users size={16} className="text-[var(--primary)]" /> 住民</> : <><Lock size={14} className="opacity-40" /> 住民</>}
+          </MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> 実績</MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
         </div>
+
+        {/* 機能解放ヒント */}
+        {!isTownEditorUnlocked && (
+          <div className="text-[10px] text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
+            漢字を1つ覚えると「まちづくり」が使えるようになるよ
+          </div>
+        )}
+        {isTownEditorUnlocked && !isCraftUnlocked && (
+          <div className="text-[10px] text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
+            漢字を3つ覚えると「クラフト」が使えるようになるよ
+          </div>
+        )}
       </div>
     </div>
   );
