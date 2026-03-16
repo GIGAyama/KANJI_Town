@@ -5,7 +5,6 @@ import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
-import { STORY_STAGES } from '../../data/story-stages';
 import { MATERIALS } from '../../data/materials';
 import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
@@ -24,12 +23,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
 
-  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
   const isCraftUnlocked = learnedCount >= 3;
   const isTownEditorUnlocked = learnedCount >= 1;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
-  const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
 
   return (
     <div className="flex h-full gap-3 overflow-hidden">
@@ -42,6 +39,8 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
             <span className="text-lg font-black text-[var(--text)]">Lv.{level}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-bold text-[var(--text)] opacity-60 flex items-center gap-0.5"><Users size={12} />{stats.population || 0}人</span>
+            <span className="text-xs font-bold flex items-center gap-0.5" style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>
             <span className="flex items-center gap-1 bg-[var(--accent)] px-2.5 py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={14} />{stats.coins}</span>
             <span className="text-xs font-bold text-[var(--primary)] flex items-center gap-1"><TrendingUp size={12} />{prosperity}</span>
           </div>
@@ -74,17 +73,6 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           )}
         </div>
 
-        {/* Story stage bar */}
-        <div className="bg-[var(--panel)] rounded-xl px-3 py-2 border-[2px] border-[var(--text)] flex items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-lg shrink-0">{stage.emoji}</span>
-            <span className="font-black text-[var(--text)] text-sm truncate">{stage.title}</span>
-          </div>
-          <div className="flex items-center gap-3 shrink-0 text-xs font-bold">
-            <span className="text-[var(--text)] opacity-60">👥{stats.population || 0}人</span>
-            <span style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>
-          </div>
-        </div>
       </div>
 
       {/* === RIGHT: Controls === */}
