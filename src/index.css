@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fdfbf7;
+  --primary: #ef4444;
+  --secondary: #10b981;
+  --accent: #fbbf24;
+  --text: #292f36;
+  --panel: #ffffff;
+}
+
+body {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  touch-action: manipulation;
+  transition: background-color 0.3s ease;
+  margin: 0;
+  padding: 0;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: var(--text);
+}
+
+ruby {
+  ruby-align: center;
+}
+ruby rt {
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ruby-text {
+  line-height: 1.8;
+}

@@ -1,0 +1,38 @@
+// 現行の16字データ（Phase 1 で1026字に拡張予定）
+export const KANJI_DATA = [
+  { id: "k1_1", grade: 1, char: "一", on: ["イチ", "イツ"], kun: ["ひと", "ひと(つ)"], examples: ["一輪車（いちりんしゃ）に 一（ひと）つ 乗る。", "一（いち）から やり直す。"], unlocks: "t_road" },
+  { id: "k1_2", grade: 1, char: "右", on: ["ウ", "ユウ"], kun: ["みぎ"], examples: ["右（みぎ）を見て 左を 確認する。", "右折（うせつ）する。"] },
+  { id: "k1_3", grade: 1, char: "雨", on: ["ウ"], kun: ["あめ", "あま"], examples: ["冷たい 雨（あめ）が 降る。", "雨具（あまぐ）を 準備する。"], unlocks: "t_water" },
+  { id: "k1_4", grade: 1, char: "円", on: ["エン"], kun: ["まる(い)"], examples: ["百円（ひゃくえん）玉は 円（まる）い 形だ。"] },
+  { id: "k1_5", grade: 1, char: "王", on: ["オウ"], kun: [], examples: ["ライオンは 百獣の 王（おう）だ。"], unlocks: "t_castle" },
+  { id: "k2_1", grade: 2, char: "黄", on: ["コウ", "オウ"], kun: ["き", "こ"], examples: ["黄（き）色い 花が 咲く。", "黄金（おうごん）の 宝。"], unlocks: "t_flower" },
+  { id: "k2_2", grade: 2, char: "海", on: ["カイ"], kun: ["うみ"], examples: ["広い 海（うみ）を 泳ぐ。", "海外（かいがい）に 行く。"], unlocks: "t_water" },
+  { id: "k2_3", grade: 2, char: "岩", on: ["ガン"], kun: ["いわ"], examples: ["大きな 岩（いわ）が ある。", "岩石（がんせき）を 調べる。"], unlocks: "t_rock" },
+  { id: "k3_1", grade: 3, char: "祭", on: ["サイ"], kun: ["まつ(る)", "まつ(り)"], examples: ["夏祭（なつまつ）りに 行く。", "文化祭（ぶんかさい）の 準備。"], unlocks: "t_torii" },
+  { id: "k3_2", grade: 3, char: "神", on: ["シン", "ジン"], kun: ["かみ", "かん", "こう"], examples: ["神様（かみさま）の いる お寺。", "神社（じんじゃ）に お参りする。"], unlocks: "t_temple" },
+  { id: "k4_1", grade: 4, char: "建", on: ["ケン", "コン"], kun: ["た(てる)", "た(つ)"], examples: ["家を 建（た）てる。", "建物（たてもの）が 完成した。"], unlocks: "t_house1" },
+  { id: "k4_2", grade: 4, char: "松", on: ["ショウ"], kun: ["まつ"], examples: ["松（まつ）の木が ある。", "門松（かどまつ）を 飾る。"], unlocks: "t_pine" },
+  { id: "k5_1", grade: 5, char: "桜", on: ["オウ"], kun: ["さくら"], examples: ["桜（さくら）の木が 満開だ。", "桜前線（さくらぜんせん）が 北上する。"], unlocks: "t_sakura" },
+  { id: "k5_2", grade: 5, char: "橋", on: ["キョウ"], kun: ["はし"], examples: ["川に 橋（はし）を 架ける。", "歩道橋（ほどうきょう）を 渡る。"], unlocks: "t_bridge" },
+  { id: "k6_1", grade: 6, char: "宝", on: ["ホウ"], kun: ["たから"], examples: ["黄金の 宝（たから）を 探す。", "宝物（たからもの）を 大切にする。"], unlocks: "t_gold_castle" },
+  { id: "k6_2", grade: 6, char: "城", on: ["ジョウ"], kun: ["しろ"], examples: ["お城（しろ）の 跡地。", "城下町（じょうかまち）を 歩く。"], unlocks: "t_castle" },
+];
+
+export const KANJI_UNLOCK_EXTRA = {
+  k1_1: 't_road',
+  k1_2: 't_grass',
+  k1_3: 't_water',
+  k1_4: 't_grass',
+  k1_5: 't_castle',
+  k2_1: 't_flower',
+  k2_2: 't_water',
+  k2_3: 't_rock',
+  k3_1: 't_torii',
+  k3_2: 't_temple',
+  k4_1: 't_house1',
+  k4_2: 't_pine',
+  k5_1: 't_sakura',
+  k5_2: 't_bridge',
+  k6_1: 't_gold_castle',
+  k6_2: 't_castle',
+};
