@@ -1,65 +1,670 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
-import TestMode from '../session/TestMode';
 import { audioCtrl } from '../../systems/audio';
 import { SvgGhostBoss } from '../../data/town-items';
 import { FormatKun } from '../ui/FormatKun';
+import { Analyzer } from '../../systems/analyzer';
+import { gradeStrokes } from '../../systems/strokeGrader';
+import { RefreshCw, Swords, Shield } from 'lucide-react';
 
-const BossBattleView = ({ queue, onUpdateStat, onFinish }) => {
-  const [idx, setIdx] = useState(0);
-  // FIX: hp を ref でも管理して stale closure を防ぐ
-  const [hp, setHp] = useState(10); const hpRef = useRef(10);
-  const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
-  const isDoneRef = useRef(false);
-  const [canvasSize] = useState(window.innerWidth < 768 ? 280 : 400); const [isShaking, setIsShaking] = useState(false);
-  useEffect(() => { audioCtrl.playBGM('boss'); return () => audioCtrl.stopBGM(); }, []);
-  const kanji = queue[idx];
+const PLAYER_MAX_HP = 3;
+const BOSS_MAX_HP = 10;
 
-  const handleEvaluate = (evalType) => {
-    onUpdateStat(kanji, evalType);
-    if (evalType === 'easy' || evalType === 'good') {
-      const newHp = hpRef.current - 1;
-      hpRef.current = newHp;
-      setHp(newHp);
-      earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 20, coins: earnedRef.current.coins + 5, perfectCount: evalType === 'easy' ? earnedRef.current.perfectCount + 1 : earnedRef.current.perfectCount };
-      audioCtrl.playSE('boss_hit'); setIsShaking(true); setTimeout(() => setIsShaking(false), 500);
-      // FIX: ref値で判定（stale closureなし）
-      if (newHp <= 0 && !isDoneRef.current) {
-        isDoneRef.current = true;
-        setTimeout(() => onFinish({ ...earnedRef.current, rareDrop: 't_gold_castle' }), 1200);
-        return;
+// --- ボスバトル専用キャンバス ---
+const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled }) => {
+  const inkRef = useRef(null);
+  const writeRef = useRef(null);
+  const [userStrokes, setUserStrokes] = useState([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+  const currentPathRef = useRef([]);
+
+  // キャンバス初期化
+  useEffect(() => {
+    [inkRef, writeRef].forEach(ref => {
+      const c = ref.current;
+      if (c) {
+        c.width = canvasSize * 2;
+        c.height = canvasSize * 2;
+        c.style.width = '100%';
+        c.style.height = '100%';
+        const ctx = c.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, canvasSize, canvasSize);
       }
-    } else { audioCtrl.playSE('stamp_bad'); }
-    setTimeout(() => { setIdx(prev => (prev + 1) % queue.length); }, 1000);
+    });
+    setUserStrokes([]);
+  }, [strokeData, canvasSize]);
+
+  // 書いた線の描画
+  const redrawInk = useCallback((strokes) => {
+    const ctx = inkRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = canvasSize * 0.07;
+    strokes.forEach(stroke => {
+      if (stroke.length === 0) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      stroke.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.stroke();
+    });
+  }, [canvasSize]);
+
+  const getCoords = (e) => {
+    const rect = writeRef.current.getBoundingClientRect();
+    const scaleX = canvasSize / rect.width;
+    const scaleY = canvasSize / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
   };
 
-  if (!kanji) return null;
-  const sidebar = (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="bg-slate-800 border-[4px] border-slate-900 rounded-2xl p-4 shadow-[4px_4px_0_#0f172a] text-center relative overflow-hidden">
-        <motion.div animate={isShaking ? { x: [-5, 5, -5, 5, 0] } : { y: [-5, 5, -5] }} transition={isShaking ? { duration: 0.2 } : { repeat: Infinity, duration: 2 }} className="w-32 h-32 mx-auto mb-2 relative z-10"><SvgGhostBoss /></motion.div>
-        <div className="text-xs font-bold text-rose-500 mb-1 z-10 relative">ボスの体力</div>
-        <div className="w-full bg-slate-900 h-6 rounded-full border-[3px] border-slate-700 overflow-hidden z-10 relative">
-          <motion.div animate={{ width: `${(Math.max(hp, 0) / 10) * 100}%` }} transition={{ type: 'spring', stiffness: 300 }} className="h-full bg-rose-600" />
-        </div>
-        <div className="text-lg font-black text-rose-400 mt-1">{Math.max(hp, 0)} / 10</div>
-      </div>
-      <div className="bg-slate-800 border-[4px] border-slate-900 rounded-2xl p-6 shadow-[4px_4px_0_#0f172a]">
-        <div className="text-sm font-bold bg-slate-900 text-rose-500 px-4 py-1.5 rounded-full mx-auto w-max mb-4">ボスの弱点（よみ）</div>
-        <div className="text-2xl md:text-3xl font-black text-white text-center">{kanji.on.length > 0 ? kanji.on.join(' / ') : ''}{kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>)) : ''}</div>
-      </div>
-      <div className="bg-slate-800 border-[3px] border-slate-700 rounded-xl p-3 text-center">
-        <div className="text-xs font-bold text-slate-400">獲得EXP <span className="text-yellow-400 font-black">+{earnedRef.current.exp}</span></div>
-      </div>
-    </div>
-  );
+  const handleStart = (e) => {
+    e.preventDefault();
+    if (disabled) return;
+    audioCtrl.init();
+    const { x, y } = getCoords(e);
+    setIsDrawing(true);
+    lastPos.current = { x, y };
+    currentPathRef.current = [{ x, y, time: Date.now() }];
+    const ctx = writeRef.current.getContext('2d');
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = canvasSize * 0.07;
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const handleMove = (e) => {
+    e.preventDefault();
+    if (!isDrawing || disabled) return;
+    const { x, y } = getCoords(e);
+    currentPathRef.current.push({ x, y, time: Date.now() });
+    const ctx = writeRef.current.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    lastPos.current = { x, y };
+  };
+
+  const handleEnd = (e) => {
+    if (e && e.type !== 'mouseleave') e.preventDefault();
+    if (!isDrawing || disabled) return;
+    setIsDrawing(false);
+    const newStrokes = [...userStrokes, [...currentPathRef.current]];
+    setUserStrokes(newStrokes);
+    redrawInk(newStrokes);
+    const ctx = writeRef.current?.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
+  };
+
+  const handleClear = () => {
+    setUserStrokes([]);
+    [inkRef, writeRef].forEach(ref => {
+      const ctx = ref.current?.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
+    });
+  };
+
+  const handleSubmit = () => {
+    if (userStrokes.length === 0) return;
+    onSubmit(userStrokes);
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-4 md:gap-6 w-full h-full bg-slate-900 rounded-[24px] p-2 md:p-4 border-[4px] border-slate-700">
-      <div className="flex-1 bg-slate-800 rounded-[20px] border-[4px] border-slate-900 flex items-center justify-center overflow-auto p-2 md:p-8 relative min-h-[40vh] md:min-h-0"><TestMode kanji={kanji} onEvaluate={handleEvaluate} canvasSize={canvasSize} commonSidebar={null} /></div>
-      <div className="w-full lg:w-[340px] flex flex-col shrink-0 h-auto lg:h-full overflow-y-auto no-scrollbar pb-6 lg:pb-0">{sidebar}</div>
+    <div className="flex flex-col items-center gap-3 w-full">
+      <div className="relative border-[4px] border-rose-600 rounded-[20px] bg-slate-900 overflow-hidden touch-none shrink-0 shadow-[0_0_20px_rgba(225,29,72,0.3)]" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
+        {/* 十字ガイド */}
+        <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-slate-700 -translate-x-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-slate-700 -translate-y-1/2 pointer-events-none" />
+        <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
+        <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+        {disabled && (
+          <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center">
+            <span className="text-white font-black text-lg">判定中...</span>
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2 w-full" style={{ maxWidth: canvasSize }}>
+        <MotionButton variant="secondary" onClick={handleClear} disabled={disabled || userStrokes.length === 0} className="flex-1 py-3 text-sm font-bold border-[3px] border-slate-600 bg-slate-700 text-slate-200">
+          <RefreshCw size={16} /> 書き直す
+        </MotionButton>
+        <MotionButton variant="primary" onClick={handleSubmit} disabled={disabled || userStrokes.length === 0} className="flex-2 py-3 text-lg font-black border-[3px] border-rose-800 bg-rose-600 text-white shadow-[0_4px_0_#9f1239] flex-grow-[2]">
+          <Swords size={20} /> 攻撃する！
+        </MotionButton>
+      </div>
     </div>
   );
 };
+
+// --- メインのボスバトルビュー ---
+const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
+  const [idx, setIdx] = useState(0);
+  const [bossHp, setBossHp] = useState(BOSS_MAX_HP);
+  const bossHpRef = useRef(BOSS_MAX_HP);
+  const [playerHp, setPlayerHp] = useState(PLAYER_MAX_HP);
+  const playerHpRef = useRef(PLAYER_MAX_HP);
+  const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
+  const failedKanjiRef = useRef([]);
+  const isDoneRef = useRef(false);
+  const [canvasSize] = useState(window.innerWidth < 768 ? 260 : 360);
+
+  // ストロークデータ
+  const [paths, setPaths] = useState([]);
+  const [strokeData, setStrokeData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // バトル状態
+  const [phase, setPhase] = useState('writing'); // writing | judging | result_hit | result_miss | boss_attack | defeated | victory
+  const [gradeResult, setGradeResult] = useState(null);
+  const [isShaking, setIsShaking] = useState(false);
+  const [playerDamageFlash, setPlayerDamageFlash] = useState(false);
+  const [bossAttackAnim, setBossAttackAnim] = useState(false);
+  const [battleMessage, setBattleMessage] = useState('');
+  const [retryKanji, setRetryKanji] = useState(false);
+
+  // タイマー
+  const [timeLeft, setTimeLeft] = useState(0);
+  const timerRef = useRef(null);
+  const timeLeftRef = useRef(0);
+
+  const kanji = queue[idx % queue.length];
+
+  // BGM
+  useEffect(() => {
+    audioCtrl.playBGM('boss');
+    return () => audioCtrl.stopBGM();
+  }, []);
+
+  // KanjiVGデータ取得
+  useEffect(() => {
+    if (!kanji) return;
+    const fetchPaths = async () => {
+      setIsLoading(true);
+      const hex = kanji.char.charCodeAt(0).toString(16).padStart(5, '0');
+      try {
+        const res = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex}.svg`);
+        if (res.ok) {
+          const text = await res.text();
+          const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+          const extractedPaths = Array.from(doc.querySelectorAll('path')).map(p => p.getAttribute('d'));
+          setPaths(extractedPaths);
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          svg.appendChild(pathEl);
+          document.body.appendChild(svg);
+          const data = extractedPaths.map(p => {
+            pathEl.setAttribute('d', p);
+            const len = pathEl.getTotalLength();
+            const points = [];
+            for (let i = 0; i <= len; i += 2) {
+              const pt = pathEl.getPointAtLength(i);
+              points.push({ x: pt.x / 109, y: pt.y / 109 });
+            }
+            const endPt = pathEl.getPointAtLength(len);
+            points.push({ x: endPt.x / 109, y: endPt.y / 109 });
+            return { s: { x: pathEl.getPointAtLength(0).x / 109, y: pathEl.getPointAtLength(0).y / 109 }, e: { x: endPt.x / 109, y: endPt.y / 109 }, points };
+          });
+          document.body.removeChild(svg);
+          setStrokeData(data);
+        }
+      } catch (e) {
+        setPaths([]);
+        setStrokeData([]);
+      }
+      setIsLoading(false);
+    };
+    fetchPaths();
+  }, [kanji]);
+
+  // 制限時間の計算（画数×3秒、最低15秒、最大45秒）
+  const calcTimeLimit = useCallback(() => {
+    if (!strokeData.length) return 30;
+    return Math.min(45, Math.max(15, strokeData.length * 3));
+  }, [strokeData]);
+
+  // タイマー開始
+  useEffect(() => {
+    if (phase !== 'writing' || isLoading || !strokeData.length) return;
+    const limit = calcTimeLimit();
+    setTimeLeft(limit);
+    timeLeftRef.current = limit;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      timeLeftRef.current -= 1;
+      setTimeLeft(timeLeftRef.current);
+      if (timeLeftRef.current <= 0) {
+        clearInterval(timerRef.current);
+        handleTimeout();
+      }
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [phase, isLoading, strokeData, idx, retryKanji]);
+
+  // タイムアウト処理
+  const handleTimeout = () => {
+    if (isDoneRef.current) return;
+    clearInterval(timerRef.current);
+    setPhase('judging');
+    setBattleMessage('時間切れ！');
+    audioCtrl.playSE('stamp_bad');
+    setGradeResult({ total: 0, strokeCountMatch: false, details: ['時間切れ！書けなかった…'] });
+
+    // ボスからの強攻撃（2ダメージ）
+    setTimeout(() => {
+      doBossAttack(2, 'タイムアウト！ボスの強攻撃！');
+      // 復習リスト入り
+      addToFailedKanji(kanji);
+      onUpdateStat(kanji, 'again');
+    }, 800);
+  };
+
+  // ユーザーがストロークを提出
+  const handleSubmitStrokes = (userStrokes) => {
+    if (isDoneRef.current || phase !== 'writing') return;
+    clearInterval(timerRef.current);
+    setPhase('judging');
+
+    const result = gradeStrokes(userStrokes, strokeData, canvasSize);
+    setGradeResult(result);
+
+    setTimeout(() => {
+      if (!result.strokeCountMatch) {
+        // 画数違い → 一撃アウト（0点）、ボス強攻撃2ダメージ
+        setBattleMessage('画数がちがう！一撃アウト！');
+        audioCtrl.playSE('stamp_bad');
+        doBossAttack(2, '画数ミス！ボスの猛攻撃！');
+        addToFailedKanji(kanji);
+        onUpdateStat(kanji, 'again');
+      } else if (result.total >= 80) {
+        // 会心の一撃
+        setBattleMessage('会心の一撃！');
+        audioCtrl.playSE('stamp_perfect');
+        doBossHit(1, true);
+        earnedRef.current = {
+          ...earnedRef.current,
+          exp: earnedRef.current.exp + 25,
+          coins: earnedRef.current.coins + 8,
+          perfectCount: earnedRef.current.perfectCount + 1,
+        };
+        onUpdateStat(kanji, 'easy');
+      } else if (result.total >= 60) {
+        // ダメージ！
+        setBattleMessage('ダメージを与えた！');
+        audioCtrl.playSE('boss_hit');
+        doBossHit(1, false);
+        earnedRef.current = {
+          ...earnedRef.current,
+          exp: earnedRef.current.exp + 15,
+          coins: earnedRef.current.coins + 5,
+        };
+        onUpdateStat(kanji, 'good');
+      } else if (result.total >= 50) {
+        // ダメージ通らない + ボス反撃1ダメージ
+        setBattleMessage('おしい…ダメージが通らない！');
+        audioCtrl.playSE('stamp_bad');
+        doBossAttack(1, 'ボスの反撃！');
+        onUpdateStat(kanji, 'hard');
+      } else {
+        // 50点未満 → ボス強攻撃2ダメージ + 復習リスト入り
+        setBattleMessage('うまく書けなかった…');
+        audioCtrl.playSE('stamp_bad');
+        doBossAttack(2, 'ボスの強攻撃！');
+        addToFailedKanji(kanji);
+        onUpdateStat(kanji, 'again');
+      }
+    }, 600);
+  };
+
+  // ボスにダメージ
+  const doBossHit = (damage, isCritical) => {
+    setPhase(isCritical ? 'result_hit' : 'result_hit');
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 600);
+
+    const newHp = Math.max(0, bossHpRef.current - damage);
+    bossHpRef.current = newHp;
+    setBossHp(newHp);
+
+    if (newHp <= 0 && !isDoneRef.current) {
+      isDoneRef.current = true;
+      setTimeout(() => {
+        setPhase('victory');
+        audioCtrl.playSE('rare');
+      }, 1000);
+      setTimeout(() => {
+        onFinish({ ...earnedRef.current, rareDrop: 't_gold_castle' });
+      }, 3000);
+      return;
+    }
+
+    // 次の漢字へ
+    setTimeout(() => {
+      setRetryKanji(false);
+      advanceToNext();
+    }, 2000);
+  };
+
+  // ボスの攻撃
+  const doBossAttack = (damage, msg) => {
+    setPhase('boss_attack');
+    setBossAttackAnim(true);
+    audioCtrl.playSE('boss_hit');
+
+    setTimeout(() => {
+      setBossAttackAnim(false);
+      setPlayerDamageFlash(true);
+      audioCtrl.playSE('stamp_bad');
+      setBattleMessage(msg);
+
+      const newHp = Math.max(0, playerHpRef.current - damage);
+      playerHpRef.current = newHp;
+      setPlayerHp(newHp);
+
+      setTimeout(() => setPlayerDamageFlash(false), 500);
+
+      if (newHp <= 0 && !isDoneRef.current) {
+        isDoneRef.current = true;
+        setTimeout(() => {
+          setPhase('defeated');
+          audioCtrl.playSE('stamp_bad');
+        }, 800);
+        setTimeout(() => {
+          onBossDefeat({
+            exp: Math.floor(earnedRef.current.exp / 2),
+            coins: Math.floor(earnedRef.current.coins / 2),
+            perfectCount: earnedRef.current.perfectCount,
+            failedKanji: failedKanjiRef.current,
+          });
+        }, 4000);
+        return;
+      }
+
+      // 次の漢字へ
+      setTimeout(() => {
+        setRetryKanji(false);
+        advanceToNext();
+      }, 1500);
+    }, 600);
+  };
+
+  const addToFailedKanji = (k) => {
+    if (!failedKanjiRef.current.find(fk => fk.id === k.id)) {
+      failedKanjiRef.current = [...failedKanjiRef.current, k];
+    }
+  };
+
+  const advanceToNext = () => {
+    setGradeResult(null);
+    setBattleMessage('');
+    setIdx(prev => prev + 1);
+    setPhase('writing');
+  };
+
+  if (!kanji) return null;
+
+  // --- タイマーバーの色 ---
+  const timeLimit = calcTimeLimit();
+  const timeRatio = timeLeft / (timeLimit || 1);
+  const timerColor = timeRatio > 0.5 ? 'bg-emerald-500' : timeRatio > 0.25 ? 'bg-yellow-500' : 'bg-red-500';
+
+  // --- レンダリング ---
+  return (
+    <div className={`flex flex-col h-full w-full bg-slate-950 relative overflow-hidden transition-colors duration-200 ${playerDamageFlash ? 'bg-red-950' : ''}`}>
+      {/* 背景パーティクル演出 */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-rose-500/30 rounded-full"
+            animate={{ y: [0, -800], x: [0, Math.sin(i) * 50], opacity: [0.5, 0] }}
+            transition={{ duration: 4 + i, repeat: Infinity, delay: i * 0.7 }}
+            style={{ left: `${15 + i * 15}%`, top: '100%' }}
+          />
+        ))}
+      </div>
+
+      {/* ヘッダー: プレイヤーHP & ボスHP */}
+      <div className="flex-shrink-0 px-3 py-2 md:px-6 md:py-3 flex flex-col gap-2 z-10">
+        {/* プレイヤーHP */}
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-bold text-slate-400 w-16 shrink-0">
+            <Shield size={14} className="inline mr-1" />じぶん
+          </div>
+          <div className="flex gap-1">
+            {[...Array(PLAYER_MAX_HP)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={i >= playerHp ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+                className="text-2xl"
+              >
+                {i < playerHp ? '❤️' : '🖤'}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+        {/* ボスHP */}
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-bold text-rose-400 w-16 shrink-0">👻ボス</div>
+          <div className="flex-1 bg-slate-800 h-5 rounded-full border-2 border-slate-600 overflow-hidden">
+            <motion.div
+              animate={{ width: `${(Math.max(bossHp, 0) / BOSS_MAX_HP) * 100}%` }}
+              transition={{ type: 'spring', stiffness: 300 }}
+              className="h-full bg-gradient-to-r from-rose-700 to-rose-500"
+            />
+          </div>
+          <div className="text-sm font-black text-rose-400 w-14 text-right">{Math.max(bossHp, 0)}/{BOSS_MAX_HP}</div>
+        </div>
+      </div>
+
+      {/* メインエリア */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 min-h-0 overflow-hidden">
+        {/* 左: ボスエリア */}
+        <div className="flex flex-col items-center justify-center gap-2 lg:w-[280px] shrink-0">
+          {/* ボスキャラ */}
+          <div className="relative">
+            <motion.div
+              animate={
+                bossAttackAnim
+                  ? { x: [0, 80, 0], scale: [1, 1.3, 1], rotate: [0, -10, 0] }
+                  : isShaking
+                  ? { x: [-8, 8, -8, 8, 0], opacity: [1, 0.5, 1] }
+                  : phase === 'defeated'
+                  ? { opacity: 0, y: 50, rotate: 20 }
+                  : { y: [-6, 6, -6] }
+              }
+              transition={
+                bossAttackAnim
+                  ? { duration: 0.4 }
+                  : isShaking
+                  ? { duration: 0.3 }
+                  : phase === 'defeated'
+                  ? { duration: 1 }
+                  : { repeat: Infinity, duration: 2.5 }
+              }
+              className="w-28 h-28 md:w-36 md:h-36"
+            >
+              <SvgGhostBoss />
+            </motion.div>
+            {/* ボスのセリフ */}
+            <AnimatePresence>
+              {battleMessage && phase !== 'writing' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 border-2 border-rose-500 text-rose-300 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl whitespace-nowrap shadow-lg z-20"
+                >
+                  {battleMessage}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* 読みヒント */}
+          <div className="bg-slate-800/80 border-2 border-slate-700 rounded-xl px-4 py-2 text-center w-full max-w-[280px]">
+            <div className="text-[10px] font-bold text-rose-400 mb-1">弱点（よみ）</div>
+            <div className="text-lg md:text-xl font-black text-white leading-tight">
+              {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
+              {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
+              {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
+                <React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>
+              )) : ''}
+            </div>
+          </div>
+
+          {/* 獲得EXP / 情報 */}
+          <div className="flex gap-2 w-full max-w-[280px]">
+            <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
+              <div className="text-[9px] font-bold text-slate-500">EXP</div>
+              <div className="text-sm font-black text-yellow-400">+{earnedRef.current.exp}</div>
+            </div>
+            <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
+              <div className="text-[9px] font-bold text-slate-500">問目</div>
+              <div className="text-sm font-black text-slate-300">{Math.min(idx + 1, queue.length)}/{queue.length}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 右: 書き取りエリア */}
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto no-scrollbar gap-2">
+          {/* タイマーバー */}
+          {phase === 'writing' && !isLoading && strokeData.length > 0 && (
+            <div className="w-full max-w-[400px] px-2">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="text-xs font-bold text-slate-400">のこり時間</div>
+                <div className={`text-sm font-black ${timeRatio > 0.25 ? 'text-slate-300' : 'text-red-400 animate-pulse'}`}>{timeLeft}秒</div>
+              </div>
+              <div className="w-full bg-slate-800 h-3 rounded-full border border-slate-600 overflow-hidden">
+                <motion.div
+                  animate={{ width: `${timeRatio * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                  className={`h-full ${timerColor} transition-colors`}
+                />
+              </div>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : phase === 'victory' ? (
+            <VictoryScreen bossHp={bossHp} earned={earnedRef.current} />
+          ) : phase === 'defeated' ? (
+            <DefeatScreen playerHp={playerHp} failedKanji={failedKanjiRef.current} />
+          ) : (
+            <>
+              <BossBattleCanvas
+                strokeData={strokeData}
+                paths={paths}
+                canvasSize={canvasSize}
+                onSubmit={handleSubmitStrokes}
+                disabled={phase !== 'writing'}
+              />
+
+              {/* 採点結果の表示 */}
+              <AnimatePresence>
+                {gradeResult && phase !== 'writing' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="w-full max-w-[400px] bg-slate-800/90 border-2 border-slate-600 rounded-xl p-3 text-center"
+                  >
+                    <div className={`text-3xl font-black mb-1 ${gradeResult.total >= 80 ? 'text-yellow-400' : gradeResult.total >= 60 ? 'text-emerald-400' : gradeResult.total >= 50 ? 'text-orange-400' : 'text-red-400'}`}>
+                      {gradeResult.total}点
+                    </div>
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {gradeResult.details.map((d, i) => (
+                        <span key={i} className="text-[10px] font-bold text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{d}</span>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 勝利画面
+const VictoryScreen = ({ earned }) => (
+  <motion.div
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ type: 'spring', stiffness: 200 }}
+    className="flex flex-col items-center gap-4 text-center p-6"
+  >
+    <motion.div
+      animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.2, 1] }}
+      transition={{ repeat: Infinity, duration: 2 }}
+      className="text-7xl"
+    >
+      🎉
+    </motion.div>
+    <div className="text-4xl font-black text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
+      ボス撃破！！
+    </div>
+    <div className="text-lg font-bold text-slate-300">おみごと！ボスをたおした！</div>
+    <div className="flex gap-4 mt-2">
+      <div className="bg-slate-800 border-2 border-yellow-500 rounded-xl px-6 py-3 text-center">
+        <div className="text-xs text-slate-400 font-bold">EXP</div>
+        <div className="text-2xl font-black text-yellow-400">+{earned.exp}</div>
+      </div>
+      <div className="bg-slate-800 border-2 border-yellow-500 rounded-xl px-6 py-3 text-center">
+        <div className="text-xs text-slate-400 font-bold">コイン</div>
+        <div className="text-2xl font-black text-yellow-400">+{earned.coins}</div>
+      </div>
+    </div>
+  </motion.div>
+);
+
+// 敗北画面
+const DefeatScreen = ({ failedKanji }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.8 }}
+    className="flex flex-col items-center gap-4 text-center p-6"
+  >
+    <motion.div
+      animate={{ y: [0, -5, 0] }}
+      transition={{ repeat: Infinity, duration: 2 }}
+      className="text-6xl"
+    >
+      💀
+    </motion.div>
+    <div className="text-3xl font-black text-red-400">やられた…</div>
+    <div className="text-sm font-bold text-slate-400">ボスにまけてしまった…</div>
+    {failedKanji.length > 0 && (
+      <div className="bg-slate-800 border-2 border-red-500/50 rounded-xl p-4 w-full max-w-[300px]">
+        <div className="text-xs font-bold text-red-400 mb-2">復習リストに追加された漢字</div>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {failedKanji.map(k => (
+            <span key={k.id} className="text-2xl font-black text-white bg-red-900/50 border border-red-600 w-10 h-10 rounded-lg flex items-center justify-center">
+              {k.char}
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
+    <div className="text-xs text-slate-500 mt-2">もう少しで結果画面に移動します...</div>
+  </motion.div>
+);
 
 export default BossBattleView;

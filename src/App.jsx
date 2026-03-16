@@ -288,6 +288,30 @@ export default function App() {
     setView('result');
   };
 
+  // ボスバトル敗北処理
+  const handleBossDefeat = (defeatResults = {}) => {
+    // 失敗した漢字を復習リストに追加（nextReviewを即時に設定）
+    if (defeatResults.failedKanji && defeatResults.failedKanji.length > 0) {
+      setStats(s => {
+        const newKanjiStats = { ...s.kanjiStats };
+        defeatResults.failedKanji.forEach(k => {
+          if (newKanjiStats[k.id]) {
+            newKanjiStats[k.id] = { ...newKanjiStats[k.id], nextReview: Date.now(), mistakes: (newKanjiStats[k.id].mistakes || 0) + 1 };
+          }
+        });
+        const ns = { ...s, kanjiStats: newKanjiStats };
+        StorageAPI.saveStats(ns);
+        return ns;
+      });
+    }
+    // 敗北時は報酬半額でリザルトへ
+    handleFinishSession({
+      exp: defeatResults.exp || 0,
+      coins: defeatResults.coins || 0,
+      perfectCount: defeatResults.perfectCount || 0,
+    });
+  };
+
   const GlobalStyle = () => {
     const { themeName: autoTheme } = levelInfo;
     const themeOverride = stats.settings?.themeOverride || 'auto';
@@ -371,7 +395,7 @@ export default function App() {
           {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={() => setView('home')}><SessionView queue={sessionData.queue} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
         </Suspense>
