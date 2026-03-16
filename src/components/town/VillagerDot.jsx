@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getOccupation } from '../../data/residents';
 
 const VillagerDot = React.memo(({ villager, cellSize, offset }) => {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const frameRef = useRef(null);
   const tRef = useRef(Math.random() * Math.PI * 2); // 位相をランダムにずらす
+
+  const occ = getOccupation(villager.occupation);
 
   useEffect(() => {
     const baseX = villager.x * cellSize + cellSize / 2;
@@ -25,7 +28,9 @@ const VillagerDot = React.memo(({ villager, cellSize, offset }) => {
   return (
     <div className="absolute pointer-events-none z-30 flex flex-col items-center" style={{ left: pos.x + offset.x, top: pos.y + offset.y, transform: 'translate(-50%,-100%)' }}>
       <div className="text-[8px] font-black leading-none mb-0.5" style={{ color: '#e11d48', textShadow: '0 0 3px white, 0 0 3px white' }}>{villager.kanjiChar}</div>
-      <div style={{ fontSize: '12px', lineHeight: 1 }}>🧑</div>
+      <div className="flex items-center gap-0" style={{ fontSize: '12px', lineHeight: 1 }}>
+        <span>{occ.emoji}</span>
+      </div>
     </div>
   );
 });

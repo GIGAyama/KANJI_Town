@@ -7,6 +7,7 @@ import { KANJI_DATA } from '../data/kanji-data.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
+import { migrateVillagers, collectDailyResources, calculateSatisfaction } from './residents.js';
 
 let _saveDebounceTimer = null;
 
@@ -133,6 +134,12 @@ const StorageAPI = {
       stats.biomeMap = biomeMap;
     }
 
+    // ── 住民マイグレーション（Phase 3: 職業・満足度フィールド付与）──
+    stats.villagers = migrateVillagers(stats.villagers);
+    if (stats.satisfaction === undefined) stats.satisfaction = calculateSatisfaction(stats);
+    if (!stats.materials) stats.materials = {};
+    if (!stats.lastCollectionDate) stats.lastCollectionDate = '';
+
     // データ整合性チェック
     const validIds = new Set(TOWN_ITEMS.map(i => i.id));
     Object.keys(stats.townMap).forEach(k => { if (!validIds.has(stats.townMap[k])) delete stats.townMap[k]; });
@@ -194,6 +201,20 @@ const StorageAPI = {
       else stats.streak = 1;
       stats.lastDate = today;
     }
+    // ── 住民の自動素材収集（1日1回）──
+    if (stats.lastCollectionDate !== today && (stats.villagers || []).length > 0) {
+      const { materials: collected, coins: collectedCoins } = collectDailyResources(stats);
+      if (!stats.materials) stats.materials = {};
+      Object.entries(collected).forEach(([matId, amount]) => {
+        stats.materials[matId] = (stats.materials[matId] || 0) + amount;
+      });
+      stats.coins = (stats.coins || 0) + collectedCoins;
+      stats.lastCollectionDate = today;
+      stats.lastCollectionResult = { materials: collected, coins: collectedCoins };
+    }
+    // 満足度更新
+    stats.satisfaction = calculateSatisfaction(stats);
+
     // アイテム付与
     (sessionData.unlockedItems || []).forEach(i => stats.townItems[i] = (stats.townItems[i] || 0) + 1);
     if (sessionData.rareDrop) stats.townItems[sessionData.rareDrop] = (stats.townItems[sessionData.rareDrop] || 0) + 1;

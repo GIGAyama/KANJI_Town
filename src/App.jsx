@@ -11,6 +11,7 @@ import { audioCtrl } from './systems/audio';
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
 import { STORY_STAGES } from './data/story-stages';
 import { TOWN_ITEMS } from './data/town-items';
+import { createVillager } from './systems/residents';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
@@ -26,6 +27,7 @@ import DrillEditorView from './components/pages/DrillEditorView';
 
 // Town
 import TownEditorView from './components/town/TownEditorView';
+import ResidentPanel from './components/town/ResidentPanel';
 
 // Session & Training
 import SessionView from './components/session/SessionView';
@@ -114,7 +116,7 @@ export default function App() {
         });
         const spawnKey = clearedKeys[Math.floor(Math.random() * clearedKeys.length)] || `${C},${C}`;
         const [vx, vy] = spawnKey.split(',').map(Number);
-        newVillager = { id: `v_${Date.now()}`, x: vx, y: vy, kanjiChar: kanjiObj.char, born: Date.now() };
+        newVillager = createVillager(kanjiObj, vx, vy);
 
         // 漢字習得ごとに探索半径が段階的に拡大（1026字全習得で半径25=全域開放）
         setStats(s => {
@@ -194,6 +196,7 @@ export default function App() {
           {view === 'home' && <PageWrapper key="home"><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
           {view === 'dictionary' && <PageWrapper key="dict"><ErrorBoundary onReset={() => setView('home')}><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
           {view === 'townEditor' && <FullScreenWrapper key="townEditor"><ErrorBoundary onReset={() => setView('home')}><TownEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
