@@ -11,8 +11,8 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
     const matchSearch = search === '' || k.char.includes(search) || k.on.some(o => o.includes(search.toUpperCase())) || k.kun.some(ku => ku.includes(search));
     return matchGrade && matchSearch;
   });
-  const getStatusColor = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return 'bg-emerald-100 border-emerald-400'; if (s === 'learning') return 'bg-sky-100 border-sky-400'; return 'bg-gray-100 border-gray-300'; };
-  const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return '習得'; if (s === 'learning') return '学習中'; return '未学習'; };
+  const getStatusColor = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return 'bg-emerald-100 border-emerald-400'; if (s === 'review') return 'bg-violet-100 border-violet-400'; if (s === 'learning') return 'bg-sky-100 border-sky-400'; return 'bg-gray-100 border-gray-300'; };
+  const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return '習得'; if (s === 'review') return '復習中'; if (s === 'learning') return '学習中'; return '未学習'; };
 
   return (
     <div className="flex flex-col gap-4 pb-8">
