@@ -111,7 +111,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
         <DraggableTownMap mapData={localMap} biomeMap={stats.biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         {/* 操作ヒント */}
         <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
-          🟫 地形タップ → 開拓（🪙3〜10枚）<br/>
+          🟫 地形タップ → 開拓（🪙10〜30枚）<br/>
           👥 人口 {stats.population}人
         </div>
         {selectedItem && (
