@@ -2,6 +2,7 @@
 // Phase 4: マイクラ方式の素材クラフト
 
 import { BASE_MATERIALS } from '../data/materials';
+import { getCraftBonuses, CRAFT_BONUSES } from '../data/residents';
 
 /**
  * Check if player has enough materials for a recipe
@@ -17,26 +18,86 @@ export function canCraft(materials, ingredients) {
 }
 
 /**
+ * Apply occupation discount to ingredients
+ * @param {Array} ingredients - Original ingredients
+ * @param {Object} recipe - Recipe object
+ * @param {Array} villagers - Player's villagers
+ * @returns {{ discountedIngredients: Array, appliedDiscount: number, coinBonus: number }}
+ */
+export function applyOccupationDiscount(ingredients, recipe, villagers) {
+  if (!villagers || villagers.length === 0) {
+    return { discountedIngredients: ingredients, appliedDiscount: 0, coinBonus: 0 };
+  }
+  const bonuses = getCraftBonuses(villagers);
+  let bestDiscount = 0;
+  let coinBonus = 0;
+  const category = recipe.category || 'building';
+
+  for (const b of bonuses) {
+    if (b.categories.includes(category)) {
+      if (b.tierRange) {
+        const tier = recipe.tier || 1;
+        if (tier < b.tierRange[0] || tier > b.tierRange[1]) continue;
+      }
+      if (b.effectiveDiscount > bestDiscount) bestDiscount = b.effectiveDiscount;
+      if (b.coinBonus) coinBonus += b.coinBonus * b.count;
+    }
+  }
+
+  if (bestDiscount <= 0) return { discountedIngredients: ingredients, appliedDiscount: 0, coinBonus };
+
+  const discountedIngredients = ingredients.map(ing => ({
+    ...ing,
+    amount: Math.max(1, Math.round(ing.amount * (1 - bestDiscount))),
+  }));
+  return { discountedIngredients, appliedDiscount: bestDiscount, coinBonus };
+}
+
+/**
+ * Check if bonus yield triggers (random chance)
+ * @param {Object} recipe - Recipe object
+ * @param {Array} villagers - Player's villagers
+ * @returns {boolean}
+ */
+export function checkBonusYield(recipe, villagers) {
+  if (!villagers || villagers.length === 0) return false;
+  const bonuses = getCraftBonuses(villagers);
+  const category = recipe.category || 'building';
+  let bestYield = 0;
+  for (const b of bonuses) {
+    if (b.categories.includes(category) && b.effectiveBonusYield > bestYield) {
+      bestYield = b.effectiveBonusYield;
+    }
+  }
+  return bestYield > 0 && Math.random() < bestYield;
+}
+
+/**
  * Execute a craft - deduct materials and return result
  * @param {Object} materials - Player's material inventory (will be modified)
  * @param {Object} recipe - Recipe object with { id, ingredients, result, ... }
- * @returns {{ success: boolean, materials: Object, result: string }}
+ * @param {Array} [villagers] - Optional villagers for occupation bonuses
+ * @returns {{ success: boolean, materials: Object, result: Object, bonusYield: boolean, discount: number, coinBonus: number }}
  */
-export function craft(materials, recipe) {
+export function craft(materials, recipe, villagers) {
   if (!recipe || !recipe.ingredients) {
-    return { success: false, materials, result: null };
+    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0 };
   }
 
-  if (!canCraft(materials, recipe.ingredients)) {
-    return { success: false, materials, result: null };
+  const { discountedIngredients, appliedDiscount, coinBonus } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
+
+  if (!canCraft(materials, discountedIngredients)) {
+    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0 };
   }
 
-  // Deduct ingredients
-  for (const ing of recipe.ingredients) {
+  // Deduct discounted ingredients
+  for (const ing of discountedIngredients) {
     materials[ing.material] = (materials[ing.material] || 0) - ing.amount;
   }
 
-  return { success: true, materials, result: recipe.result };
+  const bonusYield = checkBonusYield(recipe, villagers);
+
+  return { success: true, materials, result: recipe.result, bonusYield, discount: appliedDiscount, coinBonus };
 }
 
 /**
@@ -150,6 +211,24 @@ const RESULT_TO_TOWN_ITEM = {
   golden_tower: 't_golden_tower',
   guardian_shrine: 't_guardian_shrine',
   monument: 't_monument',
+  // アップグレード建物
+  house2: 't_house2',
+  house3: 't_house3',
+  department: 't_department',
+  grand_smithy: 't_grand_smithy',
+  university: 't_university',
+  // メガ建築
+  mega_grand_market: 't_mega_grand_market',
+  mega_fortress: 't_mega_fortress',
+  mega_academy: 't_mega_academy',
+  mega_imperial_palace: 't_mega_imperial_palace',
+  mega_wonder: 't_mega_wonder',
+  // レア建物
+  cherry_pavilion: 't_cherry_pavilion',
+  crystal_tower: 't_crystal_tower',
+  philosophers_lab: 't_philosophers_lab',
+  dragon_shrine: 't_dragon_shrine',
+  perfect_monument: 't_perfect_monument',
 };
 
 export function getResultTownItemId(resultType) {
