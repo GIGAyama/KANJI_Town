@@ -219,13 +219,30 @@ const StorageAPI = {
     (sessionData.unlockedItems || []).forEach(i => stats.townItems[i] = (stats.townItems[i] || 0) + 1);
     if (sessionData.rareDrop) stats.townItems[sessionData.rareDrop] = (stats.townItems[sessionData.rareDrop] || 0) + 1;
     if (sessionData.bestKakejiku) stats.kakejiku = sessionData.bestKakejiku;
-    // 実績更新
+    // 実績更新（Phase 7: 拡張実績対応）
     const masteredCount = Object.values(stats.kanjiStats).filter(s => s.status === 'mastered').length;
+    const buildingCount = Object.values(stats.townMap || {}).filter(id => {
+      const item = TOWN_ITEMS.find(i => i.id === id);
+      return item && (item.type === 'building' || item.type === 'special');
+    }).length;
+    // 学年別マスター数
+    const gradeMastered = {};
+    Object.entries(stats.kanjiStats).forEach(([id, s]) => {
+      if (s.status === 'mastered') {
+        const k = KANJI_DATA.find(kd => kd.id === id);
+        if (k) gradeMastered[k.grade] = (gradeMastered[k.grade] || 0) + 1;
+      }
+    });
     ACHIEVEMENTS.forEach(a => {
       if (!stats.achievements[a.id]) stats.achievements[a.id] = { claimed: false, current: 0 };
       if (a.type === 'streak') stats.achievements[a.id].current = stats.streak;
       if (a.type === 'perfect') stats.achievements[a.id].current = stats.perfectCountTotal;
       if (a.type === 'master') stats.achievements[a.id].current = masteredCount;
+      if (a.type === 'craft') stats.achievements[a.id].current = stats.craftCount || 0;
+      if (a.type === 'building') stats.achievements[a.id].current = buildingCount;
+      if (a.type === 'population') stats.achievements[a.id].current = stats.population || 0;
+      if (a.type === 'session') stats.achievements[a.id].current = stats.sessionCount || 0;
+      if (a.type === 'grade') stats.achievements[a.id].current = gradeMastered[a.gradeNum] || 0;
     });
     return stats;
   }

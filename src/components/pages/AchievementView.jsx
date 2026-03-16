@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Medal, Trophy, Gift, Lock, Coins, ArrowLeft } from 'lucide-react';
+import { Medal, Trophy, Gift, Lock, Coins, ArrowLeft, Check } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import { ACHIEVEMENTS } from '../../data/achievements';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 
 const AchievementView = ({ setView, stats, setStats }) => {
+  const [activeCategory, setActiveCategory] = useState('study');
+
   const handleClaim = (achievement) => {
     const current = stats.achievements?.[achievement.id];
     if (!current || current.claimed || current.current < achievement.target) return;
@@ -16,21 +18,67 @@ const AchievementView = ({ setView, stats, setStats }) => {
     setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('chest_open');
   };
 
+  const categories = Object.entries(ACHIEVEMENT_CATEGORIES).sort((a, b) => a[1].order - b[1].order);
+  const filtered = ACHIEVEMENTS.filter(a => a.category === activeCategory);
+
+  // 達成率
+  const totalCount = ACHIEVEMENTS.length;
+  const claimedCount = ACHIEVEMENTS.filter(a => stats.achievements?.[a.id]?.claimed).length;
+  const completedCount = ACHIEVEMENTS.filter(a => (stats.achievements?.[a.id]?.current || 0) >= a.target).length;
+
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
         <button onClick={() => setView('home')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
-        <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> 実績</h2>
+        <div className="flex-1">
+          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> 実績</h2>
+          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} 達成 ({completedCount}個受取可能)</div>
+        </div>
       </div>
+
+      {/* 達成率バー */}
+      <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden border border-gray-300">
+        <motion.div animate={{ width: `${(claimedCount / totalCount) * 100}%` }} className="h-full rounded-full bg-amber-400" />
+      </div>
+
+      {/* カテゴリタブ */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+        {categories.map(([key, cat]) => {
+          const catAchievements = ACHIEVEMENTS.filter(a => a.category === key);
+          const catClaimed = catAchievements.filter(a => stats.achievements?.[a.id]?.claimed).length;
+          const isActive = activeCategory === key;
+          return (
+            <button
+              key={key}
+              onClick={() => { audioCtrl.playSE('click'); setActiveCategory(key); }}
+              className={`shrink-0 px-3 py-2 rounded-xl border-[2px] text-xs font-black transition-all flex items-center gap-1 ${
+                isActive ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'
+              }`}
+            >
+              {cat.emoji} {cat.name}
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--panel)] text-[var(--text)]' : 'bg-[var(--text)]/10'}`}>
+                {catClaimed}/{catAchievements.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 実績リスト */}
       <div className="flex flex-col gap-3">
-        {ACHIEVEMENTS.map(a => {
+        {filtered.map(a => {
           const progress = stats.achievements?.[a.id] || { claimed: false, current: 0 };
           const pct = Math.min((progress.current / a.target) * 100, 100);
           const canClaim = progress.current >= a.target && !progress.claimed;
           const rewardItemDef = a.rewardItem ? TOWN_ITEMS.find(i => i.id === a.rewardItem) : null;
 
           return (
-            <div key={a.id} className={`bg-[var(--panel)] border-[4px] rounded-2xl p-4 shadow-sm transition-all ${canClaim ? 'border-amber-400 shadow-[4px_4px_0_#b45309]' : progress.claimed ? 'border-emerald-400 opacity-70' : 'border-[var(--text)]'}`}>
+            <motion.div
+              key={a.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`bg-[var(--panel)] border-[4px] rounded-2xl p-4 shadow-sm transition-all ${canClaim ? 'border-amber-400 shadow-[4px_4px_0_#b45309]' : progress.claimed ? 'border-emerald-400 opacity-70' : 'border-[var(--text)]'}`}
+            >
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -50,7 +98,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
                   {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300">受取済</span>}
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>

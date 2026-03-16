@@ -13,6 +13,8 @@ import { STORY_STAGES } from './data/story-stages';
 import { TOWN_ITEMS } from './data/town-items';
 import { createVillager } from './systems/residents';
 import { calculateMaterialDrops } from './systems/crafting';
+import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
+import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
@@ -41,6 +43,11 @@ import BossBattleView from './components/training/BossBattleView';
 import TeacherHostView from './components/social/TeacherHostView';
 import StudentClientView from './components/social/StudentClientView';
 
+// Tutorial & Phase 7
+import TutorialOverlay from './components/tutorial/TutorialOverlay';
+import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
+import FeatureHint from './components/tutorial/FeatureHint';
+
 export default function App() {
   const [view, setView] = useState('home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
@@ -48,7 +55,41 @@ export default function App() {
   const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null });
   const [hostDrill, setHostDrill] = useState(null);
 
+  // Phase 5: チュートリアル
+  const [showTutorial, setShowTutorial] = useState(!stats.tutorialCompleted && stats.totalExp === 0);
+  // Phase 7: ログインボーナス
+  const [showLoginBonus, setShowLoginBonus] = useState(false);
+  const [loginBonusReward, setLoginBonusReward] = useState(null);
+  // Phase 7: デイリーミッション
+  const [dailyMissions, setDailyMissions] = useState([]);
+  // Phase 5: ヒント
+  const [seenHints, setSeenHints] = useState(stats.seenHints || []);
+
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
+
+  // 初回ロード時：ログインボーナス＆デイリーミッション初期化
+  useEffect(() => {
+    const today = new Date().toLocaleDateString();
+
+    // デイリーミッション初期化
+    if (stats.dailyMissionsDate !== today) {
+      const missions = getDailyMissions(today).map(m => ({ ...m, current: 0, claimed: false }));
+      setDailyMissions(missions);
+      const newStats = { ...stats, dailyMissions: missions, dailyMissionsDate: today };
+      setStats(newStats);
+      StorageAPI.saveStats(newStats);
+    } else {
+      setDailyMissions(stats.dailyMissions || []);
+    }
+
+    // ログインボーナスチェック（チュートリアル未完了時はスキップ）
+    if (stats.tutorialCompleted && stats.lastLoginBonusDate !== today && stats.streak >= 1) {
+      const bonusDay = getLoginBonusDay(stats.streak);
+      const reward = getLoginBonusReward(bonusDay);
+      setLoginBonusReward({ ...reward, bonusDay, streak: stats.streak });
+      setShowLoginBonus(true);
+    }
+  }, []);
 
   useEffect(() => {
     const link1 = document.createElement('link'); link1.href = 'https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap'; link1.rel = 'stylesheet'; document.head.appendChild(link1);
@@ -59,6 +100,45 @@ export default function App() {
     if (!isMuted) { if (view === 'session' || view === 'survival' || view === 'flashcard' || view === 'boss') audioCtrl.playBGM(view === 'boss' ? 'boss' : 'game'); else if (view === 'result') { audioCtrl.stopBGM(); } else audioCtrl.playBGM('home'); }
     else audioCtrl.stopBGM();
   }, [view, isMuted]);
+
+  // チュートリアル完了
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+    const newStats = { ...stats, tutorialCompleted: true };
+    setStats(newStats);
+    StorageAPI.saveStats(newStats);
+    audioCtrl.playSE('success');
+  };
+
+  // ログインボーナス受取
+  const handleClaimLoginBonus = () => {
+    if (!loginBonusReward) return;
+    const today = new Date().toLocaleDateString();
+    const newStats = applyLoginBonus({ ...stats, lastLoginBonusDate: today }, loginBonusReward);
+    setStats(newStats);
+    StorageAPI.saveStats(newStats);
+    setShowLoginBonus(false);
+    audioCtrl.playSE('coin');
+  };
+
+  // デイリーミッション受取
+  const handleClaimMission = (mission) => {
+    const updated = dailyMissions.map(m => m.id === mission.id ? { ...m, claimed: true } : m);
+    setDailyMissions(updated);
+    const newStats = { ...stats, coins: (stats.coins || 0) + mission.reward, dailyMissions: updated };
+    setStats(newStats);
+    StorageAPI.saveStats(newStats);
+    audioCtrl.playSE('coin');
+  };
+
+  // ヒント消去
+  const handleDismissHint = (featureKey) => {
+    const newSeen = [...seenHints, featureKey];
+    setSeenHints(newSeen);
+    const newStats = { ...stats, seenHints: newSeen };
+    setStats(newStats);
+    StorageAPI.saveStats(newStats);
+  };
 
   const startSession = (selectedGrade) => {
     audioCtrl.init(); const now = Date.now();
@@ -135,7 +215,6 @@ export default function App() {
         // 漢字習得ごとに探索半径が段階的に拡大（1026字全習得で半径25=全域開放）
         setStats(s => {
           const masteredCount = Object.values({ ...s.kanjiStats, [id]: { status: 'mastered' } }).filter(v => v.status === 'mastered').length;
-          // sqrtカーブ: 序盤は速く、終盤は緩やかに拡大（80字→半径9、1026字→半径25）
           const calcRadius = Math.min(25, 3 + 22 * Math.sqrt(masteredCount / 1026));
           const newRadius = Math.max(s.exploredRadius || 3, calcRadius);
           if (newRadius <= (s.exploredRadius || 3)) return s;
@@ -171,9 +250,27 @@ export default function App() {
       const copy = JSON.parse(JSON.stringify(prevStats));
       const newStats = StorageAPI.updateDaily(copy, totalExp, finalSessionData);
       newStats.coins = (newStats.coins || 0) + coinBonus;
+      // セッション数カウント更新
+      newStats.sessionCount = (newStats.sessionCount || 0) + 1;
       StorageAPI.saveStatsImmediate(newStats);
       return newStats;
     });
+
+    // デイリーミッション進捗更新
+    setDailyMissions(prev => {
+      const reviewCount = sessionData.reviewedCount + (additionalResults.reviewedCount || 0);
+      const perfectCount = sessionData.perfectCount + (additionalResults.perfectCount || 0);
+      const newKanjiCount = sessionData.queue.filter(k => !stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new').length;
+      let updated = updateMissionProgress(prev, 'session', 1);
+      updated = updateMissionProgress(updated, 'review', reviewCount);
+      updated = updateMissionProgress(updated, 'perfect', perfectCount);
+      updated = updateMissionProgress(updated, 'exp', totalExp);
+      updated = updateMissionProgress(updated, 'new_kanji', newKanjiCount);
+      // statsに保存
+      setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
+      return updated;
+    });
+
     setView('result');
   };
 
@@ -193,6 +290,24 @@ export default function App() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle />
+
+      {/* Phase 5: チュートリアルオーバーレイ */}
+      <AnimatePresence>
+        {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+      </AnimatePresence>
+
+      {/* Phase 7: ログインボーナスポップアップ */}
+      <AnimatePresence>
+        {showLoginBonus && !showTutorial && loginBonusReward && (
+          <LoginBonusPopup
+            streak={loginBonusReward.streak}
+            bonusDay={loginBonusReward.bonusDay}
+            reward={loginBonusReward}
+            onClaim={handleClaimLoginBonus}
+          />
+        )}
+      </AnimatePresence>
+
       {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && (
         <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500">
           <div className="flex items-center cursor-pointer gap-2" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} role="button" aria-label="ホームに戻る">
@@ -207,13 +322,19 @@ export default function App() {
 
       <main className="flex-grow relative overflow-hidden p-0 md:p-4">
         <AnimatePresence mode="wait">
-          {view === 'home' && <PageWrapper key="home"><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
-          {view === 'dictionary' && <PageWrapper key="dict"><ErrorBoundary onReset={() => setView('home')}><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
+          {view === 'home' && <PageWrapper key="home"><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} /></ErrorBoundary></PageWrapper>}
+          {view === 'dictionary' && <PageWrapper key="dict"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="dictionary" seenHints={seenHints} onDismiss={handleDismissHint} /><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
           {view === 'townEditor' && <FullScreenWrapper key="townEditor"><ErrorBoundary onReset={() => setView('home')}><TownEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
-          {view === 'craft' && <PageWrapper key="craft"><ErrorBoundary onReset={() => setView('home')}><CraftView stats={stats} setStats={setStats} setView={setView} /></ErrorBoundary></PageWrapper>}
-          {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
-          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
+          {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="residents" seenHints={seenHints} onDismiss={handleDismissHint} /><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
+          {view === 'craft' && <PageWrapper key="craft"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="craft" seenHints={seenHints} onDismiss={handleDismissHint} /><CraftView stats={stats} setStats={setStats} setView={setView} onCraft={() => {
+                setDailyMissions(prev => {
+                  const updated = updateMissionProgress(prev, 'craft', 1);
+                  setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
+                  return updated;
+                });
+              }} /></ErrorBoundary></PageWrapper>}
+          {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
+          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor"><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}

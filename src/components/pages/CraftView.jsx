@@ -21,7 +21,7 @@ const CATEGORIES = [
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
-const CraftView = ({ stats, setStats, setView }) => {
+const CraftView = ({ stats, setStats, setView, onCraft }) => {
   const [category, setCategory] = useState('material');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [craftResult, setCraftResult] = useState(null);
@@ -103,8 +103,12 @@ const CraftView = ({ stats, setStats, setView }) => {
       newStats.coins = (newStats.coins || 0) + result.coinBonus;
     }
 
+    // クラフト回数カウント（実績用）
+    newStats.craftCount = (newStats.craftCount || 0) + 1;
+
     setStats(newStats);
     StorageAPI.saveStats(newStats);
+    if (onCraft) onCraft();
     setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, discount: result.discount, coinBonus: result.coinBonus });
     setTimeout(() => setCraftResult(null), 2500);
   };
