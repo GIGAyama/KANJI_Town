@@ -9,6 +9,7 @@ import { GACHA_POOL } from '../../data/gacha-pool';
 import { STORY_STAGES } from '../../data/story-stages';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
+import { getOccupation } from '../../data/residents';
 
 const gachaRoll = () => {
   const totalWeight = GACHA_POOL.reduce((s, t) => s + t.weight, 0);
@@ -79,7 +80,10 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
             <div className="text-sm text-emerald-600 mt-0.5">
               「<span className="font-black text-xl" style={{ fontFamily: "'Klee One',serif" }}>{newVillager.kanjiChar}</span>」を習得した住民が街にやってきた！
             </div>
-            <div className="text-xs text-emerald-500 mt-1">現在の人口：{stats.population || 0}人</div>
+            <div className="text-xs text-emerald-500 mt-1 flex items-center gap-2">
+              <span>現在の人口：{stats.population || 0}人</span>
+              <span className="bg-emerald-200 px-2 py-0.5 rounded-full font-black">{getOccupation(newVillager.occupation).emoji} {getOccupation(newVillager.occupation).name}</span>
+            </div>
           </div>
         </motion.div>
       )}

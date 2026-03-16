@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert } from 'lucide-react';
+import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users } from 'lucide-react';
 import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { STORY_STAGES } from '../../data/story-stages';
+import { MATERIALS } from '../../data/materials';
 import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
+import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
 
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo }) => {
   const { level, title, badge, progress } = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
@@ -17,6 +19,8 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const isReviewNeeded = reviewTargetsCount > 0;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const isSpecialTrainingUnlocked = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length > 0;
+  const satisfaction = calculateSatisfaction(stats);
+  const satLabel = getSatisfactionLabel(satisfaction);
 
   return (
     <div className="flex flex-col items-center gap-4 pb-6 h-full overflow-y-auto no-scrollbar">
@@ -50,12 +54,27 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
               </div>
               <div className="shrink-0 text-right">
                 <div className="text-xs font-black text-[var(--text)] opacity-60">👥 {stats.population || 0}人</div>
+                <div className="text-[10px] font-bold" style={{ color: satLabel.color }}>{satLabel.emoji} {satLabel.text}</div>
                 {nextStage && <div className="text-[9px] text-[var(--text)] opacity-40">次: {nextStage.minKanji}字・{nextStage.minPop}人</div>}
               </div>
             </motion.div>
           );
         })()}
       </div>
+
+      {/* 住民の収集報告 */}
+      {stats.lastCollectionResult && Object.keys(stats.lastCollectionResult.materials || {}).length > 0 && (
+        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="w-full bg-emerald-50 border-[3px] border-emerald-400 rounded-[16px] px-4 py-2.5 shadow-sm">
+          <div className="text-xs font-black text-emerald-700 mb-1.5">🌾 住民が素材を集めてくれたよ！</div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(stats.lastCollectionResult.materials).map(([matId, amount]) => {
+              const mat = MATERIALS[matId];
+              return mat ? <span key={matId} className="text-[10px] bg-white rounded-full px-2 py-0.5 font-bold border border-emerald-300">{mat.icon} {mat.name} +{amount}</span> : null;
+            })}
+            {stats.lastCollectionResult.coins > 0 && <span className="text-[10px] bg-yellow-100 rounded-full px-2 py-0.5 font-bold border border-yellow-300">🪙 +{stats.lastCollectionResult.coins}</span>}
+          </div>
+        </motion.div>
+      )}
 
       <div className="flex flex-col w-full gap-2 shrink-0">
         <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)]">
@@ -89,7 +108,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
 
         <div className="flex gap-2 mt-1">
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
-          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('townEditor')}><Map size={16} className="text-[var(--accent)]" /> まちをつくる</MotionButton>
+          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('townEditor')}><Map size={16} className="text-[var(--accent)]" /> まちづくり</MotionButton>
+          <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('residents')}><Users size={16} className="text-[var(--primary)]" /> 住民</MotionButton>
+        </div>
+        <div className="flex gap-2">
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> 実績</MotionButton>
           <MotionButton variant="secondary" className="py-3 flex-1 text-xs border-[3px] border-[var(--text)] shadow-sm min-h-[44px]" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
         </div>

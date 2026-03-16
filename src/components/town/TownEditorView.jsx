@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock } from 'lucide-react';
+import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS } from '../../data/town-items';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
+import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
 
 const TownEditorView = ({ setView, stats, setStats }) => {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -138,10 +139,16 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       <div className="flex-1 min-h-0 relative">
         <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         {/* 操作ヒント */}
-        <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
-          🟫 地形タップ → 開拓（🪙10〜30枚）<br/>
-          👥 人口 {stats.population}人
-        </div>
+        {(() => {
+          const sat = calculateSatisfaction(stats);
+          const sl = getSatisfactionLabel(sat);
+          return (
+            <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
+              🟫 地形タップ → 開拓（🪙10〜30枚）<br/>
+              👥 人口 {stats.population}人　{sl.emoji} 満足度{sat}
+            </div>
+          );
+        })()}
         {/* 配置エラーメッセージ */}
         {placementError && (
           <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
