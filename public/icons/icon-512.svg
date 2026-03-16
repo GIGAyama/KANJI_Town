@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#ef4444"/>
+  <rect x="16" y="16" width="480" height="480" rx="72" fill="#fdfbf7" stroke="#292f36" stroke-width="12"/>
+  <text x="256" y="200" text-anchor="middle" font-family="serif" font-weight="900" font-size="160" fill="#292f36">漢字</text>
+  <text x="256" y="340" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="72" fill="#ef4444">タウン</text>
+  <rect x="80" y="380" width="352" height="12" rx="6" fill="#10b981"/>
+  <circle cx="140" cy="430" r="20" fill="#fbbf24" stroke="#292f36" stroke-width="4"/>
+  <circle cx="256" cy="430" r="20" fill="#ef4444" stroke="#292f36" stroke-width="4"/>
+  <circle cx="372" cy="430" r="20" fill="#10b981" stroke="#292f36" stroke-width="4"/>
+</svg>

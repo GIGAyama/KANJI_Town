@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { PenTool, Volume2, VolumeX } from 'lucide-react';
+import { PenTool, Volume2, VolumeX, Settings } from 'lucide-react';
 
 // Systems
 import { StorageAPI, getLevelInfo } from './systems/storage';
@@ -19,34 +19,45 @@ import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/l
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
 
-// Pages
+// Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
-import DictionaryView from './components/pages/DictionaryView';
-import AchievementView from './components/pages/AchievementView';
-import StatsView from './components/pages/StatsView';
-import ResultView from './components/pages/ResultView';
-import MyDrillsView from './components/pages/MyDrillsView';
-import DrillEditorView from './components/pages/DrillEditorView';
-import CraftView from './components/pages/CraftView';
+const DictionaryView = lazy(() => import('./components/pages/DictionaryView'));
+const AchievementView = lazy(() => import('./components/pages/AchievementView'));
+const StatsView = lazy(() => import('./components/pages/StatsView'));
+const ResultView = lazy(() => import('./components/pages/ResultView'));
+const MyDrillsView = lazy(() => import('./components/pages/MyDrillsView'));
+const DrillEditorView = lazy(() => import('./components/pages/DrillEditorView'));
+const CraftView = lazy(() => import('./components/pages/CraftView'));
+const SettingsView = lazy(() => import('./components/pages/SettingsView'));
 
 // Town
-import TownEditorView from './components/town/TownEditorView';
-import ResidentPanel from './components/town/ResidentPanel';
+const TownEditorView = lazy(() => import('./components/town/TownEditorView'));
+const ResidentPanel = lazy(() => import('./components/town/ResidentPanel'));
 
 // Session & Training
-import SessionView from './components/session/SessionView';
-import FlashcardView from './components/training/FlashcardView';
-import SurvivalView from './components/training/SurvivalView';
-import BossBattleView from './components/training/BossBattleView';
+const SessionView = lazy(() => import('./components/session/SessionView'));
+const FlashcardView = lazy(() => import('./components/training/FlashcardView'));
+const SurvivalView = lazy(() => import('./components/training/SurvivalView'));
+const BossBattleView = lazy(() => import('./components/training/BossBattleView'));
 
 // Social
-import TeacherHostView from './components/social/TeacherHostView';
-import StudentClientView from './components/social/StudentClientView';
+const TeacherHostView = lazy(() => import('./components/social/TeacherHostView'));
+const StudentClientView = lazy(() => import('./components/social/StudentClientView'));
 
 // Tutorial & Phase 7
 import TutorialOverlay from './components/tutorial/TutorialOverlay';
 import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
 import FeatureHint from './components/tutorial/FeatureHint';
+
+// ローディングスピナー
+const LazyFallback = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-center">
+      <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+      <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [view, setView] = useState('home');
@@ -142,17 +153,20 @@ export default function App() {
 
   const startSession = (selectedGrade) => {
     audioCtrl.init(); const now = Date.now();
+    const sessionSize = stats.settings?.sessionSize || 'normal';
+    const reviewLimit = sessionSize === 'small' ? 10 : sessionSize === 'large' ? 30 : 20;
+    const newLimit = sessionSize === 'small' ? 3 : sessionSize === 'large' ? 8 : 5;
     const reviewTargets = KANJI_DATA
       .filter(k => {
         const s = stats.kanjiStats?.[k.id];
         return s && s.status !== 'new' && (s.nextReview || 0) <= now;
       })
       .sort((a, b) => (stats.kanjiStats[a.id].nextReview || 0) - (stats.kanjiStats[b.id].nextReview || 0))
-      .slice(0, 20);
+      .slice(0, reviewLimit);
     const newTargets = KANJI_DATA
       .filter(k => k.grade === selectedGrade && (!stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new'))
       .sort(() => Math.random() - 0.5)
-      .slice(0, 5);
+      .slice(0, newLimit);
     const queue = [...reviewTargets, ...newTargets];
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
     if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); }
@@ -275,7 +289,9 @@ export default function App() {
   };
 
   const GlobalStyle = () => {
-    const { themeName } = levelInfo;
+    const { themeName: autoTheme } = levelInfo;
+    const themeOverride = stats.settings?.themeOverride || 'auto';
+    const themeName = themeOverride === 'auto' ? autoTheme : themeOverride;
     let tv = `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`;
     if (themeName === 'dark') tv = `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`;
     if (themeName === 'sakura') tv = `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`;
@@ -314,13 +330,19 @@ export default function App() {
             <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]"><PenTool size={22} strokeWidth={3} /></div>
             <h1 className="text-xl font-black text-[var(--text)] tracking-wide">マイ漢字タウン</h1>
           </div>
-          <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
-            {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} className="text-[var(--secondary)]" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
+              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} className="text-[var(--secondary)]" />}
+            </button>
+            <button onClick={() => { audioCtrl.playSE('click'); setView('settings'); }} aria-label="設定" className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <Settings size={24} />
+            </button>
+          </div>
         </header>
       )}
 
       <main className="flex-grow relative overflow-hidden p-0 md:p-4">
+        <Suspense fallback={<LazyFallback />}>
         <AnimatePresence mode="wait">
           {view === 'home' && <PageWrapper key="home"><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} /></ErrorBoundary></PageWrapper>}
           {view === 'dictionary' && <PageWrapper key="dict"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="dictionary" seenHints={seenHints} onDismiss={handleDismissHint} /><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
@@ -335,6 +357,7 @@ export default function App() {
               }} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
+          {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor"><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
@@ -345,6 +368,7 @@ export default function App() {
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
+        </Suspense>
       </main>
     </div>
   );

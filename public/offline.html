@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マイ漢字タウン - オフライン</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Zen Maru Gothic', sans-serif; background: #fdfbf7; color: #292f36; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: #fff; border: 4px solid #292f36; border-radius: 20px; padding: 40px 30px; text-align: center; max-width: 360px; box-shadow: 6px 6px 0 #292f36; }
+    .emoji { font-size: 64px; margin-bottom: 16px; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    p { font-size: 14px; opacity: 0.6; margin-bottom: 20px; line-height: 1.6; }
+    button { background: #ef4444; color: white; border: 3px solid #292f36; border-radius: 12px; padding: 12px 24px; font-family: inherit; font-weight: 900; font-size: 14px; cursor: pointer; box-shadow: 3px 3px 0 #292f36; }
+    button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #292f36; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">📡</div>
+    <h1>オフラインです</h1>
+    <p>インターネットに接続できません。<br>接続を確認してもう一度やり直してください。</p>
+    <button onclick="location.reload()">もう一度ためす</button>
+  </div>
+</body>
+</html>

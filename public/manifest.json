@@ -1,0 +1,27 @@
+{
+  "name": "マイ漢字タウン",
+  "short_name": "漢字タウン",
+  "description": "漢字を覚えて街をつくろう！小学生向け漢字学習アプリ",
+  "start_url": "/KANJI_Town/",
+  "scope": "/KANJI_Town/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdfbf7",
+  "theme_color": "#ef4444",
+  "lang": "ja",
+  "categories": ["education", "games"],
+  "icons": [
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
