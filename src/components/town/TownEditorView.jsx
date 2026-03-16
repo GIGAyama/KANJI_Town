@@ -41,12 +41,14 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     const key = `${x},${y}`;
     const currentTile = localMap[key];
 
-    // 開拓可能地形 → コイン1枚で更地に開拓
+    // 開拓可能地形 → 地形ごとのコストで更地に開拓
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
-      if ((stats.coins || 0) < 1) { audioCtrl.playSE('stamp_bad'); return; }
+      const terrainDef = TOWN_ITEMS.find(i => i.id === currentTile);
+      const cost = terrainDef?.cultivateCost || 5;
+      if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
       setLocalMap(newMap); pushHistory(newMap);
-      const newStats = { ...stats, coins: stats.coins - 1 };
+      const newStats = { ...stats, coins: stats.coins - cost };
       setStats(newStats); StorageAPI.saveStats(newStats);
       audioCtrl.playSE('place'); return;
     }
@@ -65,6 +67,16 @@ const TownEditorView = ({ setView, stats, setStats }) => {
 
     if (!selectedItem) return;
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') { audioCtrl.playSE('stamp_bad'); return; }
+
+    // 在庫チェック：手持ちの数を超えて配置できないようにする
+    const ownedCount = stats.townItems?.[selectedItem] || 0;
+    const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
+    if (ownedCount <= placedCount) {
+      audioCtrl.playSE('stamp_bad');
+      setSelectedItem(null); // 在庫切れなので選択解除
+      return;
+    }
+
     const newMap = { ...localMap, [key]: selectedItem };
     setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
   };
@@ -99,7 +111,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
         <DraggableTownMap mapData={localMap} biomeMap={stats.biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         {/* 操作ヒント */}
         <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
-          🟫 地形タップ → 開拓（🪙1枚）<br/>
+          🟫 地形タップ → 開拓（🪙3〜10枚）<br/>
           👥 人口 {stats.population}人
         </div>
         {selectedItem && (

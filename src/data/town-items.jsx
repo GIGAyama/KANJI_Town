@@ -39,15 +39,15 @@ export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, Svg
 const TOWN_ITEMS = [
   // 地形（内部管理用・パレット非表示）
   { id: 't_bedrock',   svg: SvgBedrock,   name: '岩盤',   price: 0,     pros: 0,    type: 'terrain', bg: 'bg-[#1e293b]' },
-  { id: 't_roughland', svg: SvgRoughland, name: '荒れ地', price: 0,     pros: -2,   type: 'terrain', bg: 'bg-[#92400e]' },
+  { id: 't_roughland', svg: SvgRoughland, name: '荒れ地', price: 0,     pros: -2,   type: 'terrain', bg: 'bg-[#92400e]', cultivateCost: 5 },
   { id: 't_cleared',   svg: SvgCleared,   name: '更地',   price: 0,     pros: 0,    type: 'terrain', bg: 'bg-[#d4a96a]' },
   { id: 't_weed',      svg: SvgWeed,      name: 'ざっそう', price: 0,   pros: -5,   type: 'terrain', bg: 'bg-[#a3e635]' },
-  // Phase 2: 新地形タイル
-  { id: 't_grassland',     svg: SvgGrassland,    name: '草地',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#86efac]' },
-  { id: 't_forest_floor',  svg: SvgForestFloor,  name: '森林',     price: 0, pros: 2,  type: 'terrain', bg: 'bg-[#14532d]' },
-  { id: 't_sand',          svg: SvgSand,         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]' },
+  // Phase 2: 新地形タイル（cultivateCost = 開拓に必要なコイン数）
+  { id: 't_grassland',     svg: SvgGrassland,    name: '草地',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#86efac]',  cultivateCost: 3 },
+  { id: 't_forest_floor',  svg: SvgForestFloor,  name: '森林',     price: 0, pros: 2,  type: 'terrain', bg: 'bg-[#14532d]',  cultivateCost: 10 },
+  { id: 't_sand',          svg: SvgSand,         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]',  cultivateCost: 3 },
   { id: 't_shallow_water', svg: SvgShallowWater, name: '浅瀬',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#7dd3fc]' },
-  { id: 't_highland',      svg: SvgHighland,     name: '高台',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#a8a29e]' },
+  { id: 't_highland',      svg: SvgHighland,     name: '高台',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#a8a29e]',  cultivateCost: 8 },
   // 自然・建物・特別（既存）
   { id: 't_grass',      svg: SvgGrass,      name: 'くさ',       price: 10,    pros: 1,    type: 'nature',   bg: 'bg-[#86efac]' },
   { id: 't_flower',     svg: SvgFlower,     name: '花壇',       price: 30,    pros: 5,    type: 'nature',   bg: 'bg-[#86efac]' },

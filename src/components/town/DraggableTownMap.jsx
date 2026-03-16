@@ -121,7 +121,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
             <div key={key} style={cellStyle} onPointerUp={(e) => handlePointerUp(e, x, y)}
               className={`flex items-center justify-center relative select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
               {TerrainSvg ? <TerrainSvg /> : <SvgRoughland />}
-              {isEditing && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-amber-500/40 transition-opacity rounded-sm"><span className="text-[9px] font-black text-white text-center leading-tight">開拓<br/>(-1💰)</span></div>}
+              {isEditing && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-amber-500/40 transition-opacity rounded-sm"><span className="text-[9px] font-black text-white text-center leading-tight">開拓<br/>(-{terrainItem?.cultivateCost || 5}💰)</span></div>}
             </div>
           );
           continue;
