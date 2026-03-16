@@ -119,8 +119,8 @@ export default function App() {
         // 漢字習得ごとに探索半径が段階的に拡大（1026字全習得で半径25=全域開放）
         setStats(s => {
           const masteredCount = Object.values({ ...s.kanjiStats, [id]: { status: 'mastered' } }).filter(v => v.status === 'mastered').length;
-          // 初期半径3 → 最大半径25（差分22を1026字で按分: 1字あたり約+0.021）
-          const calcRadius = Math.min(25, 3 + masteredCount * (22 / 1026));
+          // sqrtカーブ: 序盤は速く、終盤は緩やかに拡大（80字→半径9、1026字→半径25）
+          const calcRadius = Math.min(25, 3 + 22 * Math.sqrt(masteredCount / 1026));
           const newRadius = Math.max(s.exploredRadius || 3, calcRadius);
           if (newRadius <= (s.exploredRadius || 3)) return s;
           return { ...s, exploredRadius: newRadius };
