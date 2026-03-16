@@ -158,7 +158,8 @@ export default function App() {
     const finalSessionData = { ...sessionData, earnedExp: totalExp, rareDrop, perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0) };
     setSessionData(finalSessionData);
     setStats(prevStats => {
-      const newStats = StorageAPI.updateDaily({ ...prevStats }, totalExp, finalSessionData);
+      const copy = JSON.parse(JSON.stringify(prevStats));
+      const newStats = StorageAPI.updateDaily(copy, totalExp, finalSessionData);
       newStats.coins = (newStats.coins || 0) + coinBonus;
       StorageAPI.saveStatsImmediate(newStats);
       return newStats;
