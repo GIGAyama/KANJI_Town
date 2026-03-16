@@ -122,3 +122,36 @@ export function getCraftableRecipes(materials, recipes) {
     craftable: canCraft(materials, recipe.ingredients),
   }));
 }
+
+// レシピ結果 → まちアイテムID変換マップ
+// 建物レシピの result.type を TOWN_ITEMS の id に変換する
+const RESULT_TO_TOWN_ITEM = {
+  small_house: 't_house1',
+  fence: 't_fence',
+  road: 't_road',
+  well: 't_well',
+  shop: 't_shop',
+  warehouse: 't_warehouse',
+  market: 't_market',
+  port: 't_port',
+  torii: 't_torii',
+  temple: 't_temple',
+  garden: 't_garden',
+  bridge: 't_bridge',
+  smithy: 't_smithy',
+  factory: 't_factory',
+  watermill: 't_watermill',
+  mine: 't_mine',
+  school: 't_school',
+  library: 't_library',
+  townhall: 't_townhall',
+  embassy: 't_embassy',
+  castle: 't_castle',
+  golden_tower: 't_golden_tower',
+  guardian_shrine: 't_guardian_shrine',
+  monument: 't_monument',
+};
+
+export function getResultTownItemId(resultType) {
+  return RESULT_TO_TOWN_ITEM[resultType] || null;
+}
