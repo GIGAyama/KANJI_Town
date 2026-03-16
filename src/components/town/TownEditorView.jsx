@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Map, Coins, Eraser, Undo2, ArrowLeft } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS } from '../../data/town-items';
-import DraggableTownMap from './DraggableTownMap';
+import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 
@@ -41,8 +41,8 @@ const TownEditorView = ({ setView, stats, setStats }) => {
     const key = `${x},${y}`;
     const currentTile = localMap[key];
 
-    // 荒れ地 → コイン1枚で更地に開拓
-    if (currentTile === 't_roughland') {
+    // 開拓可能地形 → コイン1枚で更地に開拓
+    if (CULTIVATABLE_TERRAIN.has(currentTile)) {
       if ((stats.coins || 0) < 1) { audioCtrl.playSE('stamp_bad'); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
       setLocalMap(newMap); pushHistory(newMap);
@@ -96,10 +96,10 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
+        <DraggableTownMap mapData={localMap} biomeMap={stats.biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         {/* 操作ヒント */}
         <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
-          🟫 荒れ地タップ → 開拓（🪙1枚）<br/>
+          🟫 地形タップ → 開拓（🪙1枚）<br/>
           👥 人口 {stats.population}人
         </div>
         {selectedItem && (

@@ -33,7 +33,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         </div>
         <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]"></motion.div></div>
         <div className="w-full h-[150px] relative">
-          <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
+          <DraggableTownMap mapData={stats.townMap} biomeMap={stats.biomeMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
         </div>
         {(() => {
           const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
