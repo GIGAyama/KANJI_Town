@@ -156,8 +156,14 @@ export default function App() {
     const totalExp = sessionData.earnedExp + (additionalResults.exp || 0); const coinBonus = Math.floor(totalExp / 2) + (additionalResults.coins || 0); const rareChance = 0.1 + (stats.streak * 0.01); let rareDrop = additionalResults.rareDrop || null;
     if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { const rares = ['t_torii', 't_temple', 't_castle', 't_dragon', 't_kakejiku']; rareDrop = rares[Math.floor(Math.random() * rares.length)]; }
     const finalSessionData = { ...sessionData, earnedExp: totalExp, rareDrop, perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0) };
-    setSessionData(finalSessionData); let newStats = StorageAPI.updateDaily(stats, totalExp, finalSessionData); newStats.coins = (newStats.coins || 0) + coinBonus;
-    StorageAPI.saveStats(newStats); setStats(newStats); setView('result');
+    setSessionData(finalSessionData);
+    setStats(prevStats => {
+      const newStats = StorageAPI.updateDaily({ ...prevStats }, totalExp, finalSessionData);
+      newStats.coins = (newStats.coins || 0) + coinBonus;
+      StorageAPI.saveStatsImmediate(newStats);
+      return newStats;
+    });
+    setView('result');
   };
 
   const GlobalStyle = () => {
