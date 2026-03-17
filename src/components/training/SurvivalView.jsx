@@ -7,8 +7,8 @@ import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { survivalGrade } from '../../systems/survivalGrader';
 
 const WAVE_SIZE = 10;
-const INITIAL_TIME = 60;
-const MAX_TIME = 90;
+const INITIAL_TIME = 45;
+const MAX_TIME = 60;
 
 // --- サバイバル専用キャンバス ---
 const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
@@ -193,7 +193,7 @@ const WaveClearEffect = ({ wave }) => (
       <div className="text-4xl md:text-5xl font-black text-amber-400 drop-shadow-lg">
         🎉 WAVE {wave} CLEAR!
       </div>
-      <div className="text-lg font-bold text-amber-300 mt-2">+10{F("秒","びょう")}ボーナス！</div>
+      <div className="text-lg font-bold text-amber-300 mt-2">+5{F("秒","びょう")}ボーナス！</div>
     </div>
   </motion.div>
 );
@@ -383,12 +383,11 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     setCombo(newCombo);
     if (newCombo > bestCombo) setBestCombo(newCombo);
 
-    // コンボボーナス時間
+    // コンボボーナス時間（控えめ）
     let comboTimeBonus = 0;
     if (result.rank !== 'miss') {
-      if (newCombo >= 20) comboTimeBonus = 5;
-      else if (newCombo >= 10) comboTimeBonus = 3;
-      else if (newCombo >= 5) comboTimeBonus = 2;
+      if (newCombo >= 20) comboTimeBonus = 2;
+      else if (newCombo >= 10) comboTimeBonus = 1;
     }
 
     // 時間更新
@@ -442,7 +441,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
         audioCtrl.playSE('success');
         // ウェーブクリアボーナス
         earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 30 };
-        timeLeftRef.current = Math.min(MAX_TIME, timeLeftRef.current + 10);
+        timeLeftRef.current = Math.min(MAX_TIME, timeLeftRef.current + 5);
         setTimeLeft(timeLeftRef.current);
 
         setTimeout(() => {
@@ -593,9 +592,9 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                   )}
                 </motion.div>
               </AnimatePresence>
-              {combo >= 5 && (
+              {combo >= 10 && (
                 <div className="text-[10px] font-bold text-amber-500 mt-1">
-                  コンボボーナス +{combo >= 20 ? 5 : combo >= 10 ? 3 : 2}{F("秒","びょう")}
+                  コンボボーナス +{combo >= 20 ? 2 : 1}{F("秒","びょう")}
                 </div>
               )}
             </div>
