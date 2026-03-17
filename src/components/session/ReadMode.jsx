@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, ChevronRight } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
-import { FormatKun } from '../ui/FormatKun';
+import { FormatKun, RubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const ReadMode = ({ kanji, onNext, commonSidebar }) => {
@@ -16,7 +16,7 @@ const ReadMode = ({ kanji, onNext, commonSidebar }) => {
       <div className="flex flex-col gap-4 bg-[var(--panel)] p-4 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] mt-4">
         <div className="bg-[var(--accent)] text-[var(--text)] px-4 py-1.5 rounded-full text-sm font-black border-[3px] border-[var(--text)] text-center shadow-sm -mt-8 mx-auto w-max">声にだそう！</div>
         <div className="relative min-h-[80px] flex items-center justify-center">
-          <AnimatePresence mode="wait"><motion.p key={exampleIdx} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="text-xl md:text-2xl font-bold text-[var(--text)] leading-relaxed text-center py-2">{kanji.examples[exampleIdx]}</motion.p></AnimatePresence>
+          <AnimatePresence mode="wait"><motion.p key={exampleIdx} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="ruby-text text-xl md:text-2xl font-bold text-[var(--text)] text-center py-2"><RubyText text={kanji.examples[exampleIdx]} /></motion.p></AnimatePresence>
           {kanji.examples.length > 1 && (<button onClick={handleNextExample} className="absolute -right-2 top-1/2 -translate-y-1/2 bg-[var(--bg)] border-2 border-[var(--text)] rounded-full p-1 hover:bg-[var(--text)] hover:text-white transition-colors shadow-sm"><ChevronRight size={20} /></button>)}
         </div>
         {kanji.examples.length > 1 && (<div className="flex justify-center gap-1.5">{kanji.examples.map((_, i) => (<div key={i} className={`w-2 h-2 rounded-full border border-[var(--text)] ${i === exampleIdx ? 'bg-[var(--text)]' : 'bg-transparent'}`} />))}</div>)}

@@ -5,4 +5,20 @@ const FormatKun = ({ text }) => {
   return <>{text}</>;
 };
 
-export { R, FormatKun };
+/** 「漢字（ふりがな）」形式のテキストを <ruby> タグに変換して表示 */
+const RubyText = ({ text }) => {
+  if (!text) return null;
+  const parts = [];
+  const re = /([^\s（）]+?)（([^）]+)）/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(<ruby key={m.index}>{m[1]}<rt>{m[2]}</rt></ruby>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+};
+
+export { R, FormatKun, RubyText };
