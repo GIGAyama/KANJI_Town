@@ -267,6 +267,18 @@ export default function App() {
       newStats.coins = (newStats.coins || 0) + coinBonus;
       // セッション数カウント更新
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
+
+      // learningフェーズの漢字がセッション直後にお化けとして出ないよう、
+      // nextReviewに最低30分の猶予を持たせる
+      const gracePeriod = 30 * 60 * 1000; // 30分
+      const minNextReview = Date.now() + gracePeriod;
+      sessionData.queue.forEach(k => {
+        const ks = newStats.kanjiStats?.[k.id];
+        if (ks && !ks.graduated && ks.status !== 'new' && ks.nextReview < minNextReview) {
+          ks.nextReview = minNextReview;
+        }
+      });
+
       StorageAPI.saveStatsImmediate(newStats);
       return newStats;
     });
