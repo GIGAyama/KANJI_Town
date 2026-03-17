@@ -26,4 +26,51 @@ const RubyText = ({ text }) => {
   return <>{parts}</>;
 };
 
-export { R, F, FormatKun, RubyText };
+/** 例文を ruby 表示し、対象漢字を ◯ に置換する（ベースライン統一） */
+const SurvivalRubyText = ({ text, targetChar }) => {
+  if (!text) return null;
+  const parts = [];
+  const re = /([^\s（）]+?)（([^）]+)）/g;
+  let last = 0;
+  let m;
+  let key = 0;
+  while ((m = re.exec(text)) !== null) {
+    // ルビ外のテキスト（空 rt で高さを揃える）
+    if (m.index > last) {
+      const plain = text.slice(last, m.index);
+      for (const ch of plain) {
+        if (ch === targetChar) {
+          parts.push(<ruby key={key++} className="survival-blank">{'◯'}<rt></rt></ruby>);
+        } else {
+          parts.push(<ruby key={key++}>{ch}<rt></rt></ruby>);
+        }
+      }
+    }
+    // ルビ付きセグメント：対象漢字を ◯ に
+    const base = m[1];
+    const reading = m[2];
+    const replaced = base.includes(targetChar)
+      ? base.replaceAll(targetChar, '◯')
+      : base;
+    parts.push(
+      <ruby key={key++} className={base.includes(targetChar) ? 'survival-blank' : ''}>
+        {replaced}<rt>{reading}</rt>
+      </ruby>
+    );
+    last = re.lastIndex;
+  }
+  // 末尾の残りテキスト
+  if (last < text.length) {
+    const plain = text.slice(last);
+    for (const ch of plain) {
+      if (ch === targetChar) {
+        parts.push(<ruby key={key++} className="survival-blank">{'◯'}<rt></rt></ruby>);
+      } else {
+        parts.push(<ruby key={key++}>{ch}<rt></rt></ruby>);
+      }
+    }
+  }
+  return <>{parts}</>;
+};
+
+export { R, F, FormatKun, RubyText, SurvivalRubyText };

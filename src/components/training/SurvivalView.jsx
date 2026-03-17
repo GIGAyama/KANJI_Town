@@ -4,7 +4,7 @@ import { Flame } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import TestMode from '../session/TestMode';
 import { audioCtrl } from '../../systems/audio';
-import { F } from '../ui/FormatKun';
+import { F, SurvivalRubyText } from '../ui/FormatKun';
 
 const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const [currentQueue, setCurrentQueue] = useState([...queue]); const [idx, setIdx] = useState(0); const [timeLeft, setTimeLeft] = useState(60);
@@ -25,7 +25,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     } else { setTimeLeft(t => Math.max(t - 10, 0)); audioCtrl.playSE('stamp_bad'); }
     setTimeout(() => { if (idx + 1 >= currentQueue.length) { setCurrentQueue(prev => [...prev, ...queue].sort(() => Math.random() - 0.5)); } setIdx(prev => prev + 1); }, 1000);
   };
-  if (!kanji) return null; const ex = kanji.examples[0]; const blankText = ex ? ex.replace(new RegExp(kanji.char, 'g'), '〇') : '〇';
+  if (!kanji) return null; const ex = kanji.examples[0];
   const sidebar = (
     <div className="flex flex-col gap-4 w-full">
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
@@ -36,7 +36,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
       </div>
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[4px_4px_0_var(--text)]">
         <div className="text-sm font-bold bg-[var(--text)] text-[var(--panel)] px-4 py-1.5 rounded-full mx-auto w-max mb-4">この「〇」は{F("何","なん")}の{F("漢字","かんじ")}？</div>
-        <p className="text-2xl md:text-3xl font-bold text-[var(--text)] leading-relaxed text-center">{blankText}</p>
+        <p className="text-2xl md:text-3xl font-bold text-[var(--text)] text-center ruby-text">{ex ? <SurvivalRubyText text={ex} targetChar={kanji.char} /> : '◯'}</p>
       </div>
     </div>
   );
