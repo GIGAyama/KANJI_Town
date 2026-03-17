@@ -233,11 +233,17 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
   const handleCraft = (recipe) => {
     const matsCopy = { ...(stats.materials || {}) };
-    const result = craft(matsCopy, recipe, villagers);
+    const playerCoins = stats.coins || 0;
+    const result = craft(matsCopy, recipe, villagers, playerCoins);
     if (!result.success) { audioCtrl.playSE('stamp_bad'); return; }
 
     audioCtrl.playSE('success');
     const newStats = { ...stats, materials: result.materials };
+
+    // Deduct coin cost for crafting
+    if (result.coinCost > 0) {
+      newStats.coins = (newStats.coins || 0) - result.coinCost;
+    }
 
     if (recipe.category === 'material') {
       newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + (result.bonusYield ? result.result.amount * 2 : result.result.amount);
@@ -445,20 +451,22 @@ const CRAFT_CATEGORIES = [
 
 const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRecipe, setSelectedRecipe, filterTier, setFilterTier, materials, villagers, playerGrade, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => (
   <div className="flex flex-col gap-3">
-    {/* Materials inventory */}
-    <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-      <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}</h3>
-      <div className="flex flex-wrap gap-1">
-        {Object.entries(MATERIALS).map(([id, mat]) => {
-          const count = materials[id] || 0;
-          if (count === 0) return null;
-          return (
-            <span key={id} className="flex items-center gap-0.5 bg-[var(--panel)] rounded-full px-2 py-0.5 border border-[var(--text)] text-[10px] font-bold">
-              {mat.icon} {mat.name} {count}
-            </span>
-          );
-        })}
-        {Object.values(materials).every(v => !v) && <span className="text-[10px] text-[var(--text)] opacity-50">{F("素材","そざい")}なし</span>}
+    {/* Materials inventory - sticky */}
+    <div className="sticky top-0 z-10 bg-[var(--panel)] -mx-3 px-3 pt-0 pb-2 -mt-0">
+      <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
+        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}</h3>
+        <div className="flex flex-wrap gap-1">
+          {Object.entries(MATERIALS).map(([id, mat]) => {
+            const count = materials[id] || 0;
+            if (count === 0) return null;
+            return (
+              <span key={id} className="flex items-center gap-0.5 bg-[var(--panel)] rounded-full px-2 py-0.5 border border-[var(--text)] text-[10px] font-bold">
+                {mat.icon} {mat.name} {count}
+              </span>
+            );
+          })}
+          {Object.values(materials).every(v => !v) && <span className="text-[10px] text-[var(--text)] opacity-50">{F("素材","そざい")}なし</span>}
+        </div>
       </div>
     </div>
 
@@ -496,7 +504,8 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
         const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
         const isUnlocked = isGradeUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
         const displayIngredients = getDisplayIngredients(recipe);
-        const craftable = isUnlocked && canCraft(materials, displayIngredients);
+        const coinCost = recipe.coinCost || 0;
+        const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
         const isSelected = selectedRecipe?.id === recipe.id;
         const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
         const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
