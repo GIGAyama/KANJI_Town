@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
+import { F, FormatKun } from '../ui/FormatKun';
 import { migrateCard, calculateNextReview } from '../../systems/srs';
 import { StorageAPI } from '../../systems/storage';
 
@@ -78,10 +79,6 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
 
   if (!kanji) return null;
 
-  const readings = [];
-  if (kanji.on?.length) readings.push({ label: '音', items: kanji.on });
-  if (kanji.kun?.length) readings.push({ label: '訓', items: kanji.kun });
-
   return (
     <div className="flex flex-col h-[85vh] items-center justify-center p-4 relative w-full max-w-md mx-auto">
       <div className="absolute top-0 w-full flex justify-between items-center p-4">
@@ -130,16 +127,16 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col items-center gap-2 w-full"
+              className="flex flex-col gap-3 w-full"
             >
-              {readings.map(({ label, items }) => (
-                <div key={label} className="flex items-center gap-2 flex-wrap justify-center">
-                  <span className="text-xs font-bold bg-[var(--text)] text-[var(--panel)] px-2 py-0.5 rounded">{label}</span>
-                  <span className="text-xl md:text-2xl font-bold" style={{ fontFamily: "'Klee One', serif" }}>
-                    {items.join('・')}
-                  </span>
-                </div>
-              ))}
+              <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
+                <span className="text-sm font-bold text-[var(--primary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--primary)] shrink-0">{F("音","おん")}</span>
+                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300">{o}</span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+              </div>
+              <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
+                <span className="text-sm font-bold text-[var(--secondary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--secondary)] shrink-0">{F("訓","くん")}</span>
+                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
