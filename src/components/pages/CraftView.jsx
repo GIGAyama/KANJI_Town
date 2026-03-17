@@ -139,9 +139,9 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* ── 固定ヘッダー部分 ── */}
-      <div className="shrink-0 flex flex-col gap-2 p-4 pb-2 bg-[var(--bg)] z-10">
+    <div className="flex flex-col">
+      {/* ── 固定ヘッダー部分（sticky: PageWrapperのスクロール内で固定） ── */}
+      <div className="sticky top-0 flex flex-col gap-2 p-4 pb-2 bg-[var(--bg)] z-10 -mx-4 -mt-4 px-4 pt-4">
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -203,8 +203,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
         )}
       </div>
 
-      {/* ── スクロール可能なレシピ一覧 ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8">
+      {/* ── レシピ一覧（PageWrapperのスクロールで自然にスクロール） ── */}
+      <div className="pb-8">
         <div className="flex flex-col gap-3">
           {/* 職業ボーナス表示 */}
           {craftBonuses.length > 0 && (
