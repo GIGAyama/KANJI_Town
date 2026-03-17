@@ -72,12 +72,22 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
   // Active building sets
   const activeSets = useMemo(() => getActiveSets(stats.townMap), [stats.townMap]);
 
+  const [craftError, setCraftError] = useState(null);
+
   const handleCraft = (recipe) => {
     const matsCopy = { ...(stats.materials || {}) };
     const playerCoins = stats.coins || 0;
     const result = craft(matsCopy, recipe, villagers, playerCoins);
     if (!result.success) {
       audioCtrl.playSE('stamp_bad');
+      // Show error feedback
+      const coinCost = recipe.coinCost || 0;
+      if (coinCost > 0 && playerCoins < coinCost) {
+        setCraftError('コイン不足');
+      } else {
+        setCraftError('素材不足');
+      }
+      setTimeout(() => setCraftError(null), 1500);
       return;
     }
 
@@ -141,6 +151,11 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           </h2>
         </div>
         <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={16} />{stats.coins}</span>
+      </div>
+
+      {/* 使い方ヒント */}
+      <div className="text-[10px] text-[var(--text)] opacity-50 -mt-1 px-1">
+        {F("素材","そざい")}を{F("使","つか")}って{F("建物","たてもの")}や{F("装飾","そうしょく")}をクラフト。レシピをタップで{F("詳細","しょうさい")}を{F("表示","ひょうじ")}。
       </div>
 
       {/* 素材インベントリ */}
@@ -277,10 +292,10 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                     )}
                     {recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>}
                     {/* 素材プレビュー + コインコスト */}
-                    <div className="flex gap-1 mt-1 flex-wrap">
+                    <div className="flex gap-1 mt-1.5 flex-wrap items-center">
                       {coinCost > 0 && (
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                          <Coins size={10} />{coinCost} {(stats.coins || 0) < coinCost && `(${stats.coins || 0})`}
+                          <Coins size={10} />{coinCost}
                         </span>
                       )}
                       {displayIngredients.map((ing, i) => {
@@ -290,11 +305,13 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         const enough = have >= ing.amount;
                         const isDiscounted = origIng && ing.amount < origIng.amount;
                         return (
-                          <span key={i} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                            {mat?.icon} {isDiscounted ? <><s className="opacity-50">{origIng.amount}</s> {ing.amount}</> : ing.amount} {!enough && `(${have})`}
+                          <span key={i} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                            {mat?.icon}{isDiscounted ? <><s className="opacity-50">{origIng.amount}</s>{ing.amount}</> : ing.amount}
+                            <span className="opacity-60">/{have}</span>
                           </span>
                         );
                       })}
+                      {craftable && <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 rounded-full">OK</span>}
                     </div>
                   </div>
                   <ChevronRight size={16} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
@@ -354,16 +371,26 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         </div>
                       )}
 
-                      <div className="mt-3 flex justify-center">
+                      <div className="mt-3 flex flex-col items-center gap-2">
                         {isUnlocked ? (
-                          <MotionButton
-                            variant={craftable ? 'primary' : 'secondary'}
-                            disabled={!craftable}
-                            onClick={() => handleCraft(recipe)}
-                            className={`px-6 py-3 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] ${!craftable ? 'opacity-40 grayscale' : ''}`}
-                          >
-                            <Hammer size={16} /> クラフトする
-                          </MotionButton>
+                          <>
+                            {craftable ? (
+                              <MotionButton
+                                variant="primary"
+                                onClick={() => handleCraft(recipe)}
+                                className="px-6 py-3 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"
+                              >
+                                <Hammer size={16} /> クラフトする
+                              </MotionButton>
+                            ) : (
+                              <button
+                                onClick={() => handleCraft(recipe)}
+                                className="px-6 py-3 text-sm font-black rounded-xl bg-gray-300 text-gray-500 border-[3px] border-gray-400 cursor-not-allowed flex items-center gap-2"
+                              >
+                                <Hammer size={16} /> クラフトできません
+                              </button>
+                            )}
+                          </>
                         ) : (
                           <div className="text-xs font-bold text-gray-400 flex items-center gap-1">
                             <Lock size={14} /> {!isGradeUnlocked ? `${recipe.minGrade}年生で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
@@ -407,6 +434,22 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           </div>
         </div>
       )}
+
+      {/* クラフトエラー表示 */}
+      <AnimatePresence>
+        {craftError && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="bg-red-500 text-white font-black text-sm px-5 py-2.5 rounded-full shadow-lg border-[3px] border-red-700">
+              {craftError}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* クラフト成功アニメーション */}
       <AnimatePresence>
