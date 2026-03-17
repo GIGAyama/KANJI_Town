@@ -46,3 +46,11 @@ ruby rt {
 .ruby-text {
   line-height: 2.5;
 }
+
+ruby.survival-blank {
+  color: var(--primary);
+}
+ruby.survival-blank rt {
+  color: var(--primary);
+  font-weight: 700;
+}
