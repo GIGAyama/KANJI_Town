@@ -113,7 +113,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
           }
         }
         setLocalMap(newMap); pushHistory(newMap);
-        setStats(s => ({ ...s, townItems: { ...s.townItems, [item.id]: (s.townItems?.[item.id] || 0) + 1 } }));
         audioCtrl.playSE('click');
         return;
       }
@@ -122,7 +121,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       if (item && item.type !== 'terrain') {
         const newMap = { ...localMap, [key]: 't_cleared' };
         setLocalMap(newMap); pushHistory(newMap);
-        setStats(s => ({ ...s, townItems: { ...s.townItems, [currentTile]: (s.townItems?.[currentTile] || 0) + 1 } }));
         audioCtrl.playSE('click');
       }
       return;
