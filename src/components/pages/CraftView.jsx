@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Hammer, Package, Lock, ChevronRight, Sparkles, ArrowUpCircle, Crown, Star, Users, TrendingUp, Coins } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { MATERIALS } from '../../data/materials';
-import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
+import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, DECORATION_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '../../systems/crafting';
 import { getCraftBonuses } from '../../data/residents';
@@ -17,6 +17,7 @@ const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', 
 const CATEGORIES = [
   { key: 'material', label: <>{F("加工","かこう")}{F("素材","そざい")}</>, icon: '🔧' },
   { key: 'building', label: <>{F("建物","たてもの")}</>, icon: '🏠' },
+  { key: 'decoration', label: <>{F("装飾","そうしょく")}</>, icon: '🎨' },
   { key: 'upgrade', label: <>{F("強化","きょうか")}</>, icon: '⬆️' },
   { key: 'mega', label: <>{F("大型","おおがた")}{F("建築","けんちく")}</>, icon: '🏰' },
   { key: 'rare', label: 'レア', icon: '✨' },
@@ -40,6 +41,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     switch (category) {
       case 'material': base = MATERIAL_RECIPES; break;
       case 'building': base = BUILDING_RECIPES; break;
+      case 'decoration': base = DECORATION_RECIPES; break;
       case 'upgrade': base = UPGRADE_RECIPES; break;
       case 'mega': base = MEGA_RECIPES; break;
       case 'rare': base = RARE_RECIPES; break;
@@ -72,7 +74,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
   const handleCraft = (recipe) => {
     const matsCopy = { ...(stats.materials || {}) };
-    const result = craft(matsCopy, recipe, villagers);
+    const playerCoins = stats.coins || 0;
+    const result = craft(matsCopy, recipe, villagers, playerCoins);
     if (!result.success) {
       audioCtrl.playSE('stamp_bad');
       return;
@@ -81,6 +84,10 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     audioCtrl.playSE('success');
 
     const newStats = { ...stats, materials: result.materials };
+    // Deduct coin cost for crafting
+    if (result.coinCost > 0) {
+      newStats.coins = (newStats.coins || 0) - result.coinCost;
+    }
 
     if (recipe.category === 'material') {
       newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + (result.bonusYield ? result.result.amount * 2 : result.result.amount);
@@ -110,7 +117,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     setStats(newStats);
     StorageAPI.saveStats(newStats);
     if (onCraft) onCraft();
-    setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, discount: result.discount, coinBonus: result.coinBonus });
+    setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, discount: result.discount, coinBonus: result.coinBonus, coinCost: result.coinCost });
     setTimeout(() => setCraftResult(null), 2500);
   };
 
@@ -220,7 +227,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
           const isUnlocked = isGradeUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
-          const craftable = isUnlocked && canCraft(materials, displayIngredients);
+          const coinCost = recipe.coinCost || 0;
+          const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
           const isSelected = selectedRecipe?.id === recipe.id;
           const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
           const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
@@ -268,8 +276,13 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       <div className="text-[9px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> {F("元","もと")}の{F("建物","たてもの")}がマップに{F("必要","ひつよう")}</div>
                     )}
                     {recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>}
-                    {/* 素材プレビュー */}
+                    {/* 素材プレビュー + コインコスト */}
                     <div className="flex gap-1 mt-1 flex-wrap">
+                      {coinCost > 0 && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                          <Coins size={10} />{coinCost} {(stats.coins || 0) < coinCost && `(${stats.coins || 0})`}
+                        </span>
+                      )}
                       {displayIngredients.map((ing, i) => {
                         const origIng = recipe.ingredients[i];
                         const mat = MATERIALS[ing.material];
@@ -315,11 +328,23 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         </div>
                       </div>
 
+                      {/* コインコスト表示 */}
+                      {coinCost > 0 && (
+                        <div className="mt-2 flex items-center justify-center gap-1">
+                          <span className={`text-[11px] font-black flex items-center gap-1 ${(stats.coins || 0) >= coinCost ? 'text-yellow-600' : 'text-red-500'}`}>
+                            <Coins size={14} /> {coinCost}コイン{(stats.coins || 0) < coinCost && ` (不足: あと${coinCost - (stats.coins || 0)})`}
+                          </span>
+                        </div>
+                      )}
+
                       {/* 不足素材の詳細 */}
                       {!craftable && isUnlocked && (
                         <div className="mt-3 text-center">
-                          <div className="text-[10px] text-red-500 font-bold">不足素材:</div>
+                          <div className="text-[10px] text-red-500 font-bold">{F("不足","ふそく")}:</div>
                           <div className="flex gap-1 justify-center mt-1 flex-wrap">
+                            {coinCost > 0 && (stats.coins || 0) < coinCost && (
+                              <span className="text-[10px] bg-red-50 border border-red-300 text-red-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5"><Coins size={10} /> コイン あと{coinCost - (stats.coins || 0)}</span>
+                            )}
                             {displayIngredients.filter(ing => (materials[ing.material] || 0) < ing.amount).map((ing, i) => {
                               const mat = MATERIALS[ing.material];
                               const have = materials[ing.material] || 0;
@@ -398,6 +423,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
               <div className="text-sm font-bold text-[var(--primary)]">{craftResult.recipe.name} ×{craftResult.result.amount}</div>
               {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! 2倍生産!</div>}
               {craftResult.discount > 0 && <div className="text-[10px] font-bold text-blue-500">素材{Math.round(craftResult.discount * 100)}%節約</div>}
+              {craftResult.coinCost > 0 && <div className="text-[10px] font-bold text-red-400">-{craftResult.coinCost}コイン</div>}
               {craftResult.coinBonus > 0 && <div className="text-[10px] font-bold text-yellow-600">+{craftResult.coinBonus}コイン</div>}
             </div>
           </motion.div>

@@ -24,7 +24,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager);
   const [gachaResult, setGachaResult] = useState(null);
   const [gachaPhase, setGachaPhase] = useState('idle');
-  const coinBonus = Math.floor(earnedExp / 2);
+  const coinBonus = Math.floor(earnedExp / 4);
 
   const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
   const currentStage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];

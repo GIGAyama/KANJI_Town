@@ -10,6 +10,7 @@ import {
   getSatisfactionMultiplier,
   getResidentStats,
   collectDailyResources,
+  calculateMaintenanceCost,
 } from '../../systems/residents';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
@@ -22,6 +23,7 @@ const ResidentPanel = ({ stats, setView }) => {
   const multiplier = getSatisfactionMultiplier(satisfaction);
   const residentStats = useMemo(() => getResidentStats(stats.villagers), [stats.villagers]);
   const dailyPreview = useMemo(() => collectDailyResources(stats), [stats]);
+  const maintenanceCost = useMemo(() => calculateMaintenanceCost(stats), [stats]);
 
   const villagers = stats.villagers || [];
 
@@ -90,6 +92,12 @@ const ResidentPanel = ({ stats, setView }) => {
               <div className="flex items-center gap-1 bg-[var(--accent)] rounded-full px-3 py-1.5 border-2 border-[var(--text)]">
                 <Coins size={14} />
                 <span className="text-xs font-black text-[var(--text)]">+{dailyPreview.coins}</span>
+              </div>
+            )}
+            {maintenanceCost > 0 && (
+              <div className="flex items-center gap-1 bg-red-50 rounded-full px-3 py-1.5 border-2 border-red-300">
+                <Coins size={14} className="text-red-500" />
+                <span className="text-xs font-black text-red-500">{F("維持費","いじひ")} -{maintenanceCost}</span>
               </div>
             )}
           </div>

@@ -8,10 +8,13 @@ import { getCraftBonuses, CRAFT_BONUSES } from '../data/residents';
  * Check if player has enough materials for a recipe
  * @param {Object} materials - Player's material inventory {wood: 5, stone: 3, ...}
  * @param {Array} ingredients - Recipe ingredients [{material: "wood", amount: 3}, ...]
+ * @param {number} [coinCost=0] - Coin cost for the recipe
+ * @param {number} [playerCoins=0] - Player's current coins
  * @returns {boolean}
  */
-export function canCraft(materials, ingredients) {
+export function canCraft(materials, ingredients, coinCost = 0, playerCoins = 0) {
   if (!materials || !ingredients || !Array.isArray(ingredients)) return false;
+  if (coinCost > 0 && playerCoins < coinCost) return false;
   return ingredients.every(
     (ing) => (materials[ing.material] || 0) >= ing.amount
   );
@@ -77,17 +80,19 @@ export function checkBonusYield(recipe, villagers) {
  * @param {Object} materials - Player's material inventory (will be modified)
  * @param {Object} recipe - Recipe object with { id, ingredients, result, ... }
  * @param {Array} [villagers] - Optional villagers for occupation bonuses
- * @returns {{ success: boolean, materials: Object, result: Object, bonusYield: boolean, discount: number, coinBonus: number }}
+ * @param {number} [playerCoins=0] - Player's current coins (for coin cost check)
+ * @returns {{ success: boolean, materials: Object, result: Object, bonusYield: boolean, discount: number, coinBonus: number, coinCost: number }}
  */
-export function craft(materials, recipe, villagers) {
+export function craft(materials, recipe, villagers, playerCoins = 0) {
   if (!recipe || !recipe.ingredients) {
-    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0 };
+    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0, coinCost: 0 };
   }
 
+  const coinCost = recipe.coinCost || 0;
   const { discountedIngredients, appliedDiscount, coinBonus } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
 
-  if (!canCraft(materials, discountedIngredients)) {
-    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0 };
+  if (!canCraft(materials, discountedIngredients, coinCost, playerCoins)) {
+    return { success: false, materials, result: null, bonusYield: false, discount: 0, coinBonus: 0, coinCost: 0 };
   }
 
   // Deduct discounted ingredients
@@ -97,7 +102,7 @@ export function craft(materials, recipe, villagers) {
 
   const bonusYield = checkBonusYield(recipe, villagers);
 
-  return { success: true, materials, result: recipe.result, bonusYield, discount: appliedDiscount, coinBonus };
+  return { success: true, materials, result: recipe.result, bonusYield, discount: appliedDiscount, coinBonus, coinCost };
 }
 
 /**
@@ -229,6 +234,28 @@ const RESULT_TO_TOWN_ITEM = {
   philosophers_lab: 't_philosophers_lab',
   dragon_shrine: 't_dragon_shrine',
   perfect_monument: 't_perfect_monument',
+  bamboo_grove: 't_bamboo_grove',
+  hot_spring: 't_hot_spring',
+  observatory: 't_observatory',
+  // アップグレード建物（追加）
+  grand_warehouse: 't_grand_warehouse',
+  shopping_street: 't_shopping_street',
+  zen_garden: 't_zen_garden',
+  national_library: 't_national_library',
+  // メガ建築（追加）
+  mega_harbor_town: 't_mega_harbor_town',
+  mega_shrine_complex: 't_mega_shrine_complex',
+  // 装飾アイテム
+  stone_lantern: 't_stone_lantern',
+  fountain: 't_fountain',
+  statue: 't_statue',
+  windmill: 't_windmill',
+  bell_tower: 't_bell_tower',
+  pond: 't_pond',
+  cherry_road: 't_cherry_road',
+  clock_tower: 't_clock_tower',
+  gold_statue: 't_gold_statue',
+  festival_stage: 't_festival_stage',
 };
 
 export function getResultTownItemId(resultType) {
