@@ -9,7 +9,7 @@ import { OCCUPATIONS } from '../../data/residents';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
-import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier, getResidentStats, collectDailyResources } from '../../systems/residents';
+import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier, getResidentStats, collectDailyResources, calculateMaintenanceCost } from '../../systems/residents';
 import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '../../systems/crafting';
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';

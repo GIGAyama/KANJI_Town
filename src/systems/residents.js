@@ -97,6 +97,37 @@ export function collectDailyResources(stats) {
   return { materials: collected, coins: totalCoins };
 }
 
+// ── 建物維持費システム ──────────────────────────
+// 建物の種類に応じて毎日コインを消費する
+export function calculateMaintenanceCost(stats) {
+  const townMap = stats.townMap || {};
+  let totalCost = 0;
+
+  // 建物タイプごとの維持費（1日あたり）
+  const MAINTENANCE_RATES = {
+    'building': 3,    // 一般建物
+    'special': 8,     // 特殊建物
+    'mega': 15,       // メガ建築
+    'rare': 10,       // レア建物
+    'decoration': 2,  // 装飾
+  };
+
+  const counted = {};
+  for (const itemId of Object.values(townMap)) {
+    if (counted[itemId]) { counted[itemId]++; continue; }
+    counted[itemId] = 1;
+  }
+
+  for (const [itemId, count] of Object.entries(counted)) {
+    const item = TOWN_ITEMS.find(i => i.id === itemId);
+    if (!item) continue;
+    const rate = MAINTENANCE_RATES[item.type] || 0;
+    totalCost += rate * count;
+  }
+
+  return totalCost;
+}
+
 // ── 住民生成（漢字習得時）──────────────────────────
 // 既存のvillager生成ロジックを拡張して職業を付与
 export function createVillager(kanjiObj, spawnX, spawnY) {

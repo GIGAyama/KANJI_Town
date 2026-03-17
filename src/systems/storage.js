@@ -7,7 +7,7 @@ import { KANJI_DATA } from '../data/kanji-data.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
-import { migrateVillagers, collectDailyResources, calculateSatisfaction } from './residents.js';
+import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
 
 let _saveDebounceTimer = null;
 
@@ -56,7 +56,7 @@ const StorageAPI = {
     if (!stats || !stats.targetGrade) {
       const { map, biomeMap } = StorageAPI.buildInitialMap();
       stats = {
-        totalExp: 0, streak: 0, lastDate: '', coins: 500, targetGrade: 1,
+        totalExp: 0, streak: 0, lastDate: '', coins: 200, targetGrade: 1,
         townMap: map,
         biomeMap: biomeMap,
         townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3 },
@@ -208,9 +208,12 @@ const StorageAPI = {
       Object.entries(collected).forEach(([matId, amount]) => {
         stats.materials[matId] = (stats.materials[matId] || 0) + amount;
       });
-      stats.coins = (stats.coins || 0) + collectedCoins;
+      // 建物維持費を差し引く
+      const maintenanceCost = calculateMaintenanceCost(stats);
+      const netCoins = collectedCoins - maintenanceCost;
+      stats.coins = Math.max(0, (stats.coins || 0) + netCoins);
       stats.lastCollectionDate = today;
-      stats.lastCollectionResult = { materials: collected, coins: collectedCoins };
+      stats.lastCollectionResult = { materials: collected, coins: collectedCoins, maintenanceCost };
     }
     // 満足度更新
     stats.satisfaction = calculateSatisfaction(stats);

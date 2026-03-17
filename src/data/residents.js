@@ -29,7 +29,7 @@ export const OCCUPATIONS = [
       { material: "iron", baseAmount: 1 },
       { material: "crystal", baseAmount: 1 },
     ],
-    coinBonus: 10,
+    coinBonus: 5,
   },
   {
     id: "craftsman",
@@ -42,7 +42,7 @@ export const OCCUPATIONS = [
       { material: "firestone", baseAmount: 1 },
       { material: "kanjistone", baseAmount: 2 },
     ],
-    coinBonus: 5,
+    coinBonus: 3,
   },
   {
     id: "blacksmith",
@@ -55,7 +55,7 @@ export const OCCUPATIONS = [
       { material: "iron", baseAmount: 2 },
       { material: "gold", baseAmount: 1 },
     ],
-    coinBonus: 8,
+    coinBonus: 5,
   },
   {
     id: "scholar",
@@ -68,7 +68,7 @@ export const OCCUPATIONS = [
       { material: "soulstone", baseAmount: 1 },
       { material: "kanjistone", baseAmount: 2 },
     ],
-    coinBonus: 12,
+    coinBonus: 8,
   },
   {
     id: "legendary",
@@ -83,7 +83,7 @@ export const OCCUPATIONS = [
       { material: "crystal", baseAmount: 1 },
       { material: "firestone", baseAmount: 1 },
     ],
-    coinBonus: 20,
+    coinBonus: 12,
   },
 ];
 

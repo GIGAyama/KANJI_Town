@@ -2,13 +2,13 @@
 // 7日周期の連続ログイン報酬
 
 export const LOGIN_BONUS_CYCLE = [
-  { day: 1, type: 'coins', amount: 50, label: '50コイン', icon: '🪙' },
+  { day: 1, type: 'coins', amount: 30, label: '30コイン', icon: '🪙' },
   { day: 2, type: 'material', material: 'wood', amount: 5, label: '木材×5', icon: '🪵' },
-  { day: 3, type: 'coins', amount: 100, label: '100コイン', icon: '🪙' },
+  { day: 3, type: 'coins', amount: 60, label: '60コイン', icon: '🪙' },
   { day: 4, type: 'material', material: 'stone', amount: 5, label: '石材×5', icon: '🪨' },
   { day: 5, type: 'material', material: 'iron', amount: 3, label: '鉄×3', icon: '⚙️' },
-  { day: 6, type: 'coins', amount: 200, label: '200コイン', icon: '🪙' },
-  { day: 7, type: 'special', amount: 500, material: 'crystal', materialAmount: 3, label: '500コイン＋水晶×3', icon: '🎁' },
+  { day: 6, type: 'coins', amount: 100, label: '100コイン', icon: '🪙' },
+  { day: 7, type: 'special', amount: 250, material: 'crystal', materialAmount: 3, label: '250コイン＋水晶×3', icon: '🎁' },
 ];
 
 export function getLoginBonusDay(streak) {
