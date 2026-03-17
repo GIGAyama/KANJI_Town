@@ -139,106 +139,103 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-3 p-4 overflow-y-auto no-scrollbar pb-8">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <button onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
-            <ArrowLeft size={22} />
-          </button>
-          <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-2">
-            <Hammer size={20} className="text-[var(--accent)]" /> クラフト{F("工房","こうぼう")}
-          </h2>
+    <div className="flex flex-col h-full">
+      {/* ── 固定ヘッダー部分 ── */}
+      <div className="shrink-0 flex flex-col gap-2 p-4 pb-2 bg-[var(--bg)] z-10">
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <ArrowLeft size={22} />
+            </button>
+            <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-2">
+              <Hammer size={20} className="text-[var(--accent)]" /> クラフト{F("工房","こうぼう")}
+            </h2>
+          </div>
+          <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={16} />{stats.coins}</span>
         </div>
-        <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={16} />{stats.coins}</span>
-      </div>
 
-      {/* 使い方ヒント */}
-      <div className="text-[10px] text-[var(--text)] opacity-50 -mt-1 px-1">
-        {F("素材","そざい")}を{F("使","つか")}って{F("建物","たてもの")}や{F("装飾","そうしょく")}をクラフト。レシピをタップで{F("詳細","しょうさい")}を{F("表示","ひょうじ")}。
-      </div>
-
-      {/* 素材インベントリ */}
-      <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 shadow-[4px_4px_0_var(--text)]">
-        <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-2">
-          <Package size={14} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}
-        </h3>
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(MATERIALS).map(([id, mat]) => {
-            const count = materials[id] || 0;
-            if (count === 0) return null;
-            return (
-              <div key={id} className="flex items-center gap-1 bg-[var(--bg)] rounded-full px-2.5 py-1 border-2 border-[var(--text)]">
-                <span className="text-sm">{mat.icon}</span>
-                <span className="text-[10px] font-black text-[var(--text)]">{mat.name}</span>
-                <span className="text-[10px] font-black text-[var(--primary)]">{count}</span>
-              </div>
-            );
-          })}
-          {Object.values(materials).every(v => !v) && (
-            <div className="text-xs text-[var(--text)] opacity-50 py-1">{F("素材","そざい")}がありません。{F("漢字","かんじ")}を{F("学","まな")}んで{F("素材","そざい")}を{F("集","あつ")}めよう！</div>
-          )}
-        </div>
-      </div>
-
-      {/* 職業ボーナス表示 */}
-      {craftBonuses.length > 0 && (
-        <div className="bg-blue-50 border-[3px] border-blue-300 rounded-[16px] px-3 py-2">
-          <div className="text-[10px] font-black text-blue-700 mb-1 flex items-center gap-1"><Users size={12} /> {F("住民","じゅうみん")}ボーナス{F("適用中","てきようちゅう")}</div>
+        {/* 素材インベントリ（常に表示） */}
+        <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-[16px] p-2.5 shadow-[3px_3px_0_var(--text)]">
           <div className="flex flex-wrap gap-1">
-            {craftBonuses.map(b => (
-              <span key={b.occupationId} className="text-[9px] bg-blue-100 border border-blue-300 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-                {b.desc}
-              </span>
-            ))}
+            {Object.entries(MATERIALS).map(([id, mat]) => {
+              const count = materials[id] || 0;
+              if (count === 0) return null;
+              return (
+                <div key={id} className="flex items-center gap-0.5 bg-[var(--bg)] rounded-full px-2 py-0.5 border-2 border-[var(--text)]">
+                  <span className="text-xs">{mat.icon}</span>
+                  <span className="text-[9px] font-black text-[var(--text)]">{mat.name}</span>
+                  <span className="text-[9px] font-black text-[var(--primary)]">{count}</span>
+                </div>
+              );
+            })}
+            {Object.values(materials).every(v => !v) && (
+              <div className="text-[10px] text-[var(--text)] opacity-50 py-0.5">{F("素材","そざい")}なし — {F("漢字","かんじ")}を{F("学","まな")}んで{F("集","あつ")}めよう</div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* セットボーナス表示 */}
-      {activeSets.length > 0 && (
-        <div className="bg-amber-50 border-[3px] border-amber-300 rounded-[16px] px-3 py-2">
-          <div className="text-[10px] font-black text-amber-700 mb-1 flex items-center gap-1"><TrendingUp size={12} /> セットボーナス{F("達成","たっせい")}</div>
-          <div className="flex flex-wrap gap-1">
-            {activeSets.map(s => (
-              <span key={s.id} className="text-[9px] bg-amber-100 border border-amber-300 text-amber-700 px-2 py-0.5 rounded-full font-bold">
-                {s.emoji} {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* カテゴリ切り替え */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-        {CATEGORIES.map(cat => (
-          <button key={cat.key} onClick={() => { setCategory(cat.key); setSelectedRecipe(null); setFilterTier(0); audioCtrl.playSE('click'); }}
-            className={`px-3 py-2 rounded-xl border-[3px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-1 ${category === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
-            <span>{cat.icon}</span> {cat.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ティアフィルター */}
-      {(category === 'building' || category === 'mega') && (
-        <div className="flex gap-1 overflow-x-auto no-scrollbar shrink-0">
-          <button onClick={() => { setFilterTier(0); audioCtrl.playSE('click'); }}
-            className={`px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap border-2 transition-all ${filterTier === 0 ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}>
-            すべて
-          </button>
-          {[1, 2, 3, 4, 5, 6].map(t => (
-            <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }}
-              className={`px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}
-              style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>
-              {t}年 {TIER_NAMES[t]}
+        {/* カテゴリ切り替え */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {CATEGORIES.map(cat => (
+            <button key={cat.key} onClick={() => { setCategory(cat.key); setSelectedRecipe(null); setFilterTier(0); audioCtrl.playSE('click'); }}
+              className={`px-3 py-2 rounded-xl border-[3px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-1 ${category === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
+              <span>{cat.icon}</span> {cat.label}
             </button>
           ))}
         </div>
-      )}
 
-      {/* レシピ一覧 */}
-      <div className="flex flex-col gap-2">
-        {recipes.map(recipe => {
+        {/* ティアフィルター */}
+        {(category === 'building' || category === 'mega') && (
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            <button onClick={() => { setFilterTier(0); audioCtrl.playSE('click'); }}
+              className={`px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap border-2 transition-all ${filterTier === 0 ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}>
+              すべて
+            </button>
+            {[1, 2, 3, 4, 5, 6].map(t => (
+              <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }}
+                className={`px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}
+                style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>
+                {t}年 {TIER_NAMES[t]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── スクロール可能なレシピ一覧 ── */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8">
+        <div className="flex flex-col gap-3">
+          {/* 職業ボーナス表示 */}
+          {craftBonuses.length > 0 && (
+            <div className="bg-blue-50 border-[3px] border-blue-300 rounded-[16px] px-3 py-2">
+              <div className="text-[10px] font-black text-blue-700 mb-1 flex items-center gap-1"><Users size={12} /> {F("住民","じゅうみん")}ボーナス{F("適用中","てきようちゅう")}</div>
+              <div className="flex flex-wrap gap-1">
+                {craftBonuses.map(b => (
+                  <span key={b.occupationId} className="text-[9px] bg-blue-100 border border-blue-300 text-blue-700 px-2 py-0.5 rounded-full font-bold">
+                    {b.desc}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* セットボーナス表示 */}
+          {activeSets.length > 0 && (
+            <div className="bg-amber-50 border-[3px] border-amber-300 rounded-[16px] px-3 py-2">
+              <div className="text-[10px] font-black text-amber-700 mb-1 flex items-center gap-1"><TrendingUp size={12} /> セットボーナス{F("達成","たっせい")}</div>
+              <div className="flex flex-wrap gap-1">
+                {activeSets.map(s => (
+                  <span key={s.id} className="text-[9px] bg-amber-100 border border-amber-300 text-amber-700 px-2 py-0.5 rounded-full font-bold">
+                    {s.emoji} {s.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* レシピ一覧 */}
+          {recipes.map(recipe => {
           const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
           const isUnlocked = isGradeUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
@@ -306,8 +303,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         const isDiscounted = origIng && ing.amount < origIng.amount;
                         return (
                           <span key={i} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                            {mat?.icon}{isDiscounted ? <><s className="opacity-50">{origIng.amount}</s>{ing.amount}</> : ing.amount}
-                            <span className="opacity-60">/{have}</span>
+                            {mat?.icon}<span className="opacity-70">{mat?.name}</span>{isDiscounted ? <><s className="opacity-50">{origIng.amount}</s>{ing.amount}</> : ing.amount}
+                            <span className="opacity-50">/{have}</span>
                           </span>
                         );
                       })}
@@ -404,36 +401,37 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
             </div>
           );
         })}
-        {recipes.length === 0 && (
-          <div className="text-center text-sm text-[var(--text)] opacity-50 py-8">
-            このカテゴリのレシピはありません
-          </div>
-        )}
-      </div>
+          {recipes.length === 0 && (
+            <div className="text-center text-sm text-[var(--text)] opacity-50 py-8">
+              このカテゴリのレシピはありません
+            </div>
+          )}
 
-      {/* セットボーナス一覧 */}
-      {category === 'building' && (
-        <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-[16px] p-3 mt-2">
-          <h3 className="text-xs font-black text-[var(--text)] mb-2 flex items-center gap-1"><TrendingUp size={14} /> セットボーナス</h3>
-          <div className="flex flex-col gap-1.5">
-            {BUILDING_SETS.map(set => {
-              const isActive = activeSets.some(s => s.id === set.id);
-              const placedItems = new Set(Object.values(stats.townMap || {}));
-              const progress = set.required.filter(id => placedItems.has(id)).length;
-              return (
-                <div key={set.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs ${isActive ? 'bg-amber-50 border-amber-300' : 'bg-[var(--bg)] border-transparent opacity-70'}`}>
-                  <span className="text-lg">{set.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-[var(--text)]">{set.name} {isActive && <span className="text-amber-500 ml-1">{F("達成","たっせい")}!</span>}</div>
-                    <div className="text-[9px] text-[var(--text)] opacity-50">{set.desc}</div>
-                  </div>
-                  <span className="text-[10px] font-bold text-[var(--text)] opacity-60 shrink-0">{progress}/{set.required.length}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* セットボーナス一覧 */}
+          {category === 'building' && (
+            <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-[16px] p-3 mt-2">
+              <h3 className="text-xs font-black text-[var(--text)] mb-2 flex items-center gap-1"><TrendingUp size={14} /> セットボーナス</h3>
+              <div className="flex flex-col gap-1.5">
+                {BUILDING_SETS.map(set => {
+                  const isActive = activeSets.some(s => s.id === set.id);
+                  const placedItems = new Set(Object.values(stats.townMap || {}));
+                  const progress = set.required.filter(id => placedItems.has(id)).length;
+                  return (
+                    <div key={set.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs ${isActive ? 'bg-amber-50 border-amber-300' : 'bg-[var(--bg)] border-transparent opacity-70'}`}>
+                      <span className="text-lg">{set.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-[var(--text)]">{set.name} {isActive && <span className="text-amber-500 ml-1">{F("達成","たっせい")}!</span>}</div>
+                        <div className="text-[9px] text-[var(--text)] opacity-50">{set.desc}</div>
+                      </div>
+                      <span className="text-[10px] font-bold text-[var(--text)] opacity-60 shrink-0">{progress}/{set.required.length}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* クラフトエラー表示 */}
       <AnimatePresence>
