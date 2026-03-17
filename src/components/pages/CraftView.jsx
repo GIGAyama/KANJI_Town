@@ -381,7 +381,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                               </MotionButton>
                             ) : (
                               <button
-                                onClick={() => handleCraft(recipe)}
+                                disabled
                                 className="px-6 py-3 text-sm font-black rounded-xl bg-gray-300 text-gray-500 border-[3px] border-gray-400 cursor-not-allowed flex items-center gap-2"
                               >
                                 <Hammer size={16} /> クラフトできません
