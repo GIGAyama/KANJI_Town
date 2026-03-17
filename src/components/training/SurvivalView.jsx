@@ -595,7 +595,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
       </div>
 
       {/* === メインエリア === */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-3 px-2 md:px-4 py-2 min-h-0 overflow-hidden relative">
+      <div className="flex-1 flex items-center justify-center px-2 md:px-4 py-2 min-h-0 overflow-hidden relative">
         {/* 判定エフェクト */}
         <AnimatePresence>
           {judgeInfo && phase === 'judging' && (
@@ -605,36 +605,34 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
         </AnimatePresence>
 
         {phase === 'finished' ? (
-          <div className="flex-1 flex items-center justify-center">
-            <ResultSummary
-              wave={wave}
-              waveProgress={waveProgress}
-              bestCombo={bestCombo}
-              perfectCount={perfectCount}
-              okCount={okCount}
-              missCount={missCount}
-              earned={earnedRef.current}
-            />
-          </div>
+          <ResultSummary
+            wave={wave}
+            waveProgress={waveProgress}
+            bestCombo={bestCombo}
+            perfectCount={perfectCount}
+            okCount={okCount}
+            missCount={missCount}
+            earned={earnedRef.current}
+          />
         ) : (
-          <>
-            {/* ヒントパネル（モバイルでは上、PCでは左） */}
-            <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-2 order-first">
+          <div className="w-full max-w-4xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
+            {/* 左: お題パネル（PCでは大きく表示） */}
+            <div className="w-full lg:flex-1 flex flex-col gap-3 order-first">
               {/* お題: 例文 or 読み */}
-              <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-3 md:p-4 shadow-[3px_3px_0_var(--text)]">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target size={14} className="text-amber-500" />
-                  <span className="text-[10px] font-black text-[var(--text)] opacity-50">
+              <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-4 md:p-5 shadow-[3px_3px_0_var(--text)]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target size={16} className="text-amber-500" />
+                  <span className="text-xs font-black text-[var(--text)] opacity-50">
                     この「◯」は{F("何","なん")}の{F("漢字","かんじ")}？
                   </span>
                 </div>
                 {ex ? (
-                  <p className="text-xl md:text-2xl font-bold text-[var(--text)] text-center ruby-text leading-relaxed">
+                  <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-[var(--text)] text-center ruby-text leading-relaxed">
                     <SurvivalRubyText text={ex} targetChar={kanji.char} />
                   </p>
                 ) : (
                   <div className="text-center">
-                    <div className="text-base md:text-lg font-black text-[var(--text)] leading-relaxed">
+                    <div className="text-lg md:text-xl lg:text-2xl font-black text-[var(--text)] leading-relaxed">
                       {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
                       {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
                       {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
@@ -645,8 +643,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                 )}
               </div>
 
-              {/* PC: コンボ＆ベスト表示 */}
-              <div className="hidden lg:block bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-3 shadow-[3px_3px_0_var(--text)] text-center">
+              {/* コンボ＆スコア（PCでは大きく表示） */}
+              <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-4 shadow-[3px_3px_0_var(--text)]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={combo}
@@ -654,31 +652,47 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    className="text-center"
                   >
                     {combo > 0 ? (
-                      <div className={`font-black ${combo >= 20 ? 'text-3xl bg-gradient-to-r from-amber-400 via-rose-400 to-purple-400 bg-clip-text text-transparent' : combo >= 10 ? 'text-2xl text-amber-500' : combo >= 5 ? 'text-xl text-orange-500' : 'text-lg text-[var(--text)]'}`}>
+                      <div className={`font-black ${combo >= 20 ? 'text-4xl lg:text-5xl bg-gradient-to-r from-amber-400 via-rose-400 to-purple-400 bg-clip-text text-transparent' : combo >= 10 ? 'text-3xl lg:text-4xl text-amber-500' : combo >= 5 ? 'text-2xl lg:text-3xl text-orange-500' : 'text-xl lg:text-2xl text-[var(--text)]'}`}>
                         {combo} COMBO
                       </div>
                     ) : (
-                      <div className="text-sm font-bold text-[var(--text)] opacity-20">- -</div>
+                      <div className="text-base font-bold text-[var(--text)] opacity-20">COMBO</div>
                     )}
                   </motion.div>
                 </AnimatePresence>
                 {combo >= 10 && (
-                  <div className="text-[10px] font-bold text-amber-500 mt-1">
+                  <div className="text-xs font-bold text-amber-500 mt-1 text-center">
                     +{combo >= 20 ? 2 : 1}{F("秒","びょう")}ボーナス
                   </div>
                 )}
-                <div className="text-[10px] font-bold text-[var(--text)] opacity-30 mt-2">
-                  BEST: {bestCombo}
+                <div className="flex justify-center gap-4 mt-3 pt-3 border-t-2 border-[var(--text)] opacity-80">
+                  <div className="text-center">
+                    <div className="text-[10px] font-bold text-amber-500">PERFECT</div>
+                    <div className="text-lg lg:text-xl font-black text-amber-500">{perfectCount}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] font-bold text-emerald-500">OK</div>
+                    <div className="text-lg lg:text-xl font-black text-emerald-500">{okCount}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] font-bold text-rose-500">MISS</div>
+                    <div className="text-lg lg:text-xl font-black text-rose-500">{missCount}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] font-bold text-[var(--text)] opacity-50">BEST</div>
+                    <div className="text-lg lg:text-xl font-black text-[var(--text)]">{bestCombo}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* キャンバスエリア（中央） */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+            {/* 右: キャンバスエリア */}
+            <div className="flex flex-col items-center justify-center shrink-0">
               {isLoading ? (
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center" style={{ width: canvasSize, height: canvasSize }}>
                   <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
@@ -690,7 +704,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                 />
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
