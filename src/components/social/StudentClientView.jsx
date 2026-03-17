@@ -133,7 +133,11 @@ const QRScanner = ({ onScan, onClose }) => {
 
   useEffect(() => {
     if (!isJsQRLoaded) return;
-    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' } })
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError('このブラウザではカメラがつかえません');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
         streamRef.current = stream;
         if (videoRef.current) {
