@@ -12,6 +12,7 @@ import {
   collectDailyResources,
 } from '../../systems/residents';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 
 const ResidentPanel = ({ stats, setView }) => {
   const [expandedOcc, setExpandedOcc] = useState(null);
@@ -32,7 +33,7 @@ const ResidentPanel = ({ stats, setView }) => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-2">
-          <Users size={20} className="text-[var(--primary)]" /> 住民のようす
+          <Users size={20} className="text-[var(--primary)]" /> {F("住民","じゅうみん")}のようす
         </h2>
       </div>
 
@@ -40,8 +41,8 @@ const ResidentPanel = ({ stats, setView }) => {
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[4px_4px_0_var(--text)]">
         <div className="flex justify-between items-center mb-3">
           <div>
-            <div className="text-2xl font-black text-[var(--text)]">👥 {residentStats.total}人</div>
-            <div className="text-xs text-[var(--text)] opacity-60">住民数</div>
+            <div className="text-2xl font-black text-[var(--text)]">👥 {residentStats.total}{F("人","にん")}</div>
+            <div className="text-xs text-[var(--text)] opacity-60">{F("住民数","じゅうみんすう")}</div>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
@@ -63,7 +64,7 @@ const ResidentPanel = ({ stats, setView }) => {
           />
         </div>
         <div className="text-[10px] text-[var(--text)] opacity-50 text-center">
-          収集効率: ×{multiplier.toFixed(1)} {multiplier >= 1.2 ? '↑' : multiplier < 1.0 ? '↓' : ''}
+          {F("収集","しゅうしゅう")}{F("効率","こうりつ")}: ×{multiplier.toFixed(1)} {multiplier >= 1.2 ? '↑' : multiplier < 1.0 ? '↓' : ''}
         </div>
       </div>
 
@@ -71,7 +72,7 @@ const ResidentPanel = ({ stats, setView }) => {
       {residentStats.total > 0 && (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[2px_2px_0_var(--text)]">
           <h3 className="text-sm font-black text-[var(--text)] flex items-center gap-1 mb-3">
-            <Package size={16} className="text-[var(--secondary)]" /> 毎日の収集量（見込み）
+            <Package size={16} className="text-[var(--secondary)]" /> {F("毎日","まいにち")}の{F("収集量","しゅうしゅうりょう")}（{F("見込","みこ")}み）
           </h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(dailyPreview.materials).map(([matId, amount]) => {
@@ -93,14 +94,14 @@ const ResidentPanel = ({ stats, setView }) => {
             )}
           </div>
           {Object.keys(dailyPreview.materials).length === 0 && dailyPreview.coins === 0 && (
-            <div className="text-xs text-[var(--text)] opacity-50 text-center py-2">住民がいません</div>
+            <div className="text-xs text-[var(--text)] opacity-50 text-center py-2">{F("住民","じゅうみん")}がいません</div>
           )}
         </div>
       )}
 
       {/* 職業別一覧 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[2px_2px_0_var(--text)]">
-        <h3 className="text-sm font-black text-[var(--text)] mb-3">職業一覧</h3>
+        <h3 className="text-sm font-black text-[var(--text)] mb-3">{F("職業","しょくぎょう")}{F("一覧","いちらん")}</h3>
         <div className="flex flex-col gap-2">
           {OCCUPATIONS.map(occ => {
             const count = residentStats.occupationCounts[occ.id] || 0;
@@ -123,8 +124,8 @@ const ResidentPanel = ({ stats, setView }) => {
                     <div className="text-[10px] text-[var(--text)] opacity-50 truncate">{occ.desc}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-black text-[var(--primary)]">{count}人</span>
-                    <span className="text-[10px] bg-[var(--panel)] px-1.5 py-0.5 rounded border border-[var(--text)] font-bold">{occ.minGrade}年〜</span>
+                    <span className="text-sm font-black text-[var(--primary)]">{count}{F("人","にん")}</span>
+                    <span className="text-[10px] bg-[var(--panel)] px-1.5 py-0.5 rounded border border-[var(--text)] font-bold">{occ.minGrade}{F("年","ねん")}〜</span>
                     {count > 0 ? (isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}
                   </div>
                 </button>
@@ -140,7 +141,7 @@ const ResidentPanel = ({ stats, setView }) => {
                     >
                       <div className="px-3 py-2 bg-[var(--panel)] border-t-2 border-[var(--text)]">
                         {/* 収集素材 */}
-                        <div className="text-[10px] font-bold text-[var(--text)] opacity-60 mb-1">収集素材:</div>
+                        <div className="text-[10px] font-bold text-[var(--text)] opacity-60 mb-1">{F("収集","しゅうしゅう")}{F("素材","そざい")}:</div>
                         <div className="flex flex-wrap gap-1 mb-2">
                           {occ.collectibles.map(c => {
                             const mat = MATERIALS[c.material];
@@ -158,7 +159,7 @@ const ResidentPanel = ({ stats, setView }) => {
                         </div>
 
                         {/* 住民リスト */}
-                        <div className="text-[10px] font-bold text-[var(--text)] opacity-60 mb-1">住民:</div>
+                        <div className="text-[10px] font-bold text-[var(--text)] opacity-60 mb-1">{F("住民","じゅうみん")}:</div>
                         <div className="flex flex-wrap gap-1">
                           {occVillagers.map(v => (
                             <span key={v.id} className="inline-flex items-center gap-0.5 bg-[var(--bg)] rounded-full px-2 py-0.5 text-[10px] font-bold border border-[var(--text)]">
@@ -180,14 +181,14 @@ const ResidentPanel = ({ stats, setView }) => {
       {/* 満足度の仕組み説明 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[2px_2px_0_var(--text)]">
         <h3 className="text-sm font-black text-[var(--text)] flex items-center gap-1 mb-2">
-          <Heart size={16} className="text-rose-500" /> 満足度を上げるには
+          <Heart size={16} className="text-rose-500" /> {F("満足度","まんぞくど")}を{F("上","あ")}げるには
         </h3>
         <div className="flex flex-col gap-1.5 text-[11px] text-[var(--text)]">
-          <div className="flex items-start gap-2"><span className="shrink-0">🏠</span><span>家を建てて住む場所を増やす（3人/1軒）</span></div>
-          <div className="flex items-start gap-2"><span className="shrink-0">🏛️</span><span>いろいろな種類の建物を建てる</span></div>
-          <div className="flex items-start gap-2"><span className="shrink-0">🌸</span><span>木や花で自然環境をととのえる</span></div>
-          <div className="flex items-start gap-2"><span className="shrink-0">🔥</span><span>毎日連続で学習する（ストリーク）</span></div>
-          <div className="flex items-start gap-2"><span className="shrink-0">⚠️</span><span className="text-amber-600">雑草が生えると不満が増えるよ！</span></div>
+          <div className="flex items-start gap-2"><span className="shrink-0">🏠</span><span>{F("家","いえ")}を{F("建","た")}てて{F("住","す")}む{F("場所","ばしょ")}を{F("増","ふ")}やす（3{F("人","にん")}/1{F("軒","けん")}）</span></div>
+          <div className="flex items-start gap-2"><span className="shrink-0">🏛️</span><span>いろいろな{F("種類","しゅるい")}の{F("建物","たてもの")}を{F("建","た")}てる</span></div>
+          <div className="flex items-start gap-2"><span className="shrink-0">🌸</span><span>{F("木","き")}や{F("花","はな")}で{F("自然","しぜん")}{F("環境","かんきょう")}をととのえる</span></div>
+          <div className="flex items-start gap-2"><span className="shrink-0">🔥</span><span>{F("毎日","まいにち")}{F("連続","れんぞく")}で{F("学習","がくしゅう")}する（ストリーク）</span></div>
+          <div className="flex items-start gap-2"><span className="shrink-0">⚠️</span><span className="text-amber-600">{F("雑草","ざっそう")}が{F("生","は")}えると{F("不満","ふまん")}が{F("増","ふ")}えるよ！</span></div>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 import { migrateCard, calculateNextReview } from '../../systems/srs';
 import { StorageAPI } from '../../systems/storage';
 
@@ -64,7 +65,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
       <div className="w-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[24px] p-6 flex flex-col items-center gap-6 shadow-[8px_8px_0_var(--text)]"
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-          わかるかな？ <span className="text-[10px] opacity-50">← 忘れた ／ わかる →</span>
+          わかるかな？ <span className="text-[10px] opacity-50">← {F("忘","わす")}れた ／ わかる →</span>
         </div>
         <AnimatePresence mode="wait">
           <motion.div key={kanji.id} initial={{ scale: 0.8, opacity: 0, x: 30 }} animate={{ scale: 1, opacity: 1, x: 0 }} exit={{ scale: 1.1, opacity: 0, x: -30 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="text-[10rem] md:text-[14rem] font-black leading-none select-none" style={{ fontFamily: "'Klee One', serif" }}>
@@ -76,7 +77,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
           <span className="bg-[var(--bg)] px-2 py-1 rounded">🪙 {displayEarned.coins}</span>
         </div>
         <div className="flex w-full gap-4 mt-2">
-          <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-8 text-2xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]">忘れた💦</MotionButton>
+          <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-8 text-2xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]">{F("忘","わす")}れた💦</MotionButton>
           <MotionButton variant="success" onClick={() => handleAnswer(true)} className="flex-1 py-8 text-2xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">わかる👍</MotionButton>
         </div>
       </div>

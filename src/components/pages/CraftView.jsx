@@ -9,15 +9,16 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 
 const TIER_NAMES = ['', '基礎', '商業', '文化', '産業', '公共', '伝説'];
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
 const CATEGORIES = [
-  { key: 'material', label: '加工素材', icon: '🔧' },
-  { key: 'building', label: '建物', icon: '🏠' },
-  { key: 'upgrade', label: '強化', icon: '⬆️' },
-  { key: 'mega', label: '大型建築', icon: '🏰' },
+  { key: 'material', label: <>{F("加工","かこう")}{F("素材","そざい")}</>, icon: '🔧' },
+  { key: 'building', label: <>{F("建物","たてもの")}</>, icon: '🏠' },
+  { key: 'upgrade', label: <>{F("強化","きょうか")}</>, icon: '⬆️' },
+  { key: 'mega', label: <>{F("大型","おおがた")}{F("建築","けんちく")}</>, icon: '🏰' },
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
@@ -129,7 +130,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
             <ArrowLeft size={22} />
           </button>
           <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-2">
-            <Hammer size={20} className="text-[var(--accent)]" /> クラフト工房
+            <Hammer size={20} className="text-[var(--accent)]" /> クラフト{F("工房","こうぼう")}
           </h2>
         </div>
         <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[3px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={16} />{stats.coins}</span>
@@ -138,7 +139,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
       {/* 素材インベントリ */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-3 shadow-[4px_4px_0_var(--text)]">
         <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-2">
-          <Package size={14} className="text-[var(--secondary)]" /> 手持ちの素材
+          <Package size={14} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}
         </h3>
         <div className="flex flex-wrap gap-1.5">
           {Object.entries(MATERIALS).map(([id, mat]) => {
@@ -153,7 +154,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
             );
           })}
           {Object.values(materials).every(v => !v) && (
-            <div className="text-xs text-[var(--text)] opacity-50 py-1">素材がありません。漢字を学んで素材を集めよう！</div>
+            <div className="text-xs text-[var(--text)] opacity-50 py-1">{F("素材","そざい")}がありません。{F("漢字","かんじ")}を{F("学","まな")}んで{F("素材","そざい")}を{F("集","あつ")}めよう！</div>
           )}
         </div>
       </div>
@@ -161,7 +162,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
       {/* 職業ボーナス表示 */}
       {craftBonuses.length > 0 && (
         <div className="bg-blue-50 border-[3px] border-blue-300 rounded-[16px] px-3 py-2">
-          <div className="text-[10px] font-black text-blue-700 mb-1 flex items-center gap-1"><Users size={12} /> 住民ボーナス適用中</div>
+          <div className="text-[10px] font-black text-blue-700 mb-1 flex items-center gap-1"><Users size={12} /> {F("住民","じゅうみん")}ボーナス{F("適用中","てきようちゅう")}</div>
           <div className="flex flex-wrap gap-1">
             {craftBonuses.map(b => (
               <span key={b.occupationId} className="text-[9px] bg-blue-100 border border-blue-300 text-blue-700 px-2 py-0.5 rounded-full font-bold">
@@ -175,7 +176,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
       {/* セットボーナス表示 */}
       {activeSets.length > 0 && (
         <div className="bg-amber-50 border-[3px] border-amber-300 rounded-[16px] px-3 py-2">
-          <div className="text-[10px] font-black text-amber-700 mb-1 flex items-center gap-1"><TrendingUp size={12} /> セットボーナス達成</div>
+          <div className="text-[10px] font-black text-amber-700 mb-1 flex items-center gap-1"><TrendingUp size={12} /> セットボーナス{F("達成","たっせい")}</div>
           <div className="flex flex-wrap gap-1">
             {activeSets.map(s => (
               <span key={s.id} className="text-[9px] bg-amber-100 border border-amber-300 text-amber-700 px-2 py-0.5 rounded-full font-bold">
@@ -264,7 +265,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       <div className="text-[9px] text-purple-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> {recipe.unlockDesc}</div>
                     )}
                     {category === 'upgrade' && !hasUpgradeSource(recipe) && (
-                      <div className="text-[9px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> 元の建物がマップに必要</div>
+                      <div className="text-[9px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> {F("元","もと")}の{F("建物","たてもの")}がマップに{F("必要","ひつよう")}</div>
                     )}
                     {recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>}
                     {/* 素材プレビュー */}
@@ -310,7 +311,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                             {townItem ? <townItem.svg /> : resultMat ? <span className="text-3xl">{resultMat.icon}</span> : null}
                           </div>
                           <span className="text-xs font-black text-[var(--text)]">{recipe.name}</span>
-                          {recipe.pros && <span className="text-[9px] text-emerald-600 font-bold">繁栄度 +{recipe.pros}</span>}
+                          {recipe.pros && <span className="text-[9px] text-emerald-600 font-bold">{F("繁栄度","はんえいど")} +{recipe.pros}</span>}
                         </div>
                       </div>
 
@@ -371,7 +372,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                 <div key={set.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs ${isActive ? 'bg-amber-50 border-amber-300' : 'bg-[var(--bg)] border-transparent opacity-70'}`}>
                   <span className="text-lg">{set.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="font-black text-[var(--text)]">{set.name} {isActive && <span className="text-amber-500 ml-1">達成!</span>}</div>
+                    <div className="font-black text-[var(--text)]">{set.name} {isActive && <span className="text-amber-500 ml-1">{F("達成","たっせい")}!</span>}</div>
                     <div className="text-[9px] text-[var(--text)] opacity-50">{set.desc}</div>
                   </div>
                   <span className="text-[10px] font-bold text-[var(--text)] opacity-60 shrink-0">{progress}/{set.required.length}</span>
@@ -393,7 +394,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           >
             <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-2">
               <Sparkles size={32} className="text-[var(--accent)]" />
-              <div className="text-lg font-black text-[var(--text)]">完成！</div>
+              <div className="text-lg font-black text-[var(--text)]">{F("完成","かんせい")}！</div>
               <div className="text-sm font-bold text-[var(--primary)]">{craftResult.recipe.name} ×{craftResult.result.amount}</div>
               {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! 2倍生産!</div>}
               {craftResult.discount > 0 && <div className="text-[10px] font-bold text-blue-500">素材{Math.round(craftResult.discount * 100)}%節約</div>}

@@ -1,4 +1,9 @@
+/** <ruby>漢字<rt>ふりがな</rt></ruby> を返すショートハンド */
 const R = ({ c, r }) => <ruby>{c}<rt>{r}</rt></ruby>;
+
+/** インラインふりがな関数: F("漢字","かんじ") → <ruby>漢字<rt>かんじ</rt></ruby> */
+const F = (base, reading) => <ruby>{base}<rt>{reading}</rt></ruby>;
+
 const FormatKun = ({ text }) => {
   if (!text) return null; const match = text.match(/^(.*?)\((.*?)\)$/);
   if (match) return <>{match[1]}<span className="text-rose-500">{match[2]}</span></>;
@@ -21,4 +26,4 @@ const RubyText = ({ text }) => {
   return <>{parts}</>;
 };
 
-export { R, FormatKun, RubyText };
+export { R, F, FormatKun, RubyText };

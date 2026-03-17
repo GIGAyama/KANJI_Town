@@ -12,6 +12,7 @@ import { audioCtrl } from '../../systems/audio';
 import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier, getResidentStats, collectDailyResources } from '../../systems/residents';
 import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '../../systems/crafting';
 import { getCraftBonuses } from '../../data/residents';
+import { F } from '../ui/FormatKun';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -290,7 +291,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
           <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
           {/* Info overlay */}
           <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
-            地形タップで開拓　👥{stats.population || 0}人　{satLabel.emoji}{satisfaction}
+            {F("地形","ちけい")}タップで{F("開拓","かいたく")}　👥{stats.population || 0}{F("人","にん")}　{satLabel.emoji}{satisfaction}
           </div>
           {/* Placement error */}
           {placementError && (
@@ -301,7 +302,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
           {/* Selected item indicator */}
           {selectedItem && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap z-40">
-              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を配置中</>}
+              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
           )}
@@ -319,7 +320,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
             <Hammer size={16} /> クラフト
           </button>
           <button onClick={() => { if (isResidentsUnlocked) { setSideTab('residents'); audioCtrl.playSE('click'); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'residents' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'} ${!isResidentsUnlocked ? 'opacity-30' : ''}`}>
-            <Users size={16} /> 住民
+            <Users size={16} /> {F("住民","じゅうみん")}
           </button>
         </div>
 
@@ -375,7 +376,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
           <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
             <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-2">
               <Sparkles size={32} className="text-[var(--accent)]" />
-              <div className="text-lg font-black text-[var(--text)]">完成！</div>
+              <div className="text-lg font-black text-[var(--text)]">{F("完成","かんせい")}！</div>
               <div className="text-sm font-bold text-[var(--primary)]">{craftResult.recipe.name} x{craftResult.result.amount}</div>
               {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! 2倍生産!</div>}
               {craftResult.coinBonus > 0 && <div className="text-xs font-bold text-yellow-600">+{craftResult.coinBonus}コイン</div>}
@@ -393,7 +394,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
       {[
-        { key: 'all', label: 'すべて' }, { key: 'nature', label: '自然' }, { key: 'building', label: '建物' }, { key: 'mega', label: '大型' }, { key: 'rare', label: 'レア' }, { key: 'special', label: '特別' }
+        { key: 'all', label: 'すべて' }, { key: 'nature', label: <>{F("自然","しぜん")}</> }, { key: 'building', label: <>{F("建物","たてもの")}</> }, { key: 'mega', label: <>{F("大型","おおがた")}</> }, { key: 'rare', label: 'レア' }, { key: 'special', label: <>{F("特別","とくべつ")}</> }
       ].map(f => (
         <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
       ))}
@@ -435,10 +436,10 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
 
 // ── Craft Panel ──
 const CRAFT_CATEGORIES = [
-  { key: 'material', label: '加工素材', icon: '🔧' },
-  { key: 'building', label: '建物', icon: '🏠' },
-  { key: 'upgrade', label: '強化', icon: '⬆' },
-  { key: 'mega', label: '大型', icon: '🏰' },
+  { key: 'material', label: <>{F("加工","かこう")}{F("素材","そざい")}</>, icon: '🔧' },
+  { key: 'building', label: <>{F("建物","たてもの")}</>, icon: '🏠' },
+  { key: 'upgrade', label: <>{F("強化","きょうか")}</>, icon: '⬆' },
+  { key: 'mega', label: <>{F("大型","おおがた")}</>, icon: '🏰' },
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
@@ -446,7 +447,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
   <div className="flex flex-col gap-3">
     {/* Materials inventory */}
     <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-      <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> 手持ちの素材</h3>
+      <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}</h3>
       <div className="flex flex-wrap gap-1">
         {Object.entries(MATERIALS).map(([id, mat]) => {
           const count = materials[id] || 0;
@@ -457,14 +458,14 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
             </span>
           );
         })}
-        {Object.values(materials).every(v => !v) && <span className="text-[10px] text-[var(--text)] opacity-50">素材なし</span>}
+        {Object.values(materials).every(v => !v) && <span className="text-[10px] text-[var(--text)] opacity-50">{F("素材","そざい")}なし</span>}
       </div>
     </div>
 
     {/* Craft bonuses */}
     {craftBonuses.length > 0 && (
       <div className="bg-blue-50 border-[2px] border-blue-300 rounded-xl px-2.5 py-1.5 text-[10px]">
-        <span className="font-black text-blue-700"><Users size={10} className="inline" /> 住民ボーナス: </span>
+        <span className="font-black text-blue-700"><Users size={10} className="inline" /> {F("住民","じゅうみん")}ボーナス: </span>
         {craftBonuses.map(b => <span key={b.occupationId} className="text-blue-600 font-bold">{b.desc} </span>)}
       </div>
     )}
@@ -568,8 +569,8 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
     <div className="bg-[var(--bg)] rounded-xl p-3 border-[2px] border-[var(--text)]">
       <div className="flex justify-between items-center mb-2">
         <div>
-          <div className="text-xl font-black text-[var(--text)]">👥 {residentStats.total}人</div>
-          <div className="text-xs text-[var(--text)] opacity-60">住民数</div>
+          <div className="text-xl font-black text-[var(--text)]">👥 {residentStats.total}{F("人","にん")}</div>
+          <div className="text-xs text-[var(--text)] opacity-60">{F("住民数","じゅうみんすう")}</div>
         </div>
         <div className="text-right">
           <div className="flex items-center gap-1.5 justify-end">
@@ -582,13 +583,13 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
       <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]">
         <motion.div initial={{ width: 0 }} animate={{ width: `${satisfaction}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full" style={{ backgroundColor: satLabel.color }} />
       </div>
-      <div className="text-[10px] text-[var(--text)] opacity-50 text-center mt-1">収集効率: x{multiplier.toFixed(1)}</div>
+      <div className="text-[10px] text-[var(--text)] opacity-50 text-center mt-1">{F("収集","しゅうしゅう")}{F("効率","こうりつ")}: x{multiplier.toFixed(1)}</div>
     </div>
 
     {/* Daily collection preview */}
     {residentStats.total > 0 && (
       <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> 毎日の収集</h3>
+        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("毎日","まいにち")}の{F("収集","しゅうしゅう")}</h3>
         <div className="flex flex-wrap gap-1">
           {Object.entries(dailyPreview.materials).map(([matId, amount]) => {
             const mat = MATERIALS[matId];
@@ -616,7 +617,7 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
                 <div className="text-sm font-black text-[var(--text)]">{occ.name}</div>
                 <div className="text-[9px] text-[var(--text)] opacity-50 truncate">{occ.desc}</div>
               </div>
-              <span className="text-sm font-black text-[var(--primary)] shrink-0">{count}人</span>
+              <span className="text-sm font-black text-[var(--primary)] shrink-0">{count}{F("人","にん")}</span>
               {count > 0 && (isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
             </button>
             <AnimatePresence>
@@ -641,12 +642,12 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
 
     {/* Tips */}
     <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-      <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-1.5"><Heart size={12} className="text-rose-500" /> 満足度を上げるには</h3>
+      <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-1.5"><Heart size={12} className="text-rose-500" /> {F("満足度","まんぞくど")}を{F("上","あ")}げるには</h3>
       <div className="flex flex-col gap-1 text-xs text-[var(--text)]">
-        <div>🏠 家を建てて住む場所を増やす</div>
-        <div>🏛 いろいろな建物を建てる</div>
-        <div>🌸 木や花で自然環境を整える</div>
-        <div>🔥 毎日連続で学習する</div>
+        <div>🏠 {F("家","いえ")}を{F("建","た")}てて{F("住","す")}む{F("場所","ばしょ")}を{F("増","ふ")}やす</div>
+        <div>🏛 いろいろな{F("建物","たてもの")}を{F("建","た")}てる</div>
+        <div>🌸 {F("木","き")}や{F("花","はな")}で{F("自然","しぜん")}{F("環境","かんきょう")}を{F("整","ととの")}える</div>
+        <div>🔥 {F("毎日","まいにち")}{F("連続","れんぞく")}で{F("学習","がくしゅう")}する</div>
       </div>
     </div>
   </div>

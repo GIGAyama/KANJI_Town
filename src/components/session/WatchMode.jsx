@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RefreshCw, ChevronRight } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
+import { F } from '../ui/FormatKun';
 
 const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSidebar }) => {
   const [key, setKey] = useState(0);
@@ -24,12 +25,12 @@ const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSid
     <>
       {commonSidebar}
       <div className="bg-[var(--panel)] p-4 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] text-center flex flex-col gap-2 mt-4">
-        <div className="text-base font-black text-[var(--panel)] bg-[var(--secondary)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mx-2">1画ずつ よく見よう！</div>
-        <p className="text-xs md:text-sm text-[var(--text)] font-bold opacity-70 px-2 mt-2 leading-relaxed">正しい書き順で書くと、<br />漢字がきれいに書けるようになるよ。</p>
+        <div className="text-base font-black text-[var(--panel)] bg-[var(--secondary)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mx-2">1{F("画","かく")}ずつ よく{F("見","み")}よう！</div>
+        <p className="text-xs md:text-sm text-[var(--text)] font-bold opacity-70 px-2 mt-2 leading-relaxed">{F("正","ただ")}しい{F("書","か")}き{F("順","じゅん")}で{F("書","か")}くと、<br />{F("漢字","かんじ")}がきれいに{F("書","か")}けるようになるよ。</p>
       </div>
       <div className="mt-auto pt-4 flex flex-col gap-3 pb-2">
-        <MotionButton variant="secondary" onClick={() => setKey(k => k + 1)} className="py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]"><RefreshCw size={20} /> もう一度みる</MotionButton>
-        <MotionButton variant="primary" onClick={onNext} className="w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">なぞり書きへ <ChevronRight size={28} /></MotionButton>
+        <MotionButton variant="secondary" onClick={() => setKey(k => k + 1)} className="py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]"><RefreshCw size={20} /> もう{F("一度","いちど")}みる</MotionButton>
+        <MotionButton variant="primary" onClick={onNext} className="w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">なぞり{F("書","が")}きへ <ChevronRight size={28} /></MotionButton>
       </div>
     </>
   );

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { SvgGhostBoss } from '../../data/town-items';
-import { FormatKun } from '../ui/FormatKun';
+import { FormatKun, F } from '../ui/FormatKun';
 import { Analyzer } from '../../systems/analyzer';
 import { gradeStrokes } from '../../systems/strokeGrader';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
@@ -131,16 +131,16 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
         <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
         {disabled && (
           <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center">
-            <span className="text-white font-black text-lg">判定中...</span>
+            <span className="text-white font-black text-lg">{F("判定中","はんていちゅう")}...</span>
           </div>
         )}
       </div>
       <div className="flex gap-2 w-full" style={{ maxWidth: canvasSize }}>
         <MotionButton variant="secondary" onClick={handleClear} disabled={disabled || userStrokes.length === 0} className="flex-1 py-3 text-sm font-bold border-[3px] border-slate-600 bg-slate-700 text-slate-200">
-          <RefreshCw size={16} /> 書き直す
+          <RefreshCw size={16} /> {F("書","か")}き{F("直","なお")}す
         </MotionButton>
         <MotionButton variant="primary" onClick={handleSubmit} disabled={disabled || userStrokes.length === 0} className="flex-2 py-3 text-lg font-black border-[3px] border-rose-800 bg-rose-600 text-white shadow-[0_4px_0_#9f1239] flex-grow-[2]">
-          <Swords size={20} /> 攻撃する！
+          <Swords size={20} /> {F("攻撃","こうげき")}する！
         </MotionButton>
       </div>
     </div>
@@ -514,7 +514,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
 
           {/* 読みヒント */}
           <div className="bg-slate-800/80 border-2 border-slate-700 rounded-xl px-4 py-2 text-center w-full max-w-[280px]">
-            <div className="text-[10px] font-bold text-rose-400 mb-1">弱点（よみ）</div>
+            <div className="text-[10px] font-bold text-rose-400 mb-1">{F("弱点","じゃくてん")}（よみ）</div>
             <div className="text-lg md:text-xl font-black text-white leading-tight">
               {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
               {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
@@ -531,7 +531,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
               <div className="text-sm font-black text-yellow-400">+{earnedRef.current.exp}</div>
             </div>
             <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
-              <div className="text-[9px] font-bold text-slate-500">問目</div>
+              <div className="text-[9px] font-bold text-slate-500">{F("問目","もんめ")}</div>
               <div className="text-sm font-black text-slate-300">{Math.min(idx + 1, queue.length)}/{queue.length}</div>
             </div>
           </div>
@@ -543,8 +543,8 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
           {phase === 'writing' && !isLoading && strokeData.length > 0 && (
             <div className="w-full max-w-[400px] px-2">
               <div className="flex items-center gap-2 mb-1">
-                <div className="text-xs font-bold text-slate-400">のこり時間</div>
-                <div className={`text-sm font-black ${timeRatio > 0.25 ? 'text-slate-300' : 'text-red-400 animate-pulse'}`}>{timeLeft}秒</div>
+                <div className="text-xs font-bold text-slate-400">のこり{F("時間","じかん")}</div>
+                <div className={`text-sm font-black ${timeRatio > 0.25 ? 'text-slate-300' : 'text-red-400 animate-pulse'}`}>{timeLeft}{F("秒","びょう")}</div>
               </div>
               <div className="w-full bg-slate-800 h-3 rounded-full border border-slate-600 overflow-hidden">
                 <motion.div
@@ -618,7 +618,7 @@ const VictoryScreen = ({ earned }) => (
       🎉
     </motion.div>
     <div className="text-4xl font-black text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
-      ボス撃破！！
+      ボス{F("撃破","げきは")}！！
     </div>
     <div className="text-lg font-bold text-slate-300">おみごと！ボスをたおした！</div>
     <div className="flex gap-4 mt-2">
@@ -653,7 +653,7 @@ const DefeatScreen = ({ failedKanji }) => (
     <div className="text-sm font-bold text-slate-400">ボスにまけてしまった…</div>
     {failedKanji.length > 0 && (
       <div className="bg-slate-800 border-2 border-red-500/50 rounded-xl p-4 w-full max-w-[300px]">
-        <div className="text-xs font-bold text-red-400 mb-2">復習リストに追加された漢字</div>
+        <div className="text-xs font-bold text-red-400 mb-2">{F("復習","ふくしゅう")}リストに{F("追加","ついか")}された{F("漢字","かんじ")}</div>
         <div className="flex flex-wrap gap-2 justify-center">
           {failedKanji.map(k => (
             <span key={k.id} className="text-2xl font-black text-white bg-red-900/50 border border-red-600 w-10 h-10 rounded-lg flex items-center justify-center">
