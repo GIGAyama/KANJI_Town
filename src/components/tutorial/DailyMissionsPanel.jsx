@@ -4,6 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Check, Coins } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import { F } from '../ui/FormatKun';
 
 const MISSION_ICONS = {
   review: '📖',
@@ -28,8 +29,8 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
     >
       <div className="flex items-center gap-2 mb-2">
         <Target size={16} className="text-[var(--primary)]" />
-        <span className="text-sm font-black text-[var(--text)]">今日のミッション</span>
-        {allDone && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-300">達成！</span>}
+        <span className="text-sm font-black text-[var(--text)]">{F("今日","きょう")}のミッション</span>
+        {allDone && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-300">{F("達成","たっせい")}！</span>}
       </div>
       <div className="flex flex-col gap-1.5">
         {missions.map((m, i) => {

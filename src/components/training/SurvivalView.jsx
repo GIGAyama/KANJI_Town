@@ -4,6 +4,7 @@ import { Flame } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import TestMode from '../session/TestMode';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 
 const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const [currentQueue, setCurrentQueue] = useState([...queue]); const [idx, setIdx] = useState(0); const [timeLeft, setTimeLeft] = useState(60);
@@ -28,13 +29,13 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const sidebar = (
     <div className="flex flex-col gap-4 w-full">
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
-        <div className="text-xs font-bold text-rose-600 mb-2 flex items-center justify-center gap-1"><Flame size={16} /> のこり時間</div>
+        <div className="text-xs font-bold text-rose-600 mb-2 flex items-center justify-center gap-1"><Flame size={16} /> のこり{F("時間","じかん")}</div>
         <div className="w-full bg-gray-200 h-6 rounded-full border-[3px] border-[var(--text)] overflow-hidden"><motion.div animate={{ width: `${(Math.max(timeLeft, 0) / 60) * 100}%` }} transition={{ duration: 0.5 }} className={`h-full transition-colors ${timeLeft < 10 ? 'bg-rose-500' : 'bg-amber-400'}`} /></div>
-        <div className={`text-2xl font-black mt-1 ${timeLeft < 10 ? 'text-rose-500 animate-pulse' : ''}`}>{Math.max(timeLeft, 0)}秒</div>
-        <div className="text-xs font-bold text-[var(--text)] opacity-50 mt-1">正解で+5秒、不正解で-10秒</div>
+        <div className={`text-2xl font-black mt-1 ${timeLeft < 10 ? 'text-rose-500 animate-pulse' : ''}`}>{Math.max(timeLeft, 0)}{F("秒","びょう")}</div>
+        <div className="text-xs font-bold text-[var(--text)] opacity-50 mt-1">{F("正解","せいかい")}で+5{F("秒","びょう")}、{F("不正解","ふせいかい")}で-10{F("秒","びょう")}</div>
       </div>
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[4px_4px_0_var(--text)]">
-        <div className="text-sm font-bold bg-[var(--text)] text-[var(--panel)] px-4 py-1.5 rounded-full mx-auto w-max mb-4">この「〇」は何の漢字？</div>
+        <div className="text-sm font-bold bg-[var(--text)] text-[var(--panel)] px-4 py-1.5 rounded-full mx-auto w-max mb-4">この「〇」は{F("何","なん")}の{F("漢字","かんじ")}？</div>
         <p className="text-2xl md:text-3xl font-bold text-[var(--text)] leading-relaxed text-center">{blankText}</p>
       </div>
     </div>

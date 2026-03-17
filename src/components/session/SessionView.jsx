@@ -8,6 +8,7 @@ import WatchMode from './WatchMode';
 import WriteMode from './WriteMode';
 import TestMode from './TestMode';
 import { Analyzer } from '../../systems/analyzer';
+import { F } from '../ui/FormatKun';
 
 const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRecordPerfect, onRecordEasy }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false); const [canvasSize] = useState(window.innerWidth < 768 ? 280 : 400); const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
@@ -58,7 +59,7 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
   const commonSidebarTop = (
     <div className="flex flex-col gap-3 shrink-0 mb-4">
       <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
-        {[{ id: 'read', icon: <Volume2 size={18} />, label: "音読" }, { id: 'watch', icon: <PlayCircle size={18} />, label: "書き順" }, { id: 'write', icon: <Pencil size={18} />, label: "なぞる" }, { id: 'test', icon: <CheckCircle2 size={18} />, label: "テスト" }].map((t, idx) => {
+        {[{ id: 'read', icon: <Volume2 size={18} />, label: <>{F("音","おん")}{F("読","どく")}</> }, { id: 'watch', icon: <PlayCircle size={18} />, label: <>{F("書","か")}き{F("順","じゅん")}</> }, { id: 'write', icon: <Pencil size={18} />, label: "なぞる" }, { id: 'test', icon: <CheckCircle2 size={18} />, label: "テスト" }].map((t, idx) => {
           const isDisabled = isNew && idx > reachedStep;
           return (<button key={t.id} onClick={() => { if (isDisabled) { audioCtrl.playSE('stamp_bad'); return; } audioCtrl.playSE('click'); setMode(t.id); }} className={`flex flex-col items-center justify-center py-2.5 rounded-xl font-bold text-[10px] sm:text-xs border-[3px] transition-all ${mode === t.id ? "bg-[var(--text)] text-[var(--panel)] border-[var(--text)] shadow-[2px_2px_0_var(--primary)] scale-105" : isDisabled ? "bg-gray-100 text-gray-400 border-gray-300 opacity-50 cursor-not-allowed" : "bg-[var(--panel)] text-[var(--text)] border-[var(--text)] hover:bg-[var(--bg)]"}`}>{t.icon} <span className="mt-1">{t.label}</span></button>);
         })}
@@ -70,10 +71,10 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
     <div className="flex-1 bg-[var(--panel)] rounded-[24px] shadow-[6px_6px_0_var(--text)] border-[4px] border-[var(--text)] p-3 md:p-5 flex flex-col h-full overflow-hidden relative">
       <StampEffect stamp={activeStamp} />
       <div className="flex justify-between items-center mb-3 shrink-0">
-        <div className="text-[var(--text)] font-bold text-sm bg-[var(--bg)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-2">のこり <span className="text-lg font-black">{queue.length}</span> 文字</div>
+        <div className="text-[var(--text)] font-bold text-sm bg-[var(--bg)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-2">のこり <span className="text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
         <div className="flex gap-2">
           {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-sm bg-[var(--accent)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
-          {isNew && <div className="text-[var(--panel)] font-bold text-sm bg-[var(--primary)] px-4 py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={16} /> 新出</div>}
+          {isNew && <div className="text-[var(--panel)] font-bold text-sm bg-[var(--primary)] px-4 py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={16} /> {F("新出","しんしゅつ")}</div>}
         </div>
       </div>
       <div className="flex-1 min-h-0 w-full relative">

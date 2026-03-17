@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Eye } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
-import { FormatKun } from '../ui/FormatKun';
+import { FormatKun, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const TestMode = ({ kanji, onEvaluate, canvasSize, commonSidebar }) => {
@@ -41,7 +41,7 @@ const TestMode = ({ kanji, onEvaluate, canvasSize, commonSidebar }) => {
     <>
       {commonSidebar}
       <div className="bg-[var(--panel)] rounded-2xl p-4 text-center border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2 mt-4">
-        <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この漢字、書ける？</div>
+        <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この{F("漢字","かんじ")}、{F("書","か")}ける？</div>
         <div className="text-2xl md:text-3xl font-black text-[var(--text)] tracking-wider">
           {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
           {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
@@ -53,12 +53,12 @@ const TestMode = ({ kanji, onEvaluate, canvasSize, commonSidebar }) => {
           <MotionButton variant="primary" onClick={() => { setShowAnswer(true); audioCtrl.playSE('click'); }} className="w-full py-8 text-2xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] animate-pulse"><Eye size={32} /> こたえあわせ</MotionButton>
         ) : (
           <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-2">
-            <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mb-1">自分に正直に評価しよう！</div>
+            <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mb-1">{F("自分","じぶん")}に{F("正直","しょうじき")}に{F("評価","ひょうか")}しよう！</div>
             <div className="grid grid-cols-1 gap-2">
-              <MotionButton variant="primary" onClick={() => { onEvaluate('easy'); }} className="py-5 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">よゆう💮 <span className="text-sm font-bold opacity-70 ml-1">（次回：4日後〜）</span></MotionButton>
-              <MotionButton variant="success" onClick={() => { onEvaluate('good'); }} className="py-5 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">書けた👍 <span className="text-sm font-bold opacity-70 ml-1">（次回：翌日〜）</span></MotionButton>
-              <MotionButton variant="warning" onClick={() => { onEvaluate('hard'); }} className="py-4 text-xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#92400e]">むずかしい😓 <span className="text-sm font-bold opacity-70 ml-1">（次回：まもなく）</span></MotionButton>
-              <MotionButton variant="danger" onClick={() => { onEvaluate('again'); }} className="py-4 text-xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#334155]">忘れた💦 <span className="text-sm font-bold opacity-70 ml-1">（もう一度）</span></MotionButton>
+              <MotionButton variant="primary" onClick={() => { onEvaluate('easy'); }} className="py-5 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">よゆう💮 <span className="text-sm font-bold opacity-70 ml-1">（{F("次回","じかい")}：4{F("日後","にちご")}〜）</span></MotionButton>
+              <MotionButton variant="success" onClick={() => { onEvaluate('good'); }} className="py-5 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">{F("書","か")}けた👍 <span className="text-sm font-bold opacity-70 ml-1">（{F("次回","じかい")}：{F("翌日","よくじつ")}〜）</span></MotionButton>
+              <MotionButton variant="warning" onClick={() => { onEvaluate('hard'); }} className="py-4 text-xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#92400e]">むずかしい😓 <span className="text-sm font-bold opacity-70 ml-1">（{F("次回","じかい")}：まもなく）</span></MotionButton>
+              <MotionButton variant="danger" onClick={() => { onEvaluate('again'); }} className="py-4 text-xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#334155]">{F("忘","わす")}れた💦 <span className="text-sm font-bold opacity-70 ml-1">（もう{F("一度","いちど")}）</span></MotionButton>
             </div>
           </div>
         )}

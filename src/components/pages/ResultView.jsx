@@ -8,6 +8,7 @@ import { TOWN_ITEMS, SvgVillager } from '../../data/town-items';
 import { GACHA_POOL } from '../../data/gacha-pool';
 import { STORY_STAGES } from '../../data/story-stages';
 import { StorageAPI } from '../../systems/storage';
+import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { getOccupation } from '../../data/residents';
 
@@ -63,7 +64,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
         <p className="text-xs text-[var(--text)] opacity-60 mt-1 leading-relaxed">{currentStage.desc}</p>
         {nextStage && (
           <div className="mt-2 text-[10px] text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
-            次のステージまで：漢字{Math.max(0, nextStage.minKanji - masteredCount)}文字 / 人口{Math.max(0, nextStage.minPop - (stats.population || 0))}人
+            {F("次","つぎ")}のステージまで：{F("漢字","かんじ")}{Math.max(0, nextStage.minKanji - masteredCount)}{F("文字","もじ")} / {F("人口","じんこう")}{Math.max(0, nextStage.minPop - (stats.population || 0))}{F("人","にん")}
           </div>
         )}
       </motion.div>
@@ -76,12 +77,12 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
             <SvgVillager />
           </div>
           <div className="flex-1">
-            <div className="font-black text-emerald-700 text-base">🎉 新しい住民が誕生！</div>
+            <div className="font-black text-emerald-700 text-base">🎉 {F("新","あたら")}しい{F("住民","じゅうみん")}が{F("誕生","たんじょう")}！</div>
             <div className="text-sm text-emerald-600 mt-0.5">
-              「<span className="font-black text-xl" style={{ fontFamily: "'Klee One',serif" }}>{newVillager.kanjiChar}</span>」を習得した住民が街にやってきた！
+              「<span className="font-black text-xl" style={{ fontFamily: "'Klee One',serif" }}>{newVillager.kanjiChar}</span>」を{F("習得","しゅうとく")}した{F("住民","じゅうみん")}が{F("街","まち")}にやってきた！
             </div>
             <div className="text-xs text-emerald-500 mt-1 flex items-center gap-2">
-              <span>現在の人口：{stats.population || 0}人</span>
+              <span>{F("現在","げんざい")}の{F("人口","じんこう")}：{stats.population || 0}{F("人","にん")}</span>
               <span className="bg-emerald-200 px-2 py-0.5 rounded-full font-black">{getOccupation(newVillager.occupation).emoji} {getOccupation(newVillager.occupation).name}</span>
             </div>
           </div>
@@ -91,7 +92,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
       {/* EXP・コイン・Perfect */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: '獲得EXP', value: earnedExp, icon: '⚡', color: 'bg-amber-50 border-amber-300' },
+          { label: <>{F("獲得","かくとく")}EXP</>, value: earnedExp, icon: '⚡', color: 'bg-amber-50 border-amber-300' },
           { label: 'まちコイン', value: coinBonus, icon: '🪙', color: 'bg-yellow-50 border-yellow-300', prefix: '+' },
           { label: 'Perfect', value: perfectCount, icon: '💮', color: 'bg-rose-50 border-rose-300' },
         ].map((stat, i) => (
@@ -140,7 +141,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
               className="w-full py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309]">
               <Coins size={18} /> 100コインでひく
             </MotionButton>
-            {(stats.coins || 0) < 100 && <p className="text-xs text-center text-[var(--text)] opacity-40 mt-2">コインが足りません（現在 {stats.coins || 0}枚）</p>}
+            {(stats.coins || 0) < 100 && <p className="text-xs text-center text-[var(--text)] opacity-40 mt-2">コインが{F("足","た")}りません（{F("現在","げんざい")} {stats.coins || 0}{F("枚","まい")}）</p>}
           </div>
         )}
         {gachaPhase === 'spinning' && (

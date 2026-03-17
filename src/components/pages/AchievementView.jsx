@@ -5,6 +5,7 @@ import MotionButton from '../ui/MotionButton';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { StorageAPI } from '../../systems/storage';
+import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const AchievementView = ({ setView, stats, setStats }) => {
@@ -31,8 +32,8 @@ const AchievementView = ({ setView, stats, setStats }) => {
       <div className="flex items-center gap-3">
         <button onClick={() => setView('home')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
         <div className="flex-1">
-          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> 実績</h2>
-          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} 達成 ({completedCount}個受取可能)</div>
+          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> {F("実績","じっせき")}</h2>
+          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} {F("達成","たっせい")} ({completedCount}{F("個","こ")}{F("受取","うけとり")}{F("可能","かのう")})</div>
         </div>
       </div>
 
@@ -95,7 +96,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
                   <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>
                   {rewardItemDef && <div className={`w-10 h-10 ${rewardItemDef.bg} rounded-lg border-2 border-[var(--text)] flex items-center justify-center`}><rewardItemDef.svg /></div>}
                   {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1">うけとる！</MotionButton>)}
-                  {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300">受取済</span>}
+                  {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300">{F("受取済","うけとりずみ")}</span>}
                 </div>
               </div>
             </motion.div>

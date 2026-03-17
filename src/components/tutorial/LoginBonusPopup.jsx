@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Gift } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import { F } from '../ui/FormatKun';
 import { LOGIN_BONUS_CYCLE } from '../../data/login-bonus';
 
 const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
@@ -29,7 +30,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
             🎁
           </motion.div>
           <h2 className="text-lg font-black text-[var(--text)] mb-1">ログインボーナス！</h2>
-          <p className="text-xs text-[var(--text)] opacity-50 mb-4">{streak}日連続ログイン</p>
+          <p className="text-xs text-[var(--text)] opacity-50 mb-4">{streak}{F("日","にち")}{F("連続","れんぞく")}ログイン</p>
 
           {/* 7日間サイクル表示 */}
           <div className="flex justify-center gap-1.5 mb-4">
@@ -51,7 +52,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
                   }`}
                 >
                   <span>{b.icon}</span>
-                  <span className="text-[8px]">{b.day}日</span>
+                  <span className="text-[8px]">{b.day}{F("日","にち")}</span>
                 </motion.div>
               );
             })}

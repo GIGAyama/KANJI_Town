@@ -6,6 +6,7 @@ import ModeLayout from '../ui/ModeLayout';
 import Confetti from '../ui/Confetti';
 import { Analyzer } from '../../systems/analyzer';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonSidebar, onRecordPerfect }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -104,23 +105,23 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
       {commonSidebar}
       <div className="bg-[var(--panel)] p-3 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2 shrink-0">
         <div className="flex justify-between items-center bg-[var(--bg)] p-2 rounded-xl border-[2px] border-[var(--text)]">
-          <span className="text-sm font-bold text-[var(--text)] pl-2">{count < 2 ? "なぞり書き" : count < 5 ? "手書き (手本あり)" : "空書き (手本なし)"}</span><div className="text-sm font-black bg-[var(--text)] text-[var(--panel)] px-3 py-1 rounded-lg shadow-sm">{count + 1} 回目</div>
+          <span className="text-sm font-bold text-[var(--text)] pl-2">{count < 2 ? <>なぞり{F("書","が")}き</> : count < 5 ? <>{F("手","て")}{F("書","が")}き ({F("手本","てほん")}あり)</> : <>{F("空書","からが")}き ({F("手本","てほん")}なし)</>}</span><div className="text-sm font-black bg-[var(--text)] text-[var(--panel)] px-3 py-1 rounded-lg shadow-sm">{count + 1} {F("回目","かいめ")}</div>
         </div>
         <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-white text-[var(--text)]'}`}>{statusMsg}</div>
       </div>
       {history.length > 0 && (
         <div className="bg-[var(--panel)] p-2 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-1 shrink-0 mt-2">
-          <span className="text-[10px] font-bold text-[var(--text)] px-1">これまでに書いた字</span>
+          <span className="text-[10px] font-bold text-[var(--text)] px-1">これまでに{F("書","か")}いた{F("字","じ")}</span>
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {history.map((img, idx) => (<div key={idx} className="w-14 h-14 shrink-0 bg-[var(--bg)] border-2 border-[var(--text)] rounded-lg overflow-hidden relative flex items-center justify-center"><span className="absolute top-0.5 left-1 text-[8px] font-black text-[var(--text)] opacity-40">{idx + 1}</span><img src={img} className="w-full h-full object-contain p-1" alt={`try ${idx + 1}`} /></div>))}
           </div>
         </div>
       )}
       <div className="mt-auto pt-2 flex flex-col gap-2 pb-2 shrink-0">
-        <MotionButton variant="secondary" onClick={resetPractice} className="py-2 text-sm border-[2px] border-[var(--text)] w-full shadow-[0_2px_0_var(--text)]"><RefreshCw size={16} /> 途中でやりなおす</MotionButton>
+        <MotionButton variant="secondary" onClick={resetPractice} className="py-2 text-sm border-[2px] border-[var(--text)] w-full shadow-[0_2px_0_var(--text)]"><RefreshCw size={16} /> {F("途中","とちゅう")}でやりなおす</MotionButton>
         <div className="flex flex-col gap-2 w-full mt-1">
-          <MotionButton variant={currentStroke >= paths.length ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'opacity-50'}`}><Pencil size={24} /> もう1回書く！</MotionButton>
-          <AnimatePresence>{history.length >= 2 && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}><MotionButton variant="success" onClick={onNext} className={`w-full py-4 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]`}>テストへ進む！ <ChevronRight size={24} /></MotionButton></motion.div>)}</AnimatePresence>
+          <MotionButton variant={currentStroke >= paths.length ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
+          <AnimatePresence>{history.length >= 2 && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}><MotionButton variant="success" onClick={onNext} className={`w-full py-4 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]`}>テストへ{F("進","すす")}む！ <ChevronRight size={24} /></MotionButton></motion.div>)}</AnimatePresence>
         </div>
       </div>
     </>

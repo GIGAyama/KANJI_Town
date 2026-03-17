@@ -18,6 +18,7 @@ import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/l
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
+import { F } from './components/ui/FormatKun';
 
 // Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
@@ -323,7 +324,7 @@ export default function App() {
     if (themeName === 'sunset') tv = `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`;
     if (themeName === 'gold') tv = `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`;
     return (
-      <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; } ruby rt { font-size: 0.5em; font-weight: 700; letter-spacing: 0; } .ruby-text { line-height: 1.8; }`}</style>
+      <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } .ruby-text { line-height: 2.5; }`}</style>
     );
   };
 
@@ -352,7 +353,7 @@ export default function App() {
         <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500">
           <div className="flex items-center cursor-pointer gap-2" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} role="button" aria-label="ホームに戻る">
             <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]"><PenTool size={22} strokeWidth={3} /></div>
-            <h1 className="text-xl font-black text-[var(--text)] tracking-wide">マイ漢字タウン</h1>
+            <h1 className="text-xl font-black text-[var(--text)] tracking-wide">マイ{F("漢字","かんじ")}タウン</h1>
           </div>
           <div className="flex items-center gap-1">
             <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">

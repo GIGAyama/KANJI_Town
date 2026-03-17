@@ -4,6 +4,7 @@ import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
+import { F } from '../ui/FormatKun';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -38,7 +39,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
           <X size={16} /> やめる
         </button>
         <button onClick={onConfirm} className={`flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm text-white transition-opacity hover:opacity-80 flex items-center justify-center gap-1 ${danger ? 'bg-red-500' : 'bg-[var(--primary)]'}`}>
-          <Check size={16} /> 実行する
+          <Check size={16} /> {F("実行","じっこう")}する
         </button>
       </div>
     </motion.div>
@@ -218,12 +219,12 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       </Section>
 
       {/* 学習設定 */}
-      <Section icon={GraduationCap} title="学習せってい">
+      <Section icon={GraduationCap} title={<>{F("学習","がくしゅう")}せってい</>}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-bold text-[var(--text)]">ふりがなを表示</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">漢字の上にひらがなを表示する</div>
+              <div className="text-sm font-bold text-[var(--text)]">ふりがなを{F("表示","ひょうじ")}</div>
+              <div className="text-[10px] text-[var(--text)] opacity-50">{F("漢字","かんじ")}の{F("上","うえ")}にひらがなを{F("表示","ひょうじ")}する</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ showFurigana: !showFurigana }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${showFurigana ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: showFurigana ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
@@ -232,8 +233,8 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
 
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-bold text-[var(--text)]">自動再生</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">セッション開始時に音声を再生</div>
+              <div className="text-sm font-bold text-[var(--text)]">{F("自動","じどう")}{F("再生","さいせい")}</div>
+              <div className="text-[10px] text-[var(--text)] opacity-50">セッション{F("開始時","かいしじ")}に{F("音声","おんせい")}を{F("再生","さいせい")}</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ autoPlay: !autoPlay }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${autoPlay ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: autoPlay ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
@@ -241,12 +242,12 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           </div>
 
           <div>
-            <div className="text-sm font-bold text-[var(--text)] mb-2">1回のセッションの量</div>
+            <div className="text-sm font-bold text-[var(--text)] mb-2">1{F("回","かい")}のセッションの{F("量","りょう")}</div>
             <div className="flex gap-2">
               {[
-                { id: 'small', label: '少なめ', desc: '復習10＋新3' },
+                { id: 'small', label: <>{F("少","すく")}なめ</>, desc: '復習10＋新3' },
                 { id: 'normal', label: 'ふつう', desc: '復習20＋新5' },
-                { id: 'large', label: '多め', desc: '復習30＋新8' },
+                { id: 'large', label: <>{F("多","おお")}め</>, desc: '復習30＋新8' },
               ].map(s => {
                 const isActive = sessionSize === s.id;
                 return (
@@ -262,19 +263,19 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       </Section>
 
       {/* データ管理 */}
-      <Section icon={Database} title="データ管理">
+      <Section icon={Database} title={<>データ{F("管理","かんり")}</>}>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">ストレージ使用量</span>
+            <span className="text-xs font-bold text-[var(--text)] opacity-60">ストレージ{F("使用量","しようりょう")}</span>
             <span className="text-xs font-black text-[var(--text)]">{getStorageSize()}</span>
           </div>
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">覚えた漢字</span>
-            <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length} 字</span>
+            <span className="text-xs font-bold text-[var(--text)] opacity-60">{F("覚","おぼ")}えた{F("漢字","かんじ")}</span>
+            <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length} {F("字","じ")}</span>
           </div>
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">学習中の漢字</span>
-            <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new' && s.status !== 'mastered').length} 字</span>
+            <span className="text-xs font-bold text-[var(--text)] opacity-60">{F("学習中","がくしゅうちゅう")}の{F("漢字","かんじ")}</span>
+            <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new' && s.status !== 'mastered').length} {F("字","じ")}</span>
           </div>
 
           <div className="flex gap-2 mt-1">
@@ -288,7 +289,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
 
           <button onClick={handleReset} className="mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-[3px] border-red-300 text-red-500 font-bold text-xs hover:bg-red-50 transition-colors">
-            <Trash2 size={16} /> すべてのデータを消す
+            <Trash2 size={16} /> すべてのデータを{F("消","け")}す
           </button>
         </div>
       </Section>

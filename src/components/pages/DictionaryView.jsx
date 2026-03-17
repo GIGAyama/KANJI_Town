@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Library, ArrowLeft } from 'lucide-react';
 import { KANJI_DATA } from '../../data/kanji-data';
+import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
@@ -12,7 +13,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
     return matchGrade && matchSearch;
   });
   const getStatusColor = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return 'bg-emerald-100 border-emerald-400'; if (s === 'review') return 'bg-violet-100 border-violet-400'; if (s === 'learning') return 'bg-sky-100 border-sky-400'; return 'bg-gray-100 border-gray-300'; };
-  const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return '習得'; if (s === 'review') return '復習中'; if (s === 'learning') return '学習中'; return '未学習'; };
+  const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return <>{F("習得","しゅうとく")}</>; if (s === 'review') return <>{F("復習中","ふくしゅうちゅう")}</>; if (s === 'learning') return <>{F("学習中","がくしゅうちゅう")}</>; return <>{F("未学習","みがくしゅう")}</>; };
 
   // Count stats per grade
   const gradeCounts = {};
@@ -26,7 +27,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
     <div className="flex flex-col gap-3 pb-8">
       <div className="flex items-center gap-3">
         <button onClick={onBack} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
-        <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> 漢字ずかん</h2>
+        <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> {F("漢字","かんじ")}ずかん</h2>
       </div>
       <div className="flex gap-2">
         <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="漢字・読みで検索" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:opacity-40 focus:outline-none focus:border-[var(--primary)]" /></div>
@@ -47,7 +48,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
           </motion.button>
         ))}
       </div>
-      {filtered.length === 0 && <div className="text-center py-12 text-[var(--text)] opacity-40 font-bold text-lg">見つかりませんでした</div>}
+      {filtered.length === 0 && <div className="text-center py-12 text-[var(--text)] opacity-40 font-bold text-lg">{F("見","み")}つかりませんでした</div>}
     </div>
   );
 };
