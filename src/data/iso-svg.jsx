@@ -276,7 +276,7 @@ const Fl = ({ cx=50, cy=75, color='#e2e8f0', thickness=2, scale=1, type='road' }
           <circle cx={-dx*0.3} cy={-dy} r={3} fill="#a3e635" filter="url(#soft-shadow)" />
           <circle cx={dx*0.4} cy={-dy*1.2} r={4} fill="#84cc16" filter="url(#soft-shadow)" />
           <circle cx={0} cy={-dy*0.5} r={3.5} fill="#4ade80" filter="url(#soft-shadow)" />
-          <path d={`M -${dx*0.2},-${dy*1.5} C 0,-${dy*1.2} ${dx*0.2},-${dy*1.5}`} fill="none" stroke="#65a30d" strokeWidth="2" />
+          <path d={`M -${dx*0.2},-${dy*1.5} Q 0,-${dy*1.2} ${dx*0.2},-${dy*1.5}`} fill="none" stroke="#65a30d" strokeWidth="2" />
         </>
       )}
     </g>
