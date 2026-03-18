@@ -146,13 +146,24 @@ const B = ({ cx=50, cy=75, w=40, h=40, wall, roof, type='flat', roofH=20, childr
       
       {type === 'slope' && (
         <>
-          {/* Back invisible faces just in case */}
-          {/* Left Roof Plane */}
-          <polygon points={`-${dx*1.1},-${dy*1.1+zh} 0,-${zh-2} 0,-${zh+roofH} -${dx*1.1},-${dy*1.1+zh+roofH*0.7}`} fill={rLeft} />
-          {/* Right Roof Plane */}
-          <polygon points={`${dx*1.1},-${dy*1.1+zh} 0,-${zh-2} 0,-${zh+roofH} ${dx*1.1},-${dy*1.1+zh+roofH*0.7}`} fill={rRight} />
-          {/* Roof Ridge Trim */}
-          <polyline points={`-${dx*1.1},-${dy*1.1+zh+roofH*0.7} 0,-${zh+roofH} ${dx*1.1},-${dy*1.1+zh+roofH*0.7}`} fill="none" stroke={rAccent} strokeWidth="2" strokeLinejoin="round" />
+          {/* Gable Wall (破風) - 右面 */}
+          <polygon points={`0,-${zh} ${dx},-${dy+zh} ${dx*0.5},-${dy*0.5+zh+roofH}`} fill={wRight} />
+          
+          {/* Left Roof Plane (手前の斜面) - 丸みと厚みを出すためにstrokeを太くする */}
+          <polygon 
+            points={`0,-${zh} -${dx},-${dy+zh} -${dx*0.5},-${dy*1.5+zh+roofH} ${dx*0.5},-${dy*0.5+zh+roofH}`} 
+            fill={rLeft} 
+            stroke={rLeft} 
+            strokeWidth="5" 
+            strokeLinejoin="round" 
+          />
+          
+          {/* Roof Edge Trim (妻側の下辺の厚みとハイライト) */}
+          <line x1="0" y1={`-${zh}`} x2={`${dx*0.5}`} y2={`-${dy*0.5+zh+roofH}`} stroke={rTop} strokeWidth="4" strokeLinecap="round" />
+          <line x1={`${dx}`} y1={`-${dy+zh}`} x2={`${dx*0.5}`} y2={`-${dy*0.5+zh+roofH}`} stroke={darken(rTop, 15)} strokeWidth="4" strokeLinecap="round" />
+          
+          {/* Roof Ridge Trim (大棟のハイライト) */}
+          <line x1={`${dx*0.5}`} y1={`-${dy*0.5+zh+roofH}`} x2={`-${dx*0.5}`} y2={`-${dy*1.5+zh+roofH}`} stroke={rTop} strokeWidth="5" strokeLinecap="round" />
         </>
       )}
 
@@ -306,8 +317,22 @@ export const SvgGarden   = () => <svg viewBox="0 0 100 100"><Fl type="garden" co
 export const SvgFence    = () => <svg viewBox="0 0 100 100"><g transform="translate(50,75)"><rect x="-25" y="-15" width="50" height="4" fill="#b45309"/><rect x="-20" y="-20" width="6" height="20" fill="#92400e"/><rect x="14" y="-20" width="6" height="20" fill="#92400e"/></g></svg>;
 
 // Tier 1-3
-export const SvgHouse1   = () => <svg viewBox="0 0 100 100"><B wall="#fde047" roof="#ef4444" type="slope" scale={1.2}/></svg>;
-export const SvgHouse2   = () => <svg viewBox="0 0 100 100"><B wall="#fef08a" roof="url(#grad-roof-blue)" type="slope" scale={1.4}/></svg>;
+export const SvgHouse1   = () => <svg viewBox="0 0 100 100"><B wall="#ffedd5" roof="#ea580c" type="slope" scale={1.2}>
+  <g transform="translate(-10, -78)">
+    <polygon points="-4,8 -4,-10 0,-8 0,11" fill="#c2410c" />
+    <polygon points="0,11 0,-8 4,-10 4,6" fill="#f97316" />
+    <polygon points="0,-8 -4,-10 0,-12 4,-10" fill="#fdba74" />
+  </g>
+  <circle cx="12" cy="-60" r="4.5" fill="url(#grad-glass)" stroke="#fcd34d" strokeWidth="1.5" />
+</B></svg>;
+export const SvgHouse2   = () => <svg viewBox="0 0 100 100"><B wall="#fef08a" roof="url(#grad-roof-blue)" type="slope" scale={1.4}>
+  <g transform="translate(-12, -90)">
+    <polygon points="-5,10 -5,-12 0,-10 0,14" fill="#1e3a8a" />
+    <polygon points="0,14 0,-10 5,-12 5,8" fill="#3b82f6" />
+    <polygon points="0,-10 -5,-12 0,-14 5,-12" fill="#93c5fd" />
+  </g>
+  <circle cx="14" cy="-68" r="5.5" fill="url(#grad-glass)" stroke="#fcd34d" strokeWidth="1.5" />
+</B></svg>;
 export const SvgHouse3   = () => <svg viewBox="0 0 100 100"><B wall="#fef9c3" roof="url(#grad-roof-slate)" type="flat" scale={1.6}/></svg>;
 export const SvgShop     = () => <svg viewBox="0 0 100 100"><B wall="#fbbf24" roof="#c2410c" type="flat" scale={1.3}><rect x="-10" y="-15" width="20" height="10" fill="url(#grad-glass)"/></B></svg>;
 export const SvgSchool   = () => <svg viewBox="0 0 100 100"><B wall="#f8fafc" roof="url(#grad-roof-slate)" type="flat" scale={1.8}><circle cx="0" cy="-35" r="5" fill="#fbbf24"/></B></svg>;
