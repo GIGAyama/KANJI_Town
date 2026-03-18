@@ -179,7 +179,33 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       return;
     }
 
-    if (!selectedItem) return;
+    if (!selectedItem) {
+      if (currentTile && currentTile !== 't_cleared' && currentTile !== 't_weed') {
+        const itemDef = TOWN_ITEMS.find(i => i.id === currentTile);
+        if (itemDef && itemDef.type !== 'terrain') {
+          const megaAnchor = findMegaAnchor(x, y);
+          if (megaAnchor) {
+            const { anchorKey, ax, ay, item } = megaAnchor;
+            const newMap = { ...localMap };
+            for (let dy = 0; dy < item.size.h; dy++) {
+              for (let dx = 0; dx < item.size.w; dx++) {
+                newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
+              }
+            }
+            setLocalMap(newMap); pushHistory(newMap);
+            setSelectedItem(item.id);
+            audioCtrl.playSE('click');
+            return;
+          }
+          const newMap = { ...localMap, [key]: 't_cleared' };
+          setLocalMap(newMap); pushHistory(newMap);
+          setSelectedItem(itemDef.id);
+          audioCtrl.playSE('click');
+        }
+      }
+      return;
+    }
+
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') { audioCtrl.playSE('stamp_bad'); return; }
 
     const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
@@ -373,6 +399,19 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
           {placementError}
         </div>
       )}
+
+      {/* === 選択なし状態のヒント === */}
+      <AnimatePresence>
+        {!selectedItem && !dockOpen && (
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
+            className="absolute z-40 left-1/2 -translate-x-1/2 pointer-events-none"
+            style={{ bottom: 84 }}>
+            <div className="bg-[var(--panel)]/90 backdrop-blur border-[2px] border-[var(--text)] rounded-full px-4 py-1.5 shadow-md font-bold text-xs flex items-center gap-1.5 whitespace-nowrap text-[var(--text)] opacity-90">
+              💡 アイテムをタップして{F("移動","いどう")}・{F("再配置","さいはいち")}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* === 選択中アイテム表示 === */}
       <AnimatePresence>
