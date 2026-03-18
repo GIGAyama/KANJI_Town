@@ -59,7 +59,7 @@ const StorageAPI = {
         totalExp: 0, streak: 0, lastDate: '', coins: 200, targetGrade: 1,
         townMap: map,
         biomeMap: biomeMap,
-        townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3 },
+        townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3, 't_house1': 1 },
         daily: {}, kanjiStats: {}, unlockedKanji: [],
         kakejiku: null, achievements: {}, perfectCountTotal: 0, myDrills: [],
         population: 0,
@@ -143,6 +143,19 @@ const StorageAPI = {
     // データ整合性チェック
     const validIds = new Set(TOWN_ITEMS.map(i => i.id));
     Object.keys(stats.townMap).forEach(k => { if (!validIds.has(stats.townMap[k])) delete stats.townMap[k]; });
+    
+    // インベントリ（townItems）とマップ配置の整合性補正（初期配置などが除外されないため）
+    const placedCounts = {};
+    Object.values(stats.townMap).forEach(itemId => {
+      const item = TOWN_ITEMS.find(i => i.id === itemId);
+      if (item && item.type !== 'terrain') {
+        placedCounts[itemId] = (placedCounts[itemId] || 0) + 1;
+      }
+    });
+    Object.entries(placedCounts).forEach(([itemId, count]) => {
+      stats.townItems[itemId] = Math.max(stats.townItems[itemId] || 0, count);
+    });
+
     Object.keys(stats.kanjiStats).forEach(id => { stats.kanjiStats[id] = migrateCard(stats.kanjiStats[id]); });
     const validKanjiIds = new Set(KANJI_DATA.map(k => k.id));
     Object.keys(stats.kanjiStats).forEach(id => { if (!validKanjiIds.has(id)) delete stats.kanjiStats[id]; });
