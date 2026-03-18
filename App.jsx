@@ -543,12 +543,13 @@ const StampEffect = ({ stamp }) => {
 };
 
 // 住民アニメーション（正弦波でふらふら歩く）
-const VillagerDot = React.memo(({ villager, cellSize, offset }) => {
+const VillagerDot = React.memo(({ villager, cellSize, offset, isDanger }) => {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const frameRef = useRef(null);
   const tRef = useRef(Math.random() * Math.PI * 2); // 位相をランダムにずらす
 
   useEffect(() => {
+    if (isDanger) return; // お化けがいるときは止まる
     const baseX = villager.x * cellSize + cellSize / 2;
     const baseY = villager.y * cellSize + cellSize / 2;
     const speed = 0.008 + (villager.id.length % 3) * 0.003;
@@ -563,12 +564,22 @@ const VillagerDot = React.memo(({ villager, cellSize, offset }) => {
     };
     frameRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frameRef.current);
-  }, [villager.x, villager.y, cellSize]);
+  }, [villager.x, villager.y, cellSize, isDanger]);
+
+  // 初期位置の設定
+  useEffect(() => {
+    if (isDanger) {
+      setPos({
+        x: villager.x * cellSize + cellSize / 2,
+        y: villager.y * cellSize + cellSize / 2
+      });
+    }
+  }, [isDanger, villager.x, villager.y, cellSize]);
 
   return (
     <div className="absolute pointer-events-none z-30 flex flex-col items-center" style={{ left: pos.x + offset.x, top: pos.y + offset.y, transform: 'translate(-50%,-100%)' }}>
       <div className="text-[8px] font-black leading-none mb-0.5" style={{ color: '#e11d48', textShadow: '0 0 3px white, 0 0 3px white' }}>{villager.kanjiChar}</div>
-      <div style={{ fontSize: '12px', lineHeight: 1 }}>🧑</div>
+      <div style={{ fontSize: '12px', lineHeight: 1 }}>{isDanger ? '😨' : '🧑'}</div>
     </div>
   );
 });
@@ -686,7 +697,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       </div>
       {/* 住民オーバーレイ（グリッドの外でoffset適用） */}
       {villagers.slice(0, 20).map(v => (
-        <VillagerDot key={v.id} villager={v} cellSize={CELL_SIZE} offset={offset} />
+        <VillagerDot key={v.id} villager={v} cellSize={CELL_SIZE} offset={offset} isDanger={isDanger && !isEditing} />
       ))}
     </div>
   );
@@ -1957,7 +1968,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
   const handleGradeChange = (g) => { setSelectedGrade(g); let newStats = { ...stats, targetGrade: g }; setStats(newStats); StorageAPI.saveStats(newStats); };
   const reviewTargetsCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new' && stats.kanjiStats[k.id].nextReview <= now).length;
-  const isReviewNeeded = reviewTargetsCount > 0;
+  const isReviewNeeded = reviewTargetsCount >= 3;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const isSpecialTrainingUnlocked = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length > 0;
 
@@ -2008,7 +2019,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
               <button key={g} onClick={() => { audioCtrl.playSE('click'); handleGradeChange(g); }} className={`flex-1 py-2 font-black text-sm rounded-xl border-[2px] transition-all whitespace-nowrap px-1 ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
             ))}
           </div>
-          <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_rgba(0,0,0,0.3)] mt-1" onClick={() => startSession(selectedGrade)}>
+          <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_rgba(0,0,0,0.3)] mt-1" onClick={() => startSession(selectedGrade, isReviewNeeded)}>
             {isReviewNeeded ? <><ShieldAlert size={24} /> おばけを たいじする！</> : <><PenTool size={24} /> {selectedGrade}年生の 漢字を覚える！</>}
           </MotionButton>
         </div>
@@ -2049,7 +2060,7 @@ export default function App() {
   const [view, setView] = useState('home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(StorageAPI.getStats());
-  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null });
+  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, isExterminating: false, newVillager: null });
   const [hostDrill, setHostDrill] = useState(null);
 
   // レベル情報はメモ化してレンダリングコストを下げる
@@ -2065,7 +2076,7 @@ export default function App() {
     else audioCtrl.stopBGM();
   }, [view, isMuted]);
 
-  const startSession = (selectedGrade) => {
+  const startSession = (selectedGrade, isExterminating = false) => {
     audioCtrl.init(); const now = Date.now();
     // レビュー対象：期日が来ているカード（上限20件）
     const reviewTargets = KANJI_DATA
@@ -2075,15 +2086,15 @@ export default function App() {
       })
       .sort((a, b) => (stats.kanjiStats[a.id].nextReview || 0) - (stats.kanjiStats[b.id].nextReview || 0))
       .slice(0, 20);
-    // 新出カード：選択学年から最大5件、ランダム順
-    const newTargets = KANJI_DATA
+    // 新出カード：退治モードでないときのみ、選択学年から最大5件、ランダム順
+    const newTargets = isExterminating ? [] : KANJI_DATA
       .filter(k => k.grade === selectedGrade && (!stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new'))
       .sort(() => Math.random() - 0.5)
       .slice(0, 5);
     // レビューを先、新出を後に並べる（Anki方式）
     const queue = [...reviewTargets, ...newTargets];
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, isExterminating, newVillager: null }); setView('session'); }
   };
 
   const startDrillSession = (drill) => {
@@ -2171,7 +2182,20 @@ export default function App() {
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0); const coinBonus = Math.floor(totalExp / 2) + (additionalResults.coins || 0); const rareChance = 0.1 + (stats.streak * 0.01); let rareDrop = additionalResults.rareDrop || null;
+    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0);
+    let coinBonus = Math.floor(totalExp / 2) + (additionalResults.coins || 0);
+    // 退治ボーナス：もし「おばけ退治」セッションで、かつ他にも溜まっていた復習がすべて消化されたなら付与
+    if (sessionData.isExterminating) {
+      const now = Date.now();
+      const remainingReviews = KANJI_DATA.filter(k => {
+        const s = stats.kanjiStats?.[k.id];
+        return s && s.status !== 'new' && (s.nextReview || 0) <= now;
+      }).length;
+      if (remainingReviews <= sessionData.queue.length) { // 今回のセッションで全て消化される見込み
+        coinBonus += 20;
+      }
+    }
+    const rareChance = 0.1 + (stats.streak * 0.01); let rareDrop = additionalResults.rareDrop || null;
     if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { const rares = ['t_torii', 't_temple', 't_castle', 't_dragon', 't_kakejiku']; rareDrop = rares[Math.floor(Math.random() * rares.length)]; }
     const finalSessionData = { ...sessionData, earnedExp: totalExp, rareDrop, perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0) };
     setSessionData(finalSessionData); let newStats = StorageAPI.updateDaily(stats, totalExp, finalSessionData); newStats.coins = (newStats.coins || 0) + coinBonus;
