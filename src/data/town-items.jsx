@@ -29,20 +29,20 @@ const TOWN_ITEMS = [
   { id: 't_sand',          svg: SvgSand,         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]',  cultivateCost: 10, isoHeight: 0 },
   { id: 't_shallow_water', svg: SvgShallowWater, name: '浅瀬',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#7dd3fc]', isoHeight: 0 },
   { id: 't_highland',      svg: SvgHighland,     name: '高台',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#a8a29e]',  cultivateCost: 20, isoHeight: 0 },
-  // 自然（isoHeight: 小さめ）
-  { id: 't_grass',      svg: SvgGrass,      name: 'くさ',       price: 10,    pros: 1,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 4 },
-  { id: 't_flower',     svg: SvgFlower,     name: '花壇',       price: 30,    pros: 5,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 8 },
-  { id: 't_tree',       svg: SvgTree,       name: '木',         price: 50,    pros: 10,   type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 28 },
-  { id: 't_sakura',     svg: SvgSakura,     name: '桜の木',     price: 150,   pros: 25,   type: 'nature',   bg: 'bg-[#86efac]',  minGrade: 3, isoHeight: 28 },
-  { id: 't_pine',       svg: SvgPine,       name: '松',         price: 100,   pros: 20,   type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 30 },
-  { id: 't_rock',       svg: SvgRock,       name: '岩',         price: 20,    pros: 2,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 10 },
+  // 自然（isoHeight: 小さめ、バリアント持ち）
+  { id: 't_grass',      svg: SvgGrass,      name: 'くさ',       price: 10,    pros: 1,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 4, hasVariants: true },
+  { id: 't_flower',     svg: SvgFlower,     name: '花壇',       price: 30,    pros: 5,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 8, hasVariants: true },
+  { id: 't_tree',       svg: SvgTree,       name: '木',         price: 50,    pros: 10,   type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 28, hasVariants: true },
+  { id: 't_sakura',     svg: SvgSakura,     name: '桜の木',     price: 150,   pros: 25,   type: 'nature',   bg: 'bg-[#86efac]',  minGrade: 3, isoHeight: 28, hasVariants: true },
+  { id: 't_pine',       svg: SvgPine,       name: '松',         price: 100,   pros: 20,   type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 30, hasVariants: true },
+  { id: 't_rock',       svg: SvgRock,       name: '岩',         price: 20,    pros: 2,    type: 'nature',   bg: 'bg-[#86efac]', isoHeight: 10, hasVariants: true },
   { id: 't_water',      svg: SvgWater,      name: '水路',       price: 40,    pros: 4,    type: 'nature',   bg: 'bg-[#7dd3fc]', biomes: ['coast', 'center'], isoHeight: 2 },
   // 建物（isoHeight: 中）
   { id: 't_road',       svg: SvgRoad,       name: '道',         price: 15,    pros: 3,    type: 'building', bg: 'bg-[#e2e8f0]', isoHeight: 2 },
   { id: 't_bridge',     svg: SvgBridge,     name: '橋',         price: 100,   pros: 15,   type: 'building', bg: 'bg-[#7dd3fc]', minGrade: 3, isoHeight: 12 },
   { id: 't_wall',       svg: SvgWall,       name: '城壁',       price: 80,    pros: 12,   type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 4, isoHeight: 18 },
-  { id: 't_house1',     svg: SvgHouse1,     name: '小さな家',   price: 150,   pros: 50,   type: 'building', bg: 'bg-[#86efac]', isoHeight: 24 },
-  { id: 't_shop',       svg: SvgShop,       name: 'お店',       price: 400,   pros: 150,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 2, biomes: ['coast', 'plains', 'center'], isoHeight: 26 },
+  { id: 't_house1',     svg: SvgHouse1,     name: '小さな家',   price: 150,   pros: 50,   type: 'building', bg: 'bg-[#86efac]', isoHeight: 24, hasVariants: true },
+  { id: 't_shop',       svg: SvgShop,       name: 'お店',       price: 400,   pros: 150,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 2, biomes: ['coast', 'plains', 'center'], isoHeight: 26, hasVariants: true },
   { id: 't_school',     svg: SvgSchool,     name: '学校',       price: 800,   pros: 300,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 5, biomes: ['hills', 'center'], isoHeight: 30 },
   { id: 't_kakejiku',   svg: () => <div/>,  name: 'マイ掛け軸', price: 500,   pros: 100,  type: 'special',  bg: 'bg-[#f5e6d3]', isoHeight: 20 },
   // 特殊（isoHeight: 大きめ）
@@ -69,9 +69,9 @@ const TOWN_ITEMS = [
   { id: 't_guardian_shrine',  svg: SvgGuardianShrine, name: '守り神の祠',   price: 6000,  pros: 4000, type: 'special',  bg: 'bg-[#e9d5ff]', minGrade: 6, isoHeight: 32 },
   { id: 't_monument',        svg: SvgMonument,       name: '記念碑',       price: 5000,  pros: 3500, type: 'special',  bg: 'bg-[#e2e8f0]', minGrade: 6, isoHeight: 36 },
   // アップグレード建物
-  { id: 't_house2',         svg: SvgHouse2,         name: '大きな家',     price: 400,   pros: 120,  type: 'building', bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 28 },
-  { id: 't_house3',         svg: SvgHouse3,         name: '豪邸',         price: 1200,  pros: 400,  type: 'building', bg: 'bg-[#86efac]', minGrade: 4, isoHeight: 34 },
-  { id: 't_department',     svg: SvgDepartment,     name: 'デパート',     price: 1500,  pros: 500,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 4, biomes: ['coast', 'plains', 'center'], isoHeight: 36 },
+  { id: 't_house2',         svg: SvgHouse2,         name: '大きな家',     price: 400,   pros: 120,  type: 'building', bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 28, hasVariants: true },
+  { id: 't_house3',         svg: SvgHouse3,         name: '豪邸',         price: 1200,  pros: 400,  type: 'building', bg: 'bg-[#86efac]', minGrade: 4, isoHeight: 34, hasVariants: true },
+  { id: 't_department',     svg: SvgDepartment,     name: 'デパート',     price: 1500,  pros: 500,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 4, biomes: ['coast', 'plains', 'center'], isoHeight: 36, hasVariants: true },
   { id: 't_grand_smithy',   svg: SvgGrandSmithy,    name: '大鍛冶場',     price: 2000,  pros: 800,  type: 'building', bg: 'bg-[#78350f]', minGrade: 5, biomes: ['mountain', 'volcano', 'center'], isoHeight: 32 },
   { id: 't_university',     svg: SvgUniversity,     name: '大学',         price: 3000,  pros: 1500, type: 'building', bg: 'bg-[#fef3c7]', minGrade: 6, biomes: ['hills', 'plains', 'center'], isoHeight: 34 },
   // メガ建築
