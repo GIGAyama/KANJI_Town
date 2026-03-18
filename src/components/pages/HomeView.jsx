@@ -99,20 +99,6 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
 
       {/* === RIGHT: Controls === */}
       <div className="w-[340px] shrink-0 flex flex-col gap-2 h-full overflow-y-auto no-scrollbar">
-        {/* Resource collection */}
-        {stats.lastCollectionResult && Object.keys(stats.lastCollectionResult.materials || {}).length > 0 && (
-          <div className="bg-emerald-50 border-[2px] border-emerald-400 rounded-xl px-3 py-2 shrink-0">
-            <div className="text-xs font-black text-emerald-700 mb-1">{F("住民","じゅうみん")}が{F("素材","そざい")}を{F("集","あつ")}めたよ！</div>
-            <div className="flex flex-wrap gap-1">
-              {Object.entries(stats.lastCollectionResult.materials).map(([matId, amount]) => {
-                const mat = MATERIALS[matId];
-                return mat ? <span key={matId} className="text-[10px] bg-white rounded-full px-2 py-0.5 font-bold border border-emerald-300">{mat.icon} {mat.name} +{amount}</span> : null;
-              })}
-              {stats.lastCollectionResult.coins > 0 && <span className="text-[10px] bg-yellow-100 rounded-full px-2 py-0.5 font-bold border border-yellow-300">+{stats.lastCollectionResult.coins}</span>}
-            </div>
-          </div>
-        )}
-
         {/* Daily missions */}
         {dailyMissions && dailyMissions.length > 0 && (
           <div className="shrink-0">

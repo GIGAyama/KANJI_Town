@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, ArrowLeft } from 'lucide-react';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
+import { formatDate } from '../../utils/date-utils';
 
 const StatsView = ({ setView, stats }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
@@ -15,7 +16,7 @@ const StatsView = ({ setView, stats }) => {
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString();
+      const key = formatDate(d);
       const label = i === 0 ? '今日' : i === 1 ? '昨日' : `${d.getDate()}日`;
       days.push({ label, exp: stats.daily?.[key]?.exp || 0, reviewed: stats.daily?.[key]?.reviewed || 0 });
     }

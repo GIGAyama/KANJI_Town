@@ -15,6 +15,7 @@ import { createVillager } from './systems/residents';
 import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
+import { getTodayString } from './utils/date-utils';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
@@ -48,6 +49,7 @@ const StudentClientView = lazy(() => import('./components/social/StudentClientVi
 // Tutorial & Phase 7
 import TutorialOverlay from './components/tutorial/TutorialOverlay';
 import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
+import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
 import FeatureHint from './components/tutorial/FeatureHint';
 
 // ローディングスピナー
@@ -72,6 +74,9 @@ export default function App() {
   // Phase 7: ログインボーナス
   const [showLoginBonus, setShowLoginBonus] = useState(false);
   const [loginBonusReward, setLoginBonusReward] = useState(null);
+  // Phase 7: 住民素材収集
+  const [showResidentCollection, setShowResidentCollection] = useState(false);
+  const [residentCollectionResult, setResidentCollectionResult] = useState(null);
   // Phase 7: デイリーミッション
   const [dailyMissions, setDailyMissions] = useState([]);
   // Phase 5: ヒント
@@ -79,29 +84,84 @@ export default function App() {
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
-  // 初回ロード時：ログインボーナス＆デイリーミッション初期化
-  useEffect(() => {
-    const today = new Date().toLocaleDateString();
+  // ログインボーナス＆デイリーミッション初期化関数
+  const refreshDailyData = useCallback((currentStats) => {
+    const today = getTodayString();
+    let updatedStats = { ...currentStats };
+    let needsSave = false;
 
     // デイリーミッション初期化
-    if (stats.dailyMissionsDate !== today) {
+    if (updatedStats.dailyMissionsDate !== today) {
       const missions = getDailyMissions(today).map(m => ({ ...m, current: 0, claimed: false }));
       setDailyMissions(missions);
-      const newStats = { ...stats, dailyMissions: missions, dailyMissionsDate: today };
-      setStats(newStats);
-      StorageAPI.saveStats(newStats);
+      updatedStats = { ...updatedStats, dailyMissions: missions, dailyMissionsDate: today };
+      needsSave = true;
     } else {
-      setDailyMissions(stats.dailyMissions || []);
+      setDailyMissions(updatedStats.dailyMissions || []);
     }
 
-    // ログインボーナスチェック（チュートリアル未完了時はスキップ）
-    if (stats.tutorialCompleted && stats.lastLoginBonusDate !== today && stats.streak >= 1) {
-      const bonusDay = getLoginBonusDay(stats.streak);
+    // ログインボーナス受取
+    if (updatedStats.tutorialCompleted && updatedStats.lastLoginBonusDate !== today && (updatedStats.streak || 0) >= 1) {
+      const bonusDay = getLoginBonusDay(updatedStats.streak);
       const reward = getLoginBonusReward(bonusDay);
-      setLoginBonusReward({ ...reward, bonusDay, streak: stats.streak });
+      setLoginBonusReward({ ...reward, bonusDay, streak: updatedStats.streak });
       setShowLoginBonus(true);
     }
+
+    // ── 住民の自動素材収集（1日1回）──
+    if (updatedStats.lastCollectionDate !== today && (updatedStats.villagers || []).length > 0) {
+      // 収集実行（StorageAPIのロジックを借用してStatsを更新）
+      updatedStats = StorageAPI.updateDaily(updatedStats, 0, { reviewedCount: 0, perfectCount: 0 });
+      if (updatedStats.lastCollectionResult) {
+        setResidentCollectionResult({
+          result: updatedStats.lastCollectionResult,
+          satisfaction: updatedStats.satisfaction,
+          satLabel: calculateSatisfaction(updatedStats) // labelを取得するために再計算か渡す必要がある
+        });
+        // satisfaction周りのデータはStorageAPIが計算済み
+        const sat = updatedStats.satisfaction || 0;
+        const { getSatisfactionLabel } = require('./systems/residents');
+        setResidentCollectionResult({
+          result: updatedStats.lastCollectionResult,
+          satisfaction: sat,
+          satLabel: getSatisfactionLabel(sat)
+        });
+        setShowResidentCollection(true);
+      }
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      setStats(updatedStats);
+      StorageAPI.saveStats(updatedStats);
+    }
   }, []);
+
+  // 初回ロード時
+  useEffect(() => {
+    refreshDailyData(stats);
+  }, []);
+
+  // 日付変更の監視（開きっぱなし対策）
+  useEffect(() => {
+    // 1分ごとに日付を生成してチェック
+    const timer = setInterval(() => {
+      refreshDailyData(StorageAPI.getStats());
+    }, 60000);
+
+    // タブに戻った時にチェック
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDailyData(StorageAPI.getStats());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshDailyData]);
 
   useEffect(() => {
     const link1 = document.createElement('link'); link1.href = 'https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap'; link1.rel = 'stylesheet'; document.head.appendChild(link1);
@@ -125,7 +185,7 @@ export default function App() {
   // ログインボーナス受取
   const handleClaimLoginBonus = () => {
     if (!loginBonusReward) return;
-    const today = new Date().toLocaleDateString();
+    const today = getTodayString();
     const newStats = applyLoginBonus({ ...stats, lastLoginBonusDate: today }, loginBonusReward);
     setStats(newStats);
     StorageAPI.saveStats(newStats);
@@ -389,6 +449,20 @@ export default function App() {
             bonusDay={loginBonusReward.bonusDay}
             reward={loginBonusReward}
             onClaim={handleClaimLoginBonus}
+          />
+        )}
+      </AnimatePresence>
+      {/* Phase 7: 住民素材収集ポップアップ */}
+      <AnimatePresence>
+        {showResidentCollection && !showTutorial && !showLoginBonus && residentCollectionResult && (
+          <ResidentCollectionPopup
+            result={residentCollectionResult.result}
+            satisfaction={residentCollectionResult.satisfaction}
+            satLabel={residentCollectionResult.satLabel}
+            onConfirm={() => {
+              setShowResidentCollection(false);
+              audioCtrl.playSE('click');
+            }}
           />
         )}
       </AnimatePresence>

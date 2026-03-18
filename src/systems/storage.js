@@ -8,6 +8,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
 import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
+import { getTodayString, formatDate } from '../utils/date-utils.js';
 import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
 
 let _saveDebounceTimer = null;
@@ -163,7 +164,7 @@ const StorageAPI = {
     stats.coins = Math.max(0, stats.coins);
 
     // ── サボり検出：廃れる仕組み ──
-    const todayStr = new Date().toLocaleDateString();
+    const todayStr = getTodayString();
     if (stats.lastDate && stats.lastDate !== todayStr) {
       const last = new Date(stats.lastDate);
       if (!isNaN(last.getTime())) {
@@ -197,7 +198,7 @@ const StorageAPI = {
     return stats;
   },
   updateDaily: (stats, exp, sessionData) => {
-    const today = new Date().toLocaleDateString();
+    const today = getTodayString();
     if (!stats.daily) stats.daily = {};
     if (!stats.daily[today]) stats.daily[today] = { exp: 0, reviewed: 0, perfects: 0 };
     stats.daily[today].exp += exp;
@@ -211,7 +212,12 @@ const StorageAPI = {
     }
     // ストリーク更新
     if (stats.lastDate !== today) {
-      if (stats.lastDate) { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); stats.streak = stats.lastDate === yesterday.toLocaleDateString() ? stats.streak + 1 : 1; }
+      if (stats.lastDate) { 
+        const yesterday = new Date(); 
+        yesterday.setDate(yesterday.getDate() - 1); 
+        const yesterdayStr = formatDate(yesterday);
+        stats.streak = stats.lastDate === yesterdayStr ? stats.streak + 1 : 1; 
+      }
       else stats.streak = 1;
       stats.lastDate = today;
     }
