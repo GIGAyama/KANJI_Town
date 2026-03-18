@@ -86,6 +86,8 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     }
   }); // 'all' | 'limited' | 'none'
   const onCellTapRef = useRef(onCellTap);
+  const isDragging = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
   
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
 
