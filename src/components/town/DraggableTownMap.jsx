@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, ZoomIn, ZoomOut } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut } from 'lucide-react';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { BIOME_TYPES, BIOME_TERRAIN_COLORS } from '../../data/biomes';
 import VillagerDot from './VillagerDot';
+import WeatherOverlay from './WeatherOverlay';
 
 // ── アイソメトリック定数 ──
 const TILE_W = 64;
@@ -74,11 +75,55 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [initialFitDone, setInitialFitDone] = useState(false); // 初回フィットフラグ
+  const [timeOfDay, setTimeOfDay] = useState('day'); // 'day' | 'evening' | 'night'
+  const [currentWeather, setCurrentWeather] = useState('clear'); // 'clear' | 'rain' | 'snow' | 'sakura'
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const onCellTapRef = useRef(onCellTap);
   
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
+
+  // 時間帯と天候の監視
+  useEffect(() => {
+    const updateTime = () => {
+      const h = new Date().getHours();
+      if (h >= 6 && h < 16) setTimeOfDay('day');
+      else if (h >= 16 && h < 19) setTimeOfDay('evening');
+      else setTimeOfDay('night');
+      
+      // 日付に依存した天候の決定（基本は晴れ、季節ごとにレア天候）
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const dateStr = `${now.getFullYear()}-${month}-${now.getDate()}`;
+      
+      // 簡易的なシード乱数生成（その日は一日中同じ天候になる）
+      let seed = 0;
+      for (let i = 0; i < dateStr.length; i++) {
+        seed += dateStr.charCodeAt(i) * (i + 1);
+      }
+      const rand = (seed * 9301 + 49297) % 233280 / 233280; // 0.0 ~ 1.0
+      
+      let weather = 'clear';
+      if (month >= 3 && month <= 5) {
+        // 春 (3〜5月): 桜(15%)、雨(10%)
+        if (rand < 0.15) weather = 'sakura';
+        else if (rand < 0.25) weather = 'rain';
+      } else if (month === 6 || month === 7) {
+        // 梅雨・夏 (6〜7月): 雨(20%)
+        if (rand < 0.20) weather = 'rain';
+      } else if (month === 12 || month === 1 || month === 2) {
+        // 冬 (12〜2月): 雪(20%)
+        if (rand < 0.20) weather = 'snow';
+      } else {
+        // その他: 雨(10%)
+        if (rand < 0.10) weather = 'rain';
+      }
+      setCurrentWeather(weather);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 60000); // 1分ごとに日付や時間帯のロールオーバーを判定
+    return () => clearInterval(timer);
+  }, []);
 
   // コンテナサイズ監視
   useEffect(() => {
@@ -236,6 +281,35 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       const biome = safeBiomeMap[key];
       const biomeTint = getBiomeTint(itemId, biome);
 
+      // --- バリアント計算 ---
+      // (x * 13 + y * 7) のようなシンプルなハッシュで決定論的なシードを得る
+      const seedVal = (x * 13 + y * 7) % 100;
+      const isFlipped = item?.hasVariants ? (seedVal % 2 === 0) : false;
+      
+      // 色相の変化(-15deg ~ +15deg程度)。自然物は大きめ、人工物は小さめにブレさせる
+      let hueShift = 0;
+      let brightnessAdjust = 1;
+      
+      if (item?.hasVariants) {
+         const shiftAmount = (seedVal % 31) - 15; // -15 to +15
+         hueShift = item.type === 'nature' ? shiftAmount : shiftAmount * 0.5;
+         
+         // 「夜」かつ「建物」の場合は、発光（brightness増加・少し黄色っぽく）させるなど
+         // ここではシンプルに、夜間の建物全体が完全に暗くならないよう輝度を底上げする
+      }
+
+      // 夜間発光・影の計算
+      const isNight = timeOfDay === 'night';
+      const isEvening = timeOfDay === 'evening';
+      let nightFilter = '';
+      if (isNight && (item?.type === 'building' || item?.type === 'mega' || item?.type === 'rare')) {
+         // 夜の建物は、窓が光っているように疑似的に輝度コントラストを上げる
+         nightFilter = 'brightness(1.2) contrast(1.1) drop-shadow(0 0 4px rgba(253, 224, 71, 0.3))';
+      } else if (isEvening && item?.type === 'nature') {
+        nightFilter = 'saturate(1.2)';
+      }
+      // --------------------
+
       if (megaAnchors.subCells.has(key)) continue;
 
       const isoX = toIsoX(x, y);
@@ -355,7 +429,12 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
                 transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
                 className="absolute inset-0 flex items-end justify-center"
                 style={{ bottom: 2 }}>
-                <div style={{ width: TILE_W, height: TILE_H + isoHeight }}>
+                <div style={{ 
+                  width: TILE_W, 
+                  height: TILE_H + isoHeight,
+                  transform: isFlipped ? 'scaleX(-1)' : 'none',
+                  filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
+                }}>
                   <item.svg />
                 </div>
               </motion.div>
@@ -378,7 +457,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       );
     }
     return result;
-  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, handlePointerUp]);
+  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, handlePointerUp, timeOfDay]);
 
   // バイオーム表示
   const centerBiome = useMemo(() => {
@@ -394,13 +473,40 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       onPointerUp={() => { lastPos.current = { x: 0, y: 0 }; }}
       onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; }}
       className={`w-full h-full rounded-[16px] overflow-hidden transition-colors duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}>
+      {/* --- 時間帯レイヤー（オーバーレイ） --- */}
+      <div 
+        className="absolute inset-0 z-20 pointer-events-none transition-colors duration-[3000ms]"
+        style={{
+          backgroundColor: timeOfDay === 'evening' ? 'rgba(234, 88, 12, 0.2)' : 
+                           timeOfDay === 'night'   ? 'rgba(15, 23, 42, 0.45)' : 
+                           'transparent',
+          mixBlendMode: timeOfDay === 'evening' ? 'overlay' : 'multiply'
+        }}
+      />
+      {/* --------------------------------- */}
+
       {/* 天候アイコン */}
-      <AnimatePresence>
-        {!isDanger || isEditing
-          ? <motion.div key="sun" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute top-4 right-4 animate-spin-slow pointer-events-none z-30"><Sun size={50} className="text-amber-400 drop-shadow-md" fill="currentColor" /></motion.div>
-          : null
-        }
+      <AnimatePresence mode="wait">
+        {!isDanger || isEditing ? (
+          <motion.div 
+            key={currentWeather} 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: 10 }} 
+            className="absolute top-4 right-4 z-40 pointer-events-none drop-shadow-md"
+          >
+            {currentWeather === 'clear' && <Sun size={50} className="text-amber-400 animate-spin-slow" fill="currentColor" />}
+            {currentWeather === 'rain' && <CloudRain size={50} className="text-slate-400 animate-pulse" fill="currentColor" />}
+            {currentWeather === 'snow' && <Snowflake size={50} className="text-sky-200 animate-[spin_4s_linear_infinite]" fill="currentColor" />}
+            {currentWeather === 'sakura' && <span className="text-[40px] leading-none select-none drop-shadow-sm">🌸</span>}
+          </motion.div>
+        ) : null}
       </AnimatePresence>
+
+      {/* --- キャンバスパーティクル（天候）--- */}
+      {!isDanger && <WeatherOverlay weather={currentWeather} />}
+      {/* --------------------------------- */}
+
       {/* バイオーム表示 */}
       {centerBiome && !isEditing && (
         <div className="absolute top-2 left-2 bg-[var(--panel)]/80 border-[2px] border-[var(--text)] rounded-xl px-3 py-1 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 flex items-center gap-1">
