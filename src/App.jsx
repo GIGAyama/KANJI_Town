@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { AnimatePresence } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings } from 'lucide-react';
 
-// Systems
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
 import { audioCtrl } from './systems/audio';
+import { checkLevelUp } from './utils/level-system';
 
 // Data
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
@@ -227,14 +227,7 @@ export default function App() {
         const [vx, vy] = spawnKey.split(',').map(Number);
         newVillager = createVillager(kanjiObj, vx, vy);
 
-        // 漢字習得ごとに探索半径が段階的に拡大（1026字全習得で半径25=全域開放）
-        setStats(s => {
-          const masteredCount = Object.values({ ...s.kanjiStats, [id]: { status: 'mastered' } }).filter(v => v.status === 'mastered').length;
-          const calcRadius = Math.min(25, 3 + 22 * Math.sqrt(masteredCount / 1026));
-          const newRadius = Math.max(s.exploredRadius || 3, calcRadius);
-          if (newRadius <= (s.exploredRadius || 3)) return s;
-          return { ...s, exploredRadius: newRadius };
-        });
+        // 以前の漢字習得数ベースでの探索半径拡大は廃止しレベルシステムに統合
       }
     }
 
@@ -257,14 +250,53 @@ export default function App() {
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0); const coinBonus = Math.floor(totalExp / 4) + (additionalResults.coins || 0); const rareChance = 0.1 + (stats.streak * 0.01); let rareDrop = additionalResults.rareDrop || null;
-    if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { const rares = ['t_torii', 't_temple', 't_castle', 't_dragon', 't_kakejiku']; rareDrop = rares[Math.floor(Math.random() * rares.length)]; }
-    const finalSessionData = { ...sessionData, earnedExp: totalExp, rareDrop, perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0) };
+    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0); 
+    const coinBonus = Math.floor(totalExp / 4) + (additionalResults.coins || 0); 
+    const rareChance = 0.1 + (stats.streak * 0.01); 
+    let rareDrop = additionalResults.rareDrop || null;
+    if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { 
+      const rares = ['t_torii', 't_temple', 't_castle', 't_dragon', 't_kakejiku']; 
+      rareDrop = rares[Math.floor(Math.random() * rares.length)]; 
+    }
+    
+    // レベルアップ判定と報酬計算
+    const oldExp = sessionData.oldExp;
+    const newExp = oldExp + totalExp;
+    const levelUpData = checkLevelUp(oldExp, newExp);
+    
+    let earnedCoins = coinBonus;
+    const unlockedItemsThisSession = [...sessionData.unlockedItems];
+    let addedRadius = 0;
+
+    if (levelUpData.isLevelUp) {
+      levelUpData.rewards.forEach(({ reward }) => {
+        if (!reward) return;
+        if (reward.type === 'coins') earnedCoins += reward.amount;
+        if (reward.type === 'item') {
+          for(let i=0; i<reward.amount; i++) unlockedItemsThisSession.push(reward.id);
+        }
+        if (reward.type === 'radius') addedRadius = Math.max(addedRadius, reward.amount);
+      });
+      // ファンファーレ鳴らす
+      setTimeout(() => audioCtrl.playSE('level_up', 0.5), 500);
+    }
+
+    const finalSessionData = { 
+      ...sessionData, 
+      earnedExp: totalExp, 
+      rareDrop, 
+      perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0),
+      unlockedItems: unlockedItemsThisSession,
+      levelUpData // ResultViewに渡すレベルアップ情報
+    };
+    
     setSessionData(finalSessionData);
     setStats(prevStats => {
       const copy = JSON.parse(JSON.stringify(prevStats));
       const newStats = StorageAPI.updateDaily(copy, totalExp, finalSessionData);
-      newStats.coins = (newStats.coins || 0) + coinBonus;
+      newStats.coins = (newStats.coins || 0) + earnedCoins;
+      // 半径拡大
+      if (addedRadius > 0) newStats.exploredRadius = Math.max(newStats.exploredRadius || 3, addedRadius);
       // セッション数カウント更新
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
 

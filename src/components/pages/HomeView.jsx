@@ -52,9 +52,25 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           </div>
         </div>
 
-        {/* EXP bar */}
-        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)] shrink-0">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]" />
+        {/* EXP bar & Next Reward Motivation */}
+        <div className="flex flex-col gap-1 shrink-0">
+          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]" />
+          </div>
+          {levelInfo && levelInfo.isMaxLevel ? (
+            <div className="text-[10px] font-black text-right text-[var(--accent)] tracking-widest px-1">✨ MAX LEVEL!</div>
+          ) : (
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[10px] font-bold text-[var(--text)] opacity-60">
+                あと <strong className="text-[var(--text)] text-xs">{levelInfo?.remainingExp || 0}</strong> EXP で Lv.{(level || 1) + 1}
+              </span>
+              {levelInfo?.targetReward && (
+                <span className="text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/30 flex items-center gap-1 shadow-sm">
+                  🎁 {levelInfo.targetReward.text || 'ごほうび'}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Town map - clickable to enter town editor */}
