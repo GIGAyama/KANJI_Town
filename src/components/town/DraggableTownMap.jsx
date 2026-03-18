@@ -5,6 +5,7 @@ import { TOWN_ITEMS } from '../../data/town-items';
 import { BIOME_TYPES, BIOME_TERRAIN_COLORS } from '../../data/biomes';
 import VillagerDot from './VillagerDot';
 import WeatherOverlay from './WeatherOverlay';
+import { audioCtrl } from '../../systems/audio';
 
 // ── アイソメトリック定数 ──
 const TILE_W = 64;
@@ -77,8 +78,13 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   const [initialFitDone, setInitialFitDone] = useState(false); // 初回フィットフラグ
   const [timeOfDay, setTimeOfDay] = useState('day'); // 'day' | 'evening' | 'night'
   const [currentWeather, setCurrentWeather] = useState('clear'); // 'clear' | 'rain' | 'snow' | 'sakura'
-  const isDragging = useRef(false);
-  const lastPos = useRef({ x: 0, y: 0 });
+  const [residentDisplayMode, setResidentDisplayMode] = useState(() => {
+    try {
+      return localStorage.getItem('kanji_town_resident_mode') || 'limited';
+    } catch (e) {
+      return 'limited';
+    }
+  }); // 'all' | 'limited' | 'none'
   const onCellTapRef = useRef(onCellTap);
   
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
@@ -201,6 +207,29 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   // ── ズーム ──
   const handleZoomIn = () => setZoom(z => Math.min(2, z + 0.15));
   const handleZoomOut = () => setZoom(z => Math.max(0.4, z - 0.15));
+
+  // ── 住民表示モード切り替え ──
+  const toggleResidentMode = () => {
+    const modes = ['all', 'limited', 'none'];
+    const next = modes[(modes.indexOf(residentDisplayMode) + 1) % modes.length];
+    setResidentDisplayMode(next);
+    try {
+      localStorage.setItem('kanji_town_resident_mode', next);
+    } catch (e) {}
+    if (typeof audioCtrl !== 'undefined') audioCtrl.playSE('click');
+  };
+
+  // 表示する住民の選別
+  const visibleVillagers = useMemo(() => {
+    if (residentDisplayMode === 'none') return [];
+    if (residentDisplayMode === 'all') return villagers;
+    
+    // 'limited' モード: 最大10人
+    // 移動中(aiStateがMOVING)の住民を優先的に選ぶ（生存感のため）
+    // aiStateは各VillagerDot内部で管理されているため、ここでは単純に
+    // 住民リストの先頭から選ぶが、将来的にはActivityレベルなどをvillagersデータに持たせると良い
+    return villagers.slice(0, 10);
+  }, [villagers, residentDisplayMode]);
 
   // ── ビューポートカリング ──
   const viewRange = useMemo(() => {
@@ -513,13 +542,31 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
           <span>{centerBiome.emoji}</span><span>{centerBiome.name}</span>
         </div>
       )}
-      {/* ズームボタン */}
-      {isEditing && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
-          <button onClick={handleZoomIn} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
-          <button onClick={handleZoomOut} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
-        </div>
-      )}
+      {/* ズームボタン & 住民表示切り替え */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
+        {isEditing && (
+          <>
+            <button onClick={handleZoomIn} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
+            <button onClick={handleZoomOut} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
+          </>
+        )}
+        {!isEditing && (
+          <button 
+            onClick={toggleResidentMode} 
+            title={`住民表示: ${residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '非表示'}`}
+            className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex flex-col items-center justify-center shadow-md hover:scale-110 transition-transform relative group"
+          >
+            <Users size={18} className={residentDisplayMode === 'none' ? 'opacity-30' : 'opacity-100'} />
+            <div className="absolute -bottom-1 -right-1 bg-[var(--primary)] text-[var(--panel)] text-[8px] font-black rounded-full w-4 h-4 flex items-center justify-center border border-[var(--text)]">
+              {residentDisplayMode === 'all' ? '●' : residentDisplayMode === 'limited' ? '10' : '×'}
+            </div>
+            {/* Tooltip */}
+            <div className="absolute right-full mr-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-[var(--text)] text-[var(--panel)] text-[10px] px-2 py-1 rounded-md">
+              住民表示: {residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '非表示'}
+            </div>
+          </button>
+        )}
+      </div>
       {/* アイソメトリックマップ */}
       <div style={{
         position: 'absolute', top: 0, left: '50%',
@@ -529,7 +576,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         {cells}
       </div>
       {/* 住民オーバーレイ */}
-      {villagers.slice(0, 20).map(v => (
+      {visibleVillagers.map(v => (
         <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} offset={offset} zoom={zoom} />
       ))}
     </div>

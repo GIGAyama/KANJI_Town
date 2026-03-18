@@ -38,6 +38,12 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
   const [emotion, setEmotion] = useState(null); // 'heart' | 'note' | 'exclamation' | 'sleep' | null
   const [facesRight, setFacesRight] = useState(false); // 進行方向による翻転
   
+  // 重なり防止のための微細な個体別オフセット (一度決めたらずれないようにRefで保持)
+  const visualOffset = useRef({
+    x: (Math.random() - 0.5) * 12,
+    y: (Math.random() - 0.5) * 8
+  }).current;
+  
   // 状態管理やアニメーションフレーム用のRef
   const stateRef = useRef({
     currentState: 'IDLE',
@@ -182,8 +188,8 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
   // インタラクト中のジャンプ
   const jumping = (aiState === 'INTERACTING' && emotion === 'heart') ? Math.abs(Math.sin(Date.now() / 200)) * -6 : 0;
 
-  const screenX = baseIsoX * zoom + offset.x + (typeof window !== 'undefined' ? window.innerWidth / 2 : 400);
-  const screenY = (baseIsoY + bobbing + jumping) * zoom + offset.y;
+  const screenX = baseIsoX * zoom + offset.x + visualOffset.x * zoom + (typeof window !== 'undefined' ? window.innerWidth / 2 : 400);
+  const screenY = (baseIsoY + bobbing + jumping) * zoom + offset.y + visualOffset.y * zoom;
 
   // 現在地のタイルIDを取得し、未開拓（草木）か判定する
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
@@ -194,7 +200,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
 
   return (
     <div className={`absolute pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ left: screenX, top: screenY, transform: 'translate(-50%,-100%)', width: 64, height: 80, zIndex }}>
+      style={{ left: screenX, top: screenY, transform: 'translate(-50%,-100%)', width: 48, height: 64, zIndex }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>
@@ -214,14 +220,14 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
       </AnimatePresence>
 
       {/* 頭上の漢字プレーンテキスト（縁取り付きで視認性確保） */}
-      <div className="text-[12px] font-black leading-none mb-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] z-10"
+      <div className="text-[10px] font-black leading-none mb-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] z-10"
         style={{ color: '#fff', textShadow: '0 0 4px #e11d48, 0 0 2px #e11d48, 0 0 1px #e11d48' }}>
         {villager.kanjiChar}
       </div>
       
       {/* 3Dアイソメトリックアバター */}
       <div 
-        className="w-16 h-16 origin-bottom transform translate-y-2 transition-transform duration-200"
+        className="w-12 h-12 origin-bottom transform translate-y-1 transition-transform duration-200"
         style={{ transform: `scaleX(${facesRight ? -1 : 1})` }}
       >
         <Avatar />
