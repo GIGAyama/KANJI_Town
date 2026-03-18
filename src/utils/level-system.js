@@ -152,3 +152,14 @@ export const checkLevelUp = (oldExp, newExp) => {
   }
   return { isLevelUp: false, oldLevel: oldLvlInfo.level, newLevel: newLvlInfo.level, rewards: [] };
 };
+
+/**
+ * 学年(1-6)から、その学年の要素を解放するのに必要なプレイヤーレベルを返す
+ * @param {number} grade - 学年 (1-6)
+ * @returns {number} 必要なプレイヤーレベル
+ */
+export const getMinLevelForGrade = (grade) => {
+  // マッピング: 1年:Lv1, 2年:Lv10, 3年:Lv25, 4年:Lv40, 5年:Lv60, 6年:Lv80
+  const levels = [0, 1, 10, 25, 40, 60, 80];
+  return levels[grade] || 0;
+};

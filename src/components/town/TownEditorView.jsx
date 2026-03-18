@@ -13,6 +13,7 @@ import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier,
 import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '../../systems/crafting';
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
+import { getMinLevelForGrade } from '../../utils/level-system';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -86,10 +87,14 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
     setTimeout(() => setConfettiParticles([]), 2000);
   };
 
+  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
+  const playerLevel = levelInfo.level;
   const playerGrade = stats.targetGrade || 1;
   const biomeMap = stats.biomeMap || {};
   const learnedCount = Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new').length;
-  const isCraftUnlocked = learnedCount >= 3;
+
+  // Unified level system: Craft unlocks at Level 3
+  const isCraftUnlocked = playerLevel >= 3;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
   const pushHistory = (newMap) => {
@@ -210,9 +215,9 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
     const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
 
-    if (itemDef?.minGrade && playerGrade < itemDef.minGrade) {
+    if (itemDef?.minGrade && playerLevel < getMinLevelForGrade(itemDef.minGrade)) {
       audioCtrl.playSE('stamp_bad');
-      showError(`${itemDef.minGrade}年生で解放`);
+      showError(`レベル${getMinLevelForGrade(itemDef.minGrade)}で解放`);
       return;
     }
 
@@ -270,8 +275,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   // ── Craft logic ──
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
-  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
-  const playerLevel = levelInfo.level;
+  // levelInfo and playerLevel are now defined at the top
   const perfectCount = stats.perfectCount || 0;
 
   const craftRecipes = useMemo(() => {
@@ -539,11 +543,11 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
         const isSelected = selectedItem === item.id;
         const canAfford = stats.coins >= item.price;
         const owned = count > 0;
-        const isGradeLocked = item.minGrade && playerGrade < item.minGrade;
-        return (
-          <div key={item.id} onClick={() => {
-            if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`${item.minGrade}年生で解放`); return; }
-            if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
+          const isGradeLocked = item.minGrade && playerLevel < getMinLevelForGrade(item.minGrade);
+          return (
+            <div key={item.id} onClick={() => {
+              if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`レベル${getMinLevelForGrade(item.minGrade)}で解放`); return; }
+              if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
             else if (canAfford) { handleBuy(item); }
             else { audioCtrl.playSE('stamp_bad'); }
           }} className={`flex flex-col items-center gap-0.5 cursor-pointer rounded-xl border-[3px] p-1.5 transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-105 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
@@ -553,7 +557,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
             </div>
             <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate w-full">{item.name}</div>
             {isGradeLocked
-              ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">{item.minGrade}年</div>
+              ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">Lv.{getMinLevelForGrade(item.minGrade)}</div>
               : owned ? <div className="text-[9px] font-black bg-white/70 px-1.5 rounded-full">x{count}</div>
               : <div className={`text-[9px] font-black px-1.5 rounded-full flex items-center gap-0.5 ${canAfford ? 'bg-yellow-200' : 'bg-gray-200 opacity-50'}`}><Coins size={8} />{item.price}</div>
             }

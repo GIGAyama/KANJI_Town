@@ -14,9 +14,14 @@ import {
 } from '../../systems/residents';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
+import { StorageAPI } from '../../systems/storage';
+import { getMinLevelForGrade } from '../../utils/level-system';
 
 const ResidentPanel = ({ stats, setView }) => {
   const [expandedOcc, setExpandedOcc] = useState(null);
+
+  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
+  const playerLevel = levelInfo.level;
 
   const satisfaction = useMemo(() => calculateSatisfaction(stats), [stats]);
   const satLabel = getSatisfactionLabel(satisfaction);
@@ -114,7 +119,7 @@ const ResidentPanel = ({ stats, setView }) => {
           {OCCUPATIONS.map(occ => {
             const count = residentStats.occupationCounts[occ.id] || 0;
             const isExpanded = expandedOcc === occ.id;
-            const isUnlocked = (stats.targetGrade || 1) >= occ.minGrade;
+            const isUnlocked = playerLevel >= getMinLevelForGrade(occ.minGrade);
             const occVillagers = villagers.filter(v => (v.occupation || 'farmer') === occ.id);
 
             return (
@@ -133,7 +138,7 @@ const ResidentPanel = ({ stats, setView }) => {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm font-black text-[var(--primary)]">{count}{F("人","にん")}</span>
-                    <span className="text-[10px] bg-[var(--panel)] px-1.5 py-0.5 rounded border border-[var(--text)] font-bold">{occ.minGrade}{F("年","ねん")}〜</span>
+                    <span className="text-[10px] bg-[var(--panel)] px-1.5 py-0.5 rounded border border-[var(--text)] font-bold">Lv.{getMinLevelForGrade(occ.minGrade)}〜</span>
                     {count > 0 ? (isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}
                   </div>
                 </button>

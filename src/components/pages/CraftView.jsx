@@ -10,6 +10,7 @@ import { getCraftBonuses } from '../../data/residents';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
+import { getMinLevelForGrade } from '../../utils/level-system';
 
 const TIER_NAMES = ['', '基礎', '商業', '文化', '産業', '公共', '伝説'];
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
@@ -29,11 +30,11 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
   const [craftResult, setCraftResult] = useState(null);
   const [filterTier, setFilterTier] = useState(0);
 
+  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
+  const playerLevel = levelInfo.level;
   const playerGrade = stats.targetGrade || 1;
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
-  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
-  const playerLevel = levelInfo.level;
   const perfectCount = stats.perfectCount || 0;
 
   // Get recipes for current category
@@ -237,7 +238,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
           {/* レシピ一覧 */}
           {recipes.map(recipe => {
-          const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
+          const isGradeUnlocked = playerLevel >= (recipe.minGrade || 1);
           const isUnlocked = isGradeUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
           const coinCost = recipe.coinCost || 0;

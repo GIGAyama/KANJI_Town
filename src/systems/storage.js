@@ -262,43 +262,43 @@ const StorageAPI = {
       if (a.type === 'grade') stats.achievements[a.id].current = gradeMastered[a.gradeNum] || 0;
     });
     return stats;
+  },
+  // terrain タイルは繁栄度計算から除外
+  calculateProsperity: (townMap, reviewCount) => {
+    let p = 0;
+    Object.values(townMap || {}).forEach(itemId => {
+      const item = TOWN_ITEMS.find(i => i.id === itemId);
+      if (item && item.pros && item.type !== 'terrain') p += item.pros;
+      else if (item && item.type === 'terrain' && item.pros < 0) p += item.pros; // 荒れ地・雑草はマイナス
+    });
+    return Math.max(0, p - (reviewCount * 50));
+  },
+  getTownRank: (prosperity) => {
+    const rank = [{ min: 5000, text: "黄金の都", badge: "🏯✨" }, { min: 2000, text: "大都市", badge: "🏙️" }, { min: 1000, text: "城下町", badge: "🏯" }, { min: 500, text: "にぎやかな町", badge: "🏘️" }, { min: 100, text: "開拓村", badge: "🛖" }, { min: 0, text: "あき地", badge: "🌱" }].find(r => prosperity >= r.min);
+    return rank || { text: "あき地", badge: "🌱" };
+  },
+  // 新しいレベルシステムに基づくラッパー（後方互換性とUI用追加データ）
+  getLevelInfo: (exp, townMap) => {
+    const info = getLevelInfoFromExp(exp || 0);
+    const themeName = getThemeFromLevel(info.level);
+    const prosperity = StorageAPI.calculateProsperity(townMap || {}, 0);
+    const rank = StorageAPI.getTownRank(prosperity);
+    return { 
+      level: info.level, 
+      title: rank.text, 
+      badge: rank.badge, 
+      progress: info.progress, 
+      currentLevelExp: info.currentLevelExp,
+      nextLevelExp: info.nextLevelExp, 
+      themeName,
+      targetReward: info.targetReward,
+      isMaxLevel: info.isMaxLevel
+    };
   }
 };
 
-// FIX: townMap defaults to {} to prevent Object.values(undefined) crash
-// terrain タイルは繁栄度計算から除外
-const calculateProsperity = (townMap, reviewCount) => {
-  let p = 0;
-  Object.values(townMap || {}).forEach(itemId => {
-    const item = TOWN_ITEMS.find(i => i.id === itemId);
-    if (item && item.pros && item.type !== 'terrain') p += item.pros;
-    else if (item && item.type === 'terrain' && item.pros < 0) p += item.pros; // 荒れ地・雑草はマイナス
-  });
-  return Math.max(0, p - (reviewCount * 50));
-};
-
-const getTownRank = (prosperity) => {
-  const rank = [{ min: 5000, text: "黄金の都", badge: "🏯✨" }, { min: 2000, text: "大都市", badge: "🏙️" }, { min: 1000, text: "城下町", badge: "🏯" }, { min: 500, text: "にぎやかな町", badge: "🏘️" }, { min: 100, text: "開拓村", badge: "🛖" }, { min: 0, text: "あき地", badge: "🌱" }].find(r => prosperity >= r.min);
-  return rank || { text: "あき地", badge: "🌱" };
-};
-
-// 新しいレベルシステムに基づくラッパー（後方互換性とUI用追加データ）
-const getLevelInfo = (exp, townMap) => {
-  const info = getLevelInfoFromExp(exp || 0);
-  const themeName = getThemeFromLevel(info.level);
-  const prosperity = calculateProsperity(townMap || {}, 0);
-  const rank = getTownRank(prosperity);
-  return { 
-    level: info.level, 
-    title: rank.text, 
-    badge: rank.badge, 
-    progress: info.progress, 
-    currentLevelExp: info.currentLevelExp,
-    nextLevelExp: info.nextLevelExp, 
-    themeName,
-    targetReward: info.targetReward,
-    isMaxLevel: info.isMaxLevel
-  };
-};
+const calculateProsperity = StorageAPI.calculateProsperity;
+const getTownRank = StorageAPI.getTownRank;
+const getLevelInfo = StorageAPI.getLevelInfo;
 
 export { StorageAPI, calculateProsperity, getTownRank, getLevelInfo };
