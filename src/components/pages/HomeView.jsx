@@ -6,7 +6,7 @@ import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { MATERIALS } from '../../data/materials';
-import { STORY_STAGES } from '../../data/story-stages';
+import { STORY_STAGES, getCurrentStage } from '../../data/story-stages';
 import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
@@ -26,11 +26,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
 
-  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
-  const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
+  const stage = getCurrentStage(level);
 
-  const isCraftUnlocked = learnedCount >= 3;
-  const isTownEditorUnlocked = learnedCount >= 1;
+  const isCraftUnlocked = level >= 3;
+  const isTownEditorUnlocked = level >= 1;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
 
