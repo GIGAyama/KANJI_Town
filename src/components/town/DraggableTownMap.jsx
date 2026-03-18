@@ -70,13 +70,14 @@ const GroundDiamond = React.memo(({ colors, tint, isEditing, isCultivatable, cul
 // ── メインコンポーネント ──
 const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 3 }) => {
   const containerRef = useRef(null);
-  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
-  const [zoom, setZoom] = useState(0.85);
-  const centerIsoY = toIsoY(C, C);
-  const [offset, setOffset] = useState({ x: 0, y: -centerIsoY + 300 });
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 }); // 初期値を0に設定
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [initialFitDone, setInitialFitDone] = useState(false); // 初回フィットフラグ
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const onCellTapRef = useRef(onCellTap);
+  
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
 
   // コンテナサイズ監視
@@ -84,11 +85,49 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
-      setContainerSize({ w: width, h: height });
+      if (width > 0 && height > 0) {
+        setContainerSize({ w: width, h: height });
+      }
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
+
+  // 初回マウント時：マップ範囲に合わせて自動ズーム・センタリング
+  useEffect(() => {
+    if (containerSize.w === 0 || containerSize.h === 0 || initialFitDone) return;
+
+    // 現在の開拓半径(R)を取得
+    const R = exploredRadius || 3;
+    
+    // 見えているマップの実質的な幅・高さを計算
+    const mapLogicalW = (2 * R + 2) * TILE_W;
+    const mapLogicalH = (2 * R + 2) * TILE_H + 120; // 建物高さなどを考慮した余白
+
+    // 画面サイズに対するフィット率を計算する
+    const padding = isEditing ? 120 : 32; // エディター時はUIが被るので余白を大きめに
+    const scaleX = (containerSize.w - padding * 2) / mapLogicalW;
+    const scaleY = (containerSize.h - padding * 2) / mapLogicalH;
+    
+    // はみ出さないように小さい方のスケールに合わせる
+    let newZoom = Math.min(scaleX, scaleY);
+    if (newZoom < 0.25) newZoom = 0.25; // 最低スケール
+    if (newZoom > 1.8) newZoom = 1.8;   // 最大スケール
+
+    setZoom(newZoom);
+
+    // isoX: 0, isoY: toIsoY(C,C) を画面の (w/2, h/2) に合わせるためのオフセット
+    const cx = 0;
+    const cy = toIsoY(C, C);
+    const offsetYExtra = isEditing ? -40 : 0; // 下部ツールバーが見えやすいように上に寄せる
+
+    setOffset({
+      x: containerSize.w / 2 - (cx * newZoom),
+      y: containerSize.h / 2 - (cy * newZoom) + offsetYExtra
+    });
+
+    setInitialFitDone(true);
+  }, [containerSize, exploredRadius, initialFitDone, isEditing]);
 
   const safeMapData = mapData || {};
   const safeBiomeMap = biomeMap || {};
