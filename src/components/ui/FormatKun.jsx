@@ -17,12 +17,23 @@ const RubyText = ({ text }) => {
   const re = /([^\s（）]+?)（([^）]+)）/g;
   let last = 0;
   let m;
+  let key = 0;
   while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    parts.push(<ruby key={m.index}>{m[1]}<rt>{m[2]}</rt></ruby>);
+    if (m.index > last) {
+      const plain = text.slice(last, m.index);
+      for (const ch of plain) {
+        parts.push(<ruby key={key++}>{ch}<rt></rt></ruby>);
+      }
+    }
+    parts.push(<ruby key={key++}>{m[1]}<rt>{m[2]}</rt></ruby>);
     last = re.lastIndex;
   }
-  if (last < text.length) parts.push(text.slice(last));
+  if (last < text.length) {
+    const plain = text.slice(last);
+    for (const ch of plain) {
+      parts.push(<ruby key={key++}>{ch}<rt></rt></ruby>);
+    }
+  }
   return <>{parts}</>;
 };
 
