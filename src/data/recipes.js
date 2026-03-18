@@ -450,6 +450,109 @@ export const BUILDING_RECIPES = [
     ],
     result: { type: "monument", amount: 1 },
   },
+
+  // ── 新規: 商業施設 ─────────────────
+  {
+    id: "build_cafe", name: "カフェ", category: "building", tier: 2, minGrade: 2, coinCost: 120,
+    ingredients: [{ material: "plank", amount: 3 }, { material: "glass", amount: 2 }, { material: "brick", amount: 1 }],
+    result: { type: "cafe", amount: 1 },
+  },
+  {
+    id: "build_bakery", name: "パン屋", category: "building", tier: 2, minGrade: 2, coinCost: 140,
+    ingredients: [{ material: "brick", amount: 3 }, { material: "plank", amount: 2 }, { material: "firestone", amount: 2 }],
+    result: { type: "bakery", amount: 1 },
+  },
+  {
+    id: "build_burger_shop", name: "ハンバーガーショップ", category: "building", tier: 3, minGrade: 3, coinCost: 250,
+    ingredients: [{ material: "brick", amount: 4 }, { material: "glass", amount: 3 }, { material: "steel", amount: 2 }],
+    result: { type: "burger_shop", amount: 1 },
+  },
+  {
+    id: "build_family_restaurant", name: "ファミレス", category: "building", tier: 3, minGrade: 3, coinCost: 350,
+    ingredients: [{ material: "brick", amount: 5 }, { material: "glass", amount: 4 }, { material: "steel", amount: 2 }, { material: "fabric", amount: 1 }],
+    result: { type: "family_restaurant", amount: 1 },
+  },
+  {
+    id: "build_convenience_store", name: "コンビニ", category: "building", tier: 2, minGrade: 2, coinCost: 160,
+    ingredients: [{ material: "brick", amount: 3 }, { material: "glass", amount: 3 }, { material: "steel", amount: 1 }],
+    result: { type: "convenience_store", amount: 1 },
+  },
+  {
+    id: "build_flower_shop", name: "花屋", category: "building", tier: 2, minGrade: 2, coinCost: 100,
+    ingredients: [{ material: "plank", amount: 3 }, { material: "glass", amount: 2 }, { material: "crystal", amount: 2 }],
+    result: { type: "flower_shop", amount: 1 },
+  },
+  {
+    id: "build_cinema", name: "映画館", category: "building", tier: 4, minGrade: 4, coinCost: 700,
+    ingredients: [{ material: "brick", amount: 8 }, { material: "steel", amount: 6 }, { material: "glass", amount: 4 }, { material: "precision", amount: 2 }],
+    result: { type: "cinema", amount: 1 },
+  },
+  {
+    id: "build_hotel", name: "ホテル", category: "building", tier: 5, minGrade: 5, coinCost: 1000,
+    ingredients: [{ material: "brick", amount: 10 }, { material: "glass", amount: 8 }, { material: "steel", amount: 5 }, { material: "fabric", amount: 3 }],
+    result: { type: "hotel", amount: 1 },
+  },
+
+  // ── 新規: 公共施設 ─────────────────
+  {
+    id: "build_hospital", name: "病院", category: "building", tier: 4, minGrade: 4, coinCost: 650,
+    ingredients: [{ material: "brick", amount: 8 }, { material: "glass", amount: 6 }, { material: "precision", amount: 3 }],
+    result: { type: "hospital", amount: 1 },
+  },
+  {
+    id: "build_fire_station", name: "消防署", category: "building", tier: 3, minGrade: 3, coinCost: 400,
+    ingredients: [{ material: "brick", amount: 6 }, { material: "steel", amount: 4 }, { material: "firestone", amount: 2 }],
+    result: { type: "fire_station", amount: 1 },
+  },
+  {
+    id: "build_police_box", name: "交番", category: "building", tier: 3, minGrade: 3, coinCost: 250,
+    ingredients: [{ material: "brick", amount: 4 }, { material: "steel", amount: 2 }, { material: "glass", amount: 2 }],
+    result: { type: "police_box", amount: 1 },
+  },
+  {
+    id: "build_post_office", name: "郵便局", category: "building", tier: 3, minGrade: 3, coinCost: 300,
+    ingredients: [{ material: "brick", amount: 5 }, { material: "glass", amount: 3 }, { material: "steel", amount: 2 }],
+    result: { type: "post_office", amount: 1 },
+  },
+  {
+    id: "build_station", name: "駅", category: "building", tier: 5, minGrade: 5, coinCost: 1200,
+    ingredients: [{ material: "steel", amount: 12 }, { material: "glass", amount: 8 }, { material: "brick", amount: 6 }, { material: "precision", amount: 4 }],
+    result: { type: "station", amount: 1 },
+  },
+
+  // ── 新規: 現代建築 ─────────────────
+  {
+    id: "build_office_building", name: "オフィスビル", category: "building", tier: 5, minGrade: 5, coinCost: 1000,
+    ingredients: [{ material: "steel", amount: 10 }, { material: "glass", amount: 10 }, { material: "precision", amount: 3 }],
+    result: { type: "office_building", amount: 1 },
+  },
+  {
+    id: "build_tower_apartment", name: "タワマン", category: "building", tier: 5, minGrade: 5, coinCost: 1500,
+    ingredients: [{ material: "steel", amount: 15 }, { material: "glass", amount: 12 }, { material: "precision", amount: 5 }, { material: "brick", amount: 8 }],
+    result: { type: "tower_apartment", amount: 1 },
+  },
+  {
+    id: "build_tv_tower", name: "テレビ塔", category: "building", tier: 6, minGrade: 6, coinCost: 2000,
+    ingredients: [{ material: "steel", amount: 20 }, { material: "precision", amount: 8 }, { material: "glass", amount: 6 }, { material: "legendSteel", amount: 2 }],
+    result: { type: "tv_tower", amount: 1 },
+  },
+
+  // ── 新規: 公園・レジャー ─────────────────
+  {
+    id: "build_park", name: "公園", category: "building", tier: 2, minGrade: 2, coinCost: 150,
+    ingredients: [{ material: "wood", amount: 5 }, { material: "stone", amount: 4 }, { material: "crystal", amount: 2 }],
+    result: { type: "park", amount: 1 },
+  },
+  {
+    id: "build_pool", name: "プール", category: "building", tier: 4, minGrade: 4, coinCost: 500,
+    ingredients: [{ material: "brick", amount: 8 }, { material: "crystal", amount: 6 }, { material: "steel", amount: 3 }],
+    result: { type: "pool", amount: 1 },
+  },
+  {
+    id: "build_ferris_wheel", name: "観覧車", category: "building", tier: 5, minGrade: 5, coinCost: 1200,
+    ingredients: [{ material: "steel", amount: 15 }, { material: "precision", amount: 6 }, { material: "glass", amount: 5 }],
+    result: { type: "ferris_wheel", amount: 1 },
+  },
 ];
 
 // ══════════════════════════════════════════════════
@@ -751,6 +854,41 @@ export const MEGA_RECIPES = [
     result: { type: "mega_wonder", amount: 1 },
     desc: "3×3の世界遺産。全1026字習得への道の証",
     pros: 20000,
+  },
+
+  // 新規メガ建築
+  {
+    id: "mega_airport", name: "空港", category: "mega", tier: 6, minGrade: 6, coinCost: 3000,
+    size: { w: 2, h: 2 },
+    ingredients: [
+      { material: "steel", amount: 25 }, { material: "glass", amount: 15 },
+      { material: "precision", amount: 8 }, { material: "legendSteel", amount: 3 },
+    ],
+    result: { type: "airport", amount: 1 },
+    desc: "2×2の国際空港。全収集量+30%",
+    pros: 2000,
+  },
+  {
+    id: "mega_stadium", name: "スタジアム", category: "mega", tier: 5, minGrade: 5, coinCost: 2000,
+    size: { w: 2, h: 2 },
+    ingredients: [
+      { material: "steel", amount: 18 }, { material: "brick", amount: 12 },
+      { material: "glass", amount: 8 }, { material: "precision", amount: 4 },
+    ],
+    result: { type: "stadium", amount: 1 },
+    desc: "2×2の大型スタジアム。満足度+25",
+    pros: 1500,
+  },
+  {
+    id: "mega_amusement_park", name: "遊園地", category: "mega", tier: 5, minGrade: 5, coinCost: 2500,
+    size: { w: 2, h: 2 },
+    ingredients: [
+      { material: "steel", amount: 15 }, { material: "precision", amount: 6 },
+      { material: "glass", amount: 10 }, { material: "fabric", amount: 5 },
+    ],
+    result: { type: "amusement_park", amount: 1 },
+    desc: "2×2の遊園地。満足度+30、コインボーナス+20%",
+    pros: 2500,
   },
 ];
 
@@ -1058,6 +1196,80 @@ export const DECORATION_RECIPES = [
     result: { type: "festival_stage", amount: 1 },
     desc: "お祭りの舞台。満足度+12",
   },
+
+  // ── 新規: 乗り物 ─────────────────
+  {
+    id: "deco_car", name: "自動車", category: "decoration", tier: 2, minGrade: 2, coinCost: 120,
+    ingredients: [{ material: "steel", amount: 3 }, { material: "glass", amount: 1 }],
+    result: { type: "car", amount: 1 }, desc: "赤い自動車。繁栄度+30",
+  },
+  {
+    id: "deco_bus", name: "バス", category: "decoration", tier: 3, minGrade: 3, coinCost: 250,
+    ingredients: [{ material: "steel", amount: 5 }, { material: "glass", amount: 3 }, { material: "iron", amount: 2 }],
+    result: { type: "bus", amount: 1 }, desc: "緑のバス。繁栄度+50",
+  },
+  {
+    id: "deco_bicycle", name: "自転車", category: "decoration", tier: 1, minGrade: 1, coinCost: 30,
+    ingredients: [{ material: "iron", amount: 2 }],
+    result: { type: "bicycle", amount: 1 }, desc: "小さな自転車。繁栄度+10",
+  },
+  {
+    id: "deco_ship_vehicle", name: "船", category: "decoration", tier: 3, minGrade: 3, coinCost: 350,
+    ingredients: [{ material: "wood", amount: 8 }, { material: "fabric", amount: 3 }, { material: "iron", amount: 2 }],
+    result: { type: "ship_vehicle", amount: 1 }, desc: "帆船。繁栄度+80",
+  },
+  {
+    id: "deco_airplane", name: "飛行機", category: "decoration", tier: 5, minGrade: 5, coinCost: 700,
+    ingredients: [{ material: "steel", amount: 8 }, { material: "precision", amount: 4 }, { material: "glass", amount: 2 }],
+    result: { type: "airplane", amount: 1 }, desc: "銀色の飛行機。繁栄度+150",
+  },
+  {
+    id: "deco_fire_truck", name: "消防車", category: "decoration", tier: 3, minGrade: 3, coinCost: 300,
+    ingredients: [{ material: "steel", amount: 5 }, { material: "iron", amount: 3 }, { material: "firestone", amount: 1 }],
+    result: { type: "fire_truck", amount: 1 }, desc: "赤い消防車。繁栄度+60",
+  },
+
+  // ── 新規: ストリートファニチャー ─────────────────
+  {
+    id: "deco_bench", name: "ベンチ", category: "decoration", tier: 1, minGrade: 1, coinCost: 20,
+    ingredients: [{ material: "wood", amount: 2 }],
+    result: { type: "bench", amount: 1 }, desc: "休憩用ベンチ。繁栄度+5",
+  },
+  {
+    id: "deco_mailbox", name: "ポスト", category: "decoration", tier: 1, minGrade: 1, coinCost: 25,
+    ingredients: [{ material: "iron", amount: 2 }],
+    result: { type: "mailbox", amount: 1 }, desc: "赤いポスト。繁栄度+5",
+  },
+  {
+    id: "deco_phone_booth", name: "公衆電話", category: "decoration", tier: 2, minGrade: 2, coinCost: 50,
+    ingredients: [{ material: "steel", amount: 2 }, { material: "glass", amount: 1 }],
+    result: { type: "phone_booth", amount: 1 }, desc: "レトロな電話ボックス。繁栄度+8",
+  },
+  {
+    id: "deco_street_light", name: "街灯", category: "decoration", tier: 1, minGrade: 1, coinCost: 30,
+    ingredients: [{ material: "iron", amount: 2 }, { material: "glass", amount: 1 }],
+    result: { type: "street_light", amount: 1 }, desc: "道を照らす街灯。繁栄度+6",
+  },
+  {
+    id: "deco_bus_stop", name: "バス停", category: "decoration", tier: 2, minGrade: 2, coinCost: 60,
+    ingredients: [{ material: "steel", amount: 2 }, { material: "plank", amount: 1 }],
+    result: { type: "bus_stop", amount: 1 }, desc: "バスの停留所。繁栄度+10",
+  },
+  {
+    id: "deco_vending_machine", name: "自動販売機", category: "decoration", tier: 2, minGrade: 2, coinCost: 80,
+    ingredients: [{ material: "steel", amount: 3 }, { material: "precision", amount: 1 }],
+    result: { type: "vending_machine", amount: 1 }, desc: "飲み物の自販機。繁栄度+12",
+  },
+  {
+    id: "deco_trash_can", name: "ゴミ箱", category: "decoration", tier: 1, minGrade: 1, coinCost: 15,
+    ingredients: [{ material: "iron", amount: 1 }],
+    result: { type: "trash_can", amount: 1 }, desc: "まちをきれいに。繁栄度+3",
+  },
+  {
+    id: "deco_playground", name: "遊具", category: "decoration", tier: 2, minGrade: 2, coinCost: 180,
+    ingredients: [{ material: "steel", amount: 3 }, { material: "wood", amount: 3 }],
+    result: { type: "playground", amount: 1 }, desc: "楽しい遊具。満足度+6",
+  },
 ];
 
 // ══════════════════════════════════════════════════
@@ -1128,6 +1340,39 @@ export const BUILDING_SETS = [
     required: ["t_festival_stage", "t_bell_tower", "t_cherry_road"],
     bonus: { prosperity: 300, satisfactionBonus: 15, coinMultiplier: 1.1 },
     desc: "祭りの舞台・鐘楼・桜並木をすべて配置",
+  },
+  // 新規セットボーナス
+  {
+    id: "set_modern_city",
+    name: "近代都市",
+    emoji: "🏙️",
+    required: ["t_office_building", "t_tower_apartment", "t_station"],
+    bonus: { prosperity: 800, coinMultiplier: 1.3 },
+    desc: "オフィスビル・タワマン・駅をすべて配置",
+  },
+  {
+    id: "set_shopping_district",
+    name: "グルメ通り",
+    emoji: "🍔",
+    required: ["t_cafe", "t_bakery", "t_burger_shop", "t_family_restaurant"],
+    bonus: { prosperity: 400, satisfactionBonus: 12 },
+    desc: "カフェ・パン屋・バーガーショップ・ファミレスをすべて配置",
+  },
+  {
+    id: "set_safety",
+    name: "安全なまち",
+    emoji: "🚒",
+    required: ["t_hospital", "t_fire_station", "t_police_box"],
+    bonus: { prosperity: 500, satisfactionBonus: 15 },
+    desc: "病院・消防署・交番をすべて配置",
+  },
+  {
+    id: "set_leisure",
+    name: "レジャーシティ",
+    emoji: "🎡",
+    required: ["t_park", "t_pool", "t_cinema"],
+    bonus: { prosperity: 500, satisfactionBonus: 18 },
+    desc: "公園・プール・映画館をすべて配置",
   },
 ];
 
