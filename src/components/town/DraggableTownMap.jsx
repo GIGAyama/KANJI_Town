@@ -545,7 +545,10 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         </div>
       )}
       {/* ズームボタン & 住民表示切り替え */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}>
         {isEditing && (
           <>
             <button onClick={handleZoomIn} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
