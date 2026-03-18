@@ -252,31 +252,31 @@ const Fl = ({ cx=50, cy=75, color='#e2e8f0', thickness=2, scale=1, type='road' }
     <g transform={`translate(${cx}, ${cy})`}>
       <SharedDefs />
       {/* Depth Slab */}
-      <polygon points={`0,0 ${dx},${dy} ${dx},${dy+thickness} 0,${thickness}`} fill={fRight} />
-      <polygon points={`0,0 -${dx},${dy} -${dx},${dy+thickness} 0,${thickness}`} fill={fLeft} />
+      <polygon points={`0,0 ${dx},-${dy} ${dx},-${dy}+${thickness} 0,${thickness}`} fill={fRight} />
+      <polygon points={`0,0 -${dx},-${dy} -${dx},-${dy}+${thickness} 0,${thickness}`} fill={fLeft} />
       
       {/* Top Surface */}
-      <polygon points={`0,0 ${dx},${dy} 0,${dy*2} -${dx},${dy}`} fill={type==='water' ? 'url(#grad-water)' : fTop} />
+      <polygon points={`0,0 ${dx},-${dy} 0,-${dy*2} -${dx},-${dy}`} fill={type==='water' ? 'url(#grad-water)' : fTop} />
       
       {/* Surface Details */}
       {type === 'road' && (
         <>
-          <polygon points={`0,${dy*0.2} ${dx*0.8},${dy*1} 0,${dy*1.8} -${dx*0.8},${dy*1}`} fill="#f8fafc" opacity="0.3" />
-          <line x1="0" y1={dy*0.5} x2="0" y2={dy*1.5} stroke="#cbd5e1" strokeWidth="2" strokeDasharray="4,2" />
+          <polygon points={`0,-${dy*1.8} ${dx*0.8},-${dy} 0,-${dy*0.2} -${dx*0.8},-${dy}`} fill="#f8fafc" opacity="0.3" />
+          <line x1="0" y1={-dy*1.5} x2="0" y2={-dy*0.5} stroke="#cbd5e1" strokeWidth="2" strokeDasharray="4,2" />
         </>
       )}
       {type === 'water' && (
         <>
-          <path d={`M -${dx*0.5},${dy} Q 0,${dy*0.6} ${dx*0.5},${dy}`} fill="none" stroke="#bae6fd" strokeWidth="1" opacity="0.8" />
-          <path d={`M -${dx*0.3},${dy*1.4} Q 0,${dy*1.1} ${dx*0.3},${dy*1.4}`} fill="none" stroke="#e0f2fe" strokeWidth="1" opacity="0.6" />
+          <path d={`M -${dx*0.5},-${dy} Q 0,-${dy*1.4} ${dx*0.5},-${dy}`} fill="none" stroke="#bae6fd" strokeWidth="1" opacity="0.8" />
+          <path d={`M -${dx*0.3},-${dy*0.6} Q 0,-${dy*0.9} ${dx*0.3},-${dy*0.6}`} fill="none" stroke="#e0f2fe" strokeWidth="1" opacity="0.6" />
         </>
       )}
       {type === 'garden' && (
         <>
-          <circle cx={-dx*0.3} cy={dy*1} r={3} fill="#a3e635" filter="url(#soft-shadow)" />
-          <circle cx={dx*0.4} cy={dy*0.8} r={4} fill="#84cc16" filter="url(#soft-shadow)" />
-          <circle cx={0} cy={dy*1.5} r={3.5} fill="#4ade80" filter="url(#soft-shadow)" />
-          <path d={`M -${dx*0.2},${dy*0.5} C 0,${dy*0.8} ${dx*0.2},${dy*0.5}`} fill="none" stroke="#65a30d" strokeWidth="2" />
+          <circle cx={-dx*0.3} cy={-dy} r={3} fill="#a3e635" filter="url(#soft-shadow)" />
+          <circle cx={dx*0.4} cy={-dy*1.2} r={4} fill="#84cc16" filter="url(#soft-shadow)" />
+          <circle cx={0} cy={-dy*0.5} r={3.5} fill="#4ade80" filter="url(#soft-shadow)" />
+          <path d={`M -${dx*0.2},-${dy*1.5} C 0,-${dy*1.2} ${dx*0.2},-${dy*1.5}`} fill="none" stroke="#65a30d" strokeWidth="2" />
         </>
       )}
     </g>
@@ -311,9 +311,9 @@ export const SvgBambooGrove = () => <svg viewBox="0 0 100 100"><SharedDefs/><g t
 // ==========================================
 // EXPORTS: Rich Structures
 // ==========================================
-export const SvgRoad     = () => <svg viewBox="0 0 100 100"><Fl type="road" color="#cbd5e1" thickness={3} scale={1.2} /></svg>;
-export const SvgWater    = () => <svg viewBox="0 0 100 100"><Fl type="water" color="#7dd3fc" thickness={1} scale={1.2} /></svg>;
-export const SvgGarden   = () => <svg viewBox="0 0 100 100"><Fl type="garden" color="#d4a96a" thickness={4} scale={1.2} /></svg>;
+export const SvgRoad     = () => <svg viewBox="0 0 64 34" className="w-full h-full drop-shadow-sm"><Fl type="road" color="#cbd5e1" thickness={3} scale={1.28} cx={32} cy={32} /></svg>;
+export const SvgWater    = () => <svg viewBox="0 0 64 34" className="w-full h-full drop-shadow-sm"><Fl type="water" color="#7dd3fc" thickness={2} scale={1.28} cx={32} cy={32} /></svg>;
+export const SvgGarden   = () => <svg viewBox="0 0 64 34" className="w-full h-full"><Fl type="garden" color="#d4a96a" thickness={4} scale={1.28} cx={32} cy={32} /></svg>;
 export const SvgFence    = () => <svg viewBox="0 0 100 100"><g transform="translate(50,75)"><rect x="-25" y="-15" width="50" height="4" fill="#b45309"/><rect x="-20" y="-20" width="6" height="20" fill="#92400e"/><rect x="14" y="-20" width="6" height="20" fill="#92400e"/></g></svg>;
 
 // Tier 1-3
@@ -385,7 +385,7 @@ export const SvgHotSpring = () => <svg viewBox="0 0 100 100"><B wall="#e0f2fe" r
 export const SvgObservatory = () => <svg viewBox="0 0 100 100"><B wall="#f8fafc" roof="#1e293b" type="flat" scale={1.5}><circle cx="0" cy="-30" r="20" fill="#e2e8f0"/></B></svg>;
 
 export const SvgShoppingStreet = () => <svg viewBox="0 0 100 100"><B wall="#ffedd5" roof="#f97316" type="slope" scale={1.6}/></svg>;
-export const SvgZenGarden = () => <svg viewBox="0 0 100 100"><Fl type="garden" color="#e5e5e5" thickness={3} scale={1.5} /></svg>;
+export const SvgZenGarden = () => <svg viewBox="0 0 64 34" className="w-full h-full drop-shadow-sm"><Fl type="garden" color="#e5e5e5" thickness={3} scale={1.28} cx={32} cy={32} /></svg>;
 export const SvgNationalLibrary = () => <svg viewBox="0 0 100 100"><B wall="#fef3c7" roof="#92400e" type="slope" scale={2.4}/></svg>;
 
 export const SvgMegaHarborTown = () => <svg viewBox="0 0 100 100"><B wall="#e0f2fe" roof="#0369a1" type="flat" scale={3.0}/></svg>;
@@ -397,7 +397,7 @@ export const SvgStatue = () => <svg viewBox="0 0 100 100"><SvgMonument/></svg>;
 export const SvgWindmill = () => <svg viewBox="0 0 100 100"><B wall="#fde047" roof="#ca8a04" type="tower" scale={1.5}><path d="M0,-30 L-20,-50 M0,-30 L20,-50 M0,-30 L-20,-10 M0,-30 L20,-10" stroke="#f8fafc" strokeWidth="4"/></B></svg>;
 export const SvgBellTower = () => <svg viewBox="0 0 100 100"><B wall="#ffedd5" roof="#78350f" type="slope" scale={1.4}><circle cx="0" cy="-20" r="5" fill="#fbbf24"/></B></svg>;
 export const SvgPond = () => <svg viewBox="0 0 100 100"><SvgWater/></svg>;
-export const SvgCherryRoad = () => <svg viewBox="0 0 100 100"><Fl type="road" color="#fce7f3" thickness={3} scale={1.2} /></svg>;
+export const SvgCherryRoad = () => <svg viewBox="0 0 64 34" className="w-full h-full drop-shadow-sm"><Fl type="road" color="#fce7f3" thickness={3} scale={1.28} cx={32} cy={32} /></svg>;
 export const SvgClockTower = () => <svg viewBox="0 0 100 100"><B wall="#fef3c7" roof="#92400e" type="tower" scale={1.8}><circle cx="0" cy="-35" r="10" fill="#f8fafc"/><line x1="0" y1="-35" x2="0" y2="-40" stroke="#1e293b" strokeWidth="2"/></B></svg>;
 export const SvgGoldStatue = () => <svg viewBox="0 0 100 100"><g transform="translate(50,80)" filter="url(#strong-shadow)"><polygon points="0,-60 -15,-10 0,0 15,-10" fill="url(#grad-gold)"/><polygon points="0,-60 -15,-10 0,-20" fill="#fcd34d"/></g></svg>;
 export const SvgFestivalStage = () => <svg viewBox="0 0 100 100"><B wall="#fef9c3" roof="#ef4444" type="flat" scale={1.2}><circle cx="-10" cy="-20" r="3" fill="#fbbf24" filter="url(#glow-effect)"/></B></svg>;
