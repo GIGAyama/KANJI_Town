@@ -14,9 +14,16 @@ import {
   SvgMegaHarborTown, SvgMegaShrineComplex,
   SvgStoneLantern, SvgFountain, SvgStatue, SvgWindmill, SvgBellTower, SvgPond, SvgCherryRoad,
   SvgClockTower, SvgGoldStatue, SvgFestivalStage,
+  // 新オブジェクト
+  SvgCafe, SvgBakery, SvgBurgerShop, SvgFamilyRestaurant, SvgConvenienceStore, SvgFlowerShop, SvgCinema, SvgHotel,
+  SvgHospital, SvgFireStation, SvgPoliceBox, SvgPostOffice, SvgStation, SvgAirport,
+  SvgOfficeBuilding, SvgTowerApartment, SvgTvTower, SvgStadium,
+  SvgPark, SvgPlayground, SvgPool, SvgFerrisWheel, SvgAmusementPark,
+  SvgCar, SvgBus, SvgBicycle, SvgShipVehicle, SvgAirplane, SvgFireTruck,
+  SvgBench, SvgMailbox, SvgPhoneBooth, SvgStreetLight, SvgBusStop, SvgVendingMachine, SvgTrashCan,
 } from './iso-svg';
 
-export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, SvgTree, SvgSakura, SvgPine, SvgRock, SvgRoad, SvgWater, SvgWall, SvgBridge, SvgHouse1, SvgShop, SvgSchool, SvgCastle, SvgGoldCastle, SvgTorii, SvgTemple, SvgDragon, SvgGhostBoss, SvgVillager, SvgGrassland, SvgForestFloor, SvgSand, SvgShallowWater, SvgHighland, SvgFence, SvgWell, SvgWarehouse, SvgMarket, SvgPort, SvgGarden, SvgSmithy, SvgFactory, SvgWatermill, SvgMine, SvgLibrary, SvgTownhall, SvgEmbassy, SvgGoldenTower, SvgGuardianShrine, SvgMonument, SvgHouse2, SvgHouse3, SvgDepartment, SvgGrandSmithy, SvgUniversity, SvgMegaGrandMarket, SvgMegaFortress, SvgMegaAcademy, SvgMegaImperialPalace, SvgMegaWonder, SvgCherryPavilion, SvgCrystalTower, SvgPhilosophersLab, SvgDragonShrine, SvgPerfectMonument, SvgBambooGrove, SvgHotSpring, SvgObservatory, SvgGrandWarehouse, SvgShoppingStreet, SvgZenGarden, SvgNationalLibrary, SvgMegaHarborTown, SvgMegaShrineComplex, SvgStoneLantern, SvgFountain, SvgStatue, SvgWindmill, SvgBellTower, SvgPond, SvgCherryRoad, SvgClockTower, SvgGoldStatue, SvgFestivalStage };
+export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, SvgTree, SvgSakura, SvgPine, SvgRock, SvgRoad, SvgWater, SvgWall, SvgBridge, SvgHouse1, SvgShop, SvgSchool, SvgCastle, SvgGoldCastle, SvgTorii, SvgTemple, SvgDragon, SvgGhostBoss, SvgVillager, SvgGrassland, SvgForestFloor, SvgSand, SvgShallowWater, SvgHighland, SvgFence, SvgWell, SvgWarehouse, SvgMarket, SvgPort, SvgGarden, SvgSmithy, SvgFactory, SvgWatermill, SvgMine, SvgLibrary, SvgTownhall, SvgEmbassy, SvgGoldenTower, SvgGuardianShrine, SvgMonument, SvgHouse2, SvgHouse3, SvgDepartment, SvgGrandSmithy, SvgUniversity, SvgMegaGrandMarket, SvgMegaFortress, SvgMegaAcademy, SvgMegaImperialPalace, SvgMegaWonder, SvgCherryPavilion, SvgCrystalTower, SvgPhilosophersLab, SvgDragonShrine, SvgPerfectMonument, SvgBambooGrove, SvgHotSpring, SvgObservatory, SvgGrandWarehouse, SvgShoppingStreet, SvgZenGarden, SvgNationalLibrary, SvgMegaHarborTown, SvgMegaShrineComplex, SvgStoneLantern, SvgFountain, SvgStatue, SvgWindmill, SvgBellTower, SvgPond, SvgCherryRoad, SvgClockTower, SvgGoldStatue, SvgFestivalStage, SvgCafe, SvgBakery, SvgBurgerShop, SvgFamilyRestaurant, SvgConvenienceStore, SvgFlowerShop, SvgCinema, SvgHotel, SvgHospital, SvgFireStation, SvgPoliceBox, SvgPostOffice, SvgStation, SvgAirport, SvgOfficeBuilding, SvgTowerApartment, SvgTvTower, SvgStadium, SvgPark, SvgPlayground, SvgPool, SvgFerrisWheel, SvgAmusementPark, SvgCar, SvgBus, SvgBicycle, SvgShipVehicle, SvgAirplane, SvgFireTruck, SvgBench, SvgMailbox, SvgPhoneBooth, SvgStreetLight, SvgBusStop, SvgVendingMachine, SvgTrashCan };
 
 const TOWN_ITEMS = [
   // 地形（内部管理用・パレット非表示） isoHeight=0
@@ -108,6 +115,48 @@ const TOWN_ITEMS = [
   { id: 't_clock_tower',    svg: SvgClockTower,     name: '時計塔',       price: 800,   pros: 80,    type: 'decoration', bg: 'bg-[#d4a96a]', minGrade: 4, isoHeight: 34 },
   { id: 't_gold_statue',    svg: SvgGoldStatue,     name: '黄金像',       price: 2000,  pros: 200,   type: 'decoration', bg: 'bg-[#fef08a]', minGrade: 5, isoHeight: 24 },
   { id: 't_festival_stage', svg: SvgFestivalStage,  name: '祭りの舞台',   price: 700,   pros: 60,    type: 'decoration', bg: 'bg-[#78350f]', minGrade: 4, isoHeight: 18 },
+  // 商業施設
+  { id: 't_cafe',              svg: SvgCafe,              name: 'カフェ',             price: 300,   pros: 100,   type: 'building',   bg: 'bg-[#92400e]', minGrade: 2, isoHeight: 22 },
+  { id: 't_bakery',            svg: SvgBakery,            name: 'パン屋',             price: 350,   pros: 120,   type: 'building',   bg: 'bg-[#ffedd5]', minGrade: 2, isoHeight: 22 },
+  { id: 't_burger_shop',       svg: SvgBurgerShop,        name: 'ハンバーガーショップ', price: 500,   pros: 180,   type: 'building',   bg: 'bg-[#fef08a]', minGrade: 3, isoHeight: 24 },
+  { id: 't_family_restaurant', svg: SvgFamilyRestaurant,  name: 'ファミレス',         price: 700,   pros: 250,   type: 'building',   bg: 'bg-[#fef9c3]', minGrade: 3, isoHeight: 26 },
+  { id: 't_convenience_store', svg: SvgConvenienceStore,  name: 'コンビニ',           price: 400,   pros: 150,   type: 'building',   bg: 'bg-[#e0f2fe]', minGrade: 2, isoHeight: 22 },
+  { id: 't_flower_shop',       svg: SvgFlowerShop,        name: '花屋',               price: 300,   pros: 100,   type: 'building',   bg: 'bg-[#fce7f3]', minGrade: 2, isoHeight: 20 },
+  { id: 't_cinema',            svg: SvgCinema,            name: '映画館',             price: 1200,  pros: 500,   type: 'building',   bg: 'bg-[#334155]', minGrade: 4, isoHeight: 32 },
+  { id: 't_hotel',             svg: SvgHotel,             name: 'ホテル',             price: 1500,  pros: 600,   type: 'building',   bg: 'bg-[#475569]', minGrade: 5, isoHeight: 36 },
+  // 公共施設
+  { id: 't_hospital',          svg: SvgHospital,          name: '病院',               price: 1000,  pros: 400,   type: 'building',   bg: 'bg-[#f8fafc]', minGrade: 4, isoHeight: 30 },
+  { id: 't_fire_station',      svg: SvgFireStation,       name: '消防署',             price: 800,   pros: 300,   type: 'building',   bg: 'bg-[#ef4444]', minGrade: 3, isoHeight: 26 },
+  { id: 't_police_box',        svg: SvgPoliceBox,         name: '交番',               price: 500,   pros: 200,   type: 'building',   bg: 'bg-[#1d4ed8]', minGrade: 3, isoHeight: 20 },
+  { id: 't_post_office',       svg: SvgPostOffice,        name: '郵便局',             price: 600,   pros: 250,   type: 'building',   bg: 'bg-[#f8fafc]', minGrade: 3, isoHeight: 24 },
+  { id: 't_station',           svg: SvgStation,           name: '駅',                 price: 2000,  pros: 800,   type: 'building',   bg: 'bg-[#e2e8f0]', minGrade: 5, isoHeight: 34 },
+  { id: 't_airport',           svg: SvgAirport,           name: '空港',               price: 5000,  pros: 2000,  type: 'mega',       bg: 'bg-[#e2e8f0]', minGrade: 6, size: { w: 2, h: 2 }, isoHeight: 40 },
+  // 現代建築
+  { id: 't_office_building',   svg: SvgOfficeBuilding,    name: 'オフィスビル',       price: 1500,  pros: 600,   type: 'building',   bg: 'bg-[#475569]', minGrade: 5, isoHeight: 38 },
+  { id: 't_tower_apartment',   svg: SvgTowerApartment,    name: 'タワマン',           price: 2500,  pros: 1000,  type: 'building',   bg: 'bg-[#64748b]', minGrade: 5, isoHeight: 42 },
+  { id: 't_tv_tower',          svg: SvgTvTower,           name: 'テレビ塔',           price: 3000,  pros: 1200,  type: 'special',    bg: 'bg-[#ef4444]', minGrade: 6, isoHeight: 48 },
+  { id: 't_stadium',           svg: SvgStadium,           name: 'スタジアム',         price: 4000,  pros: 1500,  type: 'mega',       bg: 'bg-[#86efac]', minGrade: 5, size: { w: 2, h: 2 }, isoHeight: 36 },
+  // 公園・レジャー
+  { id: 't_park',              svg: SvgPark,              name: '公園',               price: 400,   pros: 100,   type: 'building',   bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 12 },
+  { id: 't_playground',        svg: SvgPlayground,        name: '遊具',               price: 300,   pros: 80,    type: 'decoration', bg: 'bg-[#fde68a]', minGrade: 2, isoHeight: 16 },
+  { id: 't_pool',              svg: SvgPool,              name: 'プール',             price: 800,   pros: 250,   type: 'building',   bg: 'bg-[#7dd3fc]', minGrade: 4, isoHeight: 10 },
+  { id: 't_ferris_wheel',      svg: SvgFerrisWheel,       name: '観覧車',             price: 2000,  pros: 700,   type: 'special',    bg: 'bg-[#e2e8f0]', minGrade: 5, isoHeight: 44 },
+  { id: 't_amusement_park',    svg: SvgAmusementPark,     name: '遊園地',             price: 6000,  pros: 2500,  type: 'mega',       bg: 'bg-[#86efac]', minGrade: 5, size: { w: 2, h: 2 }, isoHeight: 40 },
+  // 乗り物
+  { id: 't_car',               svg: SvgCar,               name: '自動車',             price: 200,   pros: 30,    type: 'decoration', bg: 'bg-[#ef4444]', minGrade: 2, isoHeight: 8 },
+  { id: 't_bus',               svg: SvgBus,               name: 'バス',               price: 400,   pros: 50,    type: 'decoration', bg: 'bg-[#22c55e]', minGrade: 3, isoHeight: 12 },
+  { id: 't_bicycle',           svg: SvgBicycle,           name: '自転車',             price: 80,    pros: 10,    type: 'decoration', bg: 'bg-[#3b82f6]', isoHeight: 6 },
+  { id: 't_ship_vehicle',      svg: SvgShipVehicle,       name: '船',                 price: 600,   pros: 80,    type: 'decoration', bg: 'bg-[#7dd3fc]', minGrade: 3, isoHeight: 10 },
+  { id: 't_airplane',          svg: SvgAirplane,          name: '飛行機',             price: 1000,  pros: 150,   type: 'decoration', bg: 'bg-[#e2e8f0]', minGrade: 5, isoHeight: 14 },
+  { id: 't_fire_truck',        svg: SvgFireTruck,         name: '消防車',             price: 500,   pros: 60,    type: 'decoration', bg: 'bg-[#ef4444]', minGrade: 3, isoHeight: 12 },
+  // ストリートファニチャー
+  { id: 't_bench',             svg: SvgBench,             name: 'ベンチ',             price: 50,    pros: 5,     type: 'decoration', bg: 'bg-[#d97706]', isoHeight: 6 },
+  { id: 't_mailbox',           svg: SvgMailbox,           name: 'ポスト',             price: 60,    pros: 5,     type: 'decoration', bg: 'bg-[#ef4444]', isoHeight: 8 },
+  { id: 't_phone_booth',       svg: SvgPhoneBooth,        name: '公衆電話',           price: 80,    pros: 8,     type: 'decoration', bg: 'bg-[#ef4444]', minGrade: 2, isoHeight: 10 },
+  { id: 't_street_light',      svg: SvgStreetLight,       name: '街灯',               price: 70,    pros: 6,     type: 'decoration', bg: 'bg-[#94a3b8]', isoHeight: 14 },
+  { id: 't_bus_stop',          svg: SvgBusStop,           name: 'バス停',             price: 100,   pros: 10,    type: 'decoration', bg: 'bg-[#3b82f6]', minGrade: 2, isoHeight: 12 },
+  { id: 't_vending_machine',   svg: SvgVendingMachine,    name: '自動販売機',         price: 120,   pros: 12,    type: 'decoration', bg: 'bg-[#1e293b]', minGrade: 2, isoHeight: 10 },
+  { id: 't_trash_can',         svg: SvgTrashCan,          name: 'ゴミ箱',             price: 40,    pros: 3,     type: 'decoration', bg: 'bg-[#64748b]', isoHeight: 6 },
 ];
 
 export { TOWN_ITEMS };
