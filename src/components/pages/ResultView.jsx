@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, Sparkles, Coins, Map, ChevronRight } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import AnimatedCounter from '../ui/AnimatedCounter';

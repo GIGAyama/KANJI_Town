@@ -6,14 +6,15 @@ import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { MATERIALS } from '../../data/materials';
-import { STORY_STAGES } from '../../data/story-stages';
+import { STORY_STAGES, getCurrentStage } from '../../data/story-stages';
 import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
 
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission }) => {
-  const { level, title, badge, progress } = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
+  const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
+  const { level, title, badge, progress, remainingExp, targetReward, isMaxLevel } = currentLevelInfo;
   const now = Date.now();
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
   const handleGradeChange = (g) => { setSelectedGrade(g); let newStats = { ...stats, targetGrade: g }; setStats(newStats); StorageAPI.saveStats(newStats); };
@@ -25,11 +26,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const satisfaction = calculateSatisfaction(stats);
   const satLabel = getSatisfactionLabel(satisfaction);
 
-  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
-  const stage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
+  const stage = getCurrentStage(level);
 
-  const isCraftUnlocked = learnedCount >= 3;
-  const isTownEditorUnlocked = learnedCount >= 1;
+  const isCraftUnlocked = level >= 3;
+  const isTownEditorUnlocked = level >= 1;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
 
@@ -57,16 +57,16 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]">
             <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]" />
           </div>
-          {levelInfo && levelInfo.isMaxLevel ? (
+          {isMaxLevel ? (
             <div className="text-[10px] font-black text-right text-[var(--accent)] tracking-widest px-1">✨ MAX LEVEL!</div>
           ) : (
             <div className="flex justify-between items-center px-1">
               <span className="text-[10px] font-bold text-[var(--text)] opacity-60">
-                あと <strong className="text-[var(--text)] text-xs">{levelInfo?.remainingExp || 0}</strong> EXP で Lv.{(level || 1) + 1}
+                あと <strong className="text-[var(--text)] text-xs">{remainingExp || 0}</strong> EXP で Lv.{(level || 1) + 1}
               </span>
-              {levelInfo?.targetReward && (
+              {targetReward && (
                 <span className="text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/30 flex items-center gap-1 shadow-sm">
-                  🎁 {levelInfo.targetReward.text || 'ごほうび'}
+                  🎁 {targetReward.text || 'ごほうび'}
                 </span>
               )}
             </div>

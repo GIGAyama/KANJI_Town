@@ -802,8 +802,8 @@ export const RARE_RECIPES = [
     tier: 5,
     minGrade: 5,
     coinCost: 2000,
-    unlockCondition: { type: "mastered_kanji", count: 200 },
-    unlockDesc: "200字習得で解放",
+    unlockCondition: { type: "player_level", count: 35 },
+    unlockDesc: "Lv.35で解放",
     ingredients: [
       { material: "wisdomBook", amount: 8 },
       { material: "soulstone", amount: 6 },
@@ -821,8 +821,8 @@ export const RARE_RECIPES = [
     tier: 6,
     minGrade: 6,
     coinCost: 5000,
-    unlockCondition: { type: "mastered_kanji", count: 500 },
-    unlockDesc: "500字習得で解放",
+    unlockCondition: { type: "player_level", count: 50 },
+    unlockDesc: "Lv.50で解放",
     ingredients: [
       { material: "legendSteel", amount: 6 },
       { material: "soulstone", amount: 12 },
@@ -859,8 +859,8 @@ export const RARE_RECIPES = [
     tier: 2,
     minGrade: 2,
     coinCost: 300,
-    unlockCondition: { type: "mastered_kanji", count: 25 },
-    unlockDesc: "25字習得で解放",
+    unlockCondition: { type: "player_level", count: 8 },
+    unlockDesc: "Lv.8で解放",
     ingredients: [
       { material: "wood", amount: 8 },
       { material: "stone", amount: 4 },
@@ -877,8 +877,8 @@ export const RARE_RECIPES = [
     tier: 3,
     minGrade: 3,
     coinCost: 600,
-    unlockCondition: { type: "mastered_kanji", count: 75 },
-    unlockDesc: "75字習得で解放",
+    unlockCondition: { type: "player_level", count: 20 },
+    unlockDesc: "Lv.20で解放",
     ingredients: [
       { material: "stone", amount: 10 },
       { material: "wood", amount: 8 },
