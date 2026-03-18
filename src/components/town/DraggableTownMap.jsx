@@ -117,12 +117,11 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     setZoom(newZoom);
 
     // isoX: 0, isoY: toIsoY(C,C) を画面の (w/2, h/2) に合わせるためのオフセット
-    const cx = 0;
     const cy = toIsoY(C, C);
     const offsetYExtra = isEditing ? -40 : 0; // 下部ツールバーが見えやすいように上に寄せる
 
     setOffset({
-      x: containerSize.w / 2 - (cx * newZoom),
+      x: 0,
       y: containerSize.h / 2 - (cy * newZoom) + offsetYExtra
     });
 
