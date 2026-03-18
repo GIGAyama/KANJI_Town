@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut, Users } from 'lucide-react';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { BIOME_TYPES, BIOME_TERRAIN_COLORS } from '../../data/biomes';
 import VillagerDot from './VillagerDot';

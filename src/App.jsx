@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { PenTool, Volume2, VolumeX, Settings } from 'lucide-react';
+import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
@@ -11,7 +11,7 @@ import { checkLevelUp } from './utils/level-system';
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
 import { STORY_STAGES } from './data/story-stages';
 import { TOWN_ITEMS } from './data/town-items';
-import { createVillager } from './systems/residents';
+import { createVillager, calculateSatisfaction, getSatisfactionLabel } from './systems/residents';
 import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
@@ -113,14 +113,7 @@ export default function App() {
       // 収集実行（StorageAPIのロジックを借用してStatsを更新）
       updatedStats = StorageAPI.updateDaily(updatedStats, 0, { reviewedCount: 0, perfectCount: 0 });
       if (updatedStats.lastCollectionResult) {
-        setResidentCollectionResult({
-          result: updatedStats.lastCollectionResult,
-          satisfaction: updatedStats.satisfaction,
-          satLabel: calculateSatisfaction(updatedStats) // labelを取得するために再計算か渡す必要がある
-        });
-        // satisfaction周りのデータはStorageAPIが計算済み
         const sat = updatedStats.satisfaction || 0;
-        const { getSatisfactionLabel } = require('./systems/residents');
         setResidentCollectionResult({
           result: updatedStats.lastCollectionResult,
           satisfaction: sat,
