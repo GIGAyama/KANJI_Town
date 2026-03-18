@@ -290,6 +290,7 @@ const StorageAPI = {
       progress: info.progress, 
       currentLevelExp: info.currentLevelExp,
       nextLevelExp: info.nextLevelExp, 
+      remainingExp: info.remainingExp,
       themeName,
       targetReward: info.targetReward,
       isMaxLevel: info.isMaxLevel
