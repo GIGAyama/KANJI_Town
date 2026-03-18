@@ -766,8 +766,8 @@ export const RARE_RECIPES = [
     tier: 3,
     minGrade: 3,
     coinCost: 500,
-    unlockCondition: { type: "mastered_kanji", count: 50 },
-    unlockDesc: "50字習得で解放",
+    unlockCondition: { type: "player_level", count: 15 },
+    unlockDesc: "Lv.15で解放",
     ingredients: [
       { material: "wood", amount: 12 },
       { material: "fabric", amount: 4 },
@@ -784,8 +784,8 @@ export const RARE_RECIPES = [
     tier: 4,
     minGrade: 4,
     coinCost: 1000,
-    unlockCondition: { type: "mastered_kanji", count: 100 },
-    unlockDesc: "100字習得で解放",
+    unlockCondition: { type: "player_level", count: 25 },
+    unlockDesc: "Lv.25で解放",
     ingredients: [
       { material: "crystal", amount: 15 },
       { material: "glass", amount: 10 },
@@ -896,8 +896,8 @@ export const RARE_RECIPES = [
     tier: 5,
     minGrade: 5,
     coinCost: 1500,
-    unlockCondition: { type: "mastered_kanji", count: 300 },
-    unlockDesc: "300字習得で解放",
+    unlockCondition: { type: "player_level", count: 40 },
+    unlockDesc: "Lv.40で解放",
     ingredients: [
       { material: "glass", amount: 12 },
       { material: "precision", amount: 6 },

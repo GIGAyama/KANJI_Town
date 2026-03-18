@@ -8,6 +8,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
 import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
+import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
 
 let _saveDebounceTimer = null;
 
@@ -281,20 +282,23 @@ const getTownRank = (prosperity) => {
   return rank || { text: "あき地", badge: "🌱" };
 };
 
-// FIX: getLevelInfo no longer calls StorageAPI inside (removed circular dependency)
+// 新しいレベルシステムに基づくラッパー（後方互換性とUI用追加データ）
 const getLevelInfo = (exp, townMap) => {
-  const level = Math.floor(Math.cbrt(exp / 200)) + 1;
-  const currentLevelExp = 200 * Math.pow(level - 1, 3);
-  const nextLevelExp = 200 * Math.pow(level, 3);
-  const progress = ((exp - currentLevelExp) / (nextLevelExp - currentLevelExp)) * 100;
-  let themeName = 'default';
-  if (level >= 80) themeName = 'gold';
-  else if (level >= 50) themeName = 'sunset';
-  else if (level >= 30) themeName = 'ocean';
-  else if (level >= 15) themeName = 'sakura';
+  const info = getLevelInfoFromExp(exp || 0);
+  const themeName = getThemeFromLevel(info.level);
   const prosperity = calculateProsperity(townMap || {}, 0);
   const rank = getTownRank(prosperity);
-  return { level, title: rank.text, badge: rank.badge, progress, nextLevelExp, themeName };
+  return { 
+    level: info.level, 
+    title: rank.text, 
+    badge: rank.badge, 
+    progress: info.progress, 
+    currentLevelExp: info.currentLevelExp,
+    nextLevelExp: info.nextLevelExp, 
+    themeName,
+    targetReward: info.targetReward,
+    isMaxLevel: info.isMaxLevel
+  };
 };
 
 export { StorageAPI, calculateProsperity, getTownRank, getLevelInfo };

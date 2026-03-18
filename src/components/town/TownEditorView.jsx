@@ -270,7 +270,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   // ── Craft logic ──
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
-  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
+  const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
+  const playerLevel = levelInfo.level;
   const perfectCount = stats.perfectCount || 0;
 
   const craftRecipes = useMemo(() => {
@@ -290,7 +291,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const isRareUnlocked = (recipe) => {
     if (!recipe.unlockCondition) return true;
     const { type, count } = recipe.unlockCondition;
-    if (type === 'mastered_kanji') return masteredCount >= count;
+    if (type === 'player_level') return playerLevel >= count;
     if (type === 'perfect_count') return perfectCount >= count;
     return false;
   };
