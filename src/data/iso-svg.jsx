@@ -252,8 +252,8 @@ const Fl = ({ cx=50, cy=75, color='#e2e8f0', thickness=2, scale=1, type='road' }
     <g transform={`translate(${cx}, ${cy})`}>
       <SharedDefs />
       {/* Depth Slab */}
-      <polygon points={`0,0 ${dx},-${dy} ${dx},-${dy}+${thickness} 0,${thickness}`} fill={fRight} />
-      <polygon points={`0,0 -${dx},-${dy} -${dx},-${dy}+${thickness} 0,${thickness}`} fill={fLeft} />
+      <polygon points={`0,0 ${dx},-${dy} ${dx},${-dy + thickness} 0,${thickness}`} fill={fRight} />
+      <polygon points={`0,0 -${dx},-${dy} -${dx},${-dy + thickness} 0,${thickness}`} fill={fLeft} />
       
       {/* Top Surface */}
       <polygon points={`0,0 ${dx},-${dy} 0,-${dy*2} -${dx},-${dy}`} fill={type==='water' ? 'url(#grad-water)' : fTop} />

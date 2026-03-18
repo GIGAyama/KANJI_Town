@@ -462,21 +462,21 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
                 {dockOpen === 'items' && <ItemsPanel
                   filteredItems={filteredItems} filterType={filterType} setFilterType={setFilterType}
                   selectedItem={selectedItem} setSelectedItem={setSelectedItem}
-                  stats={stats} localMap={localMap} playerGrade={playerGrade}
+                  stats={stats} localMap={localMap} playerLevel={playerLevel}
                   handleBuy={handleBuy} showError={showError}
                 />}
                 {dockOpen === 'craft' && <CraftPanel
                   craftCategory={craftCategory} setCraftCategory={setCraftCategory}
                   craftRecipes={craftRecipes} selectedRecipe={selectedRecipe} setSelectedRecipe={setSelectedRecipe}
                   filterTier={filterTier} setFilterTier={setFilterTier}
-                  materials={materials} villagers={villagers} playerGrade={playerGrade} stats={stats}
+                  materials={materials} villagers={villagers} playerLevel={playerLevel} stats={stats}
                   isRareUnlocked={isRareUnlocked} hasUpgradeSource={hasUpgradeSource}
                   getDisplayIngredients={getDisplayIngredients} handleCraft={handleCraft} craftBonuses={craftBonuses}
                 />}
                 {dockOpen === 'residents' && <ResidentsPanel
                   stats={stats} satisfaction={satisfaction} satLabel={satLabel} multiplier={multiplier}
                   residentStats={residentStats} dailyPreview={dailyPreview} villagers={villagers}
-                  expandedOcc={expandedOcc} setExpandedOcc={setExpandedOcc}
+                  expandedOcc={expandedOcc} setExpandedOcc={setExpandedOcc} playerLevel={playerLevel}
                 />}
               </div>
             </motion.div>
@@ -524,7 +524,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 };
 
 // ── Items Panel ──
-const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerGrade, handleBuy, showError }) => (
+const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerLevel, handleBuy, showError }) => (
   <div className="flex flex-col gap-3">
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
@@ -578,7 +578,7 @@ const CRAFT_CATEGORIES = [
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
-const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRecipe, setSelectedRecipe, filterTier, setFilterTier, materials, villagers, playerGrade, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => (
+const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRecipe, setSelectedRecipe, filterTier, setFilterTier, materials, villagers, playerLevel, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => (
   <div className="flex flex-col gap-3">
     {/* Materials inventory - sticky */}
     <div className="sticky top-0 z-10 bg-[var(--panel)] -mx-3 px-3 pt-0 pb-2 -mt-0">
@@ -630,7 +630,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
     {/* Recipe list */}
     <div className="flex flex-col gap-2">
       {craftRecipes.map(recipe => {
-        const isGradeUnlocked = playerGrade >= (recipe.minGrade || 1);
+        const isGradeUnlocked = playerLevel >= getMinLevelForGrade(recipe.minGrade);
         const isUnlocked = isGradeUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
         const displayIngredients = getDisplayIngredients(recipe);
         const coinCost = recipe.coinCost || 0;
@@ -686,7 +686,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
                         <Hammer size={14} /> クラフトする
                       </MotionButton>
                     ) : (
-                      <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isGradeUnlocked ? `${recipe.minGrade}年生で解放` : '条件未達成'}</div>
+                      <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isGradeUnlocked ? `レベル${getMinLevelForGrade(recipe.minGrade)}で解放` : '条件未達成'}</div>
                     )}
                   </div>
                 </motion.div>
@@ -701,7 +701,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
 );
 
 // ── Residents Panel ──
-const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentStats, dailyPreview, villagers, expandedOcc, setExpandedOcc }) => (
+const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentStats, dailyPreview, villagers, expandedOcc, setExpandedOcc, playerLevel }) => (
   <div className="flex flex-col gap-3">
     {/* Summary */}
     <div className="bg-[var(--bg)] rounded-xl p-3 border-[2px] border-[var(--text)]">
@@ -744,7 +744,7 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
       {OCCUPATIONS.map(occ => {
         const count = residentStats.occupationCounts[occ.id] || 0;
         const isExpanded = expandedOcc === occ.id;
-        const isUnlocked = (stats.targetGrade || 1) >= occ.minGrade;
+        const isUnlocked = playerLevel >= getMinLevelForGrade(occ.minGrade);
         const occVillagers = villagers.filter(v => (v.occupation || 'farmer') === occ.id);
 
         return (

@@ -238,7 +238,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
           {/* レシピ一覧 */}
           {recipes.map(recipe => {
-          const isGradeUnlocked = playerLevel >= (recipe.minGrade || 1);
+          const isGradeUnlocked = playerLevel >= getMinLevelForGrade(recipe.minGrade || 1);
           const isUnlocked = isGradeUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
           const coinCost = recipe.coinCost || 0;
@@ -392,7 +392,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                           </>
                         ) : (
                           <div className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                            <Lock size={14} /> {!isGradeUnlocked ? `${recipe.minGrade}年生で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
+                            <Lock size={14} /> {!isGradeUnlocked ? `レベル${getMinLevelForGrade(recipe.minGrade || 1)}で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
                           </div>
                         )}
                       </div>
