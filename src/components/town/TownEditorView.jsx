@@ -16,6 +16,31 @@ import { F } from '../ui/FormatKun';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
+// --- パーティクルエフェクト ---
+const DUST_EMOJIS = ['💨', '🌫️', '✨'];
+const CONFETTI_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6'];
+const SPARKLE_EMOJIS = ['✨', '🌟', '⭐', '💫'];
+
+const ParticleOverlay = ({ particles, type }) => (
+  <AnimatePresence>
+    {particles.map(p => (
+      <motion.div key={p.id}
+        initial={{ opacity: 1, x: p.x, y: p.y, scale: type === 'confetti' ? 0.5 : 1 }}
+        animate={{ opacity: 0, x: p.x + p.dx, y: p.y + p.dy, scale: type === 'confetti' ? 1.2 : 0.5, rotate: type === 'confetti' ? p.rot : 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: type === 'confetti' ? 1.4 : 0.8, delay: p.delay, ease: 'easeOut' }}
+        className="absolute pointer-events-none z-[60]"
+        style={{ left: 0, top: 0 }}>
+        {type === 'confetti' ? (
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: p.color, transform: `rotate(${p.rot}deg)` }} />
+        ) : (
+          <span className="text-lg select-none">{p.emoji}</span>
+        )}
+      </motion.div>
+    ))}
+  </AnimatePresence>
+);
+
 const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [filterType, setFilterType] = useState('all');
@@ -32,6 +57,34 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const [filterTier, setFilterTier] = useState(0);
   // Resident state
   const [expandedOcc, setExpandedOcc] = useState(null);
+  // パーティクルエフェクト
+  const [dustParticles, setDustParticles] = useState([]);
+  const [confettiParticles, setConfettiParticles] = useState([]);
+
+  const spawnDust = () => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2 - 50;
+    const ps = Array.from({ length: 8 }, (_, i) => ({
+      id: Date.now() + i, x: cx, y: cy,
+      dx: (Math.random() - 0.5) * 120, dy: -Math.random() * 80 - 20,
+      delay: Math.random() * 0.2, emoji: DUST_EMOJIS[i % DUST_EMOJIS.length],
+    }));
+    setDustParticles(ps);
+    setTimeout(() => setDustParticles([]), 1200);
+  };
+
+  const spawnConfetti = () => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const ps = Array.from({ length: 30 }, (_, i) => ({
+      id: Date.now() + i, x: cx + (Math.random() - 0.5) * 100, y: cy,
+      dx: (Math.random() - 0.5) * 200, dy: -Math.random() * 200 - 50,
+      delay: Math.random() * 0.3, rot: Math.random() * 720 - 360,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    }));
+    setConfettiParticles(ps);
+    setTimeout(() => setConfettiParticles([]), 2000);
+  };
 
   const playerGrade = stats.targetGrade || 1;
   const biomeMap = stats.biomeMap || {};
@@ -99,7 +152,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       setLocalMap(newMap); pushHistory(newMap);
       const newStats = { ...stats, coins: stats.coins - cost };
       setStats(newStats); StorageAPI.saveStats(newStats);
-      audioCtrl.playSE('place'); return;
+      audioCtrl.playSE('place'); spawnDust(); return;
     }
 
     if (selectedItem === 'eraser') {
@@ -236,6 +289,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
     if (!result.success) { audioCtrl.playSE('stamp_bad'); return; }
 
     audioCtrl.playSE('success');
+    spawnConfetti();
     const newStats = { ...stats, materials: result.materials };
 
     // Deduct coin cost for crafting
@@ -273,111 +327,144 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const residentStats = useMemo(() => getResidentStats(stats.villagers), [stats.villagers]);
   const dailyPreview = useMemo(() => collectDailyResources(stats), [stats]);
 
-  return (
-    <div className="flex h-full gap-3 p-3 md:p-4">
-      {/* === LEFT: Map Area === */}
-      <div className="flex-1 flex flex-col gap-2 min-w-0 h-full">
-        {/* Header bar */}
-        <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={22} /></button>
-            <h2 className="text-lg font-black text-[var(--text)] flex items-center gap-1"><Map size={18} className="text-[var(--accent)]" /> まちをつくる</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 bg-[var(--accent)] px-2.5 py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-sm"><Coins size={14} />{stats.coins}</span>
-            <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`p-2 rounded-full border-[2px] border-[var(--text)] min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:bg-[var(--bg)]'}`}><Undo2 size={18} /></button>
-            <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_#065f46] min-h-[40px]">保存</MotionButton>
-          </div>
-        </div>
+  // ── Bottom dock state ──
+  const [dockOpen, setDockOpen] = useState(null); // 'items' | 'craft' | 'residents' | null
 
-        {/* Map */}
-        <div className="flex-1 min-h-0 relative">
-          <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
-          {/* Info overlay */}
-          <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
-            {F("地形","ちけい")}タップで{F("開拓","かいたく")}　👥{stats.population || 0}{F("人","にん")}　{satLabel.emoji}{satisfaction}
-          </div>
-          {/* Placement error */}
-          {placementError && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
-              {placementError}
-            </div>
-          )}
-          {/* Selected item indicator */}
-          {selectedItem && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap z-40">
+  const toggleDock = (tab) => {
+    if (dockOpen === tab) { setDockOpen(null); audioCtrl.playSE('click'); }
+    else {
+      if (tab === 'craft' && !isCraftUnlocked) { audioCtrl.playSE('stamp_bad'); return; }
+      if (tab === 'residents' && !isResidentsUnlocked) { audioCtrl.playSE('stamp_bad'); return; }
+      setDockOpen(tab); setSideTab(tab); audioCtrl.playSE('click');
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-[var(--bg)]">
+      {/* === フルスクリーンマップ === */}
+      <div className="absolute inset-0" style={{ bottom: 72 }}>
+        <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+      </div>
+
+      {/* === パーティクルエフェクト === */}
+      <ParticleOverlay particles={dustParticles} type="dust" />
+      <ParticleOverlay particles={confettiParticles} type="confetti" />
+
+      {/* === ヘッダーバー（オーバーレイ） === */}
+      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-2 pointer-events-none">
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button onClick={() => setView('home')} aria-label="ホームに戻る" className="bg-[var(--panel)]/90 backdrop-blur text-[var(--text)] p-2.5 rounded-full border-[2px] border-[var(--text)] shadow-md hover:scale-105 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={20} /></button>
+        </div>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <span className="flex items-center gap-1 bg-[var(--accent)]/90 backdrop-blur px-3 py-1.5 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-md"><Coins size={14} />{stats.coins}</span>
+          <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`bg-[var(--panel)]/90 backdrop-blur p-2 rounded-full border-[2px] border-[var(--text)] shadow-md min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:scale-105'}`}><Undo2 size={16} /></button>
+          <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_#065f46] backdrop-blur min-h-[40px]">保存</MotionButton>
+        </div>
+      </div>
+
+      {/* === 情報オーバーレイ === */}
+      <div className="absolute top-16 left-2 bg-[var(--panel)]/90 backdrop-blur border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
+        {F("地形","ちけい")}タップで{F("開拓","かいたく")}　👥{stats.population || 0}{F("人","にん")}　{satLabel.emoji}{satisfaction}
+      </div>
+
+      {/* === 配置エラー === */}
+      {placementError && (
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
+          {placementError}
+        </div>
+      )}
+
+      {/* === 選択中アイテム表示 === */}
+      <AnimatePresence>
+        {selectedItem && (
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
+            className="absolute z-40 left-1/2 -translate-x-1/2"
+            style={{ bottom: dockOpen ? 'calc(50% + 44px)' : 84 }}>
+            <div className="bg-[var(--panel)]/95 backdrop-blur border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
               {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
-          )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* === スライドアップ モーダルシート === */}
+      <AnimatePresence>
+        {dockOpen && (
+          <>
+            {/* 背景オーバーレイ */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/30 z-40" onClick={() => setDockOpen(null)} />
+            {/* シート本体 */}
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="absolute left-0 right-0 z-50 bg-[var(--panel)] border-t-[4px] border-[var(--text)] rounded-t-[24px] shadow-2xl"
+              style={{ bottom: 72, maxHeight: '55%' }}>
+              {/* ハンドルバー */}
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="w-10 h-1 bg-[var(--text)] opacity-20 rounded-full" />
+              </div>
+              {/* シートタイトル */}
+              <div className="flex items-center justify-between px-4 pb-2">
+                <h3 className="text-base font-black text-[var(--text)] flex items-center gap-1.5">
+                  {dockOpen === 'items' && <><Package size={16} className="text-[var(--accent)]" /> もちもの</>}
+                  {dockOpen === 'craft' && <><Hammer size={16} className="text-[var(--accent)]" /> クラフト</>}
+                  {dockOpen === 'residents' && <><Users size={16} className="text-[var(--accent)]" /> {F("住民","じゅうみん")}</>}
+                </h3>
+                <button onClick={() => setDockOpen(null)} className="text-[var(--text)] opacity-50 hover:opacity-100 p-1">✕</button>
+              </div>
+              {/* シートコンテンツ */}
+              <div className="overflow-y-auto no-scrollbar px-3 pb-4" style={{ maxHeight: 'calc(55vh - 80px)' }}>
+                {dockOpen === 'items' && <ItemsPanel
+                  filteredItems={filteredItems} filterType={filterType} setFilterType={setFilterType}
+                  selectedItem={selectedItem} setSelectedItem={setSelectedItem}
+                  stats={stats} localMap={localMap} playerGrade={playerGrade}
+                  handleBuy={handleBuy} showError={showError}
+                />}
+                {dockOpen === 'craft' && <CraftPanel
+                  craftCategory={craftCategory} setCraftCategory={setCraftCategory}
+                  craftRecipes={craftRecipes} selectedRecipe={selectedRecipe} setSelectedRecipe={setSelectedRecipe}
+                  filterTier={filterTier} setFilterTier={setFilterTier}
+                  materials={materials} villagers={villagers} playerGrade={playerGrade} stats={stats}
+                  isRareUnlocked={isRareUnlocked} hasUpgradeSource={hasUpgradeSource}
+                  getDisplayIngredients={getDisplayIngredients} handleCraft={handleCraft} craftBonuses={craftBonuses}
+                />}
+                {dockOpen === 'residents' && <ResidentsPanel
+                  stats={stats} satisfaction={satisfaction} satLabel={satLabel} multiplier={multiplier}
+                  residentStats={residentStats} dailyPreview={dailyPreview} villagers={villagers}
+                  expandedOcc={expandedOcc} setExpandedOcc={setExpandedOcc}
+                />}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* === ボトムドック（マイクラ風ホットバー） === */}
+      <div className="absolute bottom-0 left-0 right-0 z-50 flex items-end justify-center pb-3 px-4 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-3 bg-[var(--panel)]/95 backdrop-blur border-[4px] border-[var(--text)] rounded-[20px] px-4 py-2 shadow-[4px_4px_0_var(--text)]">
+          <button onClick={() => toggleDock('items')}
+            className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all min-w-[64px] ${dockOpen === 'items' ? 'bg-[var(--accent)] scale-110 shadow-lg' : 'hover:bg-[var(--bg)] hover:scale-105'}`}>
+            <Package size={24} className="text-[var(--text)]" />
+            <span className="text-[10px] font-black text-[var(--text)]">もちもの</span>
+          </button>
+          <button onClick={() => toggleDock('craft')}
+            className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all min-w-[64px] ${!isCraftUnlocked ? 'opacity-30' : ''} ${dockOpen === 'craft' ? 'bg-[var(--accent)] scale-110 shadow-lg' : 'hover:bg-[var(--bg)] hover:scale-105'}`}>
+            <Hammer size={24} className="text-[var(--text)]" />
+            <span className="text-[10px] font-black text-[var(--text)]">つくる</span>
+          </button>
+          <button onClick={() => toggleDock('residents')}
+            className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all min-w-[64px] ${!isResidentsUnlocked ? 'opacity-30' : ''} ${dockOpen === 'residents' ? 'bg-[var(--accent)] scale-110 shadow-lg' : 'hover:bg-[var(--bg)] hover:scale-105'}`}>
+            <Users size={24} className="text-[var(--text)]" />
+            <span className="text-[10px] font-black text-[var(--text)]">{F("住民","じゅうみん")}</span>
+          </button>
         </div>
       </div>
 
-      {/* === RIGHT: Side Panel with Tabs === */}
-      <div className="w-[320px] shrink-0 flex flex-col h-full bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] shadow-[4px_4px_0_var(--text)] overflow-hidden">
-        {/* Tab buttons */}
-        <div className="flex border-b-[3px] border-[var(--text)] shrink-0">
-          <button onClick={() => { setSideTab('items'); audioCtrl.playSE('click'); }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'items' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'}`}>
-            <Package size={16} /> アイテム
-          </button>
-          <button onClick={() => { if (isCraftUnlocked) { setSideTab('craft'); audioCtrl.playSE('click'); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'craft' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'} ${!isCraftUnlocked ? 'opacity-30' : ''}`}>
-            <Hammer size={16} /> クラフト
-          </button>
-          <button onClick={() => { if (isResidentsUnlocked) { setSideTab('residents'); audioCtrl.playSE('click'); } else { audioCtrl.playSE('stamp_bad'); } }} className={`flex-1 py-3 text-sm font-black flex items-center justify-center gap-1 transition-colors ${sideTab === 'residents' ? 'bg-[var(--accent)] text-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] opacity-60 hover:opacity-100'} ${!isResidentsUnlocked ? 'opacity-30' : ''}`}>
-            <Users size={16} /> {F("住民","じゅうみん")}
-          </button>
-        </div>
-
-        {/* Tab content */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3">
-          {sideTab === 'items' && <ItemsPanel
-            filteredItems={filteredItems}
-            filterType={filterType}
-            setFilterType={setFilterType}
-            selectedItem={selectedItem}
-            setSelectedItem={setSelectedItem}
-            stats={stats}
-            localMap={localMap}
-            playerGrade={playerGrade}
-            handleBuy={handleBuy}
-            showError={showError}
-          />}
-          {sideTab === 'craft' && <CraftPanel
-            craftCategory={craftCategory}
-            setCraftCategory={setCraftCategory}
-            craftRecipes={craftRecipes}
-            selectedRecipe={selectedRecipe}
-            setSelectedRecipe={setSelectedRecipe}
-            filterTier={filterTier}
-            setFilterTier={setFilterTier}
-            materials={materials}
-            villagers={villagers}
-            playerGrade={playerGrade}
-            stats={stats}
-            isRareUnlocked={isRareUnlocked}
-            hasUpgradeSource={hasUpgradeSource}
-            getDisplayIngredients={getDisplayIngredients}
-            handleCraft={handleCraft}
-            craftBonuses={craftBonuses}
-          />}
-          {sideTab === 'residents' && <ResidentsPanel
-            stats={stats}
-            satisfaction={satisfaction}
-            satLabel={satLabel}
-            multiplier={multiplier}
-            residentStats={residentStats}
-            dailyPreview={dailyPreview}
-            villagers={villagers}
-            expandedOcc={expandedOcc}
-            setExpandedOcc={setExpandedOcc}
-          />}
-        </div>
-      </div>
-
-      {/* Craft success animation */}
+      {/* === クラフト成功アニメーション === */}
       <AnimatePresence>
         {craftResult && (
-          <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
             <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-2">
               <Sparkles size={32} className="text-[var(--accent)]" />
               <div className="text-lg font-black text-[var(--text)]">{F("完成","かんせい")}！</div>
