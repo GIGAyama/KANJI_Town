@@ -291,7 +291,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                     {recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>}
                     {/* 素材プレビュー + コインコスト */}
                     <div className="flex gap-1 mt-1.5 flex-wrap items-center">
-                      {coinCost > 0 && (
+                      {coinCost >= 0 && (
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
                           <Coins size={10} />{coinCost}
                         </span>
@@ -344,10 +344,10 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       </div>
 
                       {/* コインコスト表示 */}
-                      {coinCost > 0 && (
+                      {coinCost >= 0 && (
                         <div className="mt-2 flex items-center justify-center gap-1">
                           <span className={`text-[11px] font-black flex items-center gap-1 ${(stats.coins || 0) >= coinCost ? 'text-yellow-600' : 'text-red-500'}`}>
-                            <Coins size={14} /> {coinCost}コイン{(stats.coins || 0) < coinCost && ` (不足: あと${coinCost - (stats.coins || 0)})`}
+                            {F("必要","ひつよう")}コイン: <Coins size={14} /> {coinCost} {(stats.coins || 0) < coinCost && ` (${F("不足","ふそく")}: ${F("あと","あと")}${coinCost - (stats.coins || 0)})`}
                           </span>
                         </div>
                       )}
