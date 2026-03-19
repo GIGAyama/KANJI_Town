@@ -399,26 +399,31 @@ export const SvgWater = () => <svg viewBox="0 0 100 100" className="w-full h-ful
 
 
 export const SvgHouse1 = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
-      <ellipse cx="0" cy="-5" rx="26" ry="13" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
-      <polygon points="0,-4 -20,-14 -20,-30 0,-20" fill="#fdf8f6" />
-      <polygon points="0,-20 -20,-30 -10,-42" fill="#fdf8f6" />
-      <polygon points="0,-4 20,-14 20,-30 0,-20" fill="#e7e5e4" />
-      <path d="M 0,-4 L 0,-20 M -10,-9 L -10,-42 M -20,-14 L -20,-30" stroke="#57534e" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M 10,-9 L 10,-25 M 20,-14 L 20,-30 M 0,-20 L 20,-30" stroke="#44403c" strokeWidth="1.5" strokeLinecap="round" />
-      <polygon points="4,-10 12,-14 12,-24 4,-20" fill="#292524" />
-      <polygon points="5,-11 11,-14 11,-23 5,-20" fill="#78350f" />
-      <circle cx="10" cy="-18" r="0.8" fill="#fbbf24" />
-      <polygon points="-16,-10 -6,-5 -6,-15 -16,-20" fill="#1c1917" />
-      <polygon points="-15,-10.5 -7,-6.5 -7,-14.5 -15,-18.5" fill="url(#grad-glass)" />
-      <polygon points="3,-17 24,-27.5 12,-48 -10,-41" fill="url(#grad-roof-red)" />
-      <polygon points="3,-17 24,-27.5 24,-25.5 3,-15" fill="#7f1d1d" />
-      <polygon points="3,-17 -10,-41 -13,-39 -1,-15" fill="#7f1d1d" />
+      {/* Base/Walls */}
+      <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill="#fdf8f6" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="0,-4 20,-14 20,-30 0,-20" fill="#e7e5e4" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      
+      {/* Roof */}
+      <polygon points="3,-17 24,-27.5 12,-48 -10,-41" fill="#ef4444" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="3,-17 -10,-41 -13,-39 -1,-15" fill="#b91c1c" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="3,-17 24,-27.5 24,-25.5 3,-15" fill="#b91c1c" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+
+      {/* Door */}
+      <polygon points="6,-7 14,-11 14,-25 6,-21" fill="#d97706" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="-16" r="1" fill="#000000" />
+
+      {/* Window */}
+      <polygon points="-14,-11 -6,-7 -6,-17 -14,-21" fill="#93c5fd" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+      <line x1="-10" y1="-9" x2="-10" y2="-19" stroke="#000000" strokeWidth="1.5" />
+      <line x1="-14" y1="-16" x2="-6" y2="-12" stroke="#000000" strokeWidth="1.5" />
+
+      {/* Chimney */}
       <g transform="translate(6, -38)">
-        <polygon points="0,0 5,-2.5 5,-12 0,-9.5" fill="#78716c" />
-        <polygon points="0,0 -5,-2.5 -5,-12 0,-9.5" fill="#a8a29e" />
-        <polygon points="0,-9.5 -5,-12 0,-14.5 5,-12" fill="#d6d3d1" />
+        <polygon points="0,0 5,-2.5 5,-12 0,-9.5" fill="#a8a29e" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="0,0 -5,-2.5 -5,-12 0,-9.5" fill="#78716c" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="0,-9.5 -5,-12 0,-14.5 5,-12" fill="#d6d3d1" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
       </g>
     </g>
   </svg>
