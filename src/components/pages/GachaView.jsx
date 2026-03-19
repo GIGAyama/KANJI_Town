@@ -112,7 +112,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
                     disabled={(stats.coins || 0) < 100}
                     className="py-6 flex-col gap-2 border-[4px] border-[var(--text)] shadow-[0_4px_0_#b45309]"
                   >
-                    <div className="text-2xl font-black">1回</div>
+                    <div className="text-2xl font-black">{F("1回","いっかい")}</div>
                     <div className="text-sm font-bold opacity-80 flex items-center gap-1">
                       <Coins size={14} /> 100
                     </div>
@@ -123,7 +123,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
                     disabled={(stats.coins || 0) < 1000}
                     className="py-6 flex-col gap-2 border-[4px] border-[var(--text)] shadow-[0_4px_0_#9f1239]"
                   >
-                    <div className="text-2xl font-black">10連</div>
+                    <div className="text-2xl font-black">{F("10連","じゅうれん")}</div>
                     <div className="text-sm font-bold opacity-80 flex items-center gap-1">
                       <Coins size={14} /> 1000
                     </div>
@@ -141,7 +141,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
                     checked={skipAnimation}
                     onChange={() => setSkipAnimation(!skipAnimation)}
                   />
-                  <span className="text-sm font-black text-[var(--text)] opacity-60 group-hover:opacity-100 transition-opacity">演出をスキップする</span>
+                  <span className="text-sm font-black text-[var(--text)] opacity-60 group-hover:opacity-100 transition-opacity">{F("演出","えんしゅつ")}をスキップする</span>
                 </label>
               </div>
             </motion.div>
@@ -185,8 +185,8 @@ const GachaView = ({ stats, setStats, onBack }) => {
               className="w-full"
             >
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-black text-[var(--text)] mb-1">ガチャの結果</h3>
-                <div className="text-sm font-bold text-[var(--text)] opacity-40">{results.length}個のアイテムを獲得しました</div>
+                <h3 className="text-2xl font-black text-[var(--text)] mb-1">ガチャの{F("結果","けっか")}</h3>
+                <div className="text-sm font-bold text-[var(--text)] opacity-40">{results.length}{F("個","こ")}のアイテムを{F("獲得","かくとく")}しました</div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
@@ -225,7 +225,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
                   onClick={reset}
                   className="flex-1 py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]"
                 >
-                  <RefreshCw size={20} className="mr-2" /> もう一度
+                  <RefreshCw size={20} className="mr-2" /> もう{F("一度","いちど")}
                 </MotionButton>
                 <MotionButton 
                   variant="primary" 
@@ -244,10 +244,10 @@ const GachaView = ({ stats, setStats, onBack }) => {
       {phase === 'idle' && (
         <div className="mt-8 bg-[var(--bg)] rounded-2xl p-4 border-[2px] border-[var(--text)] opacity-60">
           <div className="text-xs font-black mb-2 flex items-center gap-1 opacity-80">
-            <Check size={14} className="text-[var(--secondary)]" /> アイテムは「まちづくり」で設置できます。
+            <Check size={14} className="text-[var(--secondary)]" /> アイテムは「まちづくり」で{F("設置","せっち")}できます。
           </div>
           <div className="text-xs font-black flex items-center gap-1 opacity-80">
-            <Check size={14} className="text-[var(--secondary)]" /> 学習を頑張ってコインを貯めよう！
+            <Check size={14} className="text-[var(--secondary)]" /> {F("学習","がくしゅう")}を{F("頑張","がんば")}ってコインを{F("貯","た")}めよう！
           </div>
         </div>
       )}
