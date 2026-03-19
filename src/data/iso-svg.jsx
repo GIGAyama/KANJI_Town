@@ -228,7 +228,7 @@ export const SvgHighland = () => (
 // ==========================================
 export const SvgWeed = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="12" ry="5" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <path d="M 0,2 Q -10,-20 -20,-30" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" />
       <path d="M 0,2 Q 5,-25 15,-40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
@@ -245,7 +245,7 @@ export const SvgWeed = () => (
 
 export const SvgGrass = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="15" ry="6" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <path d="M -5,2 Q -15,-15 -25,-10 Q -15,-5 -5,2 Z" fill="#15803d" />
       <path d="M 5,2 Q 20,-10 25,-5 Q 15,0 5,2 Z" fill="#16a34a" />
@@ -339,7 +339,7 @@ export const SvgPine = () => (
 
 export const SvgRock = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="25" ry="12" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="-25,0 -15,-20 0,-35 15,-25 25,5 15,10 -15,5" fill="#334155" />
       <polygon points="0,-35 15,-25 25,5 5,0 -5,-10" fill="#1e293b" />
@@ -400,7 +400,7 @@ export const SvgWater = () => <svg viewBox="0 0 100 100" className="w-full h-ful
 
 export const SvgHouse1 = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       {/* Base/Walls */}
       <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill="#fdf8f6" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-4 20,-14 20,-30 0,-20" fill="#e7e5e4" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
@@ -431,7 +431,7 @@ export const SvgHouse1 = () => (
 
 export const SvgHouse2 = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="30" ry="15" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,-3 -24,-15 -24,-35 0,-23" fill="#b45309" />
       <polygon points="0,-23 -24,-35 -12,-47" fill="#b45309" />
@@ -458,7 +458,7 @@ export const SvgHouse2 = () => (
 
 export const SvgHouse3 = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="28" ry="14" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <polygon points="0,0 -26,-13 -4,-24 22,-11" fill="#e2e8f0" />
       <polygon points="-4,-2 -22,-11 -22,-26 -4,-17" fill="#ffffff" />
@@ -480,7 +480,7 @@ export const SvgHouse3 = () => (
 
 export const SvgShop = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="26" ry="13" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,-2 -20,-12 -20,-30 0,-20" fill="#fef08a" />
       <polygon points="0,-2 22,-13 22,-31 0,-20" fill="#fde047" />
@@ -500,7 +500,7 @@ export const SvgShop = () => (
 
 export const SvgSchool = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="36" ry="18" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="-8,-4 -32,-16 -32,-32 -8,-20" fill="#f8fafc" />
       <polygon points="-8,-4 32,-24 32,-40 -8,-20" fill="#e2e8f0" />
@@ -537,7 +537,7 @@ export const SvgSchool = () => (
 
 export const SvgWall = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="22" ry="11" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,0 -20,-10 -20,-30 0,-20" fill="#94a3b8" />
       <polygon points="0,0 20,-10 20,-30 0,-20" fill="#64748b" />
@@ -554,7 +554,7 @@ export const SvgWall = () => (
 
 export const SvgFence = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="18" ry="9" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <polygon points="-16,-8 -18,-9 -18,-19 -16,-18" fill="#92400e" />
       <polygon points="-16,-8 -14,-9 -14,-19 -16,-18" fill="#b45309" />
@@ -571,7 +571,7 @@ export const SvgFence = () => (
 export const SvgBridge = () => (
 
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="5" rx="15" ry="5" fill="#0284c7" opacity="0.8" />
       <path d="M -25,10 Q -5,-15 25,10 L 25,20 Q -5,-5 -25,20 Z" fill="#64748b" />
       <path d="M -25,10 Q -5,-15 25,10 L 20,5 Q 0,-20 -20,5 Z" fill="#cbd5e1" />
@@ -590,7 +590,7 @@ export const SvgBridge = () => (
 // ==========================================
 export const SvgWarehouse = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="32" ry="16" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,-3 -24,-15 -24,-35 0,-23" fill="#94a3b8" />
       <polygon points="0,-23 -24,-35 -12,-41" fill="#94a3b8" />
@@ -616,7 +616,7 @@ export const SvgWarehouse = () => (
 
 export const SvgGrandWarehouse = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,0 -32,-16 -32,-36 0,-20" fill="#7f1d1d" />
       <polygon points="0,0 32,-16 32,-36 0,-20" fill="#b91c1c" />
@@ -641,7 +641,7 @@ export const SvgGrandWarehouse = () => (
 
 export const SvgMarket = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-2" rx="35" ry="17" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <polygon points="0,0 -30,-15 0,-30 30,-15" fill="#d6d3d1" />
       <polygon points="0,0 30,-15 30,-12 0,3" fill="#a8a29e" />
@@ -664,7 +664,7 @@ export const SvgMarket = () => (
 
 export const SvgPort = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-2" rx="35" ry="17" fill="#0284c7" />
       <polygon points="-35,-2 0,15 35,-2 0,-19" fill="url(#grad-water)" />
       <path d="M -15,5 Q 0,10 15,5" fill="none" stroke="#7dd3fc" strokeWidth="1.5" opacity="0.6" strokeLinecap="round" />
@@ -694,7 +694,7 @@ export const SvgGarden = () => <svg viewBox="0 0 100 100" className="w-full h-fu
 export const SvgSmithy = () => (
 
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="26" ry="13" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="-20,-16 -20,-30 0,-20 0,-6" fill="#78350f" />
       <polygon points="0,-20 -20,-30 -10,-40" fill="#78350f" />
@@ -726,7 +726,7 @@ export const SvgSmithy = () => (
 
 export const SvgFactory = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="35" ry="17" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,-3 -30,-18 -30,-38 0,-23" fill="#7f1d1d" />
       <polygon points="0,-23 -30,-38 -15,-45" fill="#7f1d1d" />
@@ -764,7 +764,7 @@ export const SvgFactory = () => (
 
 export const SvgWatermill = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="25" ry="12" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="-30,5 -10,15 20,0 0,-10" fill="url(#grad-water)" opacity="0.8" />
       <polygon points="0,0 -16,-8 -16,-20 0,-12" fill="#64748b" />
@@ -792,7 +792,7 @@ export const SvgWatermill = () => (
 
 export const SvgMine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-2" rx="30" ry="15" fill="#020617" opacity="0.5" filter="url(#soft-shadow)" />
       <polygon points="-25,-5 -15,-30 0,-45 20,-35 30,-10 15,5 -10,5" fill="#334155" />
       <polygon points="0,-45 20,-35 30,-10 15,5 0,0 -10,-20" fill="#475569" />
@@ -823,7 +823,7 @@ export const SvgMine = () => (
 // ==========================================
 export const SvgCastle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="36" ry="18" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,0 -28,-14 -28,-24 0,-10" fill="#64748b" />
       <polygon points="0,0 28,-14 28,-24 0,-10" fill="#94a3b8" />
@@ -856,7 +856,7 @@ export const SvgCastle = () => (
 
 export const SvgGoldCastle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-5" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="-5,5 5,0 15,20 5,25" fill="#b91c1c" />
       <polygon points="-3,5 3,2 13,20 7,23" fill="#ef4444" />
@@ -885,7 +885,7 @@ export const SvgGoldCastle = () => (
 
 export const SvgTorii = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <g transform="translate(-16, -8)">
         <polygon points="0,0 -4,-2 -4,-6 0,-4" fill="#64748b" />
         <polygon points="0,0 4,-2 4,-6 0,-4" fill="#94a3b8" />
@@ -914,7 +914,7 @@ export const SvgTorii = () => (
 
 export const SvgTemple = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="-2" rx="34" ry="17" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
       <polygon points="0,0 -28,-14 -28,-18 0,-4" fill="#78716c" />
       <polygon points="0,0 28,-14 28,-18 0,-4" fill="#a8a29e" />
