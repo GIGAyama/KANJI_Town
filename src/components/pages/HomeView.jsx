@@ -140,12 +140,12 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
 
         {/* Navigation buttons */}
         <div className="grid grid-cols-2 gap-2 shrink-0">
-          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('dictionary')}><Library size={20} className="text-[var(--secondary)]" /> {F("ずかん","図鑑")}</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('dictionary')}><Library size={20} className="text-[var(--secondary)]" /> {F("図鑑","ずかん")}</MotionButton>
           <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] border-amber-200 bg-amber-50 shadow-sm gap-2" onClick={() => setView('gacha')}><Sparkles size={20} className="text-amber-500" /> ガチャ</MotionButton>
         </div>
         <div className="grid grid-cols-2 gap-2 shrink-0">
           <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('achievements')}><Medal size={20} className="text-amber-500" /> {F("実績","じっせき")}</MotionButton>
-          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('stats')}><BarChart3 size={20} className="text-[var(--secondary)]" /> {F("きろく","記録")}</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('stats')}><BarChart3 size={20} className="text-[var(--secondary)]" /> {F("記録","きろく")}</MotionButton>
         </div>
 
         {/* Unlock hints */}
