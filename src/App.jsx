@@ -11,7 +11,7 @@ import { checkLevelUp } from './utils/level-system';
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
 import { STORY_STAGES } from './data/story-stages';
 import { TOWN_ITEMS } from './data/town-items';
-import { createVillager, calculateSatisfaction, getSatisfactionLabel } from './systems/residents';
+import { createVillager, calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier } from './systems/residents';
 import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
