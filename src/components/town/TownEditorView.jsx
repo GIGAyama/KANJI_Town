@@ -89,7 +89,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
   const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
   const playerLevel = levelInfo.level;
-  const playerGrade = stats.targetGrade || 1;
   const biomeMap = stats.biomeMap || {};
   const learnedCount = Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new').length;
 
@@ -623,7 +622,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
       <div className="flex flex-wrap gap-1">
         <button onClick={() => { setFilterTier(0); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === 0 ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}>全て</button>
         {[1, 2, 3, 4, 5, 6].map(t => (
-          <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`} style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>{t}年</button>
+          <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`} style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>Tier {t}</button>
         ))}
       </div>
     )}
@@ -631,8 +630,8 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
     {/* Recipe list */}
     <div className="flex flex-col gap-2">
       {craftRecipes.map(recipe => {
-        const isGradeUnlocked = playerLevel >= getMinLevelForGrade(recipe.minGrade);
-        const isUnlocked = isGradeUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
+        const isTierUnlocked = playerLevel >= getMinLevelForGrade(recipe.tier || 1);
+        const isUnlocked = isTierUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
         const displayIngredients = getDisplayIngredients(recipe);
         const coinCost = recipe.coinCost || 0;
         const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
@@ -687,7 +686,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
                         <Hammer size={14} /> クラフトする
                       </MotionButton>
                     ) : (
-                      <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isGradeUnlocked ? `レベル${getMinLevelForGrade(recipe.minGrade)}で解放` : '条件未達成'}</div>
+                        <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : '条件未達成'}</div>
                     )}
                   </div>
                 </motion.div>
