@@ -587,13 +587,38 @@ const VillagerDot = React.memo(({ villager, cellSize, offset, isDanger }) => {
 const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 11 }) => {
   const GRID_SIZE = 20; const CELL_SIZE = 48; const MAP_SIZE = GRID_SIZE * CELL_SIZE;
   const containerRef = useRef(null);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
   const [offset, setOffset] = useState({ x: -MAP_SIZE / 2 + 150, y: -MAP_SIZE / 2 + 100 });
+  const [initialFitDone, setInitialFitDone] = useState(false);
   const isDragging = useRef(false); const lastPos = useRef({ x: 0, y: 0 });
   const onCellTapRef = useRef(onCellTap);
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
 
   const safeMapData = mapData || {};
   const C = 10;
+
+  // コンテナサイズ監視
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) setContainerSize({ w: width, h: height });
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // 初回フィット
+  useEffect(() => {
+    if (containerSize.w === 0 || containerSize.h === 0 || initialFitDone) return;
+    const R = exploredRadius || 2;
+    const mapLogicalSize = (R * 2 + 2) * CELL_SIZE;
+    setOffset({
+      x: containerSize.w / 2 - (C * CELL_SIZE) - (CELL_SIZE / 2),
+      y: containerSize.h / 2 - (C * CELL_SIZE) - (CELL_SIZE / 2)
+    });
+    setInitialFitDone(true);
+  }, [containerSize, exploredRadius, initialFitDone]);
 
   const handlePointerDown = (e) => { isDragging.current = false; lastPos.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY }; };
   const handlePointerMove = (e) => { if (!lastPos.current.x) return; const clientX = e.clientX || e.touches?.[0].clientX; const clientY = e.clientY || e.touches?.[0].clientY; const dx = clientX - lastPos.current.x; const dy = clientY - lastPos.current.y; if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isDragging.current = true; if (isDragging.current) { setOffset(prev => ({ x: Math.max(Math.min(prev.x + dx, 200), -MAP_SIZE + 200), y: Math.max(Math.min(prev.y + dy, 200), -MAP_SIZE + 200) })); lastPos.current = { x: clientX, y: clientY }; } };
@@ -683,7 +708,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
       onPointerUp={() => { lastPos.current = { x: 0, y: 0 }; }}
       onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; }}
-      className={`w-full h-full rounded-[16px] overflow-hidden transition-colors duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-300'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}>
+      className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-300'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
+      style={{ opacity: initialFitDone ? 1 : 0 }}>
       <AnimatePresence>
         {isDanger && !isEditing
           ? <motion.div key="rain" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-center justify-center opacity-40 pointer-events-none z-30"><CloudRain size={150} className="text-slate-400" /></motion.div>

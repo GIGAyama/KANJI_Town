@@ -500,10 +500,11 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   }, [offset.x, offset.y, containerSize.w, containerSize.h, zoom, safeBiomeMap]);
 
   return (
-    <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
+      <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
       onPointerUp={() => { lastPos.current = { x: 0, y: 0 }; }}
       onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; }}
-      className={`w-full h-full rounded-[16px] overflow-hidden transition-colors duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}>
+      className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
+      style={{ opacity: initialFitDone ? 1 : 0 }}>
       {/* --- 時間帯レイヤー（オーバーレイ） --- */}
       <div 
         className="absolute inset-0 z-20 pointer-events-none transition-colors duration-[3000ms]"
