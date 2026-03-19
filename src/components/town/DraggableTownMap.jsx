@@ -462,7 +462,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
                 style={{ bottom: 2 }}>
                 <div style={{ 
                   width: TILE_W, 
-                  height: TILE_H + isoHeight,
+                  height: Math.max(TILE_W, TILE_H + isoHeight),
                   transform: isFlipped ? 'scaleX(-1)' : 'none',
                   filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
                 }}>
