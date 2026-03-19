@@ -1394,11 +1394,6 @@ export function getRecipesByTier(tier) {
   return ALL_RECIPES.filter((r) => r.tier === tier);
 }
 
-// 学年で利用可能なレシピ取得ヘルパー
-export function getAvailableRecipes(grade) {
-  return ALL_RECIPES.filter((r) => r.minGrade <= grade);
-}
-
 // IDでレシピ検索ヘルパー
 export function getRecipeById(id) {
   return ALL_EXTENDED_RECIPES.find((r) => r.id === id) || null;

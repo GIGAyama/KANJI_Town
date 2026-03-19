@@ -153,42 +153,6 @@ export function calculateMaterialDrops(kanji) {
   return drops;
 }
 
-/**
- * Get available recipes for a given grade level.
- *
- * A recipe is available if its `minGrade` (or `tier`) is <= the current grade.
- * Recipes without a `minGrade` default to grade 1.
- *
- * @param {number} grade - Current grade (1-6)
- * @param {Array} allRecipes - All recipe definitions
- * @returns {Array} recipes available at this grade
- */
-export function getAvailableRecipes(grade, allRecipes) {
-  if (!allRecipes || !Array.isArray(allRecipes)) return [];
-  return allRecipes.filter((recipe) => {
-    const requiredGrade = recipe.minGrade || recipe.tier || 1;
-    return requiredGrade <= grade;
-  });
-}
-
-/**
- * Check which recipes can be crafted with current materials.
- *
- * Returns a new array where each recipe object is augmented with a boolean
- * `craftable` flag indicating whether the player has sufficient materials.
- *
- * @param {Object} materials - Player's material inventory
- * @param {Array} recipes - Available recipes
- * @returns {Array} recipes with craftable flag
- */
-export function getCraftableRecipes(materials, recipes) {
-  if (!recipes || !Array.isArray(recipes)) return [];
-  return recipes.map((recipe) => ({
-    ...recipe,
-    craftable: canCraft(materials, recipe.ingredients),
-  }));
-}
-
 // レシピ結果 → まちアイテムID変換マップ
 // 建物レシピの result.type を TOWN_ITEMS の id に変換する
 const RESULT_TO_TOWN_ITEM = {

@@ -32,7 +32,6 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
   const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
   const playerLevel = levelInfo.level;
-  const playerGrade = stats.targetGrade || 1;
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
   const perfectCount = stats.perfectCount || 0;
@@ -198,7 +197,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
               <button key={t} onClick={() => { setFilterTier(t); audioCtrl.playSE('click'); }}
                 className={`px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap border-2 transition-all ${filterTier === t ? 'text-white border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}
                 style={filterTier === t ? { backgroundColor: TIER_COLORS[t] } : {}}>
-                {t}年 {TIER_NAMES[t]}
+                Tier{t} {TIER_NAMES[t]}
               </button>
             ))}
           </div>
@@ -238,8 +237,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
           {/* レシピ一覧 */}
           {recipes.map(recipe => {
-          const isGradeUnlocked = playerLevel >= getMinLevelForGrade(recipe.minGrade || 1);
-          const isUnlocked = isGradeUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
+          const isTierUnlocked = playerLevel >= getMinLevelForGrade(recipe.tier || 1);
+          const isUnlocked = isTierUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
           const coinCost = recipe.coinCost || 0;
           const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
@@ -392,7 +391,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                           </>
                         ) : (
                           <div className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                            <Lock size={14} /> {!isGradeUnlocked ? `レベル${getMinLevelForGrade(recipe.minGrade || 1)}で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
+                            <Lock size={14} /> {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
                           </div>
                         )}
                       </div>
