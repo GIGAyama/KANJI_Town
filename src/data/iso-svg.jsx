@@ -395,6 +395,8 @@ export const SvgBambooGrove = () => (
 // 4. Structures Assets
 // ==========================================
 export const SvgRoad = () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><Fl type="road" color="#cbd5e1" thickness={4} /></svg>;
+export const SvgWater = () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><Fl type="water" color="#7dd3fc" thickness={4} /></svg>;
+
 
 export const SvgHouse1 = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
@@ -545,7 +547,24 @@ export const SvgWall = () => (
   </svg>
 );
 
+export const SvgFence = () => (
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.0)">
+      <ellipse cx="0" cy="0" rx="18" ry="9" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
+      <polygon points="-16,-8 -18,-9 -18,-19 -16,-18" fill="#92400e" />
+      <polygon points="-16,-8 -14,-9 -14,-19 -16,-18" fill="#b45309" />
+      <polygon points="0,0 -2,-1 -2,-11 0,-10" fill="#92400e" />
+      <polygon points="0,0 2,-1 2,-11 0,-10" fill="#b45309" />
+      <polygon points="16,8 14,7 14,-3 16,-2" fill="#92400e" />
+      <polygon points="16,8 18,7 18,-3 16,-2" fill="#b45309" />
+      <path d="M -16,-14 L 16,0" stroke="#b45309" strokeWidth="2" strokeOpacity="0.8" />
+      <path d="M -16,-10 L 16,4" stroke="#b45309" strokeWidth="2" strokeOpacity="0.8" />
+    </g>
+  </svg>
+);
+
 export const SvgBridge = () => (
+
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
       <ellipse cx="0" cy="5" rx="15" ry="5" fill="#0284c7" opacity="0.8" />
@@ -665,7 +684,10 @@ export const SvgPort = () => (
   </svg>
 );
 
+export const SvgGarden = () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><Fl type="garden" color="#86efac" thickness={3} /></svg>;
+
 export const SvgSmithy = () => (
+
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
       <ellipse cx="0" cy="0" rx="26" ry="13" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" />
