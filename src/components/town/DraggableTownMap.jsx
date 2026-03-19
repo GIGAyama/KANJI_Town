@@ -195,16 +195,30 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
     const dx = clientX - lastPos.current.x;
     const dy = clientY - lastPos.current.y;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isDragging.current = true;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) isDragging.current = true;
     if (isDragging.current) {
       setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       lastPos.current = { x: clientX, y: clientY };
     }
   };
-  const handlePointerUp = useCallback((e, cx, cy) => {
-    if (!isDragging.current && onCellTapRef.current) onCellTapRef.current(cx, cy);
+  const handlePointerUp = useCallback((e) => {
+    if (!isDragging.current && onCellTapRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      // スクリーン座標 → マップ内ローカル座標 → グリッド座標
+      const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
+      const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY ?? 0;
+      const screenX = clientX - rect.left;
+      const screenY = clientY - rect.top;
+      // CSS transform: translate(offsetX, offsetY) scale(zoom)、left: 50%
+      const mapX = (screenX - rect.width / 2 - offset.x) / zoom;
+      const mapY = (screenY - offset.y) / zoom;
+      const grid = fromIso(mapX, mapY);
+      if (grid.x >= 0 && grid.x < GRID_SIZE && grid.y >= 0 && grid.y < GRID_SIZE) {
+        onCellTapRef.current(grid.x, grid.y);
+      }
+    }
     lastPos.current = { x: 0, y: 0 };
-  }, []);
+  }, [zoom, offset.x, offset.y]);
 
   // ── ズーム ──
   const handleZoomIn = () => setZoom(z => Math.min(2, z + 0.15));
@@ -396,7 +410,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         };
         result.push(
           <div key={key} style={megaStyle}
-            onPointerUp={(e) => handlePointerUp(e, x, y)}
+
             className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
             <megaInfo.item.svg />
           </div>
@@ -409,7 +423,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         const terrainColors = TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland;
         result.push(
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
-            onPointerUp={(e) => handlePointerUp(e, x, y)}
+
             className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
             <GroundDiamond colors={terrainColors} tint={biomeTint} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
             {isEditing && (
@@ -439,7 +453,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
 
       result.push(
         <div key={key} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2 }}
-          onPointerUp={(e) => handlePointerUp(e, x, y)}
+
           className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
           {/* 地面ダイヤモンド（建物の下に描画） */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, width: TILE_W }}>
@@ -488,7 +502,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       );
     }
     return result;
-  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, handlePointerUp, timeOfDay]);
+  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, timeOfDay]);
 
   // バイオーム表示
   const centerBiome = useMemo(() => {
@@ -501,7 +515,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
-      onPointerUp={() => { lastPos.current = { x: 0, y: 0 }; }}
+      onPointerUp={handlePointerUp}
       onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; }}
       className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
       style={{ opacity: initialFitDone ? 1 : 0 }}>

@@ -464,6 +464,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
                   selectedItem={selectedItem} setSelectedItem={setSelectedItem}
                   stats={stats} localMap={localMap} playerLevel={playerLevel}
                   handleBuy={handleBuy} showError={showError}
+                  onSelectClose={() => setDockOpen(null)}
                 />}
                 {dockOpen === 'craft' && <CraftPanel
                   craftCategory={craftCategory} setCraftCategory={setCraftCategory}
@@ -524,7 +525,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 };
 
 // ── Items Panel ──
-const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerLevel, handleBuy, showError }) => (
+const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerLevel, handleBuy, showError, onSelectClose }) => (
   <div className="flex flex-col gap-3">
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
@@ -533,7 +534,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
       ].map(f => (
         <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
       ))}
-      <button onClick={() => setSelectedItem('eraser')} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 flex items-center gap-1 transition-all ${selectedItem === 'eraser' ? 'bg-rose-500 text-white border-rose-700' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}><Eraser size={12} /> けす</button>
+      <button onClick={() => { setSelectedItem('eraser'); if (onSelectClose) onSelectClose(); }} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 flex items-center gap-1 transition-all ${selectedItem === 'eraser' ? 'bg-rose-500 text-white border-rose-700' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}><Eraser size={12} /> けす</button>
     </div>
 
     {/* Item grid */}
@@ -547,7 +548,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
           return (
             <div key={item.id} onClick={() => {
               if (isGradeLocked) { audioCtrl.playSE('stamp_bad'); showError(`レベル${getMinLevelForGrade(item.minGrade)}で解放`); return; }
-              if (owned) { setSelectedItem(item.id); audioCtrl.playSE('click'); }
+              if (owned) { setSelectedItem(item.id); if (onSelectClose) onSelectClose(); audioCtrl.playSE('click'); }
             else if (canAfford) { handleBuy(item); }
             else { audioCtrl.playSE('stamp_bad'); }
           }} className={`flex flex-col items-center gap-0.5 cursor-pointer rounded-xl border-[3px] p-1.5 transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-105 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
