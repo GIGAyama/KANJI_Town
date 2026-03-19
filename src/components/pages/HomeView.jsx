@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock } from 'lucide-react';
+import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock, Sparkles } from 'lucide-react';
 import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
@@ -139,10 +139,13 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         </div>
 
         {/* Navigation buttons */}
-        <div className="grid grid-cols-3 gap-2 shrink-0">
-          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('dictionary')}><Library size={16} className="text-[var(--secondary)]" /> ずかん</MotionButton>
-          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('achievements')}><Medal size={16} className="text-amber-500" /> {F("実績","じっせき")}</MotionButton>
-          <MotionButton variant="secondary" className="py-3 text-xs border-[2px] border-[var(--text)] shadow-sm flex-col gap-0.5" onClick={() => setView('stats')}><BarChart3 size={16} className="text-[var(--secondary)]" /> きろく</MotionButton>
+        <div className="grid grid-cols-2 gap-2 shrink-0">
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('dictionary')}><Library size={20} className="text-[var(--secondary)]" /> {F("ずかん","図鑑")}</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] border-amber-200 bg-amber-50 shadow-sm gap-2" onClick={() => setView('gacha')}><Sparkles size={20} className="text-amber-500" /> ガチャ</MotionButton>
+        </div>
+        <div className="grid grid-cols-2 gap-2 shrink-0">
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('achievements')}><Medal size={20} className="text-amber-500" /> {F("実績","じっせき")}</MotionButton>
+          <MotionButton variant="secondary" className="py-3 text-sm border-[2px] border-[var(--text)] shadow-sm gap-2" onClick={() => setView('stats')}><BarChart3 size={20} className="text-[var(--secondary)]" /> {F("きろく","記録")}</MotionButton>
         </div>
 
         {/* Unlock hints */}

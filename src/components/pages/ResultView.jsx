@@ -13,12 +13,7 @@ import { audioCtrl } from '../../systems/audio';
 import { getOccupation } from '../../data/residents';
 import { getLevelInfoFromExp } from '../../utils/level-system';
 
-const gachaRoll = () => {
-  const totalWeight = GACHA_POOL.reduce((s, t) => s + t.weight, 0);
-  let rand = Math.random() * totalWeight;
-  for (const tier of GACHA_POOL) { rand -= tier.weight; if (rand <= 0) return tier.items[Math.floor(Math.random() * tier.items.length)]; }
-  return GACHA_POOL[0].items[0];
-};
+import { gachaRoll, isRareItem } from '../../systems/gacha';
 
 const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
   const { earnedExp, perfectCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
@@ -54,7 +49,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
     const result = gachaRoll();
     setTimeout(() => {
       setGachaResult(result); setGachaPhase('reveal');
-      const isRare = GACHA_POOL.findIndex(t => t.items.includes(result)) >= 3;
+      const isRare = isRareItem(result);
       audioCtrl.playSE(isRare ? 'rare' : 'chest_open');
       const newStats = { ...stats, coins: Math.max(0, (stats.coins || 0) - 100), townItems: { ...stats.townItems, [result]: (stats.townItems?.[result] || 0) + 1 } };
       setStats(newStats); StorageAPI.saveStats(newStats);
