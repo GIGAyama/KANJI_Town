@@ -14,7 +14,12 @@ const AchievementView = ({ setView, stats, setStats }) => {
   const handleClaim = (achievement) => {
     const current = stats.achievements?.[achievement.id];
     if (!current || current.claimed || current.current < achievement.target) return;
-    const newStats = { ...stats, coins: stats.coins + achievement.reward, achievements: { ...stats.achievements, [achievement.id]: { ...current, claimed: true } } };
+    const newStats = { 
+      ...stats, 
+      coins: stats.coins + achievement.reward, 
+      totalExp: (stats.totalExp || 0) + (achievement.rewardExp || 0),
+      achievements: { ...stats.achievements, [achievement.id]: { ...current, claimed: true } } 
+    };
     if (achievement.rewardItem) newStats.townItems = { ...newStats.townItems, [achievement.rewardItem]: (newStats.townItems?.[achievement.rewardItem] || 0) + 1 };
     setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('chest_open');
   };
@@ -93,7 +98,10 @@ const AchievementView = ({ setView, stats, setStats }) => {
                   <div className="text-xs font-bold text-[var(--text)] opacity-50 mt-1">{progress.current} / {a.target}</div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>
+                    {a.rewardExp && <div className="flex items-center gap-1 text-[10px] font-black text-blue-500">⚡+{a.rewardExp} EXP</div>}
+                  </div>
                   {rewardItemDef && <div className={`w-10 h-10 ${rewardItemDef.bg} rounded-lg border-2 border-[var(--text)] flex items-center justify-center`}><rewardItemDef.svg /></div>}
                   {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1">うけとる！</MotionButton>)}
                   {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300">{F("受取済","うけとりずみ")}</span>}

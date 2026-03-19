@@ -62,9 +62,10 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
               {canClaim && (
                 <button
                   onClick={() => onClaim(m)}
-                  className="shrink-0 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-lg border-2 border-amber-600 shadow-[0_1px_0_#92400e] active:shadow-none active:translate-y-[1px] transition-all"
+                  className="shrink-0 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-lg border-2 border-amber-600 shadow-[0_1px_0_#92400e] active:shadow-none active:translate-y-[1px] transition-all flex flex-col items-center"
                 >
-                  <Coins size={10} className="inline mr-0.5" />{m.reward}
+                  <div className="flex items-center gap-0.5"><Coins size={10} />{m.reward}</div>
+                  {m.rewardExp && <div className="text-[8px] opacity-70">⚡+{m.rewardExp}</div>}
                 </button>
               )}
               {m.claimed && <Check size={14} className="shrink-0 text-emerald-500" />}
