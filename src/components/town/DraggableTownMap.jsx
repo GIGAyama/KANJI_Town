@@ -597,7 +597,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       </div>
       {/* 住民オーバーレイ */}
       {visibleVillagers.map(v => (
-        <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} offset={offset} zoom={zoom} />
+        <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} offset={offset} zoom={zoom} containerWidth={containerSize.w} />
       ))}
     </div>
   );

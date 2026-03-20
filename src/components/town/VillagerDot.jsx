@@ -30,7 +30,7 @@ const CULTIVATABLE_TERRAIN = new Set([
 // 距離計算ヘルパー
 const distance = (x1, y1, x2, y2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 
-const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, zoom = 1 }) => {
+const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, zoom = 1, containerWidth }) => {
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用
   const [gridPos, setGridPos] = useState({ x: villager.x, y: villager.y });
@@ -188,7 +188,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
   // インタラクト中のジャンプ
   const jumping = (aiState === 'INTERACTING' && emotion === 'heart') ? Math.abs(Math.sin(Date.now() / 200)) * -6 : 0;
 
-  const screenX = baseIsoX * zoom + offset.x + visualOffset.x * zoom + (typeof window !== 'undefined' ? window.innerWidth / 2 : 400);
+  const screenX = baseIsoX * zoom + offset.x + visualOffset.x * zoom + (containerWidth ? containerWidth / 2 : (typeof window !== 'undefined' ? window.innerWidth / 2 : 400));
   const screenY = (baseIsoY + bobbing + jumping) * zoom + offset.y + visualOffset.y * zoom;
 
   // 現在地のタイルIDを取得し、未開拓（草木）か判定する
