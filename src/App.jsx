@@ -18,7 +18,7 @@ import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/l
 import { getTodayString } from './utils/date-utils';
 
 // UI
-import { PageWrapper, FullScreenWrapper, ErrorBoundary } from './components/ui';
+import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer } from './components/ui';
 import { F } from './components/ui/FormatKun';
 
 // Pages - HomeViewは常にロード、他はlazy
@@ -550,6 +550,7 @@ export default function App() {
         </AnimatePresence>
         </Suspense>
       </main>
+      <Footer />
     </div>
   );
 }
