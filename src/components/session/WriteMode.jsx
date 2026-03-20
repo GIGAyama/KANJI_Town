@@ -88,7 +88,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
         if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; }
-        addFloatingText(canvasSize / 2, canvasSize / 2, `${evalText}`, color, 1.5); distSum.current = 0; setStatusMsg("💮 よくできました！"); audioCtrl.playSE('success'); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2500);
+        addFloatingText(canvasSize / 2, canvasSize / 2, `${evalText}`, color, 1.5); distSum.current = 0; setStatusMsg("✨ よくできました！"); audioCtrl.playSE('success'); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2500);
       } else { addFloatingText(lastPos.current.x, lastPos.current.y, "✨", "var(--accent)", 1); setStatusMsg(`${nextStroke + 1}かくめ をかこう！`); audioCtrl.playSE('click'); }
     } else { clearCanvas(writeRef); setStatusMsg("さいごまで なぞってね💦"); audioCtrl.playSE('stamp_bad'); }
   };
