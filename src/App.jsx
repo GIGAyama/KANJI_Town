@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import OfflineBanner from './components/ui/OfflineBanner';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
@@ -84,6 +86,7 @@ export default function App() {
   const [dailyMissions, setDailyMissions] = useState([]);
   // Phase 5: ヒント
   const [seenHints, setSeenHints] = useState(stats.seenHints || []);
+  const isOnline = useOnlineStatus();
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
@@ -465,6 +468,9 @@ export default function App() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle />
+
+      {/* オフラインバナー */}
+      {!isOnline && <OfflineBanner />}
 
       {/* Phase 5: チュートリアルオーバーレイ */}
       <AnimatePresence>
