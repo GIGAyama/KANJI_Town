@@ -1,5 +1,6 @@
 // ボスバトル用 客観的ストローク採点エンジン
 // 画数・始点・終点・書き順を100点満点で採点
+import { STROKE_THRESHOLDS } from '../constants/strokeConfig';
 
 /**
  * ユーザーのストロークを正解データと比較して採点する
@@ -40,7 +41,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const targetStart = strokeData[i].s;
     const dist = Math.hypot(userStart.x - targetStart.x, userStart.y - targetStart.y);
     // dist 0 → 1.0, dist 0.2+ → 0
-    const score = Math.max(0, 1 - dist / 0.2);
+    const score = Math.max(0, 1 - dist / STROKE_THRESHOLDS.START_POINT);
     startTotal += score;
   }
   const startScore = Math.round((startTotal / expectedCount) * 30);
@@ -57,7 +58,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const userEnd = { x: lastPt.x / canvasSize, y: lastPt.y / canvasSize };
     const targetEnd = strokeData[i].e;
     const dist = Math.hypot(userEnd.x - targetEnd.x, userEnd.y - targetEnd.y);
-    const score = Math.max(0, 1 - dist / 0.25);
+    const score = Math.max(0, 1 - dist / STROKE_THRESHOLDS.END_POINT);
     endTotal += score;
   }
   const endScore = Math.round((endTotal / expectedCount) * 30);
@@ -84,7 +85,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
       const d = Math.hypot(userStart.x - strokeData[j].s.x, userStart.y - strokeData[j].s.y);
       if (d < bestDist) { bestDist = d; bestIdx = j; }
     }
-    if (bestIdx >= 0 && bestDist < 0.3) {
+    if (bestIdx >= 0 && bestDist < STROKE_THRESHOLDS.CROSS_DISTANCE) {
       usedTargets.add(bestIdx);
       matchMap[i] = bestIdx;
       if (bestIdx === i) orderCorrect++;
