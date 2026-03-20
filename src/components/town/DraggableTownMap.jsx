@@ -9,8 +9,8 @@ import { audioCtrl } from '../../systems/audio';
 // ── アイソメトリック定数 ──
 const TILE_W = 64;
 const TILE_H = 32;
-const GRID_SIZE = 50;
-const C = 25; // マップ中心
+export const GRID_SIZE = 50;
+export const C = 25; // マップ中心
 
 // 開拓可能な地形
 const CULTIVATABLE_TERRAIN = new Set(['t_roughland', 't_grassland', 't_forest_floor', 't_sand', 't_highland']);

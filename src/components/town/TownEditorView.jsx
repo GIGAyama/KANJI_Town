@@ -6,7 +6,7 @@ import { TOWN_ITEMS } from '../../data/town-items';
 import { MATERIALS } from '../../data/materials';
 import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
 import { OCCUPATIONS } from '../../data/residents';
-import DraggableTownMap, { CULTIVATABLE_TERRAIN } from './DraggableTownMap';
+import DraggableTownMap, { CULTIVATABLE_TERRAIN, C } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier, getResidentStats, collectDailyResources, calculateMaintenanceCost } from '../../systems/residents';
@@ -144,6 +144,9 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   };
 
   const handleCellTap = (x, y) => {
+    const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
+    if (dist > (stats.exploredRadius || 3)) return;
+
     const key = `${x},${y}`;
     const currentTile = localMap[key];
 
@@ -153,7 +156,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}枚必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
       setLocalMap(newMap); pushHistory(newMap);
-      const newStats = { ...stats, coins: stats.coins - cost };
+      const newStats = { ...stats, coins: stats.coins - cost, townMap: newMap };
       setStats(newStats); StorageAPI.saveStats(newStats);
       audioCtrl.playSE('place'); spawnDust(); return;
     }
