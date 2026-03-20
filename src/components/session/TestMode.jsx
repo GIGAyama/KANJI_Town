@@ -25,7 +25,7 @@ function getScoreBanner(result) {
 }
 
 const EVAL_BUTTONS = [
-  { key: 'easy', variant: 'primary', label: 'よゆう💮', hint: '4日後〜', shadow: 'shadow-[0_6px_0_#9f1239]' },
+  { key: 'easy', variant: 'primary', label: 'よくできた！✨', hint: '4日後〜', shadow: 'shadow-[0_6px_0_#9f1239]' },
   { key: 'good', variant: 'success', label: '書けた👍', hint: '翌日〜', shadow: 'shadow-[0_6px_0_#065f46]' },
   { key: 'hard', variant: 'warning', label: 'むずかしい😓', hint: 'まもなく', shadow: 'shadow-[0_4px_0_#92400e]' },
   { key: 'again', variant: 'danger', label: '忘れた💦', hint: 'もう一度', shadow: 'shadow-[0_4px_0_#334155]' },

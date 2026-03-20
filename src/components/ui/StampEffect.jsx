@@ -1,18 +1,29 @@
 import { motion } from 'framer-motion';
 
-const Hanamaru = ({ className }) => (
-  <svg viewBox="0 0 100 100" className={className} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round">
-    <path d="M50,10 C25,10 10,30 15,55 C20,80 40,90 65,85 C90,80 95,55 90,30 C85,15 65,5 50,10 C30,15 20,40 25,60 C30,80 55,85 75,70" />
-    {[0, 72, 144, 216, 288].map(angle => (
-      <path key={angle} d="M50,8 Q55,0 60,8" strokeWidth="3" transform={`rotate(${angle}, 50, 50)`} />
-    ))}
+const Medal = ({ className }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="medal-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fbbf24" />
+        <stop offset="50%" stopColor="#f59e0b" />
+        <stop offset="100%" stopColor="#d97706" />
+      </linearGradient>
+    </defs>
+    <path d="M35 40 L25 80 L50 70 L75 80 L65 40" fill="#ef4444" stroke="#7f1d1d" strokeWidth="2" strokeLinejoin="round" />
+    <path d="M40 40 L35 70 L50 65 L65 70 L60 40" fill="#dc2626" opacity="0.6" />
+    <circle cx="50" cy="40" r="32" fill="url(#medal-gold)" stroke="#78350f" strokeWidth="2.5" />
+    <circle cx="50" cy="40" r="26" fill="none" stroke="#fef3c7" strokeWidth="1.5" strokeDasharray="4 2" opacity="0.8" />
+    <path d="M50 22 L56 36 H70 L59 44 L63 58 L50 50 L37 58 L41 44 L30 36 H44 Z" fill="#fff" opacity="0.9" />
+    {/* Sparkles */}
+    <path d="M75 15 L77 20 L82 22 L77 24 L75 29 L73 24 L68 22 L73 20 Z" fill="#fff" opacity="0.8" />
+    <path d="M25 25 L26 28 L29 29 L26 30 L25 33 L24 30 L21 29 L24 28 Z" fill="#fff" opacity="0.6" />
   </svg>
 );
 
 const StampEffect = ({ stamp }) => {
   if (!stamp) return null;
   const config = { 
-    'easy': { text: <Hanamaru className="w-[180px] h-[180px] md:w-[240px] md:h-[240px]" />, color: 'text-rose-500', label: 'よゆう！', purify: true }, 
+    'easy': { text: <Medal className="w-[180px] h-[180px] md:w-[240px] md:h-[240px]" />, color: 'text-amber-500', label: 'よくできました！', purify: true }, 
     'good': { text: '👍', color: 'text-sky-500', label: '書けた！' }, 
     'again': { text: '💦', color: 'text-slate-500', label: '忘れた…' } 
   }[stamp];
