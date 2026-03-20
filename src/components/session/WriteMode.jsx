@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Pencil, ChevronRight } from 'lucide-react';
+import { RefreshCw, Pencil, ChevronRight, Undo2, Trash2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
 import Confetti from '../ui/Confetti';
@@ -14,12 +14,12 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
   const [count, setCount] = useState(0); const [statusMsg, setStatusMsg] = useState("１かくめ をかこう！");
   const [showConfetti, setShowConfetti] = useState(false); const [floatingTexts, setFloatingTexts] = useState([]);
   const [userStrokes, setUserStrokes] = useState([]); const [history, setHistory] = useState([]);
-  const distSum = useRef(0); const currentPathRef = useRef([]);
+  const distSum = useRef(0); const currentPathRef = useRef([]); const strokeDists = useRef([]);
 
   const addFloatingText = (x, y, text, color = 'var(--primary)', scale = 1) => { const id = Date.now() + Math.random(); setFloatingTexts(prev => [...prev, { id, x, y, text, color, scale }]); setTimeout(() => { setFloatingTexts(prev => prev.filter(t => t.id !== id)); }, 1500); };
   const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { const c = ref.current; if (c) { c.width = canvasSize * 2; c.height = canvasSize * 2; c.style.width = '100%'; c.style.height = '100%'; const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(2, 2); ctx.clearRect(0, 0, canvasSize, canvasSize); } }); }, [canvasSize]);
 
-  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; initCanvases(); }, [paths, canvasSize, initCanvases]);
+  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; initCanvases(); }, [paths, canvasSize, initCanvases]);
 
   const drawGuide = useCallback(() => {
     const gCtx = guideRef.current?.getContext('2d'); if (!gCtx || !paths.length) return;
@@ -41,8 +41,9 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
   useEffect(() => { if (paths.length > 0 && currentStroke === paths.length) { const timer = setTimeout(() => { const inkCanvas = inkRef.current; if (inkCanvas) setHistory(prev => [...prev, inkCanvas.toDataURL('image/png')]); }, 100); return () => clearTimeout(timer); } }, [currentStroke, paths.length]);
 
   const clearCanvas = (ref) => { ref.current?.getContext('2d')?.clearRect(0, 0, canvasSize, canvasSize); };
-  const resetPractice = () => { setCurrentStroke(0); setUserStrokes([]); setStatusMsg("１かくめ をかこう！"); distSum.current = 0; clearCanvas(writeRef); };
-  const handleNextTry = () => { setCount(c => c + 1); setCurrentStroke(0); setUserStrokes([]); setStatusMsg("１かくめ をかこう！"); distSum.current = 0; clearCanvas(writeRef); };
+  const resetPractice = () => { setCurrentStroke(0); setUserStrokes([]); setStatusMsg("１かくめ をかこう！"); distSum.current = 0; strokeDists.current = []; clearCanvas(writeRef); };
+  const handleNextTry = () => { setCount(c => c + 1); setCurrentStroke(0); setUserStrokes([]); setStatusMsg("１かくめ をかこう！"); distSum.current = 0; strokeDists.current = []; clearCanvas(writeRef); };
+  const undoLastStroke = () => { if (currentStroke <= 0 || isDrawing) return; const newStroke = currentStroke - 1; setCurrentStroke(newStroke); setUserStrokes(prev => prev.slice(0, -1)); const lastDist = strokeDists.current.pop() || 0; distSum.current -= lastDist; clearCanvas(writeRef); setStatusMsg(`${newStroke + 1}かくめ をかこう！`); audioCtrl.playSE('click'); };
 
   const getCoords = (e) => { const rect = writeRef.current.getBoundingClientRect(); const scaleX = canvasSize / rect.width; const scaleY = canvasSize / rect.height; const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }; };
   const lastPos = useRef({ x: 0, y: 0 }); const currentStrokeRef = useRef(currentStroke); currentStrokeRef.current = currentStroke; const isDrawingRef = useRef(isDrawing); isDrawingRef.current = isDrawing;
@@ -82,7 +83,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
         if (!isError) { addFloatingText(lastPos.current.x, lastPos.current.y - 30, ending.type === 'はね' ? "きれいなハネ！✨" : ending.type === 'はらい' ? "きれいなハライ！✨" : "しっかりトメたね！✨", "var(--primary)", 1.0); }
       }
       if (isError) { clearCanvas(writeRef); setStatusMsg(errMsg); audioCtrl.playSE('stamp_bad'); return; }
-      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist;
+      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
         if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; }
@@ -118,7 +119,10 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
         </div>
       )}
       <div className="mt-auto pt-2 flex flex-col gap-2 pb-2 shrink-0">
-        <MotionButton variant="secondary" onClick={resetPractice} className="py-2 text-sm border-[2px] border-[var(--text)] w-full shadow-[0_2px_0_var(--text)]"><RefreshCw size={16} /> {F("途中","とちゅう")}でやりなおす</MotionButton>
+        <div className="flex gap-2">
+          <MotionButton variant="secondary" onClick={undoLastStroke} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Undo2 size={16} /> 1{F("画","かく")}もどす</MotionButton>
+          <MotionButton variant="secondary" onClick={resetPractice} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Trash2 size={16} /> ぜんぶけす</MotionButton>
+        </div>
         <div className="flex flex-col gap-2 w-full mt-1">
           <MotionButton variant={currentStroke >= paths.length ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
           <AnimatePresence>{history.length >= 2 && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}><MotionButton variant="success" onClick={onNext} className={`w-full py-4 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]`}>テストへ{F("進","すす")}む！ <ChevronRight size={24} /></MotionButton></motion.div>)}</AnimatePresence>
