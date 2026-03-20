@@ -81,7 +81,7 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
         {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => setMode('watch')} commonSidebar={commonSidebarTop} />}
         {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => setMode('write')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
         {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} />}
-        {mode === 'test' && <TestMode kanji={currentKanji} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
+        {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
       </div>
     </div>
   );
