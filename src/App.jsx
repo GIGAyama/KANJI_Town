@@ -233,7 +233,7 @@ export default function App() {
       .sort(() => Math.random() - 0.5)
       .slice(0, newLimit);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    const queue = [...reviewTargets, ...newTargets];
+    const queue = reviewTargets.length > 0 ? reviewTargets : newTargets;
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
     if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); }
   };
