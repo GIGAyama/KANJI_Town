@@ -95,130 +95,101 @@ const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, 
 // 2. Terrain Assets
 // ==========================================
 export const SvgGrassland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
     <g transform="translate(0, 40)">
-      <polygon points="0,25 50,50 50,60 0,35" fill="#78350f" />
-      <polygon points="50,50 100,25 100,35 50,60" fill="#451a03" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#4ade80" />
-      <path d="M 0,25 Q 5,28 10,25 Q 15,30 20,26 Q 25,32 30,27 Q 35,35 40,29 Q 45,38 50,50 L 50,53 Q 45,41 40,32 Q 35,38 30,30 Q 25,35 20,29 Q 15,33 10,28 Q 5,31 0,28 Z" fill="#22c55e" />
-      <path d="M 50,50 Q 55,48 60,51 Q 65,45 70,49 Q 75,42 80,45 Q 85,38 90,41 Q 95,33 100,25 L 100,28 Q 95,36 90,44 Q 85,41 80,48 Q 75,45 70,52 Q 65,48 60,54 Q 55,51 50,53 Z" fill="#16a34a" />
-      <path d="M 10,25 Q 30,15 50,25 Q 70,35 90,25 Q 70,15 50,5 Q 30,15 10,25 Z" fill="#86efac" opacity="0.3"/>
-      <circle cx="20" cy="20" r="1.5" fill="#bef264" opacity="0.8" />
-      <circle cx="70" cy="25" r="1.2" fill="#bef264" opacity="0.8" />
-      <circle cx="50" cy="12" r="1" fill="#fbbf24" opacity="0.9"/>
+      <polygon points="0,25 50,50 50,60 0,35" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#451a03" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#4ade80" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="20" cy="25" r="1.5" fill="#000" />
+      <circle cx="70" cy="20" r="1.5" fill="#000" />
+      <path d="M 40,30 L 40,20 M 45,35 L 45,25" stroke="#000" strokeWidth="2" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgBedrock = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 35)">
-      <polygon points="0,25 50,50 50,65 0,40" fill="#334155" />
-      <polygon points="50,50 100,25 100,40 50,65" fill="#1e293b" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#64748b" />
-      <polygon points="50,2 96,25 50,48 4,25" fill="#475569" />
-      <path d="M 15,22 L 30,25 L 35,18 L 50,28 L 65,22 L 85,28" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M 30,25 L 40,35 L 35,42" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="40,10 55,8 50,15 35,18" fill="#94a3b8" opacity="0.3" />
-      <polygon points="60,35 80,25 75,38" fill="#334155" opacity="0.4" />
-      <polyline points="0,25 50,50 100,25" fill="none" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
+  <svg viewBox="0 0 100 100" className="w-full h-full" ><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#334155" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#1e293b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#64748b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M 30,20 L 50,30 L 70,20" fill="none" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M 50,30 L 50,45" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgRoughland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 42)">
-      <polygon points="0,25 50,50 50,58 0,33" fill="#78350f" />
-      <polygon points="50,50 100,25 100,33 50,58" fill="#451a03" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#b45309" />
-      <polygon points="30,5 50,15 25,25" fill="#d97706" opacity="0.4" />
-      <polygon points="70,15 90,25 60,35 50,25" fill="#92400e" opacity="0.4" />
-      <path d="M 20,22 L 30,18 L 40,25 L 55,20 L 70,28 L 80,22" fill="none" stroke="#78350f" strokeWidth="1" strokeLinejoin="round" opacity="0.8" />
-      <path d="M 25,30 Q 27,25 30,30 M 27,30 Q 27,27 25,28" fill="none" stroke="#fcd34d" strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="45" cy="15" r="1.5" fill="#78350f" />
-      <circle cx="55" cy="25" r="2" fill="#92400e" />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#451a03" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#b45309" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="20,20 30,15 40,20 30,25" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="60,30 70,25 80,30 70,35" fill="#92400e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
     </g>
   </svg>
 );
 
 export const SvgCleared = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 46)">
-      <polygon points="0,25 50,50 50,54 0,29" fill="#92400e" />
-      <polygon points="50,50 100,25 100,29 50,54" fill="#78350f" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#d4a96a" />
-      <path d="M 10,20 L 50,40 M 20,15 L 60,35 M 30,10 L 70,30 M 40,5 L 80,25" fill="none" stroke="#b45309" strokeWidth="1.5" opacity="0.2" />
-      <path d="M 15,22 L 55,42 M 25,17 L 65,37 M 35,12 L 75,32" fill="none" stroke="#fde68a" strokeWidth="1.5" opacity="0.3" />
-      <polygon points="50,5 90,25 50,45 10,25" fill="#fef08a" opacity="0.1" />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#92400e" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#d4a96a" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="30" cy="20" r="1.5" fill="#000" />
+      <circle cx="50" cy="30" r="1.5" fill="#000" />
+      <circle cx="70" cy="20" r="1.5" fill="#000" />
+      <circle cx="40" cy="15" r="1.5" fill="#000" />
+      <circle cx="60" cy="15" r="1.5" fill="#000" />
     </g>
   </svg>
 );
 
 export const SvgForestFloor = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 44)">
-      <polygon points="0,25 50,50 50,56 0,31" fill="#064e3b" />
-      <polygon points="50,50 100,25 100,31 50,56" fill="#022c22" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#14532d" />
-      <path d="M 20,25 Q 30,15 50,20 T 80,25 Q 70,40 50,35 T 20,25 Z" fill="#064e3b" opacity="0.7"/>
-      <circle cx="30" cy="15" r="8" fill="#065f46" opacity="0.6" />
-      <circle cx="75" cy="25" r="10" fill="#065f46" opacity="0.6" />
-      <polygon points="40,20 43,18 45,21 41,23" fill="#b45309" />
-      <polygon points="60,30 64,29 62,32 58,31" fill="#92400e" />
-      <polygon points="25,30 28,27 30,31 26,33" fill="#d97706" />
-      <g transform="translate(15, -2)">
-        <path d="M 50,25 L 50,28" stroke="#fef08a" strokeWidth="1.5" />
-        <path d="M 48,25 Q 50,22 52,25 Z" fill="#ef4444" />
-      </g>
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#064e3b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#022c22" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#14532d" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="30" cy="25" r="8" fill="#065f46" stroke="#000" strokeWidth="2" />
+      <circle cx="75" cy="20" r="10" fill="#065f46" stroke="#000" strokeWidth="2" />
+      <polygon points="45,40 55,40 50,30" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
     </g>
   </svg>
 );
 
 export const SvgSand = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 44)">
-      <polygon points="0,25 50,50 50,56 0,31" fill="#d97706" />
-      <polygon points="50,50 100,25 100,31 50,56" fill="#b45309" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#fde68a" />
-      <path d="M 5,22 Q 25,10 50,22 T 95,22" fill="none" stroke="#fcd34d" strokeWidth="2.5" opacity="0.8" strokeLinecap="round" />
-      <path d="M 15,32 Q 35,20 60,32 T 85,32" fill="none" stroke="#fcd34d" strokeWidth="2" opacity="0.7" strokeLinecap="round" />
-      <path d="M 35,12 Q 50,5 75,15" fill="none" stroke="#fcd34d" strokeWidth="1.5" opacity="0.6" strokeLinecap="round" />
-      <circle cx="20" cy="15" r="0.8" fill="#b45309" opacity="0.8" />
-      <circle cx="70" cy="10" r="1.2" fill="#d97706" opacity="0.7" />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#d97706" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#b45309" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#fde68a" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M 20,20 Q 35,15 50,20 T 80,20" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+      <path d="M 30,30 Q 45,25 60,30 T 90,30" fill="none" stroke="#000" strokeWidth="1.5" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgShallowWater = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 45)">
-      <polygon points="0,25 50,50 50,55 0,30" fill="#0284c7" />
-      <polygon points="50,50 100,25 100,30 50,55" fill="#0369a1" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="url(#grad-water)" />
-      <polygon points="50,4 92,25 50,46 8,25" fill="#fde68a" opacity="0.25" />
-      <path d="M 20,15 Q 30,10 40,20 T 60,20 T 80,15" fill="none" stroke="#e0f2fe" strokeWidth="1.5" opacity="0.7" strokeLinecap="round" />
-      <path d="M 25,25 Q 40,20 50,30 T 75,30" fill="none" stroke="#bae6fd" strokeWidth="2" opacity="0.6" strokeLinecap="round" />
-      <polygon points="45,10 50,8 55,10 50,12" fill="#ffffff" opacity="0.9" filter="url(#glow-effect)" />
-      <polygon points="25,20 28,18 31,20 28,22" fill="#ffffff" opacity="0.8" />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 40)">
+      <polygon points="0,25 50,50 50,60 0,35" fill="#0284c7" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,35 50,60" fill="#0369a1" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#38bdf8" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M 20,15 L 40,25 M 60,15 L 80,25" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M 30,35 L 50,45 M 10,25 L 20,30" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgHighland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" ><SharedDefs />
-    <g transform="translate(0, 25)">
-      <polygon points="0,25 50,50 50,75 0,50" fill="#44403c" />
-      <polygon points="50,50 100,25 100,50 50,75" fill="#292524" />
-      <polygon points="0,25 50,50 50,55 0,30" fill="#78716c" />
-      <polygon points="50,50 100,25 100,30 50,55" fill="#57534e" />
-      <polygon points="50,0 100,25 50,50 0,25" fill="#d6d3d1" />
-      <polygon points="50,5 85,22 50,40 15,22" fill="#e7e5e4" />
-      <path d="M 25,25 L 35,15 L 50,20 L 70,10 L 80,25 L 60,35 L 50,30 Z" fill="#f5f5f4" />
-      <polygon points="30,20 35,18 33,23" fill="#a8a29e" />
-      <polygon points="65,28 70,25 68,32" fill="#78716c" />
-      <circle cx="20" cy="15" r="2.5" fill="#4ade80" opacity="0.7" />
-      <circle cx="80" cy="20" r="3" fill="#22c55e" opacity="0.8" />
+  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+    <g transform="translate(0, 20)">
+      <polygon points="0,25 50,50 50,80 0,55" fill="#44403c" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,50 100,25 100,55 50,80" fill="#292524" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,0 100,25 50,50 0,25" fill="#d6d3d1" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="20,15 50,30 80,15 50,0" fill="#fff" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
     </g>
   </svg>
 );
@@ -231,14 +202,13 @@ export const SvgWeed = () => (
     <g transform="translate(50, 100) scale(2.5)">
       <ellipse cx="0" cy="0" rx="12" ry="5" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" />
       <path d="M 0,2 Q -10,-20 -20,-30" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" />
-      <path d="M 0,2 Q 5,-25 15,-40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 0,2 Q 15,-15 25,-20" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M -10,-10 Q -20,-15 -25,-10 Q -15,-5 -10,-10 Z" fill="#15803d" />
-      <path d="M -15,-20 Q -25,-25 -25,-15 Q -15,-15 -15,-20 Z" fill="#16a34a" />
-      <path d="M 5,-15 Q 15,-20 20,-10 Q 10,-5 5,-15 Z" fill="#22c55e" />
-      <path d="M 10,-25 Q 25,-30 25,-20 Q 15,-15 10,-25 Z" fill="#4ade80" />
-      <path d="M 12,-35 Q 20,-40 25,-35 Q 20,-30 12,-35 Z" fill="#86efac" />
-      <path d="M -20,-30 L -25,-35 M -20,-30 L -15,-35 M -20,-30 L -22,-38" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M 0,2 Q 10,-15 20,-25" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" />
+      <path d="M -10,-20 Q -15,-25 -20,-15 Q -10,-10 -10,-20 Z" fill="#22c55e" />
+      <path d="M 10,-15 Q 15,-20 20,-10 Q 10,-5 10,-15 Z" fill="#4ade80" />
+      <path d="M -5,-25 Q -10,-30 -15,-20 Q -5,-15 -5,-25 Z" fill="#16a34a" />
+      <path d="M 5,-20 Q 10,-25 15,-15 Q 5,-10 5,-20 Z" fill="#22c55e" />
+      <path d="M 0,-30 Q 5,-35 10,-25 Q 0,-20 0,-30 Z" fill="#4ade80" />
+      <path d="M 0,-30 Q -5,-35 -10,-25 Q 0,-20 0,-30 Z" fill="#86efac" />
     </g>
   </svg>
 );
