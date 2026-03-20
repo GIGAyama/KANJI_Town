@@ -160,7 +160,7 @@ const TOWN_ITEMS = [
   { id: 't_house1',     svg: SvgHouse1,     name: '小さな家',   price: 150,   pros: 50,   type: 'building', bg: 'bg-[#86efac]' },
   { id: 't_shop',       svg: SvgShop,       name: 'お店',       price: 400,   pros: 150,  type: 'building', bg: 'bg-[#e2e8f0]' },
   { id: 't_school',     svg: SvgSchool,     name: '学校',       price: 800,   pros: 300,  type: 'building', bg: 'bg-[#e2e8f0]' },
-  { id: 't_kakejiku',   svg: () => <div/>,  name: 'マイ掛け軸', price: 500,   pros: 100,  type: 'special',  bg: 'bg-[#f5e6d3]' },
+  // { id: 't_kakejiku',   svg: () => <div/>,  name: 'マイ掛け軸', price: 500,   pros: 100,  type: 'special',  bg: 'bg-[#f5e6d3]' },
   { id: 't_torii',      svg: SvgTorii,      name: '鳥居',       price: 1500,  pros: 800,  type: 'special',  bg: 'bg-[#86efac]' },
   { id: 't_temple',     svg: SvgTemple,     name: 'お寺',       price: 2000,  pros: 1200, type: 'special',  bg: 'bg-[#e2e8f0]' },
   { id: 't_castle',     svg: SvgCastle,     name: 'お城',       price: 3000,  pros: 2000, type: 'special',  bg: 'bg-[#86efac]' },
@@ -191,7 +191,7 @@ const ACHIEVEMENTS = [
   { id: 'login_3', type: 'streak', target: 3, name: '三日坊主からの卒業', desc: '3日連続で修行する', reward: 500, rewardItem: null },
   { id: 'login_7', type: 'streak', target: 7, name: '修行の鬼', desc: '7日連続で修行する', reward: 1500, rewardItem: null },
   { id: 'perfect_50', type: 'perfect', target: 50, name: '美文字の才能', desc: 'なぞり書きでPerfectを50回だす', reward: 1000, rewardItem: 't_sakura' },
-  { id: 'master_10', type: 'master', target: 10, name: 'はじめてのマスター', desc: '漢字を10文字マスターする', reward: 1000, rewardItem: 't_kakejiku' },
+  { id: 'master_10', type: 'master', target: 10, name: 'はじめてのマスター', desc: '漢字を10文字マスターする', reward: 1000, rewardItem: null },
   { id: 'master_50', type: 'master', target: 50, name: '漢字の達人', desc: '漢字を50文字マスターする', reward: 3000, rewardItem: 't_dragon' },
 ];
 
@@ -240,7 +240,7 @@ const StorageAPI = {
         townMap: StorageAPI.buildInitialMap(),
         townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3 },
         daily: {}, kanjiStats: {}, unlockedKanji: [],
-        kakejiku: null, achievements: {}, perfectCountTotal: 0, myDrills: [],
+        achievements: {}, perfectCountTotal: 0, myDrills: [],
         // 新フィールド
         population: 0,
         villagers: [],        // [{id, x, y, kanjiChar, born}]
@@ -336,7 +336,7 @@ const StorageAPI = {
     // アイテム付与
     (sessionData.unlockedItems || []).forEach(i => stats.townItems[i] = (stats.townItems[i] || 0) + 1);
     if (sessionData.rareDrop) stats.townItems[sessionData.rareDrop] = (stats.townItems[sessionData.rareDrop] || 0) + 1;
-    if (sessionData.bestKakejiku) stats.kakejiku = sessionData.bestKakejiku;
+    // if (sessionData.bestKakejiku) stats.kakejiku = sessionData.bestKakejiku;
     // 実績更新
     const masteredCount = Object.values(stats.kanjiStats).filter(s => s.status === 'mastered').length;
     ACHIEVEMENTS.forEach(a => {
@@ -584,7 +584,7 @@ const VillagerDot = React.memo(({ villager, cellSize, offset, isDanger }) => {
   );
 });
 
-const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 11 }) => {
+const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, villagers = [], exploredRadius = 11 }) => {
   const GRID_SIZE = 20; const CELL_SIZE = 48; const MAP_SIZE = GRID_SIZE * CELL_SIZE;
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
@@ -684,11 +684,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           <div key={key} onPointerUp={(e) => handlePointerUp(e, x, y)}
             className={`w-[48px] h-[48px] border-[1px] border-black/5 flex items-center justify-center relative select-none ${bgClass} ${isEditing ? 'hover:brightness-110 cursor-pointer border-black/20' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
             <AnimatePresence mode="popLayout">
-              {item && item.id === 't_kakejiku' ? (
-                <motion.div key="kk" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="relative w-[80%] h-[90%] bg-[#f5e6d3] border-x-[4px] border-y-2 border-amber-900 rounded-sm shadow-sm flex items-center justify-center z-10">
-                  {kakejikuImg ? <img src={kakejikuImg} className="w-[80%] h-[80%] object-contain mix-blend-multiply opacity-80 pointer-events-none" alt="kakejiku" /> : <span className="text-[10px] text-amber-900 font-bold opacity-50">書</span>}
-                </motion.div>
-              ) : item && !isTerrain ? (
+              {item && !isTerrain ? (
                 <motion.div key={itemId} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute inset-0 flex items-center justify-center">
                   <item.svg />
                 </motion.div>
@@ -1541,7 +1537,7 @@ const TownEditorView = ({ setView, stats, setStats }) => {
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
+        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
         {/* 操作ヒント */}
         <div className="absolute top-2 left-2 bg-[var(--panel)]/90 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 leading-relaxed">
           🟫 荒れ地タップ → 開拓（🪙1枚）<br/>
@@ -2013,7 +2009,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         </div>
         <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-[var(--secondary)]"></motion.div></div>
         <div className="w-full h-[150px] relative">
-          <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
+          <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 2} />
         </div>
         {/* ストーリーステージ表示 */}
         {(() => {
@@ -2120,18 +2116,18 @@ export default function App() {
     // レビューを先、新出を後に並べる（Anki方式）
     const queue = [...reviewTargets, ...newTargets];
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, isExterminating, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, isExterminating, newVillager: null }); setView('session'); }
   };
 
   const startDrillSession = (drill) => {
     audioCtrl.init(); const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: true, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: true, newVillager: null }); setView('session'); }
   };
 
-  const startSingleSession = (kanji) => { audioCtrl.init(); setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); };
-  const startFlashcard = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('flashcard'); };
-  const startSurvival = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new' && k.examples && k.examples.length > 0); if (learned.length === 0) return; const queue = [...learned].sort(() => Math.random() - 0.5); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('survival'); };
-  const startBossBattle = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; const queue = [...learned].sort((a, b) => { const ma = stats.kanjiStats[a.id].mistakes || 0; const mb = stats.kanjiStats[b.id].mistakes || 0; return mb - ma; }).slice(0, 10); while (queue.length > 0 && queue.length < 10) queue.push(queue[Math.floor(Math.random() * queue.length)]); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('boss'); };
+  const startSingleSession = (kanji) => { audioCtrl.init(); setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); };
+  const startFlashcard = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('flashcard'); };
+  const startSurvival = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new' && k.examples && k.examples.length > 0); if (learned.length === 0) return; const queue = [...learned].sort(() => Math.random() - 0.5); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('survival'); };
+  const startBossBattle = () => { audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; const queue = [...learned].sort((a, b) => { const ma = stats.kanjiStats[a.id].mistakes || 0; const mb = stats.kanjiStats[b.id].mistakes || 0; return mb - ma; }).slice(0, 10); while (queue.length > 0 && queue.length < 10) queue.push(queue[Math.floor(Math.random() * queue.length)]); setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('boss'); };
 
   const handleUpdateStat = (kanjiObj, evalType) => {
     const id = kanjiObj.id;
@@ -2204,7 +2200,7 @@ export default function App() {
     return evalType !== 'again';
   };
 
-  const handleRecordPerfect = useCallback((imgUrl) => { setSessionData(d => ({ ...d, perfectCount: d.perfectCount + 1, earnedExp: d.earnedExp + 5, bestKakejiku: imgUrl || d.bestKakejiku })); }, []);
+  const handleRecordPerfect = useCallback(() => { setSessionData(d => ({ ...d, perfectCount: d.perfectCount + 1, earnedExp: d.earnedExp + 5 })); }, []);
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {

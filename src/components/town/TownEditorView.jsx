@@ -364,7 +364,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
     <div className="relative w-full h-full overflow-hidden bg-[var(--bg)]">
       {/* === フルスクリーンマップ === */}
       <div className="absolute inset-0" style={{ bottom: 72 }}>
-        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
       </div>
 
       {/* === パーティクルエフェクト === */}

@@ -77,7 +77,7 @@ const StorageAPI = {
         townMap: map,
         townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3, 't_house1': 1 },
         daily: {}, kanjiStats: {}, unlockedKanji: [],
-        kakejiku: null, achievements: {}, perfectCountTotal: 0, myDrills: [],
+        achievements: {}, perfectCountTotal: 0, myDrills: [],
         population: 0,
         villagers: [],
         exploredRadius: 3,
@@ -246,7 +246,7 @@ const StorageAPI = {
     // アイテム付与
     (sessionData.unlockedItems || []).forEach(i => stats.townItems[i] = (stats.townItems[i] || 0) + 1);
     if (sessionData.rareDrop) stats.townItems[sessionData.rareDrop] = (stats.townItems[sessionData.rareDrop] || 0) + 1;
-    if (sessionData.bestKakejiku) stats.kakejiku = sessionData.bestKakejiku;
+    // if (sessionData.bestKakejiku) stats.kakejiku = sessionData.bestKakejiku;
     // 実績更新（Phase 7: 拡張実績対応）
     const masteredCount = Object.values(stats.kanjiStats).filter(s => s.status === 'mastered').length;
     const buildingCount = Object.values(stats.townMap || {}).filter(id => {

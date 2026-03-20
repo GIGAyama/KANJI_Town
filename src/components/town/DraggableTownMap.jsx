@@ -61,7 +61,7 @@ const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivate
 });
 
 // ── メインコンポーネント ──
-const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 3 }) => {
+const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, villagers = [], exploredRadius = 3 }) => {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 }); // 初期値を0に設定
   const [zoom, setZoom] = useState(1);
@@ -460,15 +460,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           </div>
           {/* 建物SVG */}
           <AnimatePresence mode="popLayout">
-            {item && item.id === 't_kakejiku' ? (
-              <motion.div key="kk" initial={{ scale: 0, y: -20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0 }}
-                className="absolute inset-0 flex items-center justify-center z-10"
-                style={{ bottom: 2 }}>
-                <div className="w-[70%] h-[80%] bg-[#f5e6d3] border-x-[3px] border-y-2 border-amber-900 rounded-sm shadow-md flex items-center justify-center">
-                  {kakejikuImg ? <img src={kakejikuImg} className="w-[75%] h-[75%] object-contain mix-blend-multiply opacity-80 pointer-events-none" alt="kakejiku" /> : <span className="text-[10px] text-amber-900 font-bold opacity-50">書</span>}
-                </div>
-              </motion.div>
-            ) : item && !isTerrain ? (
+            {item && !isTerrain ? (
               <motion.div key={itemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
                 className="absolute inset-0 flex items-end justify-center"

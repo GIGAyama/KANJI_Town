@@ -80,7 +80,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           role={isTownEditorUnlocked ? "button" : undefined}
           aria-label={isTownEditorUnlocked ? "まちづくりモードへ" : undefined}
         >
-          <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+          <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
           {/* Overlay label */}
           {isTownEditorUnlocked && (
             <div className="absolute bottom-2 right-2 bg-[var(--panel)]/90 backdrop-blur-sm border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 flex items-center gap-1.5 z-10 pointer-events-none shadow-sm">

@@ -206,9 +206,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
                       className={`relative aspect-square rounded-2xl border-[3px] border-[var(--text)] flex items-center justify-center shadow-sm overflow-hidden ${item?.bg || 'bg-white'}`}
                     >
                       {item && <item.svg />}
-                      {id === 't_kakejiku' && stats.kakejiku && (
-                         <img src={stats.kakejiku} className="absolute inset-0 w-full h-full object-cover opacity-80" alt="" />
-                      )}
+                      {/* Placeholder for removed kakejiku logic */}
                       {isRare && (
                         <div className="absolute top-0 right-0 bg-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-bl-lg border-l-2 border-b-2 border-[var(--text)]">RARE</div>
                       )}

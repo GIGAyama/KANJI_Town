@@ -11,7 +11,7 @@ export const ACHIEVEMENTS = [
   // ── Perfect系 ─────────────────────────────
   { id: 'perfect_10', type: 'perfect', target: 10, name: '美文字のはじまり', desc: 'なぞり書きでPerfectを10回だす', reward: 300, rewardExp: 150, rewardItem: null, category: 'study' },
   { id: 'perfect_50', type: 'perfect', target: 50, name: '美文字の才能', desc: 'なぞり書きでPerfectを50回だす', reward: 1000, rewardExp: 500, rewardItem: 't_sakura', category: 'study' },
-  { id: 'perfect_100', type: 'perfect', target: 100, name: '書道の達人', desc: 'なぞり書きでPerfectを100回だす', reward: 2000, rewardExp: 1000, rewardItem: 't_kakejiku', category: 'study' },
+  { id: 'perfect_100', type: 'perfect', target: 100, name: '書道の達人', desc: 'なぞり書きでPerfectを100回だす', reward: 2000, rewardExp: 1000, rewardItem: null, category: 'study' },
   { id: 'perfect_300', type: 'perfect', target: 300, name: '筆の神', desc: 'なぞり書きでPerfectを300回だす', reward: 5000, rewardExp: 3000, rewardItem: null, category: 'study' },
 
   // ── マスター系 ─────────────────────────────

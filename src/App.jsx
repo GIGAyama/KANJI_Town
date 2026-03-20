@@ -71,7 +71,7 @@ export default function App() {
   const [view, setView] = useState('home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(StorageAPI.getStats());
-  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null });
+  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null });
   const [hostDrill, setHostDrill] = useState(null);
 
   // Phase 5: チュートリアル
@@ -235,37 +235,37 @@ export default function App() {
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     const queue = reviewTargets.length > 0 ? reviewTargets : newTargets;
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); }
   };
 
   const startDrillSession = (drill) => {
     audioCtrl.init(); const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: true, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: true, newVillager: null }); setView('session'); }
   };
 
   const startSingleSession = (kanji) => { 
     audioCtrl.init(); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('session'); 
+    setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); 
   };
   const startFlashcard = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('flashcard'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('flashcard'); 
   };
   const startSurvival = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort(() => Math.random() - 0.5); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('survival'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('survival'); 
   };
   const startBossBattle = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort((a, b) => { const ma = stats.kanjiStats[a.id].mistakes || 0; const mb = stats.kanjiStats[b.id].mistakes || 0; return mb - ma; }).slice(0, 10); while (queue.length > 0 && queue.length < 10) queue.push(queue[Math.floor(Math.random() * queue.length)]); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, bestKakejiku: null, isDrill: false, newVillager: null }); setView('boss'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('boss'); 
   };
 
   const handleUpdateStat = (kanjiObj, evalType) => {
@@ -332,12 +332,11 @@ export default function App() {
     return evalType !== 'again';
   };
 
-  const handleRecordPerfect = useCallback((imgUrl) => { 
+  const handleRecordPerfect = useCallback(() => { 
     setSessionData(d => ({ 
       ...d, 
       perfectCount: d.perfectCount + 1, 
-      earnedExp: d.earnedExp + Math.round(5 * (d.expMultiplier || 1)), 
-      bestKakejiku: imgUrl || d.bestKakejiku 
+      earnedExp: d.earnedExp + Math.round(5 * (d.expMultiplier || 1))
     })); 
   }, []);
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
@@ -348,7 +347,7 @@ export default function App() {
     const rareChance = 0.1 + (stats.streak * 0.01); 
     let rareDrop = additionalResults.rareDrop || null;
     if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { 
-      const rares = ['t_torii', 't_temple', 't_castle', 't_dragon', 't_kakejiku']; 
+      const rares = ['t_torii', 't_temple', 't_castle', 't_dragon']; 
       rareDrop = rares[Math.floor(Math.random() * rares.length)]; 
     }
     
