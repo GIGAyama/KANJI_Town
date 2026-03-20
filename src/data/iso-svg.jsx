@@ -440,25 +440,41 @@ export const SvgShop = () => (
 export const SvgSchool = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* 左棟（体育館風） */}
+      <polygon points="-35,-14 -52,-22 -52,-36 -35,-28" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-35,-14 -20,-22 -20,-36 -35,-28" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-35,-28 -52,-36 -36,-44 -20,-36" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 右棟（教室棟） */}
       <polygon points="-8,-4 -32,-16 -32,-32 -8,-20" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="-8,-4 32,-24 32,-40 -8,-20" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 左壁の窓 */}
       {[...Array(3)].map((_, i) => (
         <g key={`sw1-${i}`} transform={`translate(${-28 + i * 8}, ${-16 + i * 4})`}>
           <polygon points="0,-3 4,-1 4,-7 0,-9" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
         </g>
       ))}
-      {[...Array(4)].map((_, i) => (
-        <g key={`sw2-${i}`} transform={`translate(${0 + i * 8}, ${-22 - i * 4})`}>
+      {/* 右壁の窓 */}
+      {[...Array(5)].map((_, i) => (
+        <g key={`sw2-${i}`} transform={`translate(${-2 + i * 7}, ${-21 - i * 3.5})`}>
           <polygon points="0,-3 4,-5 4,-11 0,-9" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
         </g>
       ))}
+      {/* 時計塔（中央） */}
       <polygon points="-8,2 -16,-2 -16,-38 -8,-34" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="-8,2 8,-6 8,-42 -8,-34" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="-8,-34 8,-42 0,-55 -16,-47" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 時計 */}
+      <circle cx="-4" cy="-38" r="3" fill="#f8fafc" stroke="#000" strokeWidth="0.8" />
+      <line x1="-4" y1="-38" x2="-4" y2="-40" stroke="#000" strokeWidth="0.5" />
+      <line x1="-4" y1="-38" x2="-2.5" y2="-37.5" stroke="#000" strokeWidth="0.5" />
+      {/* 屋根 */}
       <polygon points="-8,-20 -32,-32 -20,-44 4,-32" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="-8,-20 32,-40 20,-52 -20,-32" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 入口 */}
       <polygon points="-6,-1 -2,-3 -2,-10 -6,-8" fill="#78350f" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
       <polygon points="-2,-3 2,-5 2,-12 -2,-10" fill="#451a03" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+      {/* グラウンド */}
+      <polygon points="-50,-10 -35,-3 -15,-13 -30,-20" fill="#92400e" stroke="#000" strokeWidth="0.5" opacity="0.3" />
     </g>
   </svg>
 );
@@ -604,17 +620,23 @@ export const SvgSmithy = () => (
 export const SvgFactory = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* メイン工場棟 */}
       <polygon points="0,-3 -30,-18 -30,-38 0,-23" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 -30,-38 -15,-45" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-3 30,-18 30,-38 0,-23" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-23 -30,-38 -30,-40 0,-25" fill="#450a0a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-23 30,-38 30,-40 0,-25" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 左側の倉庫棟 */}
+      <polygon points="-30,-18 -48,-27 -48,-40 -30,-31" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-30,-18 -18,-24 -18,-37 -30,-31" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-30,-31 -48,-40 -33,-47 -18,-37" fill="#475569" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 窓 */}
       <g transform="translate(-15, -15)">
         <polygon points="0,-0.5 -9.5,-5.5 -9.5,-14.5 0,-9.5" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
       </g>
       <g transform="translate(5, -10)">
         <polygon points="0,-0.5 9.5,-5.5 9.5,-14.5 0,-9.5" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
       </g>
+      {/* 煙突3本 */}
       <g transform="translate(-18, -35)">
         <polygon points="0,0 -4,-2 -4,-35 0,-33" fill="#7f1d1d" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         <polygon points="0,0 4,-2 4,-35 0,-33" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -623,6 +645,11 @@ export const SvgFactory = () => (
         <polygon points="0,0 -4,-2 -4,-35 0,-33" fill="#7f1d1d" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         <polygon points="0,0 4,-2 4,-35 0,-33" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
       </g>
+      <g transform="translate(-35, -38)">
+        <polygon points="0,0 -3,-1.5 -3,-25 0,-23.5" fill="#475569" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="0,0 3,-1.5 3,-25 0,-23.5" fill="#64748b" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+      </g>
+      {/* 入口 */}
       <polygon points="0,-3 -8,-7 -8,-15 0,-11" fill="#1e293b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
     </g>
   </svg>
@@ -670,20 +697,40 @@ export const SvgMine = () => (
 export const SvgCastle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* 城壁（外周） */}
+      <polygon points="0,5 -36,-13 -36,-20 0,-2" fill="#57534e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="0,5 36,-13 36,-20 0,-2" fill="#78716c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* メイン天守閣の土台 */}
       <polygon points="0,0 -28,-14 -28,-24 0,-10" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,0 28,-14 28,-24 0,-10" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 四隅の櫓 */}
       {[{x:-28,y:-14},{x:28,y:-14},{x:-14,y:-28},{x:14,y:-28}].map((t, i) => (
         <g key={`t-${i}`} transform={`translate(${t.x}, ${t.y})`}>
           <polygon points="-6,0 -6,-25 6,-25 6,0" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
           <polygon points="-8,-24 8,-24 0,-40" fill="#3b82f6" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+          {/* 小さな旗 */}
+          <line x1="0" y1="-40" x2="0" y2="-46" stroke="#000" strokeWidth="0.8" />
+          <polygon points="0,-46 5,-44 0,-42" fill="#ef4444" />
         </g>
       ))}
+      {/* 天守閣（3層） */}
       <g transform="translate(0, -18)">
-        <polygon points="0,0 -16,-8 -16,-30 0,-22" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 16,-8 16,-30 0,-22" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="-18,-28 0,-20 0,-50" fill="#3b82f6" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="18,-28 0,-20 0,-50" fill="#1e3a8a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        {/* 1層目 */}
+        <polygon points="0,0 -16,-8 -16,-18 0,-10" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points="0,0 16,-8 16,-18 0,-10" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        {/* 2層目 */}
+        <polygon points="0,-10 -12,-16 -12,-26 0,-20" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="0,-10 12,-16 12,-26 0,-20" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* 屋根1 */}
+        <polygon points="-18,-16 0,-8 0,-12 -18,-20" fill="#3b82f6" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="18,-16 0,-8 0,-12 18,-20" fill="#1e3a8a" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* 最上部の屋根 */}
+        <polygon points="-14,-25 0,-19 0,-52" fill="#3b82f6" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points="14,-25 0,-19 0,-52" fill="#1e3a8a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        {/* 金のシャチホコ */}
+        <circle cx="0" cy="-53" r="2" fill="#fbbf24" stroke="#000" strokeWidth="0.8" />
       </g>
+      {/* 入口 */}
       <path d="M -4,-4 L 4,-8 L 4,-14 C 4,-16 -4,-12 -4,-10 Z" fill="#000" stroke="#000" strokeWidth="1" />
     </g>
   </svg>
@@ -729,14 +776,35 @@ export const SvgTorii = () => (
 export const SvgTemple = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* 境内の敷地 */}
+      <polygon points="0,10 -38,-9 0,-28 38,-9" fill="#d6d3d1" stroke="#000" strokeWidth="0.5" opacity="0.3" />
+      {/* 石段 */}
+      <polygon points="-5,8 5,3 5,1 -5,6" fill="#a8a29e" stroke="#000" strokeWidth="0.5" />
+      <polygon points="-5,6 5,1 5,-1 -5,4" fill="#d6d3d1" stroke="#000" strokeWidth="0.5" />
+      {/* 本堂 */}
       <polygon points="0,0 -28,-14 -28,-18 0,-4" fill="#78716c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,0 28,-14 28,-18 0,-4" fill="#a8a29e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-4 -28,-18 0,-32 28,-18" fill="#e7e5e4" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 壁面 */}
       <polygon points="-14,-13 -4,-18 -4,-28 -14,-23" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
       <polygon points="14,-13 4,-18 4,-28 14,-23" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 屋根（反り返り） */}
       <path d="M -32,-26 Q 0,-15 32,-26 L 30,-30 Q 0,-19 -30,-30 Z" fill="#1c1917" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <path d="M 0,-50 Q -15,-30 -32,-26 Q 0,-38 0,-50" fill="#292524" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <path d="M 0,-50 Q 15,-30 32,-26 Q 0,-38 0,-50" fill="#44403c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 鐘楼（右手前） */}
+      <g transform="translate(25, 0)">
+        <polygon points="0,0 -6,-3 -6,-10 0,-7" fill="#78716c" stroke="#000" strokeWidth="1" />
+        <polygon points="0,0 6,-3 6,-10 0,-7" fill="#a8a29e" stroke="#000" strokeWidth="1" />
+        <polygon points="0,-7 -8,-11 0,-15 8,-11" fill="#292524" stroke="#000" strokeWidth="1" />
+        <circle cx="0" cy="-9" r="1.5" fill="#d97706" />
+      </g>
+      {/* 灯篭（左手前） */}
+      <g transform="translate(-25, 0)">
+        <polygon points="0,0 -3,-1.5 -3,-8 0,-6.5" fill="#94a3b8" stroke="#000" strokeWidth="0.8" />
+        <polygon points="0,0 3,-1.5 3,-8 0,-6.5" fill="#cbd5e1" stroke="#000" strokeWidth="0.8" />
+        <circle cx="0" cy="-9" r="1.5" fill="#fef08a" filter="url(#glow-effect)" />
+      </g>
     </g>
   </svg>
 );
@@ -1109,9 +1177,26 @@ export const SvgCinema = () => (
 export const SvgHotel = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -22,-11 -22,-38 0,-27" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 22,-11 22,-38 0,-27" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-27 -24,-39 0,-51 24,-39" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* メインビル */}
+      <polygon points="0,0 -22,-11 -22,-45 0,-34" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="0,0 22,-11 22,-45 0,-34" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="0,-34 -24,-46 0,-58 24,-46" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 窓（左面） */}
+      {[0, 1, 2, 3].map(i => (
+        <g key={`hl-${i}`} transform={`translate(-18, ${-16 - i * 7})`}>
+          <polygon points="0,0 4,2 4,-2 0,-4" fill="#fef08a" stroke="#000" strokeWidth="0.5" opacity="0.9" />
+        </g>
+      ))}
+      {/* 窓（右面） */}
+      {[0, 1, 2, 3].map(i => (
+        <g key={`hr-${i}`} transform={`translate(14, ${-14 - i * 7})`}>
+          <polygon points="0,0 4,-2 4,-6 0,-4" fill="#fef08a" stroke="#000" strokeWidth="0.5" opacity="0.9" />
+        </g>
+      ))}
+      {/* 入口（キャノピー） */}
+      <polygon points="-6,0 6,-6 6,-3 -6,3" fill="#d97706" stroke="#000" strokeWidth="1" />
+      {/* "HOTEL"サイン */}
+      <polygon points="6,-18 18,-24 18,-20 6,-14" fill="#fbbf24" stroke="#000" strokeWidth="0.5" />
     </g>
   </svg>
 );
@@ -1122,13 +1207,33 @@ export const SvgHotel = () => (
 export const SvgHospital = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
+      {/* メイン棟 */}
       <polygon points="0,0 -24,-12 -24,-32 0,-20" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,0 24,-12 24,-32 0,-20" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-20 -26,-33 0,-46 26,-33" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 別棟（左側） */}
+      <polygon points="-24,-12 -42,-21 -42,-35 -24,-26" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-24,-12 -15,-16 -15,-30 -24,-26" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-24,-26 -42,-35 -28,-41 -15,-30" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 別棟の窓 */}
+      {[0, 1].map(i => (
+        <g key={`hw-${i}`} transform={`translate(${-38 + i * 8}, ${-24 + i * 4})`}>
+          <polygon points="0,-2 4,0 4,-6 0,-8" fill="#93c5fd" stroke="#000" strokeWidth="0.5" />
+        </g>
+      ))}
+      {/* メイン棟の窓（2階） */}
+      {[0, 1, 2].map(i => (
+        <g key={`mw-${i}`} transform={`translate(${4 + i * 7}, ${-14 - i * 3.5})`}>
+          <polygon points="0,-2 4,-4 4,-9 0,-7" fill="#93c5fd" stroke="#000" strokeWidth="0.5" />
+        </g>
+      ))}
+      {/* 赤十字マーク */}
       <g transform="translate(0, -36)">
         <polygon points="-3,0 3,0 3,-5 -3,-5" fill="#ef4444" stroke="#000" strokeWidth="1" />
         <polygon points="-5,-2 5,-2 5,-3 -5,-3" fill="#ef4444" stroke="#000" strokeWidth="1" />
       </g>
+      {/* 救急車の入口 */}
+      <polygon points="-3,0 3,-3 3,-8 -3,-5" fill="#1e293b" stroke="#000" strokeWidth="1" />
     </g>
   </svg>
 );
@@ -1136,13 +1241,23 @@ export const SvgHospital = () => (
 export const SvgFireStation = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
+      {/* メイン建物 */}
       <polygon points="0,0 -22,-11 -22,-28 0,-17" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,0 22,-11 22,-28 0,-17" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-17 -24,-29 0,-41 24,-29" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 車庫（左側） */}
+      <polygon points="-22,-11 -40,-20 -40,-32 -22,-23" fill="#991b1b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-22,-11 -15,-14 -15,-26 -22,-23" fill="#dc2626" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 車庫の入口（大きなシャッター） */}
+      <polygon points="-37,-22 -24,-16 -24,-27 -37,-33" fill="#1e293b" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+      {/* 望楼 */}
       <g transform="translate(-8, -34)">
         <polygon points="0,0 -4,-2 -4,-15 0,-13" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         <polygon points="0,0 4,-2 4,-15 0,-13" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <circle cx="0" cy="-16" r="2" fill="#ef4444" filter="url(#glow-effect)" />
       </g>
+      {/* 窓 */}
+      <polygon points="5,-6 12,-9.5 12,-15 5,-11.5" fill="#93c5fd" stroke="#000" strokeWidth="0.5" />
     </g>
   </svg>
 );
@@ -1171,11 +1286,27 @@ export const SvgPostOffice = () => (
 export const SvgStation = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,-8 -22,-19 -22,-34 0,-23" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-8 22,-19 22,-34 0,-23" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 -24,-35 0,-47 24,-35" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -30,-2 L -20,3 L 20,-12 L 30,-17" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
-      <path d="M -30,0 L -20,5 L 20,-10 L 30,-15" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+      {/* ホーム（プラットフォーム） */}
+      <polygon points="0,10 -40,-10 0,-30 40,-10" fill="#94a3b8" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+      {/* 駅舎 */}
+      <polygon points="0,-8 -22,-19 -22,-38 0,-27" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="0,-8 22,-19 22,-38 0,-27" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      <polygon points="0,-27 -24,-39 0,-51 24,-39" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 時計 */}
+      <circle cx="0" cy="-42" r="3" fill="#f8fafc" stroke="#000" strokeWidth="0.8" />
+      <line x1="0" y1="-42" x2="0" y2="-44" stroke="#000" strokeWidth="0.5" />
+      <line x1="0" y1="-42" x2="1.5" y2="-41" stroke="#000" strokeWidth="0.5" />
+      {/* 窓 */}
+      <polygon points="5,-13 15,-18 15,-26 5,-21" fill="#93c5fd" stroke="#000" strokeWidth="0.5" />
+      {/* 線路 */}
+      <path d="M -38,0 L -25,7 L 25,-8 L 38,-15" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+      <path d="M -38,3 L -25,10 L 25,-5 L 38,-12" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+      {/* 枕木 */}
+      {[-2, -1, 0, 1, 2].map(i => (
+        <line key={`sl-${i}`} x1={-5 + i * 12} y1={7 - i * 3.5} x2={-5 + i * 12 + 4} y2={4.5 - i * 3.5} stroke="#78716c" strokeWidth="2" />
+      ))}
+      {/* 改札入口 */}
+      <polygon points="-4,-6 4,-10 4,-16 -4,-12" fill="#1e293b" stroke="#000" strokeWidth="1" />
     </g>
   </svg>
 );

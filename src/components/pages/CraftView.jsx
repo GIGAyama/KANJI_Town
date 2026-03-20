@@ -279,7 +279,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         Tier{recipe.tier}
                       </span>
                       {badgeIcon}
-                      {recipe.size && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-300">{recipe.size.w}×{recipe.size.h}</span>}
+                      {(recipe.size || townItem?.size) && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-300">{(recipe.size || townItem.size).w}×{(recipe.size || townItem.size).h}</span>}
                     </div>
                     {/* Unlock status for rare/upgrade */}
                     {category === 'rare' && !isRareUnlocked(recipe) && (
