@@ -493,7 +493,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       );
     }
     return result;
-  }, [safeMapData, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, timeOfDay]);
+  }, [safeMapData, ghosts, isDanger, isEditing, exploredRadius, viewRange, megaAnchors, timeOfDay]);
 
 
   return (
