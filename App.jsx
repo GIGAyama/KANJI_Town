@@ -1023,7 +1023,7 @@ const TestMode = ({ kanji, onEvaluate, canvasSize, commonSidebar }) => {
       {showAnswer && (
         <div className="relative border-[4px] border-[var(--primary)] rounded-[20px] bg-[var(--bg)] overflow-hidden flex items-center justify-center transition-all duration-200 shadow-[4px_4px_0_var(--primary)] md:shadow-[8px_8px_0_var(--primary)] animate-in fade-in slide-in-from-left-4 shrink-0" style={{ width: canvasSize, maxWidth: 'calc(50% - 16px)', maxHeight: '100%', aspectRatio: '1/1' }}>
           <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--primary)] opacity-20 -translate-x-1/2 pointer-events-none" /><div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--primary)] opacity-20 -translate-y-1/2 pointer-events-none" />
-          <svg viewBox="0 0 100 100" className="w-full h-full relative z-10 pointer-events-none select-none drop-shadow-sm p-2"><text x="50" y="52" dominantBaseline="middle" textAnchor="middle" fontSize="70" fontWeight="900" fill="var(--primary)" fontFamily="'Klee One', serif">{kanji.char}</text></svg>
+          <svg viewBox="0 0 100 100" className="w-full h-full relative z-10 pointer-events-none select-none drop-shadow-sm p-2"><text x="50" y="55" dominantBaseline="central" textAnchor="middle" fontSize="70" fontWeight="900" fill="var(--primary)" fontFamily="'Klee One', serif">{kanji.char}</text></svg>
           <div className="absolute top-3 right-3 bg-[var(--primary)] text-[var(--panel)] text-[10px] md:text-xs font-black px-3 md:px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm z-20">こたえ</div>
         </div>
       )}

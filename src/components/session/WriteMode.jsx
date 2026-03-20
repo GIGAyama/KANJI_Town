@@ -7,6 +7,7 @@ import Confetti from '../ui/Confetti';
 import { Analyzer } from '../../systems/analyzer';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
+import { STROKE_THRESHOLDS } from '../../constants/strokeConfig';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonSidebar, onRecordPerfect }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -53,7 +54,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
     // FIX: guard against missing strokeData
     if (!strokeData[currentStrokeRef.current]) return;
     const { x, y } = getCoords(e); const target = strokeData[currentStrokeRef.current].s;
-    if (Math.hypot(x / canvasSize - target.x, y / canvasSize - target.y) > 0.18) { setStatusMsg("かきはじめが ちがうよ💦"); audioCtrl.playSE('stamp_bad'); return; }
+    if (Math.hypot(x / canvasSize - target.x, y / canvasSize - target.y) > STROKE_THRESHOLDS.START_POINT) { setStatusMsg("かきはじめが ちがうよ💦"); audioCtrl.playSE('stamp_bad'); return; }
     setStatusMsg(`${currentStrokeRef.current + 1}かくめ なぞり中...`); setIsDrawing(true); lastPos.current = { x, y }; currentPathRef.current = [{ x, y, time: Date.now() }];
     const ctx = writeRef.current.getContext('2d'); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = canvasSize * 0.08; ctx.strokeStyle = "var(--secondary)"; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y); ctx.stroke();
   };
@@ -67,7 +68,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
     // FIX: guard against missing strokeData
     if (!strokeData[currentStrokeRef.current]) return;
     const target = strokeData[currentStrokeRef.current].e; const currentDist = Math.hypot(lastPos.current.x / canvasSize - target.x, lastPos.current.y / canvasSize - target.y);
-    if (currentDist < 0.25) {
+    if (currentDist < STROKE_THRESHOLDS.END_POINT) {
       let isError = false; let errMsg = "";
       if (count >= 2) {
         const normalizedPoints = currentPathRef.current.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize, time: p.time })); const ending = Analyzer.analyzeEnding(normalizedPoints);
