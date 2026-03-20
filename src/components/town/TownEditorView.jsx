@@ -89,7 +89,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
   const levelInfo = StorageAPI.getLevelInfo(stats.totalExp, stats.townMap);
   const playerLevel = levelInfo.level;
-  const biomeMap = stats.biomeMap || {};
   const learnedCount = Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new').length;
 
   // Unified level system: Craft unlocks at Level 3
@@ -220,14 +219,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       return;
     }
 
-    if (itemDef?.biomes) {
-      const cellBiome = biomeMap[key];
-      if (cellBiome && !itemDef.biomes.includes(cellBiome)) {
-        audioCtrl.playSE('stamp_bad');
-        showError(`このバイオームには配置できません`);
-        return;
-      }
-    }
 
     const ownedCount = stats.townItems?.[selectedItem] || 0;
     const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
@@ -373,7 +364,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
     <div className="relative w-full h-full overflow-hidden bg-[var(--bg)]">
       {/* === フルスクリーンマップ === */}
       <div className="absolute inset-0" style={{ bottom: 72 }}>
-        <DraggableTownMap mapData={localMap} biomeMap={biomeMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} kakejikuImg={stats.kakejiku} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
       </div>
 
       {/* === パーティクルエフェクト === */}

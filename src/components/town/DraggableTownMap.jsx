@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut, Users } from 'lucide-react';
 import { TOWN_ITEMS } from '../../data/town-items';
-import { BIOME_TYPES, BIOME_TERRAIN_COLORS } from '../../data/biomes';
 import VillagerDot from './VillagerDot';
 import WeatherOverlay from './WeatherOverlay';
 import { audioCtrl } from '../../systems/audio';
@@ -37,18 +36,10 @@ const TERRAIN_COLORS = {
   t_highland:     { top: '#a8a29e', left: '#78716c', right: '#d6d3d1' },
 };
 
-// バイオームによる色調整
-const getBiomeTint = (itemId, biome) => {
-  if (!biome || !itemId) return null;
-  const colors = BIOME_TERRAIN_COLORS[biome];
-  if (!colors) return null;
-  const key = itemId.replace(/^t_/, '');
-  return colors[key] || null;
-};
 
 // ── 地形ダイヤモンドSVG ──
-const GroundDiamond = React.memo(({ colors, tint, isEditing, isCultivatable, cultivateCost }) => {
-  const top = tint || colors?.top || '#d4a96a';
+const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivateCost }) => {
+  const top = colors?.top || '#d4a96a';
   const left = colors?.left || '#b8915a';
   const right = colors?.right || '#e8c08a';
   return (
@@ -70,7 +61,7 @@ const GroundDiamond = React.memo(({ colors, tint, isEditing, isCultivatable, cul
 });
 
 // ── メインコンポーネント ──
-const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 3 }) => {
+const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, kakejikuImg, villagers = [], exploredRadius = 3 }) => {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 }); // 初期値を0に設定
   const [zoom, setZoom] = useState(1);
@@ -183,7 +174,6 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   }, [containerSize, exploredRadius, initialFitDone, isEditing]);
 
   const safeMapData = mapData || {};
-  const safeBiomeMap = biomeMap || {};
 
   // ── ドラッグ操作 ──
   const handlePointerDown = (e) => {
@@ -336,8 +326,6 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       const item = itemId ? TOWN_ITEMS.find(i => i.id === itemId) : null;
       const hasGhost = ghosts.some(g => g.x === x && g.y === y);
       const isTerrain = item && item.type === 'terrain';
-      const biome = safeBiomeMap[key];
-      const biomeTint = getBiomeTint(itemId, biome);
 
       // --- バリアント計算 ---
       // (x * 13 + y * 7) のようなシンプルなハッシュで決定論的なシードを得る
@@ -438,7 +426,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
 
             className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
-            <GroundDiamond colors={terrainColors} tint={biomeTint} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
+            <GroundDiamond colors={terrainColors} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
             {isEditing && (
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
                 <span className="text-[8px] font-black text-white bg-amber-600/80 px-1.5 py-0.5 rounded-full whitespace-nowrap">開拓 -{item?.cultivateCost || 5}💰</span>
@@ -453,15 +441,13 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       if (itemId === 't_shallow_water') {
         result.push(
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}>
-            <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} tint={biomeTint} isEditing={false} />
+            <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} isEditing={false} />
           </div>
         );
         continue;
       }
 
       // 通常セル（更地・建物・雑草）
-      const terrainColors = TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_cleared;
-      const clearedTint = getBiomeTint(itemId, biome) || getBiomeTint('t_cleared', biome);
       const groundColors = isTerrain ? terrainColors : TERRAIN_COLORS.t_cleared;
 
       result.push(
@@ -470,7 +456,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
           className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
           {/* 地面ダイヤモンド（建物の下に描画） */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, width: TILE_W }}>
-            <GroundDiamond colors={groundColors} tint={clearedTint} isEditing={isEditing && !item} />
+            <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
           </div>
           {/* 建物SVG */}
           <AnimatePresence mode="popLayout">
@@ -515,16 +501,8 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       );
     }
     return result;
-  }, [safeMapData, safeBiomeMap, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, timeOfDay]);
+  }, [safeMapData, ghosts, isDanger, isEditing, kakejikuImg, exploredRadius, viewRange, megaAnchors, timeOfDay]);
 
-  // バイオーム表示
-  const centerBiome = useMemo(() => {
-    const sx = (-offset.x + containerSize.w / 2) / zoom;
-    const sy = (-offset.y + containerSize.h / 2) / zoom;
-    const g = fromIso(sx, sy);
-    const biomeId = safeBiomeMap[`${g.x},${g.y}`];
-    return biomeId ? BIOME_TYPES[biomeId] : null;
-  }, [offset.x, offset.y, containerSize.w, containerSize.h, zoom, safeBiomeMap]);
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
@@ -566,12 +544,6 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
       {!isDanger && <WeatherOverlay weather={currentWeather} />}
       {/* --------------------------------- */}
 
-      {/* バイオーム表示 */}
-      {centerBiome && !isEditing && (
-        <div className="absolute top-2 left-2 bg-[var(--panel)]/80 border-[2px] border-[var(--text)] rounded-xl px-3 py-1 text-[10px] font-bold text-[var(--text)] pointer-events-none z-40 flex items-center gap-1">
-          <span>{centerBiome.emoji}</span><span>{centerBiome.name}</span>
-        </div>
-      )}
       {/* ズームボタン & 住民表示切り替え */}
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40"
         onClick={(e) => e.stopPropagation()}

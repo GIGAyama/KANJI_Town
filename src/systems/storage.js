@@ -6,7 +6,7 @@ import { TOWN_ITEMS } from '../data/town-items.jsx';
 import { KANJI_DATA } from '../data/kanji-data.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
-import { getBiomeAt, getTerrainForBiome } from '../data/biomes.js';
+// Biome imports removed
 import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
 import { getTodayString, formatDate } from '../utils/date-utils.js';
 import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
@@ -28,18 +28,33 @@ const StorageAPI = {
   GRID_SIZE: 50,
   // Phase 2: 50×50マップ生成（バイオーム対応）
   buildInitialMap: () => {
-    const SIZE = 50; const C = 25; const map = {}; const biomeMap = {};
-    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-      const biome = getBiomeAt(x, y);
-      biomeMap[`${x},${y}`] = biome;
-      map[`${x},${y}`] = getTerrainForBiome(x, y, biome);
+    const SIZE = 50; const C = 25; const map = {};
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
+        const seed = (x * 7919 + y * 104729) % 1000;
+        const rand = seed / 1000;
+
+        let terrain = 't_grassland';
+        if (dist >= 23) terrain = rand < 0.6 ? 't_bedrock' : 't_roughland';
+        else if (dist >= 20) terrain = rand < 0.3 ? 't_bedrock' : 't_roughland';
+        else if (dist <= 5) terrain = rand < 0.5 ? 't_cleared' : 't_grassland';
+        else {
+          // Generic mixed terrain
+          if (rand < 0.4) terrain = 't_grassland';
+          else if (rand < 0.7) terrain = 't_cleared';
+          else if (rand < 0.9) terrain = 't_roughland';
+          else terrain = 't_forest_floor';
+        }
+        map[`${x},${y}`] = terrain;
+      }
     }
     // 初期拠点: 中央3×3を更地に
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       map[`${C + dx},${C + dy}`] = 't_cleared';
     }
     map[`${C},${C}`] = 't_house1'; // 最初の家
-    return { map, biomeMap };
+    return { map };
   },
   // 旧20×20マップ生成（マイグレーション用）
   buildLegacyMap: () => {
@@ -56,11 +71,10 @@ const StorageAPI = {
               || StorageAPI.safeGet('kanji_mega_builder_final_v6', null)
               || StorageAPI.safeGet('kanji_mega_builder_final_v5', null);
     if (!stats || !stats.targetGrade) {
-      const { map, biomeMap } = StorageAPI.buildInitialMap();
+      const { map } = StorageAPI.buildInitialMap();
       stats = {
         totalExp: 0, streak: 0, lastDate: '', coins: 200, targetGrade: 1,
         townMap: map,
-        biomeMap: biomeMap,
         townItems: { 't_grass': 5, 't_road': 5, 't_tree': 3, 't_house1': 1 },
         daily: {}, kanjiStats: {}, unlockedKanji: [],
         kakejiku: null, achievements: {}, perfectCountTotal: 0, myDrills: [],
@@ -85,7 +99,7 @@ const StorageAPI = {
     // ── 20×20 → 50×50 マイグレーション ──
     if (!stats.mapSize || stats.mapSize < 50) {
       const oldMap = stats.townMap || {};
-      const { map: freshMap, biomeMap } = StorageAPI.buildInitialMap();
+      const { map: freshMap } = StorageAPI.buildInitialMap();
       // 旧マップの建物を新マップ中央に移植 (旧center=10,10 → 新center=25,25, offset=+15)
       Object.entries(oldMap).forEach(([key, val]) => {
         const item = TOWN_ITEMS.find(i => i.id === val);
@@ -111,7 +125,6 @@ const StorageAPI = {
         }
       });
       stats.townMap = freshMap;
-      stats.biomeMap = biomeMap;
       stats.mapSize = 50;
       stats.schemaVersion = 8;
       // 旧データは少し広めに探索済みにする
@@ -123,18 +136,10 @@ const StorageAPI = {
     }
 
     if (!stats.townMap) {
-      const { map, biomeMap } = StorageAPI.buildInitialMap();
+      const { map } = StorageAPI.buildInitialMap();
       stats.townMap = map;
-      stats.biomeMap = biomeMap;
     }
-    if (!stats.biomeMap) {
-      // Generate biome map for existing save
-      const biomeMap = {};
-      for (let y = 0; y < 50; y++) for (let x = 0; x < 50; x++) {
-        biomeMap[`${x},${y}`] = getBiomeAt(x, y);
-      }
-      stats.biomeMap = biomeMap;
-    }
+    if (stats.biomeMap) delete stats.biomeMap;
 
     // ── 住民マイグレーション（Phase 3: 職業・満足度フィールド付与）──
     stats.villagers = migrateVillagers(stats.villagers);
