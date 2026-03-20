@@ -250,12 +250,27 @@ export const SvgFlower = () => (
 export const SvgTree = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: 'visible' }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
-      <path d="M -15,5 Q -5,0 -5,-10 L -4,-40 L 4,-40 L 5,-10 Q 5,0 15,5 Q 5,-2 0,0 Q -5,-2 -15,5 Z" fill="#451a03" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -25,-40 C -45,-40 -40,-65 -20,-70 C -10,-85 10,-85 20,-70 C 40,-65 45,-40 25,-40 Z" fill="#064e3b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
-      <path d="M -20,-35 C -35,-35 -35,-55 -15,-60 C -5,-70 15,-70 20,-55 C 35,-55 35,-35 20,-35 Z" fill="#15803d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -15,-30 C -25,-30 -25,-45 -10,-50 C -5,-55 5,-55 10,-45 C 25,-45 25,-30 15,-30 Z" fill="#22c55e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="-15" cy="-50" r="5" fill="#4ade80" stroke="#000" strokeWidth="1.5" />
-      <circle cx="5" cy="-45" r="4" fill="#4ade80" stroke="#000" strokeWidth="1.5" />
+      {/* Ground Shadow */}
+      <ellipse cx="0" cy="1" rx="18" ry="8" fill="rgba(0,0,0,0.15)" />
+      {/* Trunk */}
+      <path d="M -3,0 L -2,-40 L 2,-40 L 3,0 Z" fill="#6b4b2c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M -2.5,0 L -1.5,-40 L 0.5,-40 L 1,0 Z" fill="#8b633a" />
+      <path d="M -1.5,0 L -0.5,-40 L 0,-40 L 0,0 Z" fill="#a67c52" />
+      {/* Foliage */}
+      <g transform="translate(0, -45)">
+        {/* Under-shadow layer */}
+        <circle cx="-12" cy="6" r="16" fill="#4d9916" stroke="#000" strokeWidth="2" />
+        <circle cx="12" cy="6" r="16" fill="#4d9916" stroke="#000" strokeWidth="2" />
+        <circle cx="0" cy="-10" r="18" fill="#4d9916" stroke="#000" strokeWidth="2" />
+        {/* Main foliage layer */}
+        <circle cx="-12" cy="4" r="16" fill="#68b320" stroke="#000" strokeWidth="2" />
+        <circle cx="12" cy="4" r="16" fill="#68b320" stroke="#000" strokeWidth="2" />
+        <circle cx="0" cy="-12" r="18" fill="#68b320" stroke="#000" strokeWidth="2" />
+        {/* Highlights */}
+        <path d="M -22,-2 A 12,12 0 0 1 -6,-10" fill="none" stroke="#80cc28" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+        <path d="M 6,-10 A 12,12 0 0 1 22,-2" fill="none" stroke="#80cc28" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+        <path d="M -10,-24 A 14,14 0 0 1 10,-24" fill="none" stroke="#80cc28" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
+      </g>
     </g>
   </svg>
 );
@@ -263,15 +278,23 @@ export const SvgTree = () => (
 export const SvgSakura = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
-      <path d="M -12,4 Q -2,-5 -4,-15 Q -6,-25 -2,-35 L 3,-35 Q -1,-25 1,-15 Q 3,-5 12,4 Q 2,-2 0,0 Q -2,-2 -12,4 Z" fill="#292524" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="-15" cy="-45" r="18" fill="#db2777" stroke="#000" strokeWidth="2.5" />
-      <circle cx="20" cy="-40" r="15" fill="#be185d" stroke="#000" strokeWidth="2" />
-      <circle cx="-5" cy="-55" r="20" fill="#f472b6" stroke="#000" strokeWidth="2.5" />
-      <circle cx="10" cy="-50" r="18" fill="#ec4899" stroke="#000" strokeWidth="2" />
-      <circle cx="-10" cy="-60" r="14" fill="#fbcfe8" stroke="#000" strokeWidth="1.5" />
-      <circle cx="5" cy="-65" r="12" fill="#fce7f3" stroke="#000" strokeWidth="1.5" />
-      <circle cx="-25" cy="-20" r="1.5" fill="#fbcfe8" />
-      <circle cx="25" cy="-30" r="1.5" fill="#f9a8d4" />
+      {/* Ground Shadow */}
+      <ellipse cx="0" cy="1" rx="18" ry="8" fill="rgba(0,0,0,0.15)" />
+      {/* Trunk */}
+      <path d="M -3,0 L -2,-40 L 2,-40 L 3,0 Z" fill="#451a03" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M -2.5,0 L -1.5,-40 L 0.5,-40 L 1,0 Z" fill="#573a2e" />
+      {/* Foliage (Pink) */}
+      <g transform="translate(0, -45)">
+        <circle cx="-12" cy="6" r="16" fill="#be185d" stroke="#000" strokeWidth="2" />
+        <circle cx="12" cy="6" r="16" fill="#be185d" stroke="#000" strokeWidth="2" />
+        <circle cx="0" cy="-10" r="18" fill="#be185d" stroke="#000" strokeWidth="2" />
+        <circle cx="-12" cy="4" r="16" fill="#db2777" stroke="#000" strokeWidth="2" />
+        <circle cx="12" cy="4" r="16" fill="#db2777" stroke="#000" strokeWidth="2" />
+        <circle cx="0" cy="-12" r="18" fill="#db2777" stroke="#000" strokeWidth="2" />
+        <path d="M -20,-4 A 12,12 0 0 1 -4,-12" fill="none" stroke="#f472b6" strokeWidth="3" opacity="0.6" />
+        <path d="M 4,-12 A 12,12 0 0 1 20,-4" fill="none" stroke="#f472b6" strokeWidth="3" opacity="0.6" />
+        <path d="M -8,-22 A 14,14 0 0 1 8,-22" fill="none" stroke="#fbcfe8" strokeWidth="4" opacity="0.8" />
+      </g>
     </g>
   </svg>
 );
@@ -279,10 +302,27 @@ export const SvgSakura = () => (
 export const SvgPine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
-      <path d="M -8,2 Q -3,-5 -3,-15 L -2,-50 L 2,-50 L 3,-15 Q 3,-5 8,2 Q 3,0 0,-2 Q -3,0 -8,2 Z" fill="#451a03" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 0,-60 L 30,-20 L 25,-18 L 15,-22 L 10,-15 L 0,-20 L -10,-15 L -15,-22 L -25,-18 L -30,-20 Z" fill="#064e3b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 0,-70 L 25,-35 L 20,-33 L 10,-38 L 5,-30 L -5,-38 L -15,-33 L -25,-35 Z" fill="#047857" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 0,-85 L 18,-50 L 12,-48 L 5,-52 L -5,-52 L -12,-48 L -18,-50 Z" fill="#10b981" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* Ground Shadow */}
+      <ellipse cx="0" cy="1" rx="14" ry="7" fill="rgba(0,0,0,0.15)" />
+      {/* Trunk */}
+      <path d="M -2,0 L -1.5,-60 L 1.5,-60 L 2,0 Z" fill="#451a03" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M -1,0 L -0.5,-60 L 0.5,-60 L 1,0 Z" fill="#6b4b2c" opacity="0.4" />
+      {/* Layered Conifer Foliage */}
+      <g transform="translate(0, -15)">
+        {/* Layer 1 (Bottom) */}
+        <path d="M 0,-35 L 25,0 L -25,0 Z" fill="#064e3b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M 0,-35 L 25,0 L 5,0 L 0,-25 L -5,0 L -25,0 Z" fill="#065f46" />
+        {/* Layer 2 */}
+        <g transform="translate(0, -15)">
+          <path d="M 0,-30 L 20,0 L -20,0 Z" fill="#065f46" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M 0,-30 L 20,0 L 4,0 L 0,-22 L -4,0 L -20,0 Z" fill="#059669" />
+        </g>
+        {/* Layer 3 (Top) */}
+        <g transform="translate(0, -30)">
+          <path d="M 0,-25 L 14,0 L -14,0 Z" fill="#059669" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M 0,-25 L 14,0 L 3,0 L 0,-18 L -3,0 L -14,0 Z" fill="#10b981" />
+        </g>
+      </g>
     </g>
   </svg>
 );
@@ -290,6 +330,8 @@ export const SvgPine = () => (
 export const SvgRock = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* Ground Shadow */}
+      <ellipse cx="0" cy="1" rx="22" ry="10" fill="rgba(0,0,0,0.15)" />
       <polygon points="-25,0 -15,-20 0,-35 15,-25 25,5 15,10 -15,5" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-35 15,-25 25,5 5,0 -5,-10" fill="#1e293b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
       <polygon points="-25,0 -15,-20 -5,-10 5,0 -15,5" fill="#475569" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -302,6 +344,8 @@ export const SvgRock = () => (
 export const SvgBambooGrove = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
+      {/* Ground Shadow */}
+      <ellipse cx="0" cy="2" rx="20" ry="10" fill="rgba(0,0,0,0.15)" />
       <g transform="translate(12, -2)">
         <rect x="-2" y="-65" width="4" height="65" fill="#15803d" stroke="#000" strokeWidth="1.5" />
         <rect x="-2" y="-65" width="2" height="65" fill="#22c55e" />
