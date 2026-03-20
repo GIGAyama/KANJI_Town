@@ -20,8 +20,8 @@ const CULTIVATABLE_TERRAIN = new Set(['t_roughland', 't_grassland', 't_forest_fl
 const toIsoX = (gx, gy) => (gx - gy) * (TILE_W / 2);
 const toIsoY = (gx, gy) => (gx + gy) * (TILE_H / 2);
 const fromIso = (sx, sy) => ({
-  x: Math.round((sx / (TILE_W / 2) + sy / (TILE_H / 2)) / 2),
-  y: Math.round((sy / (TILE_H / 2) - sx / (TILE_W / 2)) / 2),
+  x: Math.floor((sx / (TILE_W / 2) + sy / (TILE_H / 2)) / 2),
+  y: Math.floor((sy / (TILE_H / 2) - sx / (TILE_W / 2)) / 2),
 });
 
 // ── 地形ダイヤモンドタイル色 ──
@@ -59,8 +59,8 @@ const GroundDiamond = React.memo(({ colors, tint, isEditing, isCultivatable, cul
       <polygon points="0,16 32,32 32,34 0,18" fill={left} opacity="0.6" />
       {/* 右側面 */}
       <polygon points="32,32 64,16 64,18 32,34" fill={right} opacity="0.6" />
-      {/* グリッド線 */}
-      <polygon points="32,0 64,16 32,32 0,16" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.5" />
+      {/* グリッド線（視認性向上） */}
+      <polygon points="32,0 64,16 32,32 0,16" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
       {/* 開拓ホバー */}
       {isEditing && isCultivatable && (
         <polygon points="32,0 64,16 32,32 0,16" fill="rgba(245,158,11,0.3)" className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -78,6 +78,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   const [initialFitDone, setInitialFitDone] = useState(false); // 初回フィットフラグ
   const [timeOfDay, setTimeOfDay] = useState('day'); // 'day' | 'evening' | 'night'
   const [currentWeather, setCurrentWeather] = useState('clear'); // 'clear' | 'rain' | 'snow' | 'sakura'
+  const [hoveredCell, setHoveredCell] = useState(null);
   const [residentDisplayMode, setResidentDisplayMode] = useState(() => {
     try {
       return localStorage.getItem('kanji_town_resident_mode') || 'limited';
@@ -199,6 +200,18 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
     if (isDragging.current) {
       setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       lastPos.current = { x: clientX, y: clientY };
+      setHoveredCell(null);
+    } else {
+      // ホバー位置の更新
+      const rect = containerRef.current.getBoundingClientRect();
+      const mapX = (clientX - rect.left - rect.width / 2 - offset.x) / zoom;
+      const mapY = (clientY - rect.top - offset.y) / zoom;
+      const grid = fromIso(mapX, mapY);
+      if (grid.x >= 0 && grid.x < GRID_SIZE && grid.y >= 0 && grid.y < GRID_SIZE) {
+        setHoveredCell(grid);
+      } else {
+        setHoveredCell(null);
+      }
     }
   };
   const handlePointerUp = useCallback((e) => {
@@ -516,7 +529,7 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; }}
+      onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; setHoveredCell(null); }}
       className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
       style={{ opacity: initialFitDone ? 1 : 0 }}>
       {/* --- 時間帯レイヤー（オーバーレイ） --- */}
@@ -594,6 +607,22 @@ const DraggableTownMap = ({ mapData, biomeMap, isDanger, isEditing, onCellTap, r
         transformOrigin: '0 0',
       }}>
         {cells}
+        {/* ホバーハイライト */}
+        {hoveredCell && (
+          <div style={{
+            position: 'absolute',
+            left: toIsoX(hoveredCell.x, hoveredCell.y) - TILE_W / 2,
+            top: toIsoY(hoveredCell.x, hoveredCell.y),
+            width: TILE_W,
+            height: TILE_H,
+            pointerEvents: 'none',
+            zIndex: hoveredCell.x + hoveredCell.y + 1,
+          }}>
+            <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H}>
+              <polygon points="32,0 64,16 32,32 0,16" fill="rgba(255, 255, 255, 0.2)" stroke="rgba(255, 255, 255, 0.8)" strokeWidth="2" />
+            </svg>
+          </div>
+        )}
       </div>
       {/* 住民オーバーレイ */}
       {visibleVillagers.map(v => (
