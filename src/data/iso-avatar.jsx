@@ -122,7 +122,7 @@ const Hat = ({ svgContent, zZ }) => {
 };
 
 // ちびアバターテンプレート
-const Humanoid = ({ headColor, bodyColor, legColor, hat, propLeft, propRight, scale = 0.75 }) => {
+const Humanoid = ({ headColor, bodyColor, legColor, hat, propLeft, propRight, scale = 0.65 }) => {
   const skin = { top: '#fef3c7', left: '#fde68a', right: '#fcd34d' };
   const hC = headColor || skin;
   const bC = bodyColor || { top: '#cbd5e1', left: '#94a3b8', right: '#64748b' };
@@ -132,7 +132,7 @@ const Humanoid = ({ headColor, bodyColor, legColor, hat, propLeft, propRight, sc
   return (
     <svg viewBox="0 0 64 64" width={TILE_W} height={TILE_W} className="drop-shadow-sm">
       <AvatarEffects />
-      <g transform={`scale(${scale}) translate(${32 * (1 - scale) / scale}, ${48 * (1 - scale) / scale})`}>
+      <g transform={`scale(${scale}) translate(${32 * (1 - scale) / scale}, ${32 * (1 - scale) / scale})`}>
         {/* 接地シャドウ */}
         <ellipse cx="32" cy="42" rx="10" ry="5" fill="#0f172a" opacity="0.15" />
 

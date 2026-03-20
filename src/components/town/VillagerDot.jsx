@@ -200,7 +200,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
 
   return (
     <div className={`absolute pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ left: screenX, top: screenY, transform: 'translate(-50%,-100%)', width: 48, height: 64, zIndex }}>
+      style={{ left: screenX, top: screenY, transform: 'translate(-50%,-100%)', width: 40, height: 48, zIndex }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>
@@ -209,7 +209,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
             initial={{ scale: 0, y: 10, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="absolute -top-6 bg-white/90 rounded-full px-1.5 py-0.5 shadow-md shadow-black/20 text-xs border border-slate-200 z-20"
+            className="absolute -top-4 bg-white/90 rounded-full px-1.5 py-0.5 shadow-md shadow-black/20 text-xs border border-slate-200 z-20"
           >
             {emotion === 'heart' && '❤️'}
             {emotion === 'note' && '🎵'}
@@ -219,18 +219,21 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, offset, 
         )}
       </AnimatePresence>
 
-      {/* 頭上の漢字プレーンテキスト（縁取り付きで視認性確保） */}
-      <div className="text-[10px] font-black leading-none mb-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] z-10"
-        style={{ color: '#fff', textShadow: '0 0 4px #e11d48, 0 0 2px #e11d48, 0 0 1px #e11d48' }}>
-        {villager.kanjiChar}
-      </div>
-      
-      {/* 3Dアイソメトリックアバター */}
-      <div 
-        className="w-12 h-12 origin-bottom transform translate-y-1 transition-transform duration-200"
-        style={{ transform: `scaleX(${facesRight ? -1 : 1})` }}
-      >
-        <Avatar />
+      {/* 3Dアイソメトリックアバター + 頭上の漢字 */}
+      <div className="relative w-10 h-10 transition-transform duration-200">
+        {/* 頭上の漢字（アバターに密着させる） */}
+        <div className="absolute top-[2px] left-1/2 -translate-x-1/2 text-[10px] font-black leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] z-10 w-full text-center"
+          style={{ color: '#fff', textShadow: '0 0 4px #e11d48, 0 0 2px #e11d48, 0 0 1px #e11d48' }}>
+          {villager.kanjiChar}
+        </div>
+        
+        {/* アバター本体 */}
+        <div 
+          className="w-full h-full origin-bottom transform"
+          style={{ transform: `scaleX(${facesRight ? -1 : 1})` }}
+        >
+          <Avatar />
+        </div>
       </div>
     </div>
   );
