@@ -4,8 +4,8 @@ import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { SvgGhostBoss } from '../../data/town-items';
 import { FormatKun, F } from '../ui/FormatKun';
-import { Analyzer } from '../../systems/analyzer';
 import { gradeStrokes } from '../../systems/strokeGrader';
+import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
 
 const PLAYER_MAX_HP = 3;
@@ -186,45 +186,27 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
     return () => audioCtrl.stopBGM();
   }, []);
 
-  // KanjiVGデータ取得
+  const [fetchError, setFetchError] = useState(null);
+
+  // KanjiVGデータ取得（リトライ・キャッシュ付き）
   useEffect(() => {
     if (!kanji) return;
-    const fetchPaths = async () => {
-      setIsLoading(true);
-      const hex = kanji.char.charCodeAt(0).toString(16).padStart(5, '0');
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true); setFetchError(null);
       try {
-        const res = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex}.svg`);
-        if (res.ok) {
-          const text = await res.text();
-          const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-          const extractedPaths = Array.from(doc.querySelectorAll('path')).map(p => p.getAttribute('d'));
-          setPaths(extractedPaths);
-          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          svg.appendChild(pathEl);
-          document.body.appendChild(svg);
-          const data = extractedPaths.map(p => {
-            pathEl.setAttribute('d', p);
-            const len = pathEl.getTotalLength();
-            const points = [];
-            for (let i = 0; i <= len; i += 2) {
-              const pt = pathEl.getPointAtLength(i);
-              points.push({ x: pt.x / 109, y: pt.y / 109 });
-            }
-            const endPt = pathEl.getPointAtLength(len);
-            points.push({ x: endPt.x / 109, y: endPt.y / 109 });
-            return { s: { x: pathEl.getPointAtLength(0).x / 109, y: pathEl.getPointAtLength(0).y / 109 }, e: { x: endPt.x / 109, y: endPt.y / 109 }, points };
-          });
-          document.body.removeChild(svg);
-          setStrokeData(data);
-        }
-      } catch (e) {
-        setPaths([]);
-        setStrokeData([]);
+        const { paths: p, strokeData: data } = await fetchKanjiVg(kanji.char);
+        if (cancelled) return;
+        setPaths(p); setStrokeData(data);
+      } catch {
+        if (cancelled) return;
+        setPaths([]); setStrokeData([]);
+        setFetchError(true);
       }
       setIsLoading(false);
     };
-    fetchPaths();
+    load();
+    return () => { cancelled = true; };
   }, [kanji]);
 
   // 制限時間の計算（画数×3秒、最低15秒、最大45秒）
@@ -559,6 +541,12 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
           {isLoading ? (
             <div className="flex items-center justify-center">
               <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center gap-4 p-6 text-center">
+              <div className="text-5xl">😢</div>
+              <p className="text-slate-300 font-bold text-lg">よみこみに しっぱいしました</p>
+              <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(kanji.char).then(({ paths: p, strokeData: data }) => { setPaths(p); setStrokeData(data); setIsLoading(false); }).catch(() => { setFetchError(true); setIsLoading(false); }); }} className="bg-rose-600 text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-rose-800 shadow-[3px_3px_0_#1e293b] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど ためす</button>
             </div>
           ) : phase === 'victory' ? (
             <VictoryScreen bossHp={bossHp} earned={earnedRef.current} />
