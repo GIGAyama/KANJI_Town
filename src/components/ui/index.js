@@ -6,3 +6,4 @@ export { default as AnimatedCounter } from './AnimatedCounter';
 export { default as StampEffect } from './StampEffect';
 export { default as Footer } from './Footer';
 export { R, FormatKun } from './FormatKun';
+export { default as OfflineBanner } from './OfflineBanner';

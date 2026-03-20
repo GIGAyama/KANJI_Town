@@ -1,38 +1,22 @@
 // KanjiVG SVG データの取得・パース・キャッシュ
 // - タイムアウト (5秒)
 // - リトライ (3回、指数バックオフ)
-// - メモリキャッシュ + localStorage キャッシュ
+// - メモリキャッシュ + IndexedDB キャッシュ（容量制限なし）
+
+import { idbGet, idbSet, migrateFromLocalStorage } from './idb-cache';
 
 const CDN_URL = 'https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji';
 const FETCH_TIMEOUT = 5000;
 const MAX_RETRIES = 3;
-const STORAGE_KEY = 'kanji_vg_cache';
+const LEGACY_STORAGE_KEY = 'kanji_vg_cache';
 const VIEWBOX_SIZE = 109;
 const SAMPLE_INTERVAL = 2;
 
 // メモリキャッシュ（セッション中は即返却）
 const memoryCache = new Map();
 
-// localStorage キャッシュの読み書き
-function readDiskCache() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function writeDiskCache(key, pathStrings) {
-  try {
-    const cache = readDiskCache();
-    cache[key] = pathStrings;
-    // 最大200漢字分を保持（古いものから削除）
-    const keys = Object.keys(cache);
-    if (keys.length > 200) {
-      keys.slice(0, keys.length - 200).forEach(k => delete cache[k]);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
-  } catch { /* localStorage容量超過時は無視 */ }
-}
+// 起動時に localStorage → IndexedDB へ移行（非同期・失敗無視）
+migrateFromLocalStorage(LEGACY_STORAGE_KEY);
 
 // タイムアウト付きfetch
 function fetchWithTimeout(url, timeout) {
@@ -108,11 +92,11 @@ export async function fetchKanjiVg(char) {
     return { paths: cached, strokeData: buildStrokeData(cached) };
   }
 
-  // 2. localStorage キャッシュ
-  const disk = readDiskCache();
-  if (disk[hex]) {
-    memoryCache.set(hex, disk[hex]);
-    return { paths: disk[hex], strokeData: buildStrokeData(disk[hex]) };
+  // 2. IndexedDB キャッシュ
+  const idbCached = await idbGet(hex);
+  if (idbCached) {
+    memoryCache.set(hex, idbCached);
+    return { paths: idbCached, strokeData: buildStrokeData(idbCached) };
   }
 
   // 3. ネットワーク取得（リトライ付き）
@@ -122,7 +106,7 @@ export async function fetchKanjiVg(char) {
 
   // キャッシュ保存
   memoryCache.set(hex, pathStrings);
-  writeDiskCache(hex, pathStrings);
+  idbSet(hex, pathStrings); // 非同期・await不要
 
   return { paths: pathStrings, strokeData: buildStrokeData(pathStrings) };
 }
