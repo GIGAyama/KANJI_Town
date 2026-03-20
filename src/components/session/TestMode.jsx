@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, RotateCcw } from 'lucide-react';
+import { Eye, RotateCcw, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
@@ -85,10 +85,32 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
     }
   };
 
+  const redrawStrokes = (strokes) => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.strokeStyle = "var(--text)"; ctx.lineWidth = canvasSize * 0.06;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    strokes.forEach(stroke => {
+      if (stroke.length < 2) return;
+      ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+      ctx.stroke();
+    });
+  };
+
   const clearCanvas = () => {
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
     setUserStrokes([]);
+  };
+
+  const undoLastStroke = () => {
+    if (userStrokes.length <= 0 || isDrawing) return;
+    const newStrokes = userStrokes.slice(0, -1);
+    setUserStrokes(newStrokes);
+    redrawStrokes(newStrokes);
+    audioCtrl.playSE('click');
   };
 
   const handleReveal = () => {
@@ -111,9 +133,14 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
         <canvas ref={canvasRef} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} className="absolute inset-0 z-10 cursor-crosshair w-full h-full" />
         <div className="absolute top-3 left-3 bg-[var(--text)] text-[var(--panel)] text-[10px] md:text-xs font-bold px-3 py-1 rounded-full opacity-50 pointer-events-none">かくところ</div>
         {!showAnswer && userStrokes.length > 0 && (
-          <button onClick={clearCanvas} className="absolute bottom-3 right-3 z-20 bg-[var(--panel)] text-[var(--text)] text-xs font-bold px-3 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1 hover:bg-[var(--bg)] transition-colors">
-            <RotateCcw size={14} /> {F("書","か")}きなおす
-          </button>
+          <div className="absolute bottom-3 right-3 z-20 flex gap-1.5">
+            <button onClick={undoLastStroke} className="bg-[var(--panel)] text-[var(--text)] text-xs font-bold px-3 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1 hover:bg-[var(--bg)] transition-colors">
+              <Undo2 size={14} /> 1{F("画","かく")}もどす
+            </button>
+            <button onClick={clearCanvas} className="bg-[var(--panel)] text-[var(--text)] text-xs font-bold px-3 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1 hover:bg-[var(--bg)] transition-colors">
+              <RotateCcw size={14} /> {F("書","か")}きなおす
+            </button>
+          </div>
         )}
       </div>
       {showAnswer && (
