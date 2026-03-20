@@ -8,35 +8,33 @@ import WatchMode from './WatchMode';
 import WriteMode from './WriteMode';
 import TestMode from './TestMode';
 import { Analyzer } from '../../systems/analyzer';
+import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
 
 const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRecordPerfect, onRecordEasy }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false); const [canvasSize] = useState(window.innerWidth < 768 ? 280 : 400); const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
   const currentKanji = queue[0]; const isNew = !stats[currentKanji?.id] || stats[currentKanji?.id].status === 'new'; const MODES = useMemo(() => ['read', 'watch', 'write', 'test'], []);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     if (!currentKanji) return; setMode(isNew ? 'read' : 'test'); setReachedStep(isNew ? 0 : 3);
-    const fetchPaths = async () => {
-      setIsLoading(true); const hex = currentKanji.char.charCodeAt(0).toString(16).padStart(5, '0');
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true); setFetchError(null);
       try {
-        const res = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex}.svg`);
-        if (res.ok) {
-          const text = await res.text(); const doc = new DOMParser().parseFromString(text, 'image/svg+xml'); const extractedPaths = Array.from(doc.querySelectorAll('path')).map(p => p.getAttribute('d')); setPaths(extractedPaths);
-          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path"); svg.appendChild(pathEl); document.body.appendChild(svg);
-          const data = extractedPaths.map(p => {
-            pathEl.setAttribute("d", p); const len = pathEl.getTotalLength(); const points = [];
-            for (let i = 0; i <= len; i += 2) { const pt = pathEl.getPointAtLength(i); points.push({ x: pt.x / 109, y: pt.y / 109 }); }
-            const endPt = pathEl.getPointAtLength(len); points.push({ x: endPt.x / 109, y: endPt.y / 109 });
-            return { s: { x: pathEl.getPointAtLength(0).x / 109, y: pathEl.getPointAtLength(0).y / 109 }, e: { x: endPt.x / 109, y: endPt.y / 109 }, points };
-          });
-          document.body.removeChild(svg);
-          // FIX: build cross matrix safely
-          const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
-          setCrossMatrix(cMatrix); setStrokeData(data);
-        }
-      } catch (e) { setPaths([]); setCrossMatrix([]); setStrokeData([]); }
+        const { paths: p, strokeData: data } = await fetchKanjiVg(currentKanji.char);
+        if (cancelled) return;
+        setPaths(p); setStrokeData(data);
+        const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
+        setCrossMatrix(cMatrix);
+      } catch (e) {
+        if (cancelled) return;
+        setPaths([]); setCrossMatrix([]); setStrokeData([]);
+        setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。');
+      }
       setIsLoading(false);
-    }; fetchPaths();
+    }; load();
+    return () => { cancelled = true; };
   }, [currentKanji, isNew]);
 
   useEffect(() => { const stepIdx = MODES.indexOf(mode); if (stepIdx > reachedStep) setReachedStep(stepIdx); }, [mode, reachedStep, MODES]);
@@ -78,10 +76,20 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
         </div>
       </div>
       <div className="flex-1 min-h-0 w-full relative">
-        {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => setMode('watch')} commonSidebar={commonSidebarTop} />}
-        {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => setMode('write')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
-        {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} />}
-        {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
+        {fetchError ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+            <div className="text-5xl">😢</div>
+            <p className="text-[var(--text)] font-bold text-lg whitespace-pre-line">{fetchError}</p>
+            <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(currentKanji.char).then(({ paths: p, strokeData: data }) => { setPaths(p); setStrokeData(data); const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points))); setCrossMatrix(cMatrix); setIsLoading(false); }).catch(() => { setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。'); setIsLoading(false); }); }} className="bg-[var(--primary)] text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-[var(--text)] shadow-[3px_3px_0_var(--text)] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど ためす</button>
+          </div>
+        ) : (
+          <>
+            {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => setMode('watch')} commonSidebar={commonSidebarTop} />}
+            {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => setMode('write')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
+            {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
+          </>
+        )}
       </div>
     </div>
   );

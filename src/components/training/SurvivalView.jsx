@@ -5,6 +5,7 @@ import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes } from '../../systems/strokeGrader';
+import { fetchKanjiVg } from '../../systems/kanjiVg';
 
 const WAVE_SIZE = 10;
 const INITIAL_TIME = 45;
@@ -352,49 +353,27 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     }
   }, [phase, onFinish]);
 
-  // KanjiVGデータ取得
+  const [fetchError, setFetchError] = useState(null);
+
+  // KanjiVGデータ取得（リトライ・キャッシュ付き）
   useEffect(() => {
     if (!kanji) return;
-    const fetchPaths = async () => {
-      setIsLoading(true);
-      const hex = kanji.char.charCodeAt(0).toString(16).padStart(5, '0');
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true); setFetchError(null);
       try {
-        const res = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex}.svg`);
-        if (res.ok) {
-          const text = await res.text();
-          const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-          const extractedPaths = Array.from(doc.querySelectorAll('path')).map(p => p.getAttribute('d'));
-          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          svg.appendChild(pathEl);
-          document.body.appendChild(svg);
-          const data = extractedPaths.map(p => {
-            pathEl.setAttribute('d', p);
-            const len = pathEl.getTotalLength();
-            const points = [];
-            for (let i = 0; i <= len; i += 2) {
-              const pt = pathEl.getPointAtLength(i);
-              points.push({ x: pt.x / 109, y: pt.y / 109 });
-            }
-            const endPt = pathEl.getPointAtLength(len);
-            points.push({ x: endPt.x / 109, y: endPt.y / 109 });
-            return {
-              s: { x: pathEl.getPointAtLength(0).x / 109, y: pathEl.getPointAtLength(0).y / 109 },
-              e: { x: endPt.x / 109, y: endPt.y / 109 },
-              points,
-            };
-          });
-          document.body.removeChild(svg);
-          setStrokeData(data);
-        } else {
-          setStrokeData([]);
-        }
+        const { strokeData: data } = await fetchKanjiVg(kanji.char);
+        if (cancelled) return;
+        setStrokeData(data);
       } catch {
+        if (cancelled) return;
         setStrokeData([]);
+        setFetchError(true);
       }
       setIsLoading(false);
     };
-    fetchPaths();
+    load();
+    return () => { cancelled = true; };
   }, [kanji]);
 
   // ストローク提出 — gradeStrokes(ボスバトル同等)で採点
@@ -694,6 +673,12 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
               {isLoading ? (
                 <div className="flex items-center justify-center" style={{ width: canvasSize, height: canvasSize }}>
                   <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : fetchError ? (
+                <div className="flex flex-col items-center justify-center gap-4 p-6 text-center" style={{ width: canvasSize }}>
+                  <div className="text-5xl">😢</div>
+                  <p className="text-[var(--text)] font-bold text-base">よみこみに しっぱいしました</p>
+                  <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(kanji.char).then(({ strokeData: data }) => { setStrokeData(data); setIsLoading(false); }).catch(() => { setFetchError(true); setIsLoading(false); }); }} className="bg-[var(--primary)] text-white font-black text-base px-6 py-2.5 rounded-2xl border-[3px] border-[var(--text)] shadow-[3px_3px_0_var(--text)] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど</button>
                 </div>
               ) : (
                 <SurvivalCanvas
