@@ -632,7 +632,6 @@ export const SvgHouse2 = ({ seed = 0 }) => {
     return (
       <g>
         {drawGableSW && <polygon points={`${pt(i1, j2, kBase)} ${pt(i2, j2, kBase)} ${pt(iMid, j2, kPeak)}`} fill={wallSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
-        <polygon points={`${pt(i1, j2, kBase)} ${pt(iMid, j2, kPeak)} ${pt(iMid, j1, kPeak)} ${pt(i1, j1, kBase)}`} fill={roofNW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
         <polygon points={`${pt(iMid, j2, kPeak)} ${pt(i2, j2, kBase)} ${pt(i2, j1, kBase)} ${pt(iMid, j1, kPeak)}`} fill={roofSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
       </g>
     );
@@ -644,7 +643,6 @@ export const SvgHouse2 = ({ seed = 0 }) => {
       <g>
         {drawGableSE && <polygon points={`${pt(i2, j1, kBase)} ${pt(i2, j2, kBase)} ${pt(i2, jMid, kPeak)}`} fill={wallSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
         <polygon points={`${pt(i1, jMid, kPeak)} ${pt(i2, jMid, kPeak)} ${pt(i2, j2, kBase)} ${pt(i1, j2, kBase)}`} fill={roofSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
-        <polygon points={`${pt(i1, j1, kBase)} ${pt(i2, j1, kBase)} ${pt(i2, jMid, kPeak)} ${pt(i1, jMid, kPeak)}`} fill={roofNE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
       </g>
     );
   };
@@ -781,7 +779,6 @@ export const SvgHouse3 = ({ seed = 0 }) => {
     return (
       <g>
         {drawGableSW && <polygon points={`${pt(i1, j2, kBase)} ${pt(i2, j2, kBase)} ${pt(iMid, j2, kPeak)}`} fill={wallSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
-        <polygon points={`${pt(i1, j2, kBase)} ${pt(iMid, j2, kPeak)} ${pt(iMid, j1, kPeak)} ${pt(i1, j1, kBase)}`} fill={roofNW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
         <polygon points={`${pt(iMid, j2, kPeak)} ${pt(i2, j2, kBase)} ${pt(i2, j1, kBase)} ${pt(iMid, j1, kPeak)}`} fill={roofSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
       </g>
     );
@@ -793,7 +790,6 @@ export const SvgHouse3 = ({ seed = 0 }) => {
       <g>
         {drawGableSE && <polygon points={`${pt(i2, j1, kBase)} ${pt(i2, j2, kBase)} ${pt(i2, jMid, kPeak)}`} fill={wallSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
         <polygon points={`${pt(i1, jMid, kPeak)} ${pt(i2, jMid, kPeak)} ${pt(i2, j2, kBase)} ${pt(i1, j2, kBase)}`} fill={roofSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
-        <polygon points={`${pt(i1, j1, kBase)} ${pt(i2, j1, kBase)} ${pt(i2, jMid, kPeak)} ${pt(i1, jMid, kPeak)}`} fill={roofNE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
       </g>
     );
   };
