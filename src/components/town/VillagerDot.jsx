@@ -30,11 +30,10 @@ const CULTIVATABLE_TERRAIN = new Set([
 // 距離計算ヘルパー
 const distance = (x1, y1, x2, y2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 
-const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthChange }) => {
+const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用
   const [gridPos, setGridPos] = useState({ x: villager.x, y: villager.y });
-  const prevDepthRef = useRef(Math.round(villager.x + villager.y));
   const [aiState, setAiState] = useState('IDLE'); // 'IDLE' | 'MOVING' | 'INTERACTING'
   const [emotion, setEmotion] = useState(null); // 'heart' | 'note' | 'exclamation' | 'sleep' | null
   const [facesRight, setFacesRight] = useState(false); // 進行方向による翻転
@@ -180,15 +179,6 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthC
     return () => cancelAnimationFrame(frameRef.current);
   }, [mapData, villager.id.length]);
 
-  // 深度変化を親に通知（DOM順ソート用）
-  useEffect(() => {
-    const newDepth = Math.round(gridPos.x + gridPos.y);
-    if (newDepth !== prevDepthRef.current) {
-      prevDepthRef.current = newDepth;
-      onDepthChange?.(villager.id, newDepth);
-    }
-  }, [gridPos.x, gridPos.y, onDepthChange, villager.id]);
-
   // CSS描画用位置計算
   const baseIsoX = toIsoX(gridPos.x, gridPos.y);
   const baseIsoY = toIsoY(gridPos.x, gridPos.y);
@@ -208,9 +198,13 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthC
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
   const isHidden = CULTIVATABLE_TERRAIN.has(currentTileId);
 
+  // z-indexはアイソメトリック深度（x+y）に基づく。
+  // isolation:isolateで子要素(z-10,z-20)のz-indexをこのdiv内に封じ込める
+  const zIndex = Math.round(gridPos.x + gridPos.y);
+
   return (
     <div className={`pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH, isolation: 'isolate' }}>
+      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH, zIndex, isolation: 'isolate' }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>

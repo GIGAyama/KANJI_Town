@@ -367,6 +367,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         left: isoX - TILE_W / 2,
         top: isoY - isoHeight,
         width: TILE_W,
+        zIndex: depth,
       };
 
       // フォグ（未探索）
@@ -405,6 +406,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           top: megaCenterY - megaH,
           width: TILE_W * mw,
           height: TILE_H * mh + megaH,
+          zIndex: depth + mw + mh,
         };
         result.push({ depth: depth + mw + mh, element:
           <div key={key} style={megaStyle}
@@ -490,38 +492,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     return result;
   }, [safeMapData, ghosts, isDanger, isEditing, exploredRadius, viewRange, megaAnchors, timeOfDay]);
 
-  // ── 住人の深度追跡 ──
-  const [villagerDepthMap, setVillagerDepthMap] = useState({});
-  const handleVillagerDepthChange = useCallback((id, depth) => {
-    setVillagerDepthMap(prev => prev[id] === depth ? prev : { ...prev, [id]: depth });
-  }, []);
-
-  // ── セル＋住人を深度順に統合ソート（DOM描画順 = 奥→手前）──
-  const sortedElements = useMemo(() => {
-    // セル: sortKey = depth * 2（セルが先に描画される）
-    // 住人: sortKey = depth * 2 + 1（同深度ならセルの手前に描画）
-    const combined = cellsWithDepth.map(c => ({ sortKey: c.depth * 2, element: c.element }));
-
-    for (const v of visibleVillagers) {
-      const depth = villagerDepthMap[v.id] ?? Math.round(v.x + v.y);
-      combined.push({
-        sortKey: depth * 2 + 1,
-        element: (
-          <VillagerDot
-            key={`v-${v.id}`}
-            villager={v}
-            mapData={safeMapData}
-            tileW={TILE_W}
-            tileH={TILE_H}
-            onDepthChange={handleVillagerDepthChange}
-          />
-        ),
-      });
-    }
-
-    combined.sort((a, b) => a.sortKey - b.sortKey);
-    return combined.map(item => item.element);
-  }, [cellsWithDepth, visibleVillagers, villagerDepthMap, safeMapData, handleVillagerDepthChange]);
+  // セル要素のみ抽出（z-indexで深度制御するため、ソート不要）
+  const cells = useMemo(() => cellsWithDepth.map(c => c.element), [cellsWithDepth]);
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
@@ -598,7 +570,17 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         transformOrigin: '0 0',
         isolation: 'isolate',
       }}>
-        {sortedElements}
+        {cells}
+        {/* 住民（セルと同じtransformコンテナ内でz-indexによる深度制御） */}
+        {visibleVillagers.map(v => (
+          <VillagerDot
+            key={v.id}
+            villager={v}
+            mapData={safeMapData}
+            tileW={TILE_W}
+            tileH={TILE_H}
+          />
+        ))}
         {/* ホバーハイライト */}
         {hoveredCell && (
           <div style={{
