@@ -348,48 +348,51 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                     </div>
 
                     {/* アクションボタン & 数量選択 */}
-                    <div className="flex items-center gap-2">
-                      {isSelected && maxCraftable > 1 && (
-                        <div className="flex items-center bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl overflow-hidden h-10">
+                    <div className="flex items-center gap-2 mt-1">
+                      {maxCraftable > 1 && (
+                        <div className="flex items-center bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl overflow-hidden h-9 shadow-[2px_2px_0_var(--text)]">
                           <button 
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.max(1, craftQuantity - 1)); audioCtrl.playSE('click'); }}
-                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black"
+                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm"
                           >
                             -
                           </button>
-                          <div className="w-10 text-center font-black text-xs border-x-2 border-[var(--text)]">
+                          <div className="w-10 text-center font-black text-xs border-x-2 border-[var(--text)] flex items-center justify-center h-full">
                             {craftQuantity}
                           </div>
                           <button 
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.min(maxCraftable, craftQuantity + 1)); audioCtrl.playSE('click'); }}
-                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black"
+                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm"
                           >
                             +
                           </button>
                         </div>
                       )}
                       
+                      {maxCraftable > 1 && (
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setCraftQuantity(maxCraftable); audioCtrl.playSE('click'); }}
+                          className="px-2.5 h-9 bg-amber-100 border-2 border-[var(--text)] text-amber-700 rounded-xl text-[10px] font-black hover:bg-amber-200 shadow-[2px_2px_0_var(--text)] transition-all active:translate-y-0.5 active:shadow-none"
+                        >
+                          MAX
+                        </button>
+                      )}
+
                       {craftable ? (
                         <MotionButton
                           variant="primary"
                           onClick={(e) => { e.stopPropagation(); handleCraft(recipe, currentQty); }}
-                          className="flex-1 py-2 text-xs border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"
+                          className="flex-1 py-2 text-xs border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] flex items-center justify-center gap-2"
                         >
                           <Hammer size={14} /> {currentQty > 1 ? `${currentQty}個クラフトする` : 'クラフトする'}
                         </MotionButton>
                       ) : (
-                        <div className="flex-1 py-2 bg-gray-100 border-[3px] border-gray-300 rounded-xl text-center text-[10px] font-black text-gray-400 flex items-center justify-center gap-1.5">
+                        <div className="flex-1 py-2 bg-gray-100 border-[3px] border-gray-300 rounded-xl text-center text-[10px] font-black text-gray-400 flex items-center justify-center gap-1.5 opacity-60">
                           <Lock size={12} /> {coinCost * currentQty > (stats.coins || 0) ? 'コイン不足' : '素材不足'}
                         </div>
-                      )}
-                      
-                      {isSelected && maxCraftable > 1 && (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setCraftQuantity(maxCraftable); audioCtrl.playSE('click'); }}
-                          className="px-2 py-2 bg-amber-100 border-2 border-amber-400 text-amber-700 rounded-xl text-[9px] font-black hover:bg-amber-200"
-                        >
-                          MAX
-                        </button>
                       )}
                     </div>
                   </div>
