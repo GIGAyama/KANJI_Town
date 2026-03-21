@@ -42,7 +42,7 @@ const ParticleOverlay = ({ particles, type }) => (
   </AnimatePresence>
 );
 
-const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
+const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [localMap, setLocalMap] = useState({ ...(stats.townMap || {}) });
@@ -277,6 +277,11 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
     const newMap = { ...localMap, [targetKey]: selectedItem };
     setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
+
+    // デイリーミッション進捗更新
+    if (onPlace && itemDef && ['building', 'special', 'mega', 'rare'].includes(itemDef.type)) {
+      onPlace(itemDef);
+    }
   };
 
   const handleSave = () => {

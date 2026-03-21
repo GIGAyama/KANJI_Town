@@ -531,6 +531,12 @@ export default function App() {
                   setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
                   return updated;
                 });
+              }} onPlace={() => {
+                setDailyMissions(prev => {
+                  const updated = updateMissionProgress(prev, 'place', 1);
+                  setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
+                  return updated;
+                });
               }} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="residents" seenHints={seenHints} onDismiss={handleDismissHint} /><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
           {view === 'craft' && <PageWrapper key="craft"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="craft" seenHints={seenHints} onDismiss={handleDismissHint} /><CraftView stats={stats} setStats={setStats} setView={setView} onCraft={() => {
