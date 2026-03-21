@@ -98,7 +98,7 @@ const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, 
       
       <g opacity="0.9">
         {type === 'road' && (
-          <path d={`M -${dx*0.7},-${dy*1.0} L ${dx*0.7},-${dy*1.0}`} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
+          <path d={`M ${dx*0.5},-${dy*0.5} L -${dx*0.5},-${dy*1.5}`} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
         )}
         {type === 'asphalt' && (
           <g opacity="0.2">
@@ -110,20 +110,28 @@ const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, 
         )}
         {type === 'crosswalk' && (
           <g>
-            <path d={`M -${dx*0.5},-${dy*0.5} L -${dx*0.5},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
-            <path d={`M -${dx*0.1},-${dy*0.5} L -${dx*0.1},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
-            <path d={`M ${dx*0.3},-${dy*0.5} L ${dx*0.3},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
-            <path d={`M ${dx*0.7},-${dy*0.5} L ${dx*0.7},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+            {[-0.3, -0.15, 0, 0.15, 0.3].map((t, i) => {
+               const cx = t * dx;
+               const cy = -dy - t * dy;
+               const s = 0.2;
+               return (
+                 <path key={i} d={`M ${cx - s*dx},${cy - s*dy} L ${cx + s*dx},${cy + s*dy}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+               );
+            })}
           </g>
         )}
         {type === 'railway' && (
           <g>
-            <path d={`M -${dx*0.6},-${dy*0.8} L -${dx*0.6},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
-            <path d={`M -${dx*0.2},-${dy*0.8} L -${dx*0.2},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
-            <path d={`M ${dx*0.2},-${dy*0.8} L ${dx*0.2},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
-            <path d={`M ${dx*0.6},-${dy*0.8} L ${dx*0.6},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
-            <path d={`M -${dx*0.8},-${dy*0.85} L ${dx*0.8},-${dy*0.85}`} stroke="#94a3b8" strokeWidth="1.5" />
-            <path d={`M -${dx*0.8},-${dy*1.15} L ${dx*0.8},-${dy*1.15}`} stroke="#94a3b8" strokeWidth="1.5" />
+            {[-0.4, -0.2, 0, 0.2, 0.4].map((t, i) => {
+              const cx = t * dx;
+              const cy = -dy + t * dy;
+              const s = 0.25;
+              return (
+                <path key={i} d={`M ${cx - s*dx},${cy + s*dy} L ${cx + s*dx},${cy - s*dy}`} stroke="#78350f" strokeWidth="3" />
+              );
+            })}
+            <path d={`M ${dx*0.35},-${dy*0.35} L -${dx*0.65},-${dy*1.35}`} stroke="#94a3b8" strokeWidth="1.5" />
+            <path d={`M ${dx*0.65},-${dy*0.65} L -${dx*0.35},-${dy*1.65}`} stroke="#94a3b8" strokeWidth="1.5" />
           </g>
         )}
         {(type === 'water' || type === 'pond') && (
