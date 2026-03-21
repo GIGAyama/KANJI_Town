@@ -933,69 +933,132 @@ export const SvgShop = ({ seed = 0 }) => {
   );
 };
 
-export const SvgSchool = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(1.1)">
-      {/* 地面 */}
-      <polygon points="0,0 -44,-22 0,-44 44,-22" fill="#4ade80" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      {/* グラウンド */}
-      <polygon points="14,-1 0,-8 22,-19 36,-12" fill="#b45309" stroke="#92400e" strokeWidth="0.8" strokeLinejoin="round" opacity="0.8" />
-      <ellipse cx="18" cy="-10" rx="7" ry="3.5" fill="none" stroke="#fef3c7" strokeWidth="0.7" />
+export const SvgSchool = () => {
+  // 100x100の2Dグリッドを、現在の4×4マスのアイソメトリックベース（0,0を中心とする幅88, 奥行44のひし形）にマッピングする関数
+  const iso = (x, y, z = 0) => {
+    const ptX = (x - y) * 0.44;
+    const ptY = -44 + (x + y) * 0.22 - z;
+    return `${ptX.toFixed(2)},${ptY.toFixed(2)}`;
+  };
 
-      {/* === 教室棟（奥、横長） === */}
-      {/* 左面 */}
-      <polygon points="-38,-19 -10,-5 -10,-30 -38,-44" fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      {/* 右面 */}
-      <polygon points="-10,-5 32,-26 32,-51 -10,-30" fill="#e2e8f0" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      {/* 屋根 */}
-      <polygon points="-10,-30 -38,-44 -6,-60 32,-51" fill="#94a3b8" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+      {/* 既存の環境への互換性のため残しています */}
+      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
+      
+      <g transform="translate(50, 100) scale(1.1)">
+        
+        {/* === 地面（ベース） === */}
+        <polygon 
+          points={`${iso(0,0)} ${iso(100,0)} ${iso(100,100)} ${iso(0,100)}`} 
+          fill="#4ade80" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" 
+        />
 
-      {/* 左面の窓（2階分） */}
-      {[0, 1].map(floor => (
-        [0, 1, 2].map((_, i) => {
-          const wx = -34 + i * 8;
-          const wy = -22 - i * 4 - floor * 10;
-          return <polygon key={`lw-${floor}-${i}`} points={`${wx},${wy} ${wx + 5},${wy - 2.5} ${wx + 5},${wy - 7.5} ${wx},${wy - 5}`} fill="#93c5fd" stroke="#000" strokeWidth="0.5" strokeLinejoin="round" />;
-        })
-      ))}
-      {/* 右面の窓（2階分） */}
-      {[0, 1].map(floor => (
-        [0, 1, 2, 3, 4].map((_, i) => {
-          const wx = -4 + i * 7;
-          const wy = -9 - i * 3.5 - floor * 10;
-          return <polygon key={`rw-${floor}-${i}`} points={`${wx},${wy} ${wx + 4},${wy - 2} ${wx + 4},${wy - 7} ${wx},${wy - 5}`} fill="#7dd3fc" stroke="#000" strokeWidth="0.5" strokeLinejoin="round" />;
-        })
-      ))}
+        {/* === アスファルトの通路 === */}
+        <polygon 
+          points={`${iso(25,20)} ${iso(95,20)} ${iso(95,50)} ${iso(40,50)} ${iso(40,75)} ${iso(25,75)}`} 
+          fill="#94a3b8" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" 
+        />
 
-      {/* === 体育館（右奥） === */}
-      {/* 左面 */}
-      <polygon points="10,-26 32,-15 32,-35 10,-46" fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      {/* 右面 */}
-      <polygon points="32,-15 44,-21 44,-41 32,-35" fill="#e2e8f0" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      {/* アーチ屋根 */}
-      <path d="M 10,-46 Q 21,-56 32,-46 L 32,-35 Q 21,-45 10,-35 Z" fill="#3b82f6" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      <path d="M 32,-46 Q 38,-49.5 44,-46 L 44,-41 Q 38,-44.5 32,-41 Z" fill="#1e3a8a" stroke="#000" strokeWidth="0.8" strokeLinejoin="round" />
-      {/* 体育館屋根上面 */}
-      <path d="M 10,-46 Q 21,-56 32,-46 L 44,-41 Q 33,-51 22,-41 Z" fill="#2563eb" stroke="#000" strokeWidth="0.8" strokeLinejoin="round" opacity="0.5" />
-      {/* 体育館の窓 */}
-      <polygon points="14,-30 20,-27 20,-40 14,-43" fill="#93c5fd" stroke="#000" strokeWidth="0.5" />
+        {/* === グラウンド（砂地） === */}
+        <polygon 
+          points={`${iso(35,50)} ${iso(95,50)} ${iso(95,95)} ${iso(35,95)}`} 
+          fill="#e5c8a8" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" 
+        />
 
-      {/* === 入口（教室棟の手前） === */}
-      <polygon points="-14,-7 -8,-4 -8,-12 -14,-15" fill="#451a03" stroke="#000" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* トラックの白線（外側） */}
+        <path 
+          d={`M ${iso(55,65)} L ${iso(75,65)} C ${iso(80.5,65)} ${iso(85,69.5)} ${iso(85,75)} C ${iso(85,80.5)} ${iso(80.5,85)} ${iso(75,85)} L ${iso(55,85)} C ${iso(49.5,85)} ${iso(45,80.5)} ${iso(45,75)} C ${iso(45,69.5)} ${iso(49.5,65)} ${iso(55,65)} Z`} 
+          fill="none" stroke="#fff" strokeWidth="1.2" 
+        />
+        {/* トラックの白線（内側） */}
+        <path 
+          d={`M ${iso(55,69)} L ${iso(75,69)} C ${iso(78.3,69)} ${iso(81,71.7)} ${iso(81,75)} C ${iso(81,78.3)} ${iso(78.3,81)} ${iso(75,81)} L ${iso(55,81)} C ${iso(51.7,81)} ${iso(49,78.3)} ${iso(49,75)} C ${iso(49,71.7)} ${iso(51.7,69)} ${iso(55,69)} Z`} 
+          fill="none" stroke="#fff" strokeWidth="0.8" 
+        />
 
-      {/* === 時計塔（中央上） === */}
-      <polygon points="-6,-51 0,-48 0,-62 -6,-65" fill="#cbd5e1" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      <polygon points="0,-48 6,-51 6,-65 0,-62" fill="#94a3b8" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      <polygon points="-6,-65 0,-62 6,-65 0,-68" fill="#64748b" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      {/* 三角屋根 */}
-      <polygon points="-7,-64 7,-64 0,-74" fill="#475569" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      {/* 時計 */}
-      <circle cx="0" cy="-58" r="3" fill="#f8fafc" stroke="#000" strokeWidth="0.7" />
-      <line x1="0" y1="-58" x2="0" y2="-60.5" stroke="#1e293b" strokeWidth="0.6" />
-      <line x1="0" y1="-58" x2="1.5" y2="-57.5" stroke="#1e293b" strokeWidth="0.6" />
-    </g>
-  </svg>
-);
+        {/* === 奥の校舎（バックウィング） === */}
+        {/* 前面（明るい） */}
+        <polygon points={`${iso(25,25,0)} ${iso(65,25,0)} ${iso(65,25,22)} ${iso(25,25,22)}`} fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 側面（暗い） */}
+        <polygon points={`${iso(65,10,0)} ${iso(65,25,0)} ${iso(65,25,22)} ${iso(65,10,22)}`} fill="#cbd5e1" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 屋根 */}
+        <polygon points={`${iso(25,10,22)} ${iso(65,10,22)} ${iso(65,25,22)} ${iso(25,25,22)}`} fill="#64748b" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        
+        {/* 奥の校舎の窓（前面） */}
+        {[4, 10, 16].map(z =>
+          [28, 35, 42, 49, 56].map(x => (
+            <polygon key={`bw-${x}-${z}`} points={`${iso(x,25,z)} ${iso(x+4,25,z)} ${iso(x+4,25,z+4)} ${iso(x,25,z+4)}`} fill="#7dd3fc" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+          ))
+        )}
+
+        {/* === 中央の塔（角部分） === */}
+        {/* 前面（明るい） */}
+        <polygon points={`${iso(10,25,0)} ${iso(25,25,0)} ${iso(25,25,32)} ${iso(10,25,32)}`} fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 側面（暗い） */}
+        <polygon points={`${iso(25,10,0)} ${iso(25,25,0)} ${iso(25,25,32)} ${iso(25,10,32)}`} fill="#cbd5e1" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 屋根 */}
+        <polygon points={`${iso(10,10,32)} ${iso(25,10,32)} ${iso(25,25,32)} ${iso(10,25,32)}`} fill="#475569" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        
+        {/* 塔の時計 */}
+        {(() => {
+          const [cx, cy] = iso(17.5, 25, 26).split(',');
+          return (
+            <g>
+              <circle cx={cx} cy={cy} r="2.5" fill="#f8fafc" stroke="#000" strokeWidth="0.8" />
+              <line x1={cx} y1={cy} x2={cx} y2={Number(cy) - 1.5} stroke="#000" strokeWidth="0.6" strokeLinecap="round" />
+              <line x1={cx} y1={cy} x2={Number(cx) + 1} y2={Number(cy) + 0.5} stroke="#000" strokeWidth="0.6" strokeLinecap="round" />
+            </g>
+          );
+        })()}
+
+        {/* === 手前の校舎（レフトウィング） === */}
+        {/* 前面（明るい） */}
+        <polygon points={`${iso(10,75,0)} ${iso(25,75,0)} ${iso(25,75,22)} ${iso(10,75,22)}`} fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 側面（暗い） */}
+        <polygon points={`${iso(25,25,0)} ${iso(25,75,0)} ${iso(25,75,22)} ${iso(25,25,22)}`} fill="#cbd5e1" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 屋根 */}
+        <polygon points={`${iso(10,25,22)} ${iso(25,25,22)} ${iso(25,75,22)} ${iso(10,75,22)}`} fill="#64748b" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        
+        {/* 手前の校舎の窓（側面） */}
+        {[4, 10, 16].map(z =>
+          [30, 37, 44, 51, 58, 65].map(y => (
+            <polygon key={`lw-${y}-${z}`} points={`${iso(25,y,z)} ${iso(25,y+4,z)} ${iso(25,y+4,z+4)} ${iso(25,y,z+4)}`} fill="#7dd3fc" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+          ))
+        )}
+
+        {/* === 体育館 === */}
+        {/* 壁・前面 */}
+        <polygon points={`${iso(70,45,0)} ${iso(95,45,0)} ${iso(95,45,15)} ${iso(70,45,15)}`} fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 壁・側面 */}
+        <polygon points={`${iso(95,15,0)} ${iso(95,45,0)} ${iso(95,45,15)} ${iso(95,15,15)}`} fill="#cbd5e1" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* かまぼこ屋根のアーチ面（前） */}
+        <path d={`M ${iso(70,45,15)} Q ${iso(82.5,45,25)} ${iso(95,45,15)} Z`} fill="#f1f5f9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 屋根本体 */}
+        <path d={`M ${iso(70,45,15)} Q ${iso(82.5,45,25)} ${iso(95,45,15)} L ${iso(95,15,15)} Q ${iso(82.5,15,25)} ${iso(70,15,15)} Z`} fill="#0ea5e9" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        
+        {/* 体育館の窓 */}
+        {[73, 80, 87].map(x => ( // 前面
+            <polygon key={`gwf-${x}`} points={`${iso(x,45,5)} ${iso(x+3,45,5)} ${iso(x+3,45,10)} ${iso(x,45,10)}`} fill="#7dd3fc" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+        ))}
+        {[21, 28, 35].map(y => ( // 側面
+            <polygon key={`gws-${y}`} points={`${iso(95,y,5)} ${iso(95,y+4,5)} ${iso(95,y+4,10)} ${iso(95,y,10)}`} fill="#7dd3fc" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+        ))}
+
+        {/* === エントランス（校舎の交差部ポーチ） === */}
+        {/* 前面 */}
+        <polygon points={`${iso(25,35,0)} ${iso(35,35,0)} ${iso(35,35,6)} ${iso(25,35,6)}`} fill="#e2e8f0" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 側面 */}
+        <polygon points={`${iso(35,25,0)} ${iso(35,35,0)} ${iso(35,35,6)} ${iso(35,25,6)}`} fill="#cbd5e1" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 屋根 */}
+        <polygon points={`${iso(25,25,6)} ${iso(35,25,6)} ${iso(35,35,6)} ${iso(25,35,6)}`} fill="#38bdf8" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* ドア */}
+        <polygon points={`${iso(28,35,0)} ${iso(32,35,0)} ${iso(32,35,4)} ${iso(28,35,4)}`} fill="#fff" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+
+      </g>
+    </svg>
+  );
+};
 
 export const SvgWall = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
