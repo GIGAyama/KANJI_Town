@@ -274,6 +274,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     const subCells = new Set();
     for (const [key, itemId] of Object.entries(safeMapData)) {
       if (!itemId || typeof itemId !== 'string') continue;
+      if (key.includes(':top')) continue;
       const item = TOWN_ITEMS.find(i => i.id === itemId);
       if (item && item.size) {
         const [ax, ay] = key.split(',').map(Number);
@@ -322,8 +323,10 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       const key = `${x},${y}`;
       const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
       const isVisible = dist <= exploredRadius;
-      const itemId = safeMapData[key];
-      const item = itemId ? TOWN_ITEMS.find(i => i.id === itemId) : null;
+      const baseItemId = safeMapData[key];
+      const topItemId = safeMapData[`${key}:top`];
+      const item = baseItemId ? TOWN_ITEMS.find(i => i.id === baseItemId) : null;
+      const topItem = topItemId ? TOWN_ITEMS.find(i => i.id === topItemId) : null;
       const hasGhost = ghosts.some(g => g.x === x && g.y === y);
       const isTerrain = item && item.type === 'terrain';
 
@@ -383,7 +386,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       }
 
       // 岩盤
-      if (itemId === 't_bedrock') {
+      if (baseItemId === 't_bedrock') {
         result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
             <GroundDiamond colors={TERRAIN_COLORS.t_bedrock} tint={null} isEditing={false} />
@@ -421,7 +424,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       // 開拓可能な地形
       const terrainColors = isTerrain ? (TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland) : null;
 
-      if (CULTIVATABLE_TERRAIN.has(itemId)) {
+      if (CULTIVATABLE_TERRAIN.has(baseItemId)) {
         result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
             className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
@@ -437,7 +440,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       }
 
       // 浅瀬
-      if (itemId === 't_shallow_water') {
+      if (baseItemId === 't_shallow_water') {
         result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}>
             <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} isEditing={false} />
@@ -463,7 +466,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       // 2. 建物・オブジェクトレイヤー（立体物）
       // ======================================
       if ((item && !isTerrain) || (item && item.id === 't_weed') || hasGhost) {
-        const objZIndex = depth + 140; // タイルの奥から約70%の位置を基準とし、手前を歩く住人が前に来るようにする
+        const objZIndex = item?.isFlat ? depth + 10 : depth + 140; // 平面（道路など）は足元（10）、立体物は奥（140）
         
         result.push({ depth: objZIndex, element:
           <div key={`${key}-obj`} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2, zIndex: objZIndex }}
@@ -471,7 +474,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
             {/* 建物SVG */}
             <AnimatePresence mode="popLayout">
               {item && !isTerrain ? (
-                <motion.div key={itemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
+                <motion.div key={baseItemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
                   transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
                   className="absolute inset-0 flex items-end justify-center"
                   style={{ bottom: 2 }}>
@@ -499,6 +502,35 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
                 className="absolute z-60 text-2xl drop-shadow-lg pointer-events-none select-none"
                 style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
             )}
+          </div>
+        });
+      }
+
+      // ======================================
+      // 3. 上乗せレイヤー（標識やベンチなど）
+      // ======================================
+      if (topItem) {
+        const topZIndex = depth + 140; //立体物と同じ基準
+        const topIsoHeight = topItem.isoHeight || 0;
+        const combinedIsoHeight = isoHeight + topIsoHeight;
+        
+        result.push({ depth: topZIndex, element:
+          <div key={`${key}-top`} style={{ ...tileStyle, top: isoY - combinedIsoHeight, height: TILE_H + combinedIsoHeight + 2, zIndex: topZIndex }}
+            className={`select-none pointer-events-none ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
+            <AnimatePresence mode="popLayout">
+              <motion.div key={topItemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
+                  transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
+                  className="absolute inset-0 flex items-end justify-center"
+                  style={{ bottom: 2 }}>
+                  <div style={{
+                    width: TILE_W,
+                    height: Math.max(TILE_W, TILE_H + topIsoHeight),
+                    filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
+                  }}>
+                    <topItem.svg />
+                  </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         });
       }

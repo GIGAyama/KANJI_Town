@@ -177,7 +177,12 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
 
       const item = TOWN_ITEMS.find(i => i.id === currentTile);
       if (item && item.type !== 'terrain') {
-        const newMap = { ...localMap, [key]: 't_cleared' };
+        const newMap = { ...localMap };
+        if (localMap[`${key}:top`]) {
+          delete newMap[`${key}:top`];
+        } else {
+          newMap[key] = 't_cleared';
+        }
         setLocalMap(newMap); pushHistory(newMap);
         audioCtrl.playSE('click');
       }
@@ -188,6 +193,15 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       if (currentTile && currentTile !== 't_cleared' && currentTile !== 't_weed') {
         const itemDef = TOWN_ITEMS.find(i => i.id === currentTile);
         if (itemDef && itemDef.type !== 'terrain') {
+          const topItemId = localMap[`${key}:top`];
+          if (topItemId) {
+            const newMap = { ...localMap };
+            delete newMap[`${key}:top`];
+            setLocalMap(newMap); pushHistory(newMap);
+            setSelectedItem(topItemId);
+            audioCtrl.playSE('click');
+            return;
+          }
           const megaAnchor = findMegaAnchor(x, y);
           if (megaAnchor) {
             const { anchorKey, ax, ay, item } = megaAnchor;
@@ -211,7 +225,19 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       return;
     }
 
-    if (currentTile !== 't_cleared' && currentTile !== 't_weed') { audioCtrl.playSE('stamp_bad'); return; }
+    let targetKey = key;
+
+    if (currentTile !== 't_cleared' && currentTile !== 't_weed') {
+      const currentDef = TOWN_ITEMS.find(i => i.id === currentTile);
+      const selDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+      
+      if (currentDef?.isFlat && !selDef?.isFlat && !selDef?.size && !localMap[`${key}:top`]) {
+        targetKey = `${key}:top`;
+      } else {
+        audioCtrl.playSE('stamp_bad');
+        return;
+      }
+    }
 
     const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
 
@@ -249,7 +275,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
       return;
     }
 
-    const newMap = { ...localMap, [key]: selectedItem };
+    const newMap = { ...localMap, [targetKey]: selectedItem };
     setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
   };
 
