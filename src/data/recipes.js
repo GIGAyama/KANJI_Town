@@ -619,9 +619,12 @@ export const BUILDING_RECIPES = [
 
   // ── 新規: 公園・レジャー ─────────────────
   {
-    id: "build_park", name: "公園", category: "building", tier: 2, minGrade: 2, coinCost: 250,
-    ingredients: [{ material: "wood", amount: 8 }, { material: "stone", amount: 6 }, { material: "crystal", amount: 3 }],
+    id: "build_park", name: "公園", category: "mega", tier: 3, minGrade: 3, coinCost: 1200,
+    size: { w: 4, h: 5 },
+    ingredients: [{ material: "wood", amount: 18 }, { material: "stone", amount: 14 }, { material: "crystal", amount: 6 }, { material: "fabric", amount: 4 }],
     result: { type: "park", amount: 1 },
+    desc: "4×5の大きな公園。配置場所によって遊具が変わる",
+    pros: 600,
   },
   {
     id: "build_pool", name: "プール", category: "building", tier: 4, minGrade: 4, coinCost: 1000,

@@ -1917,22 +1917,257 @@ export const SvgStadium = () => (
 // ==========================================
 // 10. 公園・レジャー (Parks & Leisure)
 // ==========================================
-export const SvgPark = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,2 -28,-12 0,-26 28,-12" fill="#4ade80" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2 -20,-12 0,-22 20,-12" fill="#86efac" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <g transform="translate(-16, -16)">
-        <path d="M 0,2 L 0,-15" stroke="#000" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="0" cy="-14" r="5" fill="#15803d" stroke="#000" strokeWidth="1.5" />
+export const SvgPark = ({ seed = 0 }) => {
+  // 4×5マスの大きな公園 — seedに応じて遊具の配置パターンを変える
+  const variant = seed % 4;
+
+  // アイソメトリック座標ヘルパー (タイル単位 → SVG座標)
+  // 4×5グリッドの中心を原点に、1タイル = 約12px単位
+  const U = 11; // half-tile width unit
+  const V = 5.5; // half-tile height unit
+  const isoX = (gx, gy) => (gx - gy) * U;
+  const isoY = (gx, gy) => (gx + gy) * V;
+
+  // グリッド中心 (1.5, 2) を原点とした座標系
+  const cx = 1.5, cy = 2;
+  const toX = (gx, gy) => isoX(gx - cx, gy - cy);
+  const toY = (gx, gy) => isoY(gx - cx, gy - cy);
+
+  // 地面ダイヤモンドの4頂点
+  const groundPts = `${toX(0,0)},${toY(0,0)} ${toX(4,0)},${toY(4,0)} ${toX(4,5)},${toY(4,5)} ${toX(0,5)},${toY(0,5)}`;
+  // 内側の芝生
+  const innerPts = `${toX(0.15,0.15)},${toY(0.15,0.15)} ${toX(3.85,0.15)},${toY(3.85,0.15)} ${toX(3.85,4.85)},${toY(3.85,4.85)} ${toX(0.15,4.85)},${toY(0.15,4.85)}`;
+
+  // === 各遊具コンポーネント ===
+
+  // 木 (大)
+  const TreeBig = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <line x1="0" y1="1" x2="0" y2="-14" stroke="#78350f" strokeWidth="1.8" strokeLinecap="round" />
+        <ellipse cx="0" cy="-17" rx="5.5" ry="6.5" fill="#15803d" stroke="#000" strokeWidth="1.2" />
+        <ellipse cx="-2" cy="-19" rx="3" ry="3.5" fill="#22c55e" opacity="0.5" />
       </g>
-      <g transform="translate(16, -16)">
-        <path d="M 0,2 L 0,-12" stroke="#000" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="0" cy="-11" r="4" fill="#16a34a" stroke="#000" strokeWidth="1.5" />
+    );
+  };
+
+  // 木 (小)
+  const TreeSmall = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <line x1="0" y1="1" x2="0" y2="-10" stroke="#78350f" strokeWidth="1.5" strokeLinecap="round" />
+        <ellipse cx="0" cy="-12.5" rx="4" ry="5" fill="#16a34a" stroke="#000" strokeWidth="1" />
       </g>
+    );
+  };
+
+  // 砂場 (sandbox) — 中央付近
+  const Sandbox = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {/* 枠（上面） */}
+        <polygon points={`0,${-V*1.6} ${U*1.6},0 0,${V*1.6} ${-U*1.6},0`} fill="#d4d4d8" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 砂 */}
+        <polygon points={`0,${-V*1.2} ${U*1.2},0 0,${V*1.2} ${-U*1.2},0`} fill="#fde68a" stroke="#a3a3a3" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 砂の質感 */}
+        <circle cx="-2" cy="-1" r="0.8" fill="#fbbf24" opacity="0.6" />
+        <circle cx="3" cy="0.5" r="0.6" fill="#fbbf24" opacity="0.5" />
+      </g>
+    );
+  };
+
+  // すべり台
+  const Slide = ({ gx, gy, flip }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    const s = flip ? -1 : 1;
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {/* 支柱 */}
+        <line x1={s*(-2)} y1="1" x2={s*(-2)} y2="-14" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1={s*2} y1="1" x2={s*2} y2="-14" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+        {/* はしご横棒 */}
+        <line x1={s*(-2)} y1="-4" x2={s*2} y2="-4" stroke="#475569" strokeWidth="1" />
+        <line x1={s*(-2)} y1="-8" x2={s*2} y2="-8" stroke="#475569" strokeWidth="1" />
+        <line x1={s*(-2)} y1="-12" x2={s*2} y2="-12" stroke="#475569" strokeWidth="1" />
+        {/* 上部プラットフォーム */}
+        <rect x={s*(-3)} y="-15" width="6" height="2" rx="0.5" fill="#94a3b8" stroke="#000" strokeWidth="1" />
+        {/* スライド面（斜め） */}
+        <line x1={s*3} y1="-14" x2={s*10} y2="0" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" />
+        {/* スライドの縁 */}
+        <line x1={s*2.5} y1="-14.5" x2={s*9.5} y2="-0.5" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" />
+      </g>
+    );
+  };
+
+  // ベンチ
+  const Bench = ({ gx, gy, dir }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    // dir: 0=SE facing, 1=SW facing
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {dir === 0 ? (
+          <>
+            {/* 脚 */}
+            <line x1="-4" y1="0.5" x2="-4" y2="-3" stroke="#78350f" strokeWidth="1" />
+            <line x1="4" y1="-3.5" x2="4" y2="-6.5" stroke="#78350f" strokeWidth="1" />
+            {/* 座面 */}
+            <polygon points="-5,-3 5,-7 6,-6 -4,0" fill="#92400e" stroke="#000" strokeWidth="0.8" strokeLinejoin="round" />
+            {/* 背もたれ */}
+            <polygon points="5,-7 6,-6 6,-9 5,-10" fill="#78350f" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+          </>
+        ) : (
+          <>
+            <line x1="-4" y1="-3.5" x2="-4" y2="-6.5" stroke="#78350f" strokeWidth="1" />
+            <line x1="4" y1="0.5" x2="4" y2="-3" stroke="#78350f" strokeWidth="1" />
+            <polygon points="-5,-7 5,-3 4,0 -6,-6" fill="#92400e" stroke="#000" strokeWidth="0.8" strokeLinejoin="round" />
+            <polygon points="-5,-7 -6,-6 -6,-9 -5,-10" fill="#78350f" stroke="#000" strokeWidth="0.6" strokeLinejoin="round" />
+          </>
+        )}
+      </g>
+    );
+  };
+
+  // うんてい/ジャングルジム (climbing frame)
+  const ClimbingFrame = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {/* 柱 */}
+        <line x1="-6" y1="2" x2="-6" y2="-12" stroke="#3b82f6" strokeWidth="1.3" strokeLinecap="round" />
+        <line x1="0" y1="0" x2="0" y2="-14" stroke="#3b82f6" strokeWidth="1.3" strokeLinecap="round" />
+        <line x1="6" y1="-2" x2="6" y2="-16" stroke="#3b82f6" strokeWidth="1.3" strokeLinecap="round" />
+        {/* 横棒 */}
+        <line x1="-6" y1="-12" x2="0" y2="-14" stroke="#2563eb" strokeWidth="1.2" />
+        <line x1="0" y1="-14" x2="6" y2="-16" stroke="#2563eb" strokeWidth="1.2" />
+        <line x1="-6" y1="-8" x2="0" y2="-10" stroke="#2563eb" strokeWidth="1" />
+        <line x1="0" y1="-10" x2="6" y2="-12" stroke="#2563eb" strokeWidth="1" />
+        <line x1="-6" y1="-4" x2="0" y2="-6" stroke="#2563eb" strokeWidth="1" />
+        <line x1="0" y1="-6" x2="6" y2="-8" stroke="#2563eb" strokeWidth="1" />
+      </g>
+    );
+  };
+
+  // 水飲み場/噴水
+  const Fountain = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <ellipse cx="0" cy="0" rx="4" ry="2" fill="#94a3b8" stroke="#000" strokeWidth="1" />
+        <rect x="-1" y="-5" width="2" height="5" fill="#94a3b8" stroke="#000" strokeWidth="0.8" />
+        <ellipse cx="0" cy="-5" rx="2" ry="1" fill="#7dd3fc" stroke="#64748b" strokeWidth="0.6" />
+        {/* 水しぶき */}
+        <line x1="0" y1="-6" x2="0" y2="-8" stroke="#7dd3fc" strokeWidth="0.8" strokeLinecap="round" />
+        <line x1="-1" y1="-6.5" x2="-1.5" y2="-7.5" stroke="#7dd3fc" strokeWidth="0.6" strokeLinecap="round" />
+        <line x1="1" y1="-6.5" x2="1.5" y2="-7.5" stroke="#7dd3fc" strokeWidth="0.6" strokeLinecap="round" />
+      </g>
+    );
+  };
+
+  // ブランコ
+  const Swing = ({ gx, gy }) => {
+    const x = toX(gx, gy), y = toY(gx, gy);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        {/* A型フレーム */}
+        <line x1="-5" y1="2" x2="-3" y2="-13" stroke="#78350f" strokeWidth="1.3" strokeLinecap="round" />
+        <line x1="5" y1="-2" x2="3" y2="-15" stroke="#78350f" strokeWidth="1.3" strokeLinecap="round" />
+        {/* 上部バー */}
+        <line x1="-3" y1="-13" x2="3" y2="-15" stroke="#78350f" strokeWidth="1.5" strokeLinecap="round" />
+        {/* チェーン */}
+        <line x1="-1" y1="-13.5" x2="-2" y2="-4" stroke="#000" strokeWidth="0.6" />
+        <line x1="1" y1="-14" x2="0" y2="-4.5" stroke="#000" strokeWidth="0.6" />
+        {/* 座面 */}
+        <rect x="-3" y="-5" width="4" height="1.5" rx="0.5" fill="#1e293b" stroke="#000" strokeWidth="0.6" />
+      </g>
+    );
+  };
+
+  // 柵（フェンス） — 辺に沿って描画
+  const FenceSegment = ({ x1, y1, x2, y2 }) => (
+    <g>
+      <line x1={x1} y1={y1-2} x2={x2} y2={y2-2} stroke="#78350f" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1={x1} y1={y1-4} x2={x2} y2={y2-4} stroke="#78350f" strokeWidth="1" strokeLinecap="round" />
+      {/* 柵の支柱 */}
+      {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
+        const px = x1 + (x2-x1)*t;
+        const py = y1 + (y2-y1)*t;
+        return <line key={i} x1={px} y1={py} x2={px} y2={py-5} stroke="#92400e" strokeWidth="1" strokeLinecap="round" />;
+      })}
     </g>
-  </svg>
-);
+  );
+
+  // 遊具配置パターン（seedで変化）
+  const layouts = [
+    // パターン0: 定番公園（砂場中央、すべり台、ベンチ、木多め）
+    { sandbox: [2, 2.5], slide: [3, 1.2, false], bench1: [0.5, 1.5, 0], bench2: [0.5, 3, 1],
+      trees: [[0.3,0.3], [3.7,0.3], [3.7,4.7], [0.3,4.7], [2,0.2]],
+      extra: 'climbing', climbPos: [1, 1.2], fountain: null, swing: null },
+    // パターン1: 噴水公園（噴水中央、ベンチ多め、木でリラックス空間）
+    { sandbox: [3, 3.5], slide: null, bench1: [1, 1, 0], bench2: [1, 3.5, 1],
+      trees: [[0.3,0.3], [3.7,0.3], [0.3,4.7], [3.7,4.7], [0.3,2.5], [3.7,2.5]],
+      extra: 'fountain', climbPos: null, fountain: [2, 2], swing: null },
+    // パターン2: アスレチック公園（ジャングルジム＋ブランコ＋すべり台）
+    { sandbox: [1, 3.5], slide: [3, 2, true], bench1: [0.5, 1, 0], bench2: [3.5, 4, 1],
+      trees: [[0.3,0.3], [3.7,0.3], [3.7,4.7], [0.3,4.7]],
+      extra: 'climbing', climbPos: [1.5, 1.5], fountain: null, swing: [2.8, 3.8] },
+    // パターン3: 自然公園（木たくさん、ブランコ、ベンチ）
+    { sandbox: null, slide: null, bench1: [1.5, 1, 0], bench2: [1.5, 3.5, 1],
+      trees: [[0.3,0.3], [3.7,0.3], [0.3,4.7], [3.7,4.7], [2,0.3], [0.3,2.5], [3.7,2.5], [2,4.8]],
+      extra: 'fountain', climbPos: null, fountain: [2, 2.5], swing: [3, 1.5] },
+  ];
+  const L = layouts[variant];
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 95) scale(1.05)">
+        {/* === 地面 === */}
+        <polygon points={groundPts} fill="#4ade80" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={innerPts} fill="#86efac" stroke="none" />
+
+        {/* === 小道 (十字) === */}
+        <line x1={toX(2,0.2)} y1={toY(2,0.2)} x2={toX(2,4.8)} y2={toY(2,4.8)} stroke="#d4d4d8" strokeWidth="2.5" opacity="0.5" strokeLinecap="round" />
+        <line x1={toX(0.2,2.5)} y1={toY(0.2,2.5)} x2={toX(3.8,2.5)} y2={toY(3.8,2.5)} stroke="#d4d4d8" strokeWidth="2.5" opacity="0.5" strokeLinecap="round" />
+
+        {/* === 柵（手前2辺のみ — SE辺とSW辺） === */}
+        <FenceSegment x1={toX(4,0)} y1={toY(4,0)} x2={toX(4,5)} y2={toY(4,5)} />
+        <FenceSegment x1={toX(0,5)} y1={toY(0,5)} x2={toX(4,5)} y2={toY(4,5)} />
+
+        {/* === 砂場 === */}
+        {L.sandbox && <Sandbox gx={L.sandbox[0]} gy={L.sandbox[1]} />}
+
+        {/* === すべり台 === */}
+        {L.slide && <Slide gx={L.slide[0]} gy={L.slide[1]} flip={L.slide[2]} />}
+
+        {/* === ベンチ === */}
+        <Bench gx={L.bench1[0]} gy={L.bench1[1]} dir={L.bench1[2]} />
+        <Bench gx={L.bench2[0]} gy={L.bench2[1]} dir={L.bench2[2]} />
+
+        {/* === うんてい === */}
+        {L.extra === 'climbing' && L.climbPos && <ClimbingFrame gx={L.climbPos[0]} gy={L.climbPos[1]} />}
+
+        {/* === 噴水 === */}
+        {L.fountain && <Fountain gx={L.fountain[0]} gy={L.fountain[1]} />}
+
+        {/* === ブランコ === */}
+        {L.swing && <Swing gx={L.swing[0]} gy={L.swing[1]} />}
+
+        {/* === 木 (奥から描画するためソート) === */}
+        {L.trees
+          .slice()
+          .sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]))
+          .map(([gx, gy], i) => {
+            const big = (i + seed) % 3 !== 0;
+            return big
+              ? <TreeBig key={`t${i}`} gx={gx} gy={gy} />
+              : <TreeSmall key={`t${i}`} gx={gx} gy={gy} />;
+          })}
+      </g>
+    </svg>
+  );
+};
 
 export const SvgPlayground = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
