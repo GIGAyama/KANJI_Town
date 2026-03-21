@@ -210,7 +210,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthC
 
   return (
     <div className={`pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH }}>
+      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH, isolation: 'isolate' }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>
