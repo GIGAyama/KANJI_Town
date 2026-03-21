@@ -71,7 +71,7 @@ export default function App() {
   const [view, setView] = useState('home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(StorageAPI.getStats());
-  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null });
+  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null });
   const [hostDrill, setHostDrill] = useState(null);
 
   // Phase 5: チュートリアル
@@ -235,37 +235,37 @@ export default function App() {
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     const queue = reviewTargets.length > 0 ? reviewTargets : newTargets;
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); }
   };
 
   const startDrillSession = (drill) => {
     audioCtrl.init(); const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: true, newVillager: null }); setView('session'); }
+    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: true, newVillager: null }); setView('session'); }
   };
 
   const startSingleSession = (kanji) => { 
     audioCtrl.init(); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); 
+    setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); 
   };
   const startFlashcard = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('flashcard'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('flashcard'); 
   };
   const startSurvival = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort(() => Math.random() - 0.5); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('survival'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('survival'); 
   };
   const startBossBattle = () => { 
     audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
     const queue = [...learned].sort((a, b) => { const ma = stats.kanjiStats[a.id].mistakes || 0; const mb = stats.kanjiStats[b.id].mistakes || 0; return mb - ma; }).slice(0, 10); while (queue.length > 0 && queue.length < 10) queue.push(queue[Math.floor(Math.random() * queue.length)]); 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('boss'); 
+    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('boss'); 
   };
 
   const handleUpdateStat = (kanjiObj, evalType) => {
@@ -326,6 +326,7 @@ export default function App() {
       ...d,
       earnedExp: d.earnedExp + exp,
       reviewedCount: (d.reviewedCount || 0) + 1,
+      newKanjiCount: (d.newKanjiCount || 0) + (wasNew ? 1 : 0),
       unlockedItems: unlockedItem ? [...d.unlockedItems, unlockedItem] : d.unlockedItems,
       newVillager: d.newVillager || newVillager,
     }));
@@ -411,7 +412,7 @@ export default function App() {
     setDailyMissions(prev => {
       const reviewCount = sessionData.reviewedCount + (additionalResults.reviewedCount || 0);
       const perfectCount = sessionData.perfectCount + (additionalResults.perfectCount || 0);
-      const newKanjiCount = sessionData.queue.filter(k => !stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new').length;
+      const newKanjiCount = (sessionData.newKanjiCount || 0) + (additionalResults.newKanjiCount || 0);
       let updated = updateMissionProgress(prev, 'session', 1);
       updated = updateMissionProgress(updated, 'review', reviewCount);
       updated = updateMissionProgress(updated, 'perfect', perfectCount);
