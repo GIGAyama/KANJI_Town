@@ -946,8 +946,8 @@ export const SvgSchool = () => {
       {/* 既存の環境への互換性のため残しています */}
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       
-      <g transform="translate(50, 100) scale(1.1)">
-        
+      <g transform="translate(50, 100) scale(3.2)">
+
         {/* === 地面（ベース） === */}
         <polygon 
           points={`${iso(0,0)} ${iso(100,0)} ${iso(100,100)} ${iso(0,100)}`} 
@@ -1302,8 +1302,8 @@ export const SvgGrandWarehouse = () => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
-      <g transform="translate(50, 90) scale(1.15)">
-        
+      <g transform="translate(50, 90) scale(2.0)">
+
         {/* === 1. ベース（1x2マスの敷地） === */}
         {/* 幅(X)を狭く、奥行き(Y)を長くすることで「左手前」に伸びる1x2マスを表現 */}
         <polygon points={`${iso(0,0,0)} ${iso(55,0,0)} ${iso(55,105,0)} ${iso(0,105,0)}`} fill={colors.base} stroke="#cbd5e1" strokeWidth="1" strokeLinejoin="round" />
@@ -1553,8 +1553,8 @@ export const SvgPort = () => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
-      <g transform="translate(50, 100) scale(1.15)">
-        
+      <g transform="translate(50, 100) scale(2.5)">
+
         {/* 背景の土台（海と陸） */}
         <polygon points={`${iso(50,0,seaZ)} ${iso(100,0,seaZ)} ${iso(100,100,seaZ)} ${iso(50,100,seaZ)}`} fill="#0891b2" />
         <polygon points={`${iso(0,0,0)} ${iso(50,0,0)} ${iso(50,100,0)} ${iso(0,100,0)}`} fill="#94a3b8" />
