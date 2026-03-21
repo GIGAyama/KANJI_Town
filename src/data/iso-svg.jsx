@@ -568,15 +568,63 @@ export const SvgHouse1 = () => (
 export const SvgHouse2 = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,-3 -24,-15 -24,-35 0,-23" fill="#d97706" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 -24,-35 -12,-47" fill="#d97706" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-3 24,-15 24,-35 0,-23" fill="#b45309" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-18,-12 -8,-7 -8,-18 -18,-23" fill="#93c5fd" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="4,-12 10,-15 10,-22 4,-19" fill="#93c5fd" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="14,-17 20,-20 20,-27 14,-24" fill="#93c5fd" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="3,-20 26,-31.5 14,-53 -12,-46" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="3,-20 26,-31.5 26,-29.5 3,-18" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="3,-20 -12,-46 -15,-44 0,-18" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* Ground Shadow */}
+      <ellipse cx="8" cy="-8" rx="34" ry="17" fill="rgba(0,0,0,0.15)" />
+
+      {/* Main House Left Wall (Facing SW -> appears left) */}
+      <polygon points="-16,-20 0,-12 0,-46 -16,-54" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Main House Right Wall (Facing SE -> appears right) */}
+      <polygon points="0,-12 32,-28 32,-62 0,-46" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      
+      {/* 2nd floor Windows on Main House Left Wall */}
+      <polygon points="-12,-38 -8,-36 -8,-44 -12,-46" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+      {/* Main House Base Trim */}
+      <polygon points="-16,-20 0,-12 0,-15 -16,-23" fill="#a8a29e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="0,-12 32,-28 32,-31 0,-15" fill="#d6d3d1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+      {/* Entrance Door on Main House Right Wall */}
+      <polygon points="20,-22 26,-25 26,-36 20,-33" fill="#ea580c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="21.5" cy="-28" r="0.8" fill="#fff" />
+      
+      {/* 2nd floor Windows on Main House Right Wall */}
+      <polygon points="12,-34 16,-36 16,-44 12,-42" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="20,-38 24,-40 24,-48 20,-46" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="26,-41 30,-43 30,-51 26,-49" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+      {/* Main House Roof (Gable on the Left face) */}
+      {/* Left Gable Triangle */}
+      <polygon points="-16,-54 0,-46 -8,-68" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Front Roof Slope (Facing SE) */}
+      <polygon points="-8,-68 24,-84 32,-62 0,-46" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      
+      {/* Garage Block (In front) */}
+      {/* Garage Left Wall (Faces SW) */}
+      <polygon points="-12,-8 0,-2 0,-20 -12,-26" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Garage Right Wall (Faces SE) */}
+      <polygon points="0,-2 18,-11 18,-29 0,-20" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      
+      {/* Garage Base Trim */}
+      <polygon points="-12,-8 0,-2 0,-5 -12,-11" fill="#a8a29e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="0,-2 18,-11 18,-14 0,-5" fill="#d6d3d1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      
+      {/* Garage Door on Right Wall */}
+      <polygon points="4,-6 14,-11 14,-22 4,-17" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Garage Door horizontal seams */}
+      <line x1="4" y1="-10" x2="14" y2="-15" stroke="#cbd5e1" strokeWidth="1" />
+      <line x1="4" y1="-14" x2="14" y2="-19" stroke="#cbd5e1" strokeWidth="1" />
+      
+      {/* Windows on Garage Left Wall */}
+      <polygon points="-10,-12 -7,-10.5 -7,-16.5 -10,-18" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="-5,-9.5 -2,-8 -2,-14 -5,-15.5" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+      {/* Garage Gable Triangle (on Right Wall) */}
+      <polygon points="0,-20 18,-29 9,-38.5" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      
+      {/* Garage Roof Left Slope (Faces SW, visible) */}
+      <polygon points="9,-38.5 -3,-44.5 -12,-26 0,-20" fill="#dc2626" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Garage Roof Right Slope (Faces NE, mostly occluded but drawn to cut Main House) */}
+      <polygon points="9,-38.5 -3,-44.5 6,-35 18,-29" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
     </g>
   </svg>
 );

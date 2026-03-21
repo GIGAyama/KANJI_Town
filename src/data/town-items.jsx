@@ -79,7 +79,7 @@ const TOWN_ITEMS = [
   { id: 't_guardian_shrine',  svg: SvgGuardianShrine, name: '守り神の祠',   price: 10000, pros: 5000, type: 'special',  bg: 'bg-[#e9d5ff]', minGrade: 6, isoHeight: 38, size: { w: 2, h: 1 } },
   { id: 't_monument',        svg: SvgMonument,       name: '記念碑',       price: 8000,  pros: 4500, type: 'special',  bg: 'bg-[#e2e8f0]', minGrade: 6, isoHeight: 40, size: { w: 1, h: 2 } },
   // アップグレード建物
-  { id: 't_house2',         svg: SvgHouse2,         name: '大きな家',     price: 600,   pros: 150,  type: 'building', bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 28, hasVariants: true },
+  { id: 't_house2',         svg: SvgHouse2,         name: '大きな家',     price: 600,   pros: 150,  type: 'building', bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 38, size: { w: 2, h: 1 }, hasVariants: true },
   { id: 't_house3',         svg: SvgHouse3,         name: '豪邸',         price: 2500,  pros: 600,  type: 'building', bg: 'bg-[#86efac]', minGrade: 4, isoHeight: 38, size: { w: 2, h: 1 }, hasVariants: true },
   { id: 't_department',     svg: SvgDepartment,     name: 'デパート',     price: 3500,  pros: 800,  type: 'building', bg: 'bg-[#e2e8f0]', minGrade: 4, isoHeight: 40, size: { w: 2, h: 2 }, hasVariants: true },
   { id: 't_grand_smithy',   svg: SvgGrandSmithy,    name: '大鍛冶場',     price: 4000,  pros: 1200, type: 'building', bg: 'bg-[#78350f]', minGrade: 5, isoHeight: 36, size: { w: 2, h: 1 } },
