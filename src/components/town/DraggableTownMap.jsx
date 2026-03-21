@@ -422,7 +422,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       }
 
       // 開拓可能な地形
-      const terrainColors = isTerrain ? (TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland) : null;
+      const terrainColors = isTerrain ? (TERRAIN_COLORS[baseItemId] || TERRAIN_COLORS.t_roughland) : null;
 
       if (CULTIVATABLE_TERRAIN.has(baseItemId)) {
         result.push({ depth, element:
