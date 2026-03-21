@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Hammer, Package, Lock, ChevronRight, Sparkles, ArrowUpCircle, Crown, Star, Users, TrendingUp, Coins } from 'lucide-react';
+import { ArrowLeft, Hammer, Lock, Sparkles, ArrowUpCircle, Crown, Star, Users, TrendingUp, Coins } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { MATERIALS } from '../../data/materials';
 import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, DECORATION_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
@@ -26,8 +26,7 @@ const CATEGORIES = [
 
 const CraftView = ({ stats, setStats, setView, onCraft }) => {
   const [category, setCategory] = useState('material');
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [craftQuantity, setCraftQuantity] = useState(1);
+  const [craftQuantities, setCraftQuantities] = useState({});
   const [craftResult, setCraftResult] = useState(null);
   const [filterTier, setFilterTier] = useState(0);
 
@@ -131,7 +130,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     if (onCraft) onCraft();
     setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, bonusYieldCount: result.bonusYieldCount, discount: result.discount, coinBonus: result.coinBonus, coinCost: result.coinCost, quantity: result.quantity });
     setTimeout(() => setCraftResult(null), 2500);
-    setCraftQuantity(1); // クラフト後は1に戻す
+    setCraftQuantities(q => { const next = { ...q }; delete next[recipe.id]; return next; }); // クラフト後は1に戻す
   };
 
   // 最大作成可能数を計算
@@ -198,7 +197,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
         {/* カテゴリ切り替え */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(cat => (
-            <button key={cat.key} onClick={() => { setCategory(cat.key); setSelectedRecipe(null); setCraftQuantity(1); setFilterTier(0); audioCtrl.playSE('click'); }}
+            <button key={cat.key} onClick={() => { setCategory(cat.key); setCraftQuantities({}); setFilterTier(0); audioCtrl.playSE('click'); }}
               className={`px-3 py-2 rounded-xl border-[3px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-1 ${category === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
               <span>{cat.icon}</span> {cat.label}
             </button>
@@ -260,9 +259,8 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           const isUnlocked = isTierUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
           const coinCost = recipe.coinCost || 0;
-          const isSelected = selectedRecipe?.id === recipe.id;
           const maxCraftable = isUnlocked ? getMaxCraftable(recipe) : 0;
-          const currentQty = isSelected ? craftQuantity : 1;
+          const currentQty = craftQuantities[recipe.id] || 1;
           const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
           
           const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
@@ -280,19 +278,11 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
               <div
                 className={`w-full bg-[var(--panel)] border-[3px] rounded-xl overflow-hidden transition-all text-left ${
                   !isUnlocked ? 'border-gray-300 opacity-50 grayscale'
-                  : isSelected ? 'border-[var(--primary)] shadow-lg'
                   : 'border-[var(--text)] hover:shadow-md'
                 }`}
               >
-                {/* メイン情報部分（タップで詳細表示/非表示） */}
-                <div 
-                  className="p-3 flex items-center gap-3 cursor-pointer hover:bg-black/5 transition-colors"
-                  onClick={() => { 
-                    audioCtrl.playSE('click'); 
-                    setSelectedRecipe(isSelected ? null : recipe); 
-                    setCraftQuantity(1);
-                  }}
-                >
+                {/* メイン情報部分 */}
+                <div className="p-3 flex items-center gap-3">
                   <div className={`w-12 h-12 shrink-0 rounded-xl border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
                     {townItem ? <townItem.svg /> : resultMat ? <span className="text-2xl">{resultMat.icon}</span> : <span className="text-xl">?</span>}
                     {!isUnlocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30"><Lock size={16} className="text-white" /></div>}
@@ -316,7 +306,6 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>
                     )}
                   </div>
-                  <ChevronRight size={16} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
                 </div>
 
                 {/* クラフト操作エリア（解放済みの場合のみ表示） */}
@@ -353,17 +342,17 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         <div className="flex items-center bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl overflow-hidden h-9 shadow-[2px_2px_0_var(--text)]">
                           <button 
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.max(1, craftQuantity - 1)); audioCtrl.playSE('click'); }}
+                            onClick={(e) => { e.stopPropagation(); setCraftQuantities(q => ({ ...q, [recipe.id]: Math.max(1, (q[recipe.id] || 1) - 1) })); audioCtrl.playSE('click'); }}
                             className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm"
                           >
                             -
                           </button>
                           <div className="w-10 text-center font-black text-xs border-x-2 border-[var(--text)] flex items-center justify-center h-full">
-                            {craftQuantity}
+                            {currentQty}
                           </div>
                           <button 
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.min(maxCraftable, craftQuantity + 1)); audioCtrl.playSE('click'); }}
+                            onClick={(e) => { e.stopPropagation(); setCraftQuantities(q => ({ ...q, [recipe.id]: Math.min(maxCraftable, (q[recipe.id] || 1) + 1) })); audioCtrl.playSE('click'); }}
                             className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm"
                           >
                             +
@@ -374,7 +363,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       {maxCraftable > 1 && (
                         <button 
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setCraftQuantity(maxCraftable); audioCtrl.playSE('click'); }}
+                          onClick={(e) => { e.stopPropagation(); setCraftQuantities(q => ({ ...q, [recipe.id]: maxCraftable })); audioCtrl.playSE('click'); }}
                           className="px-2.5 h-9 bg-amber-100 border-2 border-[var(--text)] text-amber-700 rounded-xl text-[10px] font-black hover:bg-amber-200 shadow-[2px_2px_0_var(--text)] transition-all active:translate-y-0.5 active:shadow-none"
                         >
                           MAX
@@ -399,53 +388,6 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                 )}
               </div>
 
-              {/* 詳細表示（グリッド等） */}
-              <AnimatePresence>
-                {isSelected && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="bg-[var(--bg)] border-[3px] border-t-0 border-[var(--text)] rounded-b-xl p-4">
-                      <div className="flex items-center gap-4 justify-center">
-                        <div className="flex flex-col items-center">
-                          <div className="text-[9px] font-bold text-[var(--text)] opacity-50 mb-1">クラフトテーブル</div>
-                          <CraftGrid ingredients={displayIngredients} materials={materials} />
-                        </div>
-                        <div className="text-2xl text-[var(--text)] opacity-30 font-black">&rarr;</div>
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="text-[9px] font-bold text-[var(--text)] opacity-50">完成品</div>
-                          <div className={`w-16 h-16 rounded-xl border-[3px] border-[var(--text)] flex items-center justify-center overflow-hidden shadow-md ${townItem?.bg || 'bg-[var(--panel)]'}`}>
-                            {townItem ? <townItem.svg /> : resultMat ? <span className="text-3xl">{resultMat.icon}</span> : null}
-                          </div>
-                          <span className="text-xs font-black text-[var(--text)]">{recipe.name}</span>
-                          {recipe.pros && <span className="text-[9px] text-emerald-600 font-bold">{F("繁栄度","はんえいど")} +{recipe.pros}</span>}
-                        </div>
-                      </div>
-
-                      {/* 素材が足りない場合のヒント表示 */}
-                      {!craftable && isUnlocked && (
-                        <div className="mt-4 p-2 bg-red-50 border-2 border-red-200 rounded-lg text-center">
-                          <div className="text-[10px] text-red-600 font-bold mb-1">{F("不足している素材","ふそくしているそざい")}</div>
-                          <div className="flex gap-1 justify-center flex-wrap">
-                            {coinCost > 0 && (stats.coins || 0) < coinCost && (
-                              <span className="text-[9px] font-bold text-red-500 flex items-center gap-0.5"><Coins size={10} /> コイン あと{coinCost - (stats.coins || 0)}</span>
-                            )}
-                            {displayIngredients.filter(ing => (materials[ing.material] || 0) < ing.amount).map((ing, i) => {
-                              const mat = MATERIALS[ing.material];
-                              const have = materials[ing.material] || 0;
-                              return <span key={i} className="text-[9px] font-bold text-red-500">{mat?.icon} {mat?.name} あと{ing.amount - have}</span>;
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           );
         })}
@@ -518,57 +460,6 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-};
-
-// ── 3×3 クラフトグリッド コンポーネント ──
-const CraftGrid = ({ ingredients, materials }) => {
-  const grid = Array(9).fill(null);
-
-  const layouts = {
-    1: [4],
-    2: [3, 5],
-    3: [1, 4, 7],
-    4: [0, 2, 6, 8],
-    5: [0, 2, 4, 6, 8],
-    6: [0, 1, 2, 6, 7, 8],
-  };
-
-  const expandedItems = [];
-  for (const ing of ingredients) {
-    for (let i = 0; i < Math.min(ing.amount, 9); i++) {
-      expandedItems.push(ing);
-    }
-  }
-
-  const totalSlots = Math.min(expandedItems.length, 9);
-  const positions = layouts[totalSlots] || layouts[Math.min(totalSlots, 6)] || [0, 1, 2, 3, 4, 5, 6, 7, 8];
-
-  expandedItems.slice(0, 9).forEach((ing, i) => {
-    if (i < positions.length) {
-      grid[positions[i]] = ing;
-    }
-  });
-
-  return (
-    <div className="grid grid-cols-3 gap-1 bg-[var(--text)] p-1 rounded-lg" style={{ width: '84px', height: '84px' }}>
-      {grid.map((slot, i) => {
-        const mat = slot ? MATERIALS[slot.material] : null;
-        const have = slot ? (materials[slot.material] || 0) : 0;
-        const enough = slot ? have >= slot.amount : true;
-        return (
-          <div
-            key={i}
-            className={`w-[24px] h-[24px] rounded flex items-center justify-center text-sm ${
-              slot ? (enough ? 'bg-[var(--panel)]' : 'bg-red-100') : 'bg-[var(--bg)] opacity-40'
-            }`}
-            title={mat ? `${mat.name} ×${slot.amount}` : ''}
-          >
-            {mat && <span className="text-[11px]">{mat.icon}</span>}
-          </div>
-        );
-      })}
     </div>
   );
 };
