@@ -570,6 +570,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         position: 'absolute', top: 0, left: '50%',
         transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
         transformOrigin: '0 0',
+        isolation: 'isolate',
       }}>
         {cells}
         {/* 住民（セルと同じコンテナ内でz-indexによる前後関係を正しく処理） */}

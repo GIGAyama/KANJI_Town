@@ -188,8 +188,11 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
   // インタラクト中のジャンプ
   const jumping = (aiState === 'INTERACTING' && emotion === 'heart') ? Math.abs(Math.sin(Date.now() / 200)) * -6 : 0;
 
-  const screenX = baseIsoX + visualOffset.x;
-  const screenY = baseIsoY + bobbing + jumping + visualOffset.y;
+  // VillagerDotの幅・高さ（transform:translate(-50%,-100%)の代わりに手動オフセット）
+  const vW = 40;
+  const vH = 48;
+  const screenX = baseIsoX + visualOffset.x - vW / 2;
+  const screenY = baseIsoY + bobbing + jumping + visualOffset.y - vH;
 
   // 現在地のタイルIDを取得し、未開拓（草木）か判定する
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
@@ -199,8 +202,8 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
   const zIndex = Math.round(gridPos.x + gridPos.y);
 
   return (
-    <div className={`absolute pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ left: screenX, top: screenY, transform: 'translate(-50%,-100%)', width: 40, height: 48, zIndex }}>
+    <div className={`pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
+      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH, zIndex }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>
