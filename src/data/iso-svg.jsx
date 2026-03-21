@@ -1531,36 +1531,52 @@ export const SvgNationalLibrary = () => (
 export const SvgWell = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
     <SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
+    <g transform="translate(50, 75) scale(2.0)">
       {/* 影 */}
-      <ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.2" filter="url(#soft-shadow)" />
+      <ellipse cx="0" cy="18" rx="20" ry="10" fill="#020617" opacity="0.2" filter="url(#soft-shadow)" />
       
-      {/* 井戸の基礎（石造り） */}
-      <path d="M -14,-10 L -14,0 A 14,7 0 0 0 14,0 L 14,-10 A 14,7 0 0 1 -14,-10 Z" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <ellipse cx="0" cy="-10" rx="14" ry="7" fill="#94a3b8" stroke="#000" strokeWidth="1.5" />
-      <ellipse cx="0" cy="-10" rx="11" ry="5.5" fill="#475569" stroke="#000" strokeWidth="1" />
-      <ellipse cx="0" cy="-11" rx="10" ry="5" fill="url(#grad-water)" opacity="0.8" />
+      {/* 井戸の基礎（石材の厚みと立体感） */}
+      {/* 背面の壁 */}
+      <path d="M -18,-2 A 18,9 0 0 1 18,-2 L 18,12 A 18,9 0 0 0 -18,12 Z" fill="#475569" opacity="0.5" />
+      {/* 正面の壁 */}
+      <path d="M -18,-2 L -18,12 A 18,9 0 0 0 18,12 L 18,-2 A 18,9 0 0 1 -18,-2 Z" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 縁（上面） */}
+      <ellipse cx="0" cy="-2" rx="18" ry="9" fill="#94a3b8" stroke="#000" strokeWidth="1.5" />
+      {/* 内側の穴と水 */}
+      <ellipse cx="0" cy="-2" rx="14" ry="7" fill="#334155" stroke="#000" strokeWidth="1" />
+      <ellipse cx="0" cy="-3" rx="13" ry="6.5" fill="url(#grad-water)" opacity="0.9" />
 
       {/* 支柱 */}
-      <polygon points="-12,-10 -9,-11.5 -9,-40 -12,-38.5" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="9,-18.5 12,-20 12,-48.5 9,-47" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 左奥柱 */}
+      <polygon points="-13,-8 -9,-10 -9,-45 -13,-43" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 右手前柱 */}
+      <polygon points="9,-18 13,-20 13,-55 9,-53" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
 
-      {/* 横木（回転軸） */}
-      <line x1="-10.5" y1="-37" x2="10.5" y2="-47" stroke="#451a03" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 0,-42 L 0,-25" stroke="#78350f" strokeWidth="1.2" /> {/* 縄 */}
+      {/* 巻上げ軸と縄 */}
+      <line x1="-11" y1="-42" x2="11" y2="-52" stroke="#451a03" strokeWidth="3" strokeLinecap="round" />
+      <path d="M 0,-47 L 0,-20" stroke="#78350f" strokeWidth="1.5" />
+      {/* 釣瓶（簡易） */}
+      <g transform="translate(0, -18)">
+        <polygon points="-3,0 -3,4 3,6 3,2" fill="#92400e" stroke="#000" strokeWidth="1" />
+      </g>
 
-      {/* 屋根 */}
+      {/* 切妻屋根（詳細なアイソメトリック構造） */}
       <g>
-        {/* 左斜面 */}
-        <polygon points="-18,-45 0,-54 20,-44 2,-35" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="-18,-45 2,-35 2,-33 -18,-43" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        {/* 右斜面 */}
-        <polygon points="0,-54 18,-63 -2,-53 -20,-44" fill="#f59e0b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="18,-63 -2,-53 -2,-51 18,-61" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* 屋根の骨組み（三角形の側面） */}
+        <polygon points="-24,-48 -2,-59 20,-48" fill="#78350f" stroke="#000" strokeWidth="1.5" />
+        
+        {/* 左斜面 (SW) */}
+        <polygon points="-26,-46 -4,-57 18,-46 -4,-35" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* 右斜面 (SE) */}
+        <polygon points="-4,-57 18,-68 40,-57 18,-46" fill="#f59e0b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        
+        {/* 屋根の厚み（手前エッジ） */}
+        <polygon points="-26,-46 18,-46 18,-43 -26,-43" fill="#b45309" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+        <polygon points="18,-46 40,-57 40,-54 18,-43" fill="#d97706" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
       </g>
 
       {/* ハンドル */}
-      <path d="M 12,-48 L 16,-46 L 16,-42 L 14,-41" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 11,-52 L 17,-49 L 17,-43 L 14,-42" fill="none" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </g>
   </svg>
 );
