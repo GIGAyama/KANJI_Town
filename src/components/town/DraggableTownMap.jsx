@@ -313,7 +313,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     const cellList = [];
     for (let y = startY; y <= endY; y++) {
       for (let x = startX; x <= endX; x++) {
-        cellList.push({ x, y, depth: x + y });
+        cellList.push({ x, y, depth: Math.floor((x + y) * 100) });
       }
     }
     cellList.sort((a, b) => a.depth - b.depth);
@@ -406,9 +406,9 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           top: megaCenterY - megaH,
           width: TILE_W * mw,
           height: TILE_H * mh + megaH,
-          zIndex: depth + mw + mh,
+          zIndex: depth + (mw + mh - 2) * 100 + 1, // 少しだけ浮かせて同等深度のオブジェクトの手前に表示
         };
-        result.push({ depth: depth + mw + mh, element:
+        result.push({ depth: depth + (mw + mh - 2) * 100 + 1, element:
           <div key={key} style={megaStyle}
             className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
             <megaInfo.item.svg />
@@ -590,7 +590,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
             width: TILE_W,
             height: TILE_H,
             pointerEvents: 'none',
-            zIndex: 9999,
+            zIndex: 99999,
           }}>
             <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H}>
               <polygon points="32,0 64,16 32,32 0,16" fill="rgba(255, 255, 255, 0.2)" stroke="rgba(255, 255, 255, 0.8)" strokeWidth="2" />

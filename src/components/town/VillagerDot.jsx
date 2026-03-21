@@ -198,9 +198,9 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
   const isHidden = CULTIVATABLE_TERRAIN.has(currentTileId);
 
-  // z-indexはアイソメトリック深度（x+y）に基づく。
+  // z-indexはアイソメトリック深度（x+y）に基づく。細かい前後判定のため100倍しています。
   // isolation:isolateで子要素(z-10,z-20)のz-indexをこのdiv内に封じ込める
-  const zIndex = Math.round(gridPos.x + gridPos.y);
+  const zIndex = Math.floor((gridPos.x + gridPos.y) * 100);
 
   return (
     <div className={`pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
