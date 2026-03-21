@@ -140,7 +140,7 @@ const TOWN_ITEMS = [
   { id: 't_tv_tower',          svg: SvgTvTower,           name: 'テレビ塔',           price: 6000,  pros: 2000,  type: 'special',    bg: 'bg-[#ef4444]', minGrade: 6, isoHeight: 52, size: { w: 1, h: 2 } },
   { id: 't_stadium',           svg: SvgStadium,           name: 'スタジアム',         price: 4000,  pros: 1500,  type: 'mega',       bg: 'bg-[#86efac]', minGrade: 5, size: { w: 2, h: 2 }, isoHeight: 36 },
   // 公園・レジャー
-  { id: 't_park',              svg: SvgPark,              name: '公園',               price: 400,   pros: 100,   type: 'building',   bg: 'bg-[#86efac]', minGrade: 2, isoHeight: 12 },
+  { id: 't_park',              svg: SvgPark,              name: '公園',               price: 2000,  pros: 600,   type: 'mega',       bg: 'bg-[#86efac]', minGrade: 3, isoHeight: 24, size: { w: 4, h: 5 } },
   { id: 't_playground',        svg: SvgPlayground,        name: '遊具',               price: 300,   pros: 80,    type: 'decoration', bg: 'bg-[#fde68a]', minGrade: 2, isoHeight: 16 },
   { id: 't_pool',              svg: SvgPool,              name: 'プール',             price: 1600,  pros: 400,   type: 'building',   bg: 'bg-[#7dd3fc]', minGrade: 4, isoHeight: 12, size: { w: 2, h: 1 } },
   { id: 't_ferris_wheel',      svg: SvgFerrisWheel,       name: '観覧車',             price: 4000,  pros: 1200,  type: 'special',    bg: 'bg-[#e2e8f0]', minGrade: 5, isoHeight: 48, size: { w: 1, h: 2 } },
