@@ -339,7 +339,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       let hueShift = 0;
       let brightnessAdjust = 1;
       
-      if (item?.hasVariants) {
+      if (item?.hasVariants && !item?.disableHue) {
          const shiftAmount = (seedVal % 31) - 15; // -15 to +15
          hueShift = item.type === 'nature' ? shiftAmount : shiftAmount * 0.5;
          
@@ -415,7 +415,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         result.push({ depth: megaZIndex, element:
           <div key={`${key}-mega`} style={megaStyle}
             className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
-            <megaInfo.item.svg />
+            <megaInfo.item.svg seed={seedVal} />
           </div>
         });
         continue;

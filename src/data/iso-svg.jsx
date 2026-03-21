@@ -534,50 +534,60 @@ export const SvgRailway = () => <svg viewBox="0 0 100 100" className="w-full h-f
 export const SvgDirt = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="dirt" thickness={4} /></svg>;
 
 
-export const SvgHouse1 = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      {/* Base/Walls */}
-      <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill="#fdf8f6" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-4 20,-14 20,-30 0,-20" fill="#e7e5e4" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      
-      {/* Roof */}
-      <polygon points="3,-17 24,-27.5 12,-48 -10,-41" fill="#ef4444" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="3,-17 -10,-41 -13,-39 -1,-15" fill="#b91c1c" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="3,-17 24,-27.5 24,-25.5 3,-15" fill="#b91c1c" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+const HOUSE_PALETTES = [
+  { wallSW: '#fdf8f6', wallSE: '#e7e5e4', baseSW: '#a8a29e', baseSE: '#78716c', roofL: '#ef4444', roofD: '#b91c1c' }, // Classic Red
+  { wallSW: '#f8fafc', wallSE: '#e2e8f0', baseSW: '#94a3b8', baseSE: '#64748b', roofL: '#3b82f6', roofD: '#1d4ed8' }, // Slate Blue
+  { wallSW: '#fef3c7', wallSE: '#fde68a', baseSW: '#fbbf24', baseSE: '#f59e0b', roofL: '#22c55e', roofD: '#15803d' }, // Forest Green
+  { wallSW: '#f5f5f4', wallSE: '#d6d3d1', baseSW: '#57534e', baseSE: '#44403c', roofL: '#334155', roofD: '#0f172a' }, // Dark Modern
+  { wallSW: '#fdf2f8', wallSE: '#fbcfe8', baseSW: '#f472b6', baseSE: '#db2777', roofL: '#ec4899', roofD: '#be185d' }, // Pink Pop
+  { wallSW: '#ecfdf5', wallSE: '#a7f3d0', baseSW: '#6ee7b7', baseSE: '#34d399', roofL: '#d97706', roofD: '#92400e' }, // Mint Orange
+  { wallSW: '#f5f3ff', wallSE: '#ede9fe', baseSW: '#c4b5fd', baseSE: '#a78bfa', roofL: '#a855f7', roofD: '#7e22ce' }, // Lavender
+  { wallSW: '#ffedd5', wallSE: '#fed7aa', baseSW: '#fdba74', baseSE: '#f97316', roofL: '#0ea5e9', roofD: '#0369a1' }, // Warm Cyan
+];
 
-      {/* Door */}
-      <polygon points="6,-7 14,-11 14,-25 6,-21" fill="#d97706" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="12" cy="-16" r="1" fill="#000000" />
+export const SvgHouse1 = ({ seed = 0 }) => {
+  const p = HOUSE_PALETTES[seed % HOUSE_PALETTES.length];
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 100) scale(2.5)">
+        <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill={p.wallSW} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points="0,-4 20,-14 20,-30 0,-20" fill={p.wallSE} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        
+        <polygon points="3,-17 24,-27.5 12,-48 -10,-41" fill={p.roofL} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points="3,-17 -10,-41 -13,-39 -1,-15" fill={p.roofD} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points="3,-17 24,-27.5 24,-25.5 3,-15" fill={p.roofD} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
 
-      {/* Window */}
-      <polygon points="-14,-11 -6,-7 -6,-17 -14,-21" fill="#93c5fd" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-      <line x1="-10" y1="-9" x2="-10" y2="-19" stroke="#000000" strokeWidth="1.5" />
-      <line x1="-14" y1="-16" x2="-6" y2="-12" stroke="#000000" strokeWidth="1.5" />
+        <polygon points="6,-7 14,-11 14,-25 6,-21" fill="#d97706" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        <circle cx="12" cy="-16" r="1" fill="#000000" />
 
-      {/* Chimney */}
-      <g transform="translate(6, -38)">
-        <polygon points="0,0 5,-2.5 5,-12 0,-9.5" fill="#a8a29e" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,0 -5,-2.5 -5,-12 0,-9.5" fill="#78716c" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,-9.5 -5,-12 0,-14.5 5,-12" fill="#d6d3d1" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="-14,-11 -6,-7 -6,-17 -14,-21" fill="#93c5fd" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
+        <line x1="-10" y1="-9" x2="-10" y2="-19" stroke="#000000" strokeWidth="1.5" />
+        <line x1="-14" y1="-16" x2="-6" y2="-12" stroke="#000000" strokeWidth="1.5" />
+
+        <g transform="translate(6, -38)">
+          <polygon points="0,0 5,-2.5 5,-12 0,-9.5" fill={p.baseSW} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,0 -5,-2.5 -5,-12 0,-9.5" fill={p.baseSE} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,-9.5 -5,-12 0,-14.5 5,-12" fill={p.wallSE} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
+        </g>
       </g>
-    </g>
-  </svg>
-);
+    </svg>
+  );
+};
 
-export const SvgHouse2 = () => {
+export const SvgHouse2 = ({ seed = 0 }) => {
   const ptX = (i, j) => (i - 1.0) * 26 - (j - 0.5) * 26;
   const ptY = (i, j, k) => (i - 1.0) * 13 + (j - 0.5) * 13 - k * 22;
   const pt = (i, j, k) => `${ptX(i,j).toFixed(1)},${ptY(i,j,k).toFixed(1)}`;
 
-  const wallSW = "#f5f5f4";
-  const wallSE = "#e7e5e4";
-  const wallBaseSW = "#a8a29e";
-  const wallBaseSE = "#78716c";
-  const roofSW = "#ef4444";
-  const roofSE = "#dc2626";
-  const roofNW = "#b91c1c";
-  const roofNE = "#b91c1c";
+  const p = HOUSE_PALETTES[seed % HOUSE_PALETTES.length];
+  const wallSW = p.wallSW;
+  const wallSE = p.wallSE;
+  const wallBaseSW = p.baseSW;
+  const wallBaseSE = p.baseSE;
+  const roofSW = p.roofL;
+  const roofSE = p.roofD;
+  const roofNW = p.roofD;
+  const roofNE = p.roofD;
 
   const FaceSW = ({ i1, i2, j, k1, k2, fill = wallSW, hasBase = true }) => (
     <g>
@@ -699,19 +709,20 @@ export const SvgHouse2 = () => {
 };
 
 // SvgHouse3 helper components inside the file scope, or defined concisely within SvgHouse3
-export const SvgHouse3 = () => {
+export const SvgHouse3 = ({ seed = 0 }) => {
   const ptX = (i, j) => (i - 1.5) * 24 - (j - 1) * 24;
   const ptY = (i, j, k) => (i - 1.5) * 12 + (j - 1) * 12 - k * 20;
   const pt = (i, j, k) => `${ptX(i,j).toFixed(1)},${ptY(i,j,k).toFixed(1)}`;
 
-  const wallSW = "#b6b0a7";
-  const wallSE = "#9c968f";
-  const wallBaseSW = "#788796";
-  const wallBaseSE = "#5e6a75";
-  const roofSW = "#8394a1";
-  const roofSE = "#70818c";
-  const roofNW = "#5b6b75";
-  const roofNE = "#5b6b75";
+  const p = HOUSE_PALETTES[seed % HOUSE_PALETTES.length];
+  const wallSW = p.wallSW;
+  const wallSE = p.wallSE;
+  const wallBaseSW = p.baseSW;
+  const wallBaseSE = p.baseSE;
+  const roofSW = p.roofL;
+  const roofSE = p.roofD;
+  const roofNW = p.roofD;
+  const roofNE = p.roofD;
 
   // Wall helpers
   const FaceSW = ({ i1, i2, j, k1, k2, fill = wallSW, hasBase = true }) => (
