@@ -347,16 +347,39 @@ export const SvgTree = () => (
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="14" ry="7" fill="rgba(0,0,0,0.15)" />
-      {/* Trunk (Cylindrical split) */}
-      <polygon points="-2.5,0 -2.5,-30 0,-30 0,1.5" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,1.5 0,-30 2.5,-30 2.5,0" fill="#78350f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Foliage (Flat split design) */}
-      <g transform="translate(0, -38)">
-        {/* Left Half */}
-        <path d="M 0,-20 A 20 20 0 0 0 0,20 Z" fill="#4ade80" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        {/* Right Half */}
-        <path d="M 0,-20 A 20 20 0 0 1 0,20 Z" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      
+      {/* Trunk Silhouette */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <polygon points="-2.5,0 -2.5,-30 2.5,-30 2.5,0" />
       </g>
+      {/* Trunk Fill */}
+      <polygon points="-2.5,0 -2.5,-30 0,-30 0,0" fill="#b45309" />
+      <polygon points="0,0 0,-30 2.5,-30 2.5,0" fill="#78350f" />
+      
+      {/* Foliage Silhouette */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <circle cx="-13" cy="-30" r="14" />
+        <circle cx="13" cy="-30" r="14" />
+        <circle cx="0" cy="-44" r="16" />
+        <circle cx="0" cy="-28" r="10" />
+      </g>
+      
+      {/* Foliage Fill */}
+      {/* Left Back Puff */}
+      <circle cx="-13" cy="-30" r="14" fill="#16a34a" />
+      <path d="M -13,-44 A 14 14 0 0 0 -13,-16 Z" fill="#4ade80" />
+      
+      {/* Right Back Puff */}
+      <circle cx="13" cy="-30" r="14" fill="#16a34a" />
+      <path d="M 13,-44 A 14 14 0 0 0 13,-16 Z" fill="#4ade80" />
+      
+      {/* Center Fill (Blocks gaps) */}
+      <circle cx="0" cy="-28" r="10" fill="#16a34a" />
+      <path d="M 0,-38 A 10 10 0 0 0 0,-18 Z" fill="#4ade80" />
+      
+      {/* Top Front Puff */}
+      <circle cx="0" cy="-44" r="16" fill="#15803d" />
+      <path d="M 0,-60 A 16 16 0 0 0 0,-28 Z" fill="#22c55e" />
     </g>
   </svg>
 );
@@ -365,20 +388,46 @@ export const SvgSakura = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
-      <ellipse cx="0" cy="1" rx="18" ry="8" fill="rgba(0,0,0,0.15)" />
-      {/* Trunk */}
-      <path d="M -3,0 L -2,-40 L 2,-40 L 3,0 Z" fill="#451a03" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M -2.5,0 L -1.5,-40 L 0.5,-40 L 1,0 Z" fill="#573a2e" />
-      {/* Foliage (Pink) */}
-      <g transform="translate(0, -45)">
-        <circle cx="-12" cy="6" r="16" fill="#be185d" stroke="#000" strokeWidth="2" />
-        <circle cx="12" cy="6" r="16" fill="#be185d" stroke="#000" strokeWidth="2" />
-        <circle cx="0" cy="-10" r="18" fill="#be185d" stroke="#000" strokeWidth="2" />
-        <circle cx="-12" cy="4" r="16" fill="#db2777" stroke="#000" strokeWidth="2" />
-        <circle cx="12" cy="4" r="16" fill="#db2777" stroke="#000" strokeWidth="2" />
-        <circle cx="0" cy="-12" r="18" fill="#db2777" stroke="#000" strokeWidth="2" />
-        <path d="M 4,-12 A 12,12 0 0 1 20,-4" fill="none" stroke="#f472b6" strokeWidth="3" opacity="0.6" />
-        <path d="M -8,-22 A 14,14 0 0 1 8,-22" fill="none" stroke="#fbcfe8" strokeWidth="4" opacity="0.8" />
+      <ellipse cx="0" cy="1" rx="16" ry="8" fill="rgba(0,0,0,0.15)" />
+      
+      {/* Trunk Silhouette */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <polygon points="-3,0 -3,-35 3,-35 3,0" />
+      </g>
+      {/* Trunk Fill */}
+      <polygon points="-3,0 -3,-35 0,-35 0,0" fill="#451a03" />
+      <polygon points="0,0 0,-35 3,-35 3,0" fill="#290f02" />
+      
+      {/* Foliage Silhouette */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <circle cx="-15" cy="-34" r="16" />
+        <circle cx="15" cy="-34" r="16" />
+        <circle cx="0" cy="-50" r="18" />
+        <circle cx="0" cy="-30" r="12" />
+      </g>
+      
+      {/* Foliage Fill */}
+      {/* Left Puff */}
+      <circle cx="-15" cy="-34" r="16" fill="#db2777" />
+      <path d="M -15,-50 A 16 16 0 0 0 -15,-18 Z" fill="#f472b6" />
+      
+      {/* Right Puff */}
+      <circle cx="15" cy="-34" r="16" fill="#db2777" />
+      <path d="M 15,-50 A 16 16 0 0 0 15,-18 Z" fill="#f472b6" />
+      
+      {/* Center Fill */}
+      <circle cx="0" cy="-30" r="12" fill="#db2777" />
+      <path d="M 0,-42 A 12 12 0 0 0 0,-18 Z" fill="#f472b6" />
+      
+      {/* Top Puff */}
+      <circle cx="0" cy="-50" r="18" fill="#be185d" />
+      <path d="M 0,-68 A 18 18 0 0 0 0,-32 Z" fill="#ec4899" />
+      
+      {/* Sakura Petal Details */}
+      <g fill="none" stroke="#fbcfe8" strokeWidth="2" strokeLinecap="round" opacity="0.8">
+        <path d="M -20,-40 A 5 5 0 0 1 -15,-45" />
+        <path d="M 12,-52 A 6 6 0 0 1 20,-48" />
+        <path d="M -5,-58 A 5 5 0 0 1 5,-58" />
       </g>
     </g>
   </svg>
@@ -389,21 +438,35 @@ export const SvgPine = () => (
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="14" ry="7" fill="rgba(0,0,0,0.15)" />
-      {/* Trunk (Cylindrical split) */}
-      <polygon points="-2.5,0 -2.5,-25 0,-25 0,1.5" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,1.5 0,-25 2.5,-25 2.5,0" fill="#78350f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Layered Conifer Foliage (Flat split design) */}
-      <g transform="translate(0, -10)">
-        {/* Layer 1 (Bottom) */}
-        <polygon points="0,-24 -18,-8 0,-4" fill="#4ade80" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-24 18,-8 0,-4" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        {/* Layer 2 */}
-        <polygon points="0,-38 -14,-22 0,-18" fill="#4ade80" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-38 14,-22 0,-18" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        {/* Layer 3 (Top) */}
-        <polygon points="0,-52 -10,-36 0,-32" fill="#4ade80" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-52 10,-36 0,-32" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      
+      {/* Trunk */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <polygon points="-2.5,0 -2.5,-20 2.5,-20 2.5,0" />
       </g>
+      <polygon points="-2.5,0 -2.5,-20 0,-20 0,0" fill="#b45309" />
+      <polygon points="0,0 0,-20 2.5,-20 2.5,0" fill="#78350f" />
+      
+      {/* Foliage Silhouette */}
+      <g fill="#000" stroke="#000" strokeWidth="3" strokeLinejoin="round">
+        <polygon points="0,-24 -18,-8 0,-4 18,-8" />
+        <polygon points="0,-38 -14,-20 0,-16 14,-20" />
+        <polygon points="0,-50 -10,-30 0,-26 10,-30" />
+        <polygon points="0,-62 -7,-40 0,-36 7,-40" />
+      </g>
+      
+      {/* Foliage Fill */}
+      {/* Tier 1 */}
+      <polygon points="0,-24 -18,-8 0,-4" fill="#4ade80" />
+      <polygon points="0,-24 18,-8 0,-4" fill="#16a34a" />
+      {/* Tier 2 */}
+      <polygon points="0,-38 -14,-20 0,-16" fill="#4ade80" />
+      <polygon points="0,-38 14,-20 0,-16" fill="#16a34a" />
+      {/* Tier 3 */}
+      <polygon points="0,-50 -10,-30 0,-26" fill="#4ade80" />
+      <polygon points="0,-50 10,-30 0,-26" fill="#16a34a" />
+      {/* Tier 4 (Top) */}
+      <polygon points="0,-62 -7,-40 0,-36" fill="#4ade80" />
+      <polygon points="0,-62 7,-40 0,-36" fill="#16a34a" />
     </g>
   </svg>
 );
