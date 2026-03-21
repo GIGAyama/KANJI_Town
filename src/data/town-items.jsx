@@ -14,6 +14,7 @@ import {
   SvgMegaHarborTown, SvgMegaShrineComplex,
   SvgStoneLantern, SvgFountain, SvgStatue, SvgWindmill, SvgBellTower, SvgPond, SvgCherryRoad,
   SvgClockTower, SvgGoldStatue, SvgFestivalStage,
+  SvgGrassFlat, SvgBrick, SvgAsphalt, SvgMagma, SvgCrosswalk, SvgRailway, SvgDirt,
   // 新オブジェクト
   SvgCafe, SvgBakery, SvgBurgerShop, SvgFamilyRestaurant, SvgConvenienceStore, SvgFlowerShop, SvgCinema, SvgHotel,
   SvgHospital, SvgFireStation, SvgPoliceBox, SvgPostOffice, SvgStation, SvgAirport,
@@ -24,6 +25,8 @@ import {
 } from './iso-svg';
 
 export { SvgBedrock, SvgRoughland, SvgCleared, SvgWeed, SvgGrass, SvgFlower, SvgTree, SvgSakura, SvgPine, SvgRock, SvgRoad, SvgWater, SvgWall, SvgBridge, SvgHouse1, SvgShop, SvgSchool, SvgCastle, SvgGoldCastle, SvgTorii, SvgTemple, SvgDragon, SvgGhostBoss, SvgVillager, SvgGrassland, SvgForestFloor, SvgSand, SvgShallowWater, SvgHighland, SvgFence, SvgWell, SvgWarehouse, SvgMarket, SvgPort, SvgGarden, SvgSmithy, SvgFactory, SvgWatermill, SvgMine, SvgLibrary, SvgTownhall, SvgEmbassy, SvgGoldenTower, SvgGuardianShrine, SvgMonument, SvgHouse2, SvgHouse3, SvgDepartment, SvgGrandSmithy, SvgUniversity, SvgMegaGrandMarket, SvgMegaFortress, SvgMegaAcademy, SvgMegaImperialPalace, SvgMegaWonder, SvgCherryPavilion, SvgCrystalTower, SvgPhilosophersLab, SvgDragonShrine, SvgPerfectMonument, SvgBambooGrove, SvgHotSpring, SvgObservatory, SvgGrandWarehouse, SvgShoppingStreet, SvgZenGarden, SvgNationalLibrary, SvgMegaHarborTown, SvgMegaShrineComplex, SvgStoneLantern, SvgFountain, SvgStatue, SvgWindmill, SvgBellTower, SvgPond, SvgCherryRoad, SvgClockTower, SvgGoldStatue, SvgFestivalStage, SvgCafe, SvgBakery, SvgBurgerShop, SvgFamilyRestaurant, SvgConvenienceStore, SvgFlowerShop, SvgCinema, SvgHotel, SvgHospital, SvgFireStation, SvgPoliceBox, SvgPostOffice, SvgStation, SvgAirport, SvgOfficeBuilding, SvgTowerApartment, SvgTvTower, SvgStadium, SvgPark, SvgPlayground, SvgPool, SvgFerrisWheel, SvgAmusementPark, SvgCar, SvgBus, SvgBicycle, SvgShipVehicle, SvgAirplane, SvgFireTruck, SvgBench, SvgMailbox, SvgPhoneBooth, SvgStreetLight, SvgBusStop, SvgVendingMachine, SvgTrashCan };
+export { SvgGrassFlat, SvgBrick, SvgAsphalt, SvgMagma, SvgCrosswalk, SvgRailway, SvgDirt };
+
 
 const TOWN_ITEMS = [
   // 地形（内部管理用・パレット非表示） isoHeight=0
@@ -157,6 +160,14 @@ const TOWN_ITEMS = [
   { id: 't_bus_stop',          svg: SvgBusStop,           name: 'バス停',             price: 100,   pros: 10,    type: 'decoration', bg: 'bg-[#3b82f6]', minGrade: 2, isoHeight: 12 },
   { id: 't_vending_machine',   svg: SvgVendingMachine,    name: '自動販売機',         price: 120,   pros: 12,    type: 'decoration', bg: 'bg-[#1e293b]', minGrade: 2, isoHeight: 10 },
   { id: 't_trash_can',         svg: SvgTrashCan,          name: 'ゴミ箱',             price: 40,    pros: 3,     type: 'decoration', bg: 'bg-[#64748b]', isoHeight: 6 },
+  // 追加平面オブジェクト
+  { id: 't_grass_flat', svg: SvgGrassFlat, name: '芝生', price: 15, pros: 2, type: 'nature', bg: 'bg-[#4ade80]', isFlat: true, isoHeight: 2 },
+  { id: 't_brick',      svg: SvgBrick,      name: 'レンガ道', price: 25, pros: 5, type: 'building', bg: 'bg-[#b45309]', isFlat: true, isoHeight: 2 },
+  { id: 't_asphalt',    svg: SvgAsphalt,    name: 'アスファルト', price: 20, pros: 4, type: 'building', bg: 'bg-[#334155]', isFlat: true, isoHeight: 2 },
+  { id: 't_magma',      svg: SvgMagma,      name: 'マグマ', price: 50, pros: 10, type: 'nature', bg: 'bg-[#ef4444]', minGrade: 4, isFlat: true, isoHeight: 2 },
+  { id: 't_crosswalk',  svg: SvgCrosswalk,  name: '横断歩道', price: 30, pros: 5, type: 'building', bg: 'bg-[#1e293b]', minGrade: 2, isFlat: true, isoHeight: 2 },
+  { id: 't_railway',    svg: SvgRailway,    name: '線路', price: 50, pros: 10, type: 'building', bg: 'bg-[#a8a29e]', minGrade: 3, isFlat: true, isoHeight: 2 },
+  { id: 't_dirt',       svg: SvgDirt,       name: '土', price: 10, pros: 1, type: 'nature', bg: 'bg-[#78350f]', isFlat: true, isoHeight: 2 },
 ];
 
 export { TOWN_ITEMS };

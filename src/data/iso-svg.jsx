@@ -39,6 +39,11 @@ const SharedDefs = () => (
     <linearGradient id="grad-roof-slate" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stopColor="#64748b" /><stop offset="100%" stopColor="#334155" />
     </linearGradient>
+    <linearGradient id="grad-magma" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#f97316" />
+      <stop offset="50%" stopColor="#ef4444" />
+      <stop offset="100%" stopColor="#b91c1c" />
+    </linearGradient>
   </defs>
 );
 
@@ -63,25 +68,115 @@ const lighten = (hex, amt = 20) => {
 const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, type = 'road' }) => {
   const dx = 25 * scale;
   const dy = 12.5 * scale;
+  
+  let topFill = color;
+  if (type === 'water' || type === 'pond') topFill = 'url(#grad-water)';
+  if (type === 'magma') topFill = 'url(#grad-magma)';
+  if (type === 'grass_flat' || type === 'garden') topFill = '#4ade80';
+  if (type === 'asphalt' || type === 'crosswalk') topFill = '#334155';
+  if (type === 'dirt') topFill = '#78350f';
+  if (type === 'brick') topFill = '#b45309';
+  if (type === 'railway') topFill = '#a8a29e';
+
+  let leftFill = topFill.startsWith('url') ? '#075985' : darken(topFill, 20);
+  let rightFill = topFill.startsWith('url') ? '#0369a1' : darken(topFill, 30);
+  
+  if (type === 'magma') {
+    leftFill = '#7f1d1d'; rightFill = '#450a0a';
+  } else if (type === 'water' || type === 'pond') {
+    leftFill = '#0369a1'; rightFill = '#075985';
+  }
+
+  const topStroke = topFill.startsWith('url') ? 'none' : topFill;
+
   return (
     <g transform={`translate(${cx}, ${cy})`}>
       <SharedDefs />
-      <polygon points={`0,0 ${dx},-${dy} ${dx},${-dy + thickness} 0,${thickness}`} fill={darken(color, 20)} stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points={`0,0 -${dx},-${dy} -${dx},${-dy + thickness} 0,${thickness}`} fill={darken(color, 30)} stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points={`0,0 ${dx},-${dy} 0,-${dy * 2} -${dx},-${dy}`} fill={type === 'water' ? '#38bdf8' : color} stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      {type === 'road' && (<>
-        <polyline points={`-${dx*0.9},-${dy} 0,-${dy*1.9} ${dx*0.9},-${dy}`} fill="none" stroke="#fff" strokeWidth="2" opacity="0.4"/>
-        <polyline points={`-${dx*0.9},-${dy} 0,-${dy*0.1} ${dx*0.9},-${dy}`} fill="none" stroke="#fff" strokeWidth="2" opacity="0.4"/>
-      </>)}
-      {type === 'water' && (<>
-        <path d={`M -${dx*0.5},-${dy} Q 0,-${dy*1.4} ${dx*0.5},-${dy}`} fill="none" stroke="#fff" strokeWidth="2.5" opacity="0.6" strokeLinecap="round"/>
-      </>)}
-      {type === 'garden' && (<>
-        <circle cx={-dx*0.2} cy={-dy*0.7} r="2.5" fill="#4ade80" stroke="#000" strokeWidth="1.5" />
-        <circle cx={dx*0.1} cy={-dy*1.0} r="3" fill="#22c55e" stroke="#000" strokeWidth="1.5" />
-        <circle cx={dx*0.4} cy={-dy*1.3} r="2.5" fill="#16a34a" stroke="#000" strokeWidth="1.5" />
-        <circle cx={dx*0.2} cy={-dy*0.5} r="2.5" fill="#22c55e" stroke="#000" strokeWidth="1.5" />
-      </>)}
+      <polygon points={`0,0 ${dx},-${dy} ${dx},${-dy + thickness} 0,${thickness}`} fill={rightFill} stroke={rightFill} strokeWidth="0.5" strokeLinejoin="round" />
+      <polygon points={`0,0 -${dx},-${dy} -${dx},${-dy + thickness} 0,${thickness}`} fill={leftFill} stroke={leftFill} strokeWidth="0.5" strokeLinejoin="round" />
+      <polygon points={`0,0 ${dx},-${dy} 0,-${dy * 2} -${dx},-${dy}`} fill={topFill} stroke={topStroke} strokeWidth={topStroke !== 'none' ? "1" : "0"} strokeLinejoin="round" />
+      
+      <g opacity="0.9">
+        {type === 'road' && (
+          <path d={`M -${dx*0.7},-${dy*1.0} L ${dx*0.7},-${dy*1.0}`} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
+        )}
+        {type === 'asphalt' && (
+          <g opacity="0.2">
+            <circle cx={-dx*0.4} cy={-dy*1.2} r="1" fill="#fff" />
+            <circle cx={dx*0.5} cy={-dy*0.8} r="1.5" fill="#000" />
+            <circle cx={dx*0.1} cy={-dy*1.6} r="1" fill="#fff" />
+            <circle cx={-dx*0.2} cy={-dy*0.5} r="1" fill="#000" />
+          </g>
+        )}
+        {type === 'crosswalk' && (
+          <g>
+            <path d={`M -${dx*0.5},-${dy*0.5} L -${dx*0.5},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+            <path d={`M -${dx*0.1},-${dy*0.5} L -${dx*0.1},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+            <path d={`M ${dx*0.3},-${dy*0.5} L ${dx*0.3},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+            <path d={`M ${dx*0.7},-${dy*0.5} L ${dx*0.7},-${dy*1.5}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
+          </g>
+        )}
+        {type === 'railway' && (
+          <g>
+            <path d={`M -${dx*0.6},-${dy*0.8} L -${dx*0.6},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
+            <path d={`M -${dx*0.2},-${dy*0.8} L -${dx*0.2},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
+            <path d={`M ${dx*0.2},-${dy*0.8} L ${dx*0.2},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
+            <path d={`M ${dx*0.6},-${dy*0.8} L ${dx*0.6},-${dy*1.2}`} stroke="#78350f" strokeWidth="3" />
+            <path d={`M -${dx*0.8},-${dy*0.85} L ${dx*0.8},-${dy*0.85}`} stroke="#94a3b8" strokeWidth="1.5" />
+            <path d={`M -${dx*0.8},-${dy*1.15} L ${dx*0.8},-${dy*1.15}`} stroke="#94a3b8" strokeWidth="1.5" />
+          </g>
+        )}
+        {(type === 'water' || type === 'pond') && (
+          <g>
+            <path d={`M -${dx*0.6},-${dy*0.8} Q 0,-${dy*1.2} ${dx*0.6},-${dy*0.8}`} fill="none" stroke="#fff" strokeWidth="2.5" opacity="0.6" strokeLinecap="round"/>
+            <path d={`M -${dx*0.3},-${dy*1.5} Q 0,-${dy*1.8} ${dx*0.3},-${dy*1.5}`} fill="none" stroke="#bae6fd" strokeWidth="1.5" opacity="0.4" strokeLinecap="round"/>
+            {type === 'pond' && (
+              <g transform={`translate(0, -${dy*1.2})`}>
+                <path d="M 5,2 C 8,0 12,3 8,6 C 4,3 2,0 5,2 Z" fill="#22c55e" />
+                <ellipse cx="-4" cy="-2" rx="3" ry="1.5" fill="#f97316" transform="rotate(30 -4 -2)" />
+                <circle cx="8" cy="-5" r="1.5" fill="#f472b6" />
+              </g>
+            )}
+          </g>
+        )}
+        {type === 'magma' && (
+          <g opacity="0.8">
+            <circle cx={-dx*0.4} cy={-dy*1.2} r="4" fill="#fbbf24" filter="url(#glow-effect)" />
+            <circle cx={dx*0.3} cy={-dy*0.8} r="6" fill="#fef08a" opacity="0.6" />
+            <path d={`M -${dx*0.2},-${dy*0.6} Q ${dx*0.2},-${dy*1.2} ${dx*0.5},-${dy*1.4}`} fill="none" stroke="#fbbf24" strokeWidth="2" opacity="0.8" />
+            <circle cx={0} cy={-dy*1.5} r="3" fill="#ef4444" />
+          </g>
+        )}
+        {type === 'dirt' && (
+          <g opacity="0.4">
+            <circle cx={-dx*0.3} cy={-dy*1.4} r="2" fill="#451a03" />
+            <circle cx={dx*0.5} cy={-dy*0.7} r="1.5" fill="#b45309" />
+            <path d={`M -${dx*0.1},-${dy*0.8} L ${dx*0.2},-${dy*0.9}`} stroke="#451a03" strokeWidth="1" />
+          </g>
+        )}
+        {type === 'brick' && (
+          <g stroke="#78350f" strokeWidth="1" opacity="0.4">
+            <line x1={-dx*0.8} y1={-dy*1.0} x2={dx*0.8} y2={-dy*1.0} />
+            <line x1={-dx*0.4} y1={-dy*0.6} x2={dx*0.4} y2={-dy*0.6} />
+            <line x1={-dx*0.4} y1={-dy*1.4} x2={dx*0.4} y2={-dy*1.4} />
+            <line x1={0} y1={-dy*0.6} x2={dx*0.4} y2={-dy*1.0} />
+            <line x1={-dx*0.4} y1={-dy*1.0} x2={0} y2={-dy*1.4} />
+          </g>
+        )}
+        {(type === 'garden' || type === 'grass_flat') && (
+          <g>
+            <path d={`M -${dx*0.4},-${dy*0.8} Q -${dx*0.3},-${dy*1.1} -${dx*0.2},-${dy*0.8}`} fill="none" stroke="#15803d" strokeWidth="1.5" opacity="0.6"/>
+            <path d={`M ${dx*0.4},-${dy*1.2} Q ${dx*0.5},-${dy*1.5} ${dx*0.6},-${dy*1.2}`} fill="none" stroke="#15803d" strokeWidth="1.5" opacity="0.6"/>
+            {type === 'garden' && (
+              <>
+                <circle cx={-dx*0.2} cy={-dy*0.7} r="2.5" fill="#f472b6" stroke="#000" strokeWidth="0.5" />
+                <circle cx={dx*0.1} cy={-dy*1.0} r="3" fill="#eab308" stroke="#000" strokeWidth="0.5" />
+                <circle cx={dx*0.4} cy={-dy*1.3} r="2.5" fill="#38bdf8" stroke="#000" strokeWidth="0.5" />
+              </>
+            )}
+          </g>
+        )}
+      </g>
     </g>
   );
 };
@@ -359,6 +454,13 @@ export const SvgBambooGrove = () => (
 // ==========================================
 export const SvgRoad = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="road" color="#cbd5e1" thickness={4} /></svg>;
 export const SvgWater = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="water" color="#7dd3fc" thickness={4} /></svg>;
+export const SvgGrassFlat = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="grass_flat" thickness={4} /></svg>;
+export const SvgBrick = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="brick" thickness={4} /></svg>;
+export const SvgAsphalt = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="asphalt" thickness={4} /></svg>;
+export const SvgMagma = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="magma" thickness={4} /></svg>;
+export const SvgCrosswalk = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="crosswalk" thickness={4} /></svg>;
+export const SvgRailway = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="railway" thickness={4} /></svg>;
+export const SvgDirt = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="dirt" thickness={4} /></svg>;
 
 
 export const SvgHouse1 = () => (
@@ -1053,8 +1155,7 @@ export const SvgLibrary = () => (
 export const SvgFountain = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)"><ellipse cx="0" cy="-2" rx="26" ry="13" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="-20,0 0,10 20,0 0,-10" fill="#94a3b8" /><polygon points="-20,0 0,10 0,14 -20,4" fill="#64748b" /><polygon points="20,0 0,10 0,14 20,4" fill="#cbd5e1" /><polygon points="-18,0 0,9 18,0 0,-9" fill="url(#grad-water)" /><polygon points="-4,-2 0,0 4,-2 0,-4" fill="#cbd5e1" /><polygon points="-4,-2 0,0 0,-12 -4,-14" fill="#94a3b8" /><polygon points="4,-2 0,0 0,-12 4,-14" fill="#e2e8f0" /><polygon points="-10,-13 0,-8 10,-13 0,-18" fill="#94a3b8" /><polygon points="-8,-13 0,-9 8,-13 0,-17" fill="url(#grad-water)" /><path d="M 0,-16 C -5,-25 -8,-20 -10,-13" fill="none" stroke="#bae6fd" strokeWidth="1.5" opacity="0.8" /><path d="M 0,-16 C 5,-25 8,-20 10,-13" fill="none" stroke="#e0f2fe" strokeWidth="1.5" opacity="0.8" /><circle cx="0" cy="-22" r="1.5" fill="#ffffff" filter="url(#glow-effect)" opacity="0.9" /></g></svg>);
 
-export const SvgPond = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="28" ry="14" fill="#15803d" /><ellipse cx="0" cy="0" rx="26" ry="13" fill="#64748b" /><ellipse cx="0" cy="0" rx="22" ry="11" fill="url(#grad-water)" /><path d="M -10,3 Q 0,6 10,3" fill="none" stroke="#e0f2fe" strokeWidth="1" opacity="0.6" /><g transform="translate(-5, 2) rotate(30)"><ellipse cx="0" cy="0" rx="3" ry="1" fill="#f97316" /><polygon points="-3,0 -5,-1 -5,1" fill="#f97316" /></g><path d="M 10,5 C 13,4 15,6 12,8 C 9,6 7,5 10,5 Z" fill="#22c55e" /><path d="M -12,-6 C -9,-7 -7,-5 -10,-3 C -13,-5 -15,-6 -12,-6 Z" fill="#16a34a" /><circle cx="-11" cy="-5" r="1.5" fill="#f472b6" /></g></svg>);
+export const SvgPond = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="pond" thickness={4} /></svg>;
 
 export const SvgStoneLantern = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="10" ry="5" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-2 -8,-6 0,-10 8,-6" fill="#cbd5e1" /><polygon points="0,-6 -3,-7.5 -3,-20 0,-18.5" fill="#475569" /><polygon points="0,-6 3,-7.5 3,-20 0,-18.5" fill="#64748b" /><polygon points="0,-20 -6,-23 0,-26 6,-23" fill="#e2e8f0" /><polygon points="0,-21 -3,-22.5 -3,-26.5 0,-25" fill="#fef08a" filter="url(#glow-effect)" /><polygon points="0,-21 3,-22.5 3,-26.5 0,-25" fill="#fcd34d" /><polygon points="0,-26 -10,-31 0,-36 10,-31" fill="#475569" /><polygon points="0,-26 -10,-31 -10,-29 0,-24" fill="#64748b" /><polygon points="0,-26 10,-31 10,-29 0,-24" fill="#94a3b8" /><polygon points="0,-37 -2,-38 0,-40 2,-38" fill="#e2e8f0" /><circle cx="-4" cy="-5" r="1.5" fill="#15803d" opacity="0.8" /></g></svg>);
