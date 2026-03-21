@@ -572,6 +572,10 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         transformOrigin: '0 0',
       }}>
         {cells}
+        {/* 住民（セルと同じコンテナ内でz-indexによる前後関係を正しく処理） */}
+        {visibleVillagers.map(v => (
+          <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} />
+        ))}
         {/* ホバーハイライト */}
         {hoveredCell && (
           <div style={{
@@ -589,10 +593,6 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           </div>
         )}
       </div>
-      {/* 住民オーバーレイ */}
-      {visibleVillagers.map(v => (
-        <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} offset={offset} zoom={zoom} containerWidth={containerSize.w} />
-      ))}
     </div>
   );
 };
