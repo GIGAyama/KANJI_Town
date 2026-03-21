@@ -420,8 +420,9 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       }
 
       // 開拓可能な地形
+      const terrainColors = isTerrain ? (TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland) : null;
+
       if (CULTIVATABLE_TERRAIN.has(itemId)) {
-        const terrainColors = TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland;
         result.push(
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
 
