@@ -601,21 +601,6 @@ export const SvgShop = ({ seed = 0 }) => {
         {/* Ground Shadow */}
         <ellipse cx="0" cy="0" rx="26" ry="13" fill="rgba(0,0,0,0.15)" />
 
-        {/* Pole Sign */}
-        <g transform="translate(-24, 4)">
-          {/* Pole */}
-          <polygon points="0,0 -2,-1 -2,-25 0,-24" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="0,0 2,-1 2,-25 0,-24" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          {/* Sign box */}
-          <polygon points="0,-18 -4,-20 -4,-30 0,-28" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="0,-18 6,-15 6,-25 0,-28" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="0,-28 6,-25 2,-27 -4,-30" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          {/* Sign colored area */}
-          <polygon points="-1,-19 -3,-20 -3,-27 -1,-26" fill={v.dark} />
-          <polygon points="1,-17.5 5,-15.5 5,-22.5 1,-24.5" fill={v.light} />
-          <polygon points="-1,-19 -1,-26 0,-26.5 0,-19.5" fill="#ffffff" opacity="0.5" />
-        </g>
-
         {/* Building Base / Walls */}
         <polygon points="0,-4 -20,-14 -20,-34 0,-24" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         <polygon points="0,-4 20,-14 20,-34 0,-24" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -644,6 +629,21 @@ export const SvgShop = ({ seed = 0 }) => {
         <line x1="6" y1="-7" x2="6" y2="-19" stroke="#000" strokeWidth="1" />
         <line x1="10" y1="-9" x2="10" y2="-21" stroke="#000" strokeWidth="1" />
         <line x1="14" y1="-11" x2="14" y2="-23" stroke="#000" strokeWidth="1" />
+
+        {/* Pole Sign (drawn last so it is in front of the building walls) */}
+        <g transform="translate(-24, 4)">
+          {/* Pole */}
+          <polygon points="0,0 -2,-1 -2,-25 0,-24" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,0 2,-1 2,-25 0,-24" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          {/* Sign box */}
+          <polygon points="0,-18 -4,-20 -4,-30 0,-28" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,-18 6,-15 6,-25 0,-28" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,-28 6,-25 2,-27 -4,-30" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          {/* Sign colored area */}
+          <polygon points="-1,-19 -3,-20 -3,-27 -1,-26" fill={v.dark} />
+          <polygon points="1,-17.5 5,-15.5 5,-22.5 1,-24.5" fill={v.light} />
+          <polygon points="-1,-19 -1,-26 0,-26.5 0,-19.5" fill="#ffffff" opacity="0.5" />
+        </g>
       </g>
     </svg>
   );
