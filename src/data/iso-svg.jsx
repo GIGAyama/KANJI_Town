@@ -1531,52 +1531,60 @@ export const SvgNationalLibrary = () => (
 export const SvgWell = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
     <SharedDefs />
-    <g transform="translate(50, 75) scale(2.0)">
+    <g transform="translate(50, 58) scale(1.6)">
       {/* 影 */}
-      <ellipse cx="0" cy="18" rx="20" ry="10" fill="#020617" opacity="0.2" filter="url(#soft-shadow)" />
-      
-      {/* 井戸の基礎（石材の厚みと立体感） */}
-      {/* 背面の壁 */}
-      <path d="M -18,-2 A 18,9 0 0 1 18,-2 L 18,12 A 18,9 0 0 0 -18,12 Z" fill="#475569" opacity="0.5" />
-      {/* 正面の壁 */}
-      <path d="M -18,-2 L -18,12 A 18,9 0 0 0 18,12 L 18,-2 A 18,9 0 0 1 -18,-2 Z" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* 縁（上面） */}
-      <ellipse cx="0" cy="-2" rx="18" ry="9" fill="#94a3b8" stroke="#000" strokeWidth="1.5" />
-      {/* 内側の穴と水 */}
-      <ellipse cx="0" cy="-2" rx="14" ry="7" fill="#334155" stroke="#000" strokeWidth="1" />
-      <ellipse cx="0" cy="-3" rx="13" ry="6.5" fill="url(#grad-water)" opacity="0.9" />
+      <ellipse cx="0" cy="22" rx="24" ry="12" fill="#020617" opacity="0.18" filter="url(#soft-shadow)" />
 
-      {/* 支柱 */}
-      {/* 左奥柱 */}
-      <polygon points="-13,-8 -9,-10 -9,-45 -13,-43" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* 右手前柱 */}
-      <polygon points="9,-18 13,-20 13,-55 9,-53" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* === 井戸の本体（石造り円筒） === */}
+      {/* 奥の壁面 */}
+      <path d="M -20,2 A 20,10 0 0 1 20,2 L 20,18 A 20,10 0 0 0 -20,18 Z" fill="#475569" opacity="0.5" />
+      {/* 手前の壁面 */}
+      <path d="M -20,2 L -20,18 A 20,10 0 0 0 20,18 L 20,2" fill="#64748b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 石のテクスチャ */}
+      <path d="M -19,7 A 19,9.5 0 0 0 19,7" stroke="#1e293b" strokeWidth="0.5" fill="none" opacity="0.3" />
+      <path d="M -18,12 A 18,9 0 0 0 18,12" stroke="#1e293b" strokeWidth="0.5" fill="none" opacity="0.3" />
+      {/* 縁の厚み（上部リング） */}
+      <ellipse cx="0" cy="2" rx="20" ry="10" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" />
+      <ellipse cx="0" cy="0" rx="21" ry="10.5" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.2" />
+      {/* 内側の穴 */}
+      <ellipse cx="0" cy="0" rx="16" ry="8" fill="#1e293b" stroke="#0f172a" strokeWidth="0.8" />
+      {/* 水面 */}
+      <ellipse cx="0" cy="1" rx="14" ry="7" fill="url(#grad-water)" opacity="0.85" />
 
-      {/* 巻上げ軸と縄 */}
-      <line x1="-11" y1="-42" x2="11" y2="-52" stroke="#451a03" strokeWidth="3" strokeLinecap="round" />
-      <path d="M 0,-47 L 0,-20" stroke="#78350f" strokeWidth="1.5" />
-      {/* 釣瓶（簡易） */}
-      <g transform="translate(0, -18)">
-        <polygon points="-3,0 -3,4 3,6 3,2" fill="#92400e" stroke="#000" strokeWidth="1" />
-      </g>
+      {/* === 支柱（アイソメトリック立体） === */}
+      {/* 左柱 - 西面（暗い） */}
+      <polygon points="-15,-5 -12,-7 -12,-47 -15,-45" fill="#92400e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 左柱 - 南面（明るい） */}
+      <polygon points="-12,-7 -9,-5 -9,-45 -12,-47" fill="#b45309" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 右柱 - 西面 */}
+      <polygon points="9,-5 12,-7 12,-47 9,-45" fill="#b45309" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 右柱 - 南面（明るい） */}
+      <polygon points="12,-7 15,-5 15,-45 12,-47" fill="#d97706" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
 
-      {/* 切妻屋根（詳細なアイソメトリック構造） */}
-      <g>
-        {/* 屋根の骨組み（三角形の側面） */}
-        <polygon points="-24,-48 -2,-59 20,-48" fill="#78350f" stroke="#000" strokeWidth="1.5" />
-        
-        {/* 左斜面 (SW) */}
-        <polygon points="-26,-46 -4,-57 18,-46 -4,-35" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        {/* 右斜面 (SE) */}
-        <polygon points="-4,-57 18,-68 40,-57 18,-46" fill="#f59e0b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        
-        {/* 屋根の厚み（手前エッジ） */}
-        <polygon points="-26,-46 18,-46 18,-43 -26,-43" fill="#b45309" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-        <polygon points="18,-46 40,-57 40,-54 18,-43" fill="#d97706" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
-      </g>
-
+      {/* === 巻上げ機構 === */}
+      {/* 横軸 */}
+      <line x1="-11" y1="-46" x2="13" y2="-46" stroke="#78350f" strokeWidth="3.5" strokeLinecap="round" />
       {/* ハンドル */}
-      <path d="M 11,-52 L 17,-49 L 17,-43 L 14,-42" fill="none" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 13,-46 L 19,-43 L 19,-38 L 16,-37" fill="none" stroke="#1e293b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* 縄 */}
+      <path d="M 1,-46 Q 2,-28 1,-5" stroke="#78350f" strokeWidth="1.2" fill="none" />
+      {/* 釣瓶（バケツ） */}
+      <g transform="translate(1, -3)">
+        <path d="M -4,0 L -3,5 L 3,5 L 4,0 Z" fill="#92400e" stroke="#1e293b" strokeWidth="0.8" />
+        <path d="M -3,-1 Q 0,-3 3,-1" stroke="#78350f" strokeWidth="0.8" fill="none" />
+      </g>
+
+      {/* === 切妻屋根（センタリング済み） === */}
+      {/* SW斜面（暗い面 - 左手前） */}
+      <polygon points="-23,-46 -11,-52 11,-46 -1,-40" fill="#b45309" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* SE斜面（明るい面 - 右奥） */}
+      <polygon points="-11,-52 1,-58 23,-52 11,-46" fill="#f59e0b" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* 厚み - SW手前エッジ */}
+      <polygon points="-23,-46 -1,-40 -1,-37 -23,-43" fill="#92400e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 厚み - SE右エッジ */}
+      <polygon points="11,-46 23,-52 23,-49 11,-43" fill="#d97706" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 棟（頂上ライン） */}
+      <line x1="-11" y1="-52" x2="11" y2="-46" stroke="#78350f" strokeWidth="1.5" />
     </g>
   </svg>
 );
