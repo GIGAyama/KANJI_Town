@@ -1103,42 +1103,282 @@ export const SvgBridge = () => (
 // ==========================================
 // 5. Economy & Industry Assets
 // ==========================================
-export const SvgWarehouse = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,-3 -24,-15 -24,-35 0,-23" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 -24,-35 -12,-41" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-3 24,-15 24,-35 0,-23" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="4,-7 16,-13 16,-25 4,-19" fill="#334155" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="5,-8 15,-13 15,-24 5,-19" fill="#1e293b" />
-      <path d="M 5,-11 L 15,-16 M 5,-14 L 15,-19 M 5,-17 L 15,-22" stroke="#475569" strokeWidth="1" />
-      <polygon points="-2,-24 26,-38 14,-44 -14,-30" fill="#71717a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-2,-24 26,-38 26,-36 -2,-22" fill="#d4d4d8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-2,-24 -26,-36 -26,-34 -2,-22" fill="#a1a1aa" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-10, -5)">
-        <polygon points="0,0 -4,-2 -4,-8 0,-6" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,0 4,-2 4,-8 0,-6" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      </g>
-    </g>
-  </svg>
-);
+export const SvgWarehouse = () => {
+  // 100x100の2Dグリッドをアイソメトリックベースにマッピングする関数
+  const iso = (x, y, z = 0) => {
+    const ptX = (x - y) * 0.44;
+    const ptY = -44 + (x + y) * 0.22 - z;
+    return `${ptX.toFixed(2)},${ptY.toFixed(2)}`;
+  };
 
-export const SvgGrandWarehouse = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -32,-16 -32,-36 0,-20" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 32,-16 32,-36 0,-20" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      {[...Array(3)].map((_, i) => (
-        <g key={`gw-${i}`} transform={`translate(${12 + i * 8}, ${-16 - i * 4})`}>
-          <path d="M -2,0 L -2,-6 Q 0,-9 2,-6 L 2,0 Z" fill="#93c5fd" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        </g>
-      ))}
-      <polygon points="0,-20 -34,-37 0,-54 34,-37" fill="#52525b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-20 -34,-37 -34,-35 0,-18" fill="#27272a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-20 34,-37 34,-35 0,-18" fill="#71717a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+  // カラーパレット
+  const colors = {
+    baseTop: '#7dd3fc', baseLeft: '#38bdf8', baseRight: '#0284c7',
+    wallLight: '#f1f5f9', wallDark: '#e2e8f0',
+    wallInnerL: '#cbd5e1', wallInnerR: '#94a3b8', floor: '#e2e8f0',
+    pillarTop: '#94a3b8', pillarLeft: '#64748b', pillarRight: '#475569',
+    roofBlue: '#60a5fa', roofBlueDark: '#3b82f6', roofEdge: '#475569',
+    boxTop: '#fcd34d', boxLeft: '#fbbf24', boxRight: '#f59e0b',
+    windowBorders: '#64748b', windowLight: '#fef08a', windowGlow: '#fde047'
+  };
+
+  // 直方体を描画するヘルパー
+  const Cube = ({ x, y, z, w, d, h, cTop, cLeft, cRight }) => (
+    <g>
+      {/* 左面 */}
+      <polygon points={`${iso(x,y+d,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={cLeft} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+      {/* 右面 */}
+      <polygon points={`${iso(x+w,y,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x+w,y,z+h)}`} fill={cRight} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+      {/* 天面 */}
+      <polygon points={`${iso(x,y,z+h)} ${iso(x+w,y,z+h)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={cTop} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
     </g>
-  </svg>
-);
+  );
+
+  // 段ボールを描画するヘルパー
+  const Box = ({ x, y, z, w=6, d=6, h=6 }) => (
+    <g>
+      <Cube x={x} y={y} z={z} w={w} d={d} h={h} cTop={colors.boxTop} cLeft={colors.boxLeft} cRight={colors.boxRight} />
+      {/* 梱包テープの線 */}
+      <line x1={iso(x+w/2, y, z+h).split(',')[0]} y1={iso(x+w/2, y, z+h).split(',')[1]}
+            x2={iso(x+w/2, y+d, z+h).split(',')[0]} y2={iso(x+w/2, y+d, z+h).split(',')[1]} stroke="#b45309" strokeWidth="0.8" />
+    </g>
+  );
+
+  // パレットを描画するヘルパー
+  const Pallet = ({ x, y, z }) => (
+    <g>
+      {/* 脚部分 */}
+      <Cube x={x+1} y={y+1} z={z} w={2} d={2} h={1.5} cTop="#78350f" cLeft="#78350f" cRight="#451a03" />
+      <Cube x={x+9} y={y+1} z={z} w={2} d={2} h={1.5} cTop="#78350f" cLeft="#78350f" cRight="#451a03" />
+      <Cube x={x+5} y={y+9} z={z} w={2} d={2} h={1.5} cTop="#78350f" cLeft="#78350f" cRight="#451a03" />
+      {/* 上板 */}
+      <Cube x={x} y={y} z={z+1.5} w={12} d={12} h={1.5} cTop="#b45309" cLeft="#92400e" cRight="#78350f" />
+    </g>
+  );
+
+  // 白い袋を描画するヘルパー
+  const Bag = ({ x, y, z }) => {
+    const [cx, cy] = iso(x, y, z).split(',').map(Number);
+    return (
+      <g>
+        {/* 袋の本体 */}
+        <path d={`M ${cx-12},${cy+2} Q ${cx-12},${cy-6} ${cx},${cy-10} Q ${cx+12},${cy-6} ${cx+12},${cy+2} Q ${cx+6},${cy+8} ${cx},${cy+8} Q ${cx-6},${cy+8} ${cx-12},${cy+2} Z`} fill="#f8fafc" stroke="#94a3b8" strokeWidth="0.8" />
+        <path d={`M ${cx-8},${cy-5} Q ${cx},${cy-2} ${cx+8},${cy-5}`} fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
+        {/* 袋の縛り口 */}
+        <path d={`M ${cx-4},${cy-10} L ${cx-5},${cy-14} L ${cx+1},${cy-13} Z`} fill="#f1f5f9" stroke="#94a3b8" strokeWidth="0.8" strokeLinejoin="round" />
+      </g>
+    );
+  };
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
+      <g transform="translate(50, 100) scale(1.15)">
+        
+        {/* === 1. 土台 === */}
+        <polygon points={`${iso(5,5,5)} ${iso(95,5,5)} ${iso(95,95,5)} ${iso(5,95,5)}`} fill={colors.baseTop} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso(5,95,0)} ${iso(95,95,0)} ${iso(95,95,5)} ${iso(5,95,5)}`} fill={colors.baseLeft} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso(95,5,0)} ${iso(95,95,0)} ${iso(95,95,5)} ${iso(95,5,5)}`} fill={colors.baseRight} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+
+        {/* === 2. 倉庫の内部（床と奥の壁） === */}
+        <polygon points={`${iso(20,20,5)} ${iso(80,20,5)} ${iso(80,80,5)} ${iso(20,80,5)}`} fill={colors.floor} stroke="#94a3b8" strokeWidth="0.5" />
+        <polygon points={`${iso(20,80,5)} ${iso(20,20,5)} ${iso(20,20,35)} ${iso(20,80,35)}`} fill={colors.wallInnerL} stroke="#1e293b" strokeWidth="0.5" />
+        <polygon points={`${iso(80,20,5)} ${iso(20,20,5)} ${iso(20,20,35)} ${iso(80,20,35)}`} fill={colors.wallInnerR} stroke="#1e293b" strokeWidth="0.5" />
+
+        {/* === 3. 奥の柱（右角・左角） === */}
+        <Cube x={78} y={18} z={5} w={4} d={4} h={30} cTop={colors.pillarTop} cLeft={colors.pillarLeft} cRight={colors.pillarRight} />
+        <Cube x={18} y={78} z={5} w={4} d={4} h={30} cTop={colors.pillarTop} cLeft={colors.pillarLeft} cRight={colors.pillarRight} />
+
+        {/* === 4. 内部の段ボール === */}
+        <Box x={65} y={50} z={5} />
+        <Box x={55} y={55} z={5} />
+        <Box x={60} y={60} z={5} />
+        <Box x={58} y={54} z={11} />
+        <Box x={63} y={60} z={11} />
+
+        {/* === 5. 左壁（手前左）と窓 === */}
+        <polygon points={`${iso(20,80,5)} ${iso(80,80,5)} ${iso(80,80,35)} ${iso(20,80,35)}`} fill={colors.wallLight} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 左壁上部の妻壁（三角形・空洞を塞ぐ） */}
+        <polygon points={`${iso(20,80,35)} ${iso(20,20,35)} ${iso(20,50,45)}`} fill={colors.wallLight} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 左の窓 */}
+        <g>
+          <polygon points={`${iso(32,80.1,15)} ${iso(44,80.1,15)} ${iso(44,80.1,23)} ${iso(32,80.1,23)}`} fill={colors.windowBorders} stroke="#1e293b" strokeWidth="0.8" />
+          <polygon points={`${iso(33,80.2,16)} ${iso(43,80.2,16)} ${iso(43,80.2,22)} ${iso(33,80.2,22)}`} fill={colors.windowGlow} />
+          <polygon points={`${iso(35,80.3,17.5)} ${iso(41,80.3,17.5)} ${iso(41,80.3,20.5)} ${iso(35,80.3,20.5)}`} fill={colors.windowLight} />
+        </g>
+        {/* 右の窓 */}
+        <g>
+          <polygon points={`${iso(56,80.1,15)} ${iso(68,80.1,15)} ${iso(68,80.1,23)} ${iso(56,80.1,23)}`} fill={colors.windowBorders} stroke="#1e293b" strokeWidth="0.8" />
+          <polygon points={`${iso(57,80.2,16)} ${iso(67,80.2,16)} ${iso(67,80.2,22)} ${iso(57,80.2,22)}`} fill={colors.windowGlow} />
+          <polygon points={`${iso(59,80.3,17.5)} ${iso(65,80.3,17.5)} ${iso(65,80.3,20.5)} ${iso(59,80.3,20.5)}`} fill={colors.windowLight} />
+        </g>
+
+        {/* === 6. 右壁（奥側）と奥のパレット === */}
+        <polygon points={`${iso(80,40,5)} ${iso(80,20,5)} ${iso(80,20,35)} ${iso(80,40,35)}`} fill={colors.wallDark} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <Pallet x={83} y={23} z={5} />
+        <Bag x={89} y={29} z={8} />
+
+        {/* === 7. シャッターと妻壁（入り口上部） === */}
+        <polygon points={`${iso(80,70,25)} ${iso(80,40,25)} ${iso(80,40,35)} ${iso(80,70,35)}`} fill={colors.wallDark} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso(80,80,35)} ${iso(80,20,35)} ${iso(80,50,45)}`} fill={colors.wallDark} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* シャッター本体 */}
+        <Cube x={78} y={39} z={25} w={4} d={32} h={4} cTop={colors.pillarTop} cLeft={colors.pillarLeft} cRight={colors.pillarRight} />
+        <polygon points={`${iso(79.5,69,12)} ${iso(79.5,41,12)} ${iso(79.5,41,25)} ${iso(79.5,69,25)}`} fill="#94a3b8" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {[14, 16, 18, 20, 22, 24].map(lz => (
+          <line key={`sh-${lz}`} 
+                x1={iso(79.5, 69, lz).split(',')[0]} y1={iso(79.5, 69, lz).split(',')[1]}
+                x2={iso(79.5, 41, lz).split(',')[0]} y2={iso(79.5, 41, lz).split(',')[1]} 
+                stroke="#64748b" strokeWidth="0.8" />
+        ))}
+
+        {/* === 8. 右壁（手前側）と手前の柱 === */}
+        <polygon points={`${iso(80,80,5)} ${iso(80,70,5)} ${iso(80,70,35)} ${iso(80,80,35)}`} fill={colors.wallDark} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <Cube x={78} y={78} z={5} w={4} d={4} h={30} cTop={colors.pillarTop} cLeft={colors.pillarLeft} cRight={colors.pillarRight} />
+
+        {/* === 9. 屋根 === */}
+        {/* 右側面（奥側） */}
+        <polygon points={`${iso(18,18,36)} ${iso(82,18,36)} ${iso(82,50,48)} ${iso(18,50,48)}`} fill={colors.roofBlueDark} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 左側面（手前側） */}
+        <polygon points={`${iso(18,82,36)} ${iso(82,82,36)} ${iso(82,50,48)} ${iso(18,50,48)}`} fill={colors.roofBlue} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 屋根の縁取り */}
+        <polygon points={`${iso(82,82,33)} ${iso(82,50,45)} ${iso(82,18,33)} ${iso(82,18,36)} ${iso(82,50,48)} ${iso(82,82,36)}`} fill={colors.roofEdge} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso(18,82,33)} ${iso(18,50,45)} ${iso(18,18,33)} ${iso(18,18,36)} ${iso(18,50,48)} ${iso(18,82,36)}`} fill={colors.roofEdge} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+
+        {/* === 10. 外の段ボール（左側） === */}
+        <Box x={65} y={82} z={5} />
+        <Box x={55} y={84} z={5} />
+        <Box x={45} y={83} z={5} />
+        <Box x={35} y={85} z={5} />
+        <Box x={70} y={87} z={5} />
+        <Box x={60} y={88} z={5} />
+        <Box x={50} y={89} z={5} />
+        <Box x={40} y={90} z={5} />
+        <Box x={30} y={91} z={5} />
+        <Box x={62} y={85} z={11} />
+        <Box x={52} y={86} z={11} />
+        <Box x={42} y={87} z={11} />
+        <Box x={57} y={89} z={11} />
+        <Box x={47} y={90} z={11} />
+        <Box x={55} y={87} z={17} />
+
+        {/* === 11. 手前のパレット === */}
+        <Pallet x={83} y={75} z={5} />
+        <Bag x={89} y={81} z={8} />
+
+      </g>
+    </svg>
+  );
+};
+
+export const SvgGrandWarehouse = () => {
+  // 100x100の2Dグリッドをアイソメトリックベースにマッピングする関数
+  const iso = (x, y, z = 0) => {
+    const ptX = (x - y) * 0.44;
+    const ptY = -44 + (x + y) * 0.22 - z;
+    return `${ptX.toFixed(2)},${ptY.toFixed(2)}`;
+  };
+
+  // カラーパレット
+  const colors = {
+    roofLight: '#0284c7', roofDark: '#0369a1',
+    roofEdgeSide: '#075985', roofEdgeFront: '#0c4a6e',
+    wallLeft: '#a1a1aa', wallRight: '#71717a',
+    doorDark: '#27272a', shutter: '#3f3f46',
+    windowFrame: '#0284c7', windowGlass: '#e0f2fe',
+    boxTop: '#fbbf24', boxLeft: '#f59e0b', boxRight: '#d97706',
+    eaveTop: '#f4f4f5', eaveLeft: '#e4e4e7', eaveRight: '#d4d4d8',
+    platform: '#0284c7', base: '#f1f5f9'
+  };
+
+  // 直方体を描画するヘルパー
+  const Cube = ({ x, y, z, w, d, h, cTop, cLeft, cRight }) => (
+    <g>
+      <polygon points={`${iso(x,y+d,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={cLeft} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+      <polygon points={`${iso(x+w,y,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x+w,y,z+h)}`} fill={cRight} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+      <polygon points={`${iso(x,y,z+h)} ${iso(x+w,y,z+h)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={cTop} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+    </g>
+  );
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
+      <g transform="translate(50, 90) scale(1.15)">
+        
+        {/* === 1. ベース（1x2マスの敷地） === */}
+        {/* 幅(X)を狭く、奥行き(Y)を長くすることで「左手前」に伸びる1x2マスを表現 */}
+        <polygon points={`${iso(0,0,0)} ${iso(55,0,0)} ${iso(55,105,0)} ${iso(0,105,0)}`} fill={colors.base} stroke="#cbd5e1" strokeWidth="1" strokeLinejoin="round" />
+
+        {/* === 2. 右下の壁（長方形・右面） === */}
+        <polygon points={`${iso(5,95,0)} ${iso(45,95,0)} ${iso(45,95,25)} ${iso(5,95,25)}`} fill={colors.wallRight} stroke="#3f3f46" strokeWidth="0.8" strokeLinejoin="round" />
+
+        {/* === 3. 右下の壁の開口部（プラットフォーム奥） === */}
+        <polygon points={`${iso(15,95.1,5)} ${iso(35,95.1,5)} ${iso(35,95.1,18)} ${iso(15,95.1,18)}`} fill={colors.doorDark} stroke="#1e293b" strokeWidth="0.5" />
+        
+        {/* === 4. 開口部内の段ボール === */}
+        <Cube x={17} y={89} z={5} w={7} d={6} h={7} cTop={colors.boxTop} cLeft={colors.boxLeft} cRight={colors.boxRight} />
+        <Cube x={27} y={89} z={5} w={7} d={6} h={7} cTop={colors.boxTop} cLeft={colors.boxLeft} cRight={colors.boxRight} />
+
+        {/* === 5. プラットフォーム（青い出っ張り） === */}
+        <Cube x={13} y={95} z={3} w={24} d={3} h={2} cTop={colors.platform} cLeft="#0369a1" cRight="#075985" />
+
+        {/* === 6. 右下の壁の窓 === */}
+        <polygon points={`${iso(19,95.1,20)} ${iso(25,95.1,20)} ${iso(25,95.1,23)} ${iso(19,95.1,23)}`} fill={colors.windowFrame} stroke="#1e293b" strokeWidth="0.5" />
+        <polygon points={`${iso(19.5,95.2,20.5)} ${iso(24.5,95.2,20.5)} ${iso(24.5,95.2,22.5)} ${iso(19.5,95.2,22.5)}`} fill={colors.windowGlass} />
+
+        {/* === 7. 左下の壁（M字・左面） === */}
+        <polygon points={`
+          ${iso(45,95,0)} ${iso(45,5,0)} ${iso(45,5,25)} 
+          ${iso(45,27.5,45)} ${iso(45,50,25)} ${iso(45,72.5,45)} ${iso(45,95,25)}
+        `} fill={colors.wallLeft} stroke="#3f3f46" strokeWidth="0.8" strokeLinejoin="round" />
+
+        {/* === 8. 左下の壁の窓1 (奥の山の下) === */}
+        <polygon points={`${iso(45.1,15,15)} ${iso(45.1,23,15)} ${iso(45.1,23,19)} ${iso(45.1,15,19)}`} fill={colors.windowFrame} stroke="#1e293b" strokeWidth="0.5" />
+        <polygon points={`${iso(45.2,15.5,15.5)} ${iso(45.2,22.5,15.5)} ${iso(45.2,22.5,18.5)} ${iso(45.2,15.5,18.5)}`} fill={colors.windowGlass} />
+
+        {/* === 9. 左下の壁の窓2 (奥の山の下・中央寄り) === */}
+        <polygon points={`${iso(45.1,35,15)} ${iso(45.1,43,15)} ${iso(45.1,43,19)} ${iso(45.1,35,19)}`} fill={colors.windowFrame} stroke="#1e293b" strokeWidth="0.5" />
+        <polygon points={`${iso(45.2,35.5,15.5)} ${iso(45.2,42.5,15.5)} ${iso(45.2,42.5,18.5)} ${iso(45.2,35.5,18.5)}`} fill={colors.windowGlass} />
+
+        {/* === 10. 左下の壁の搬入口（シャッター） === */}
+        <polygon points={`${iso(45.1,65,0)} ${iso(45.1,83,0)} ${iso(45.1,83,14)} ${iso(45.1,65,14)}`} fill={colors.doorDark} stroke="#1e293b" strokeWidth="0.5" />
+        <polygon points={`${iso(45.2,66,0)} ${iso(45.2,82,0)} ${iso(45.2,82,13)} ${iso(45.2,66,13)}`} fill={colors.shutter} />
+        {/* シャッターの縞模様 */}
+        {[2, 4, 6, 8, 10, 12].map(lz => (
+          <line key={`sh-${lz}`} 
+                x1={iso(45.3, 66, lz).split(',')[0]} y1={iso(45.3, 66, lz).split(',')[1]}
+                x2={iso(45.3, 82, lz).split(',')[0]} y2={iso(45.3, 82, lz).split(',')[1]} 
+                stroke="#27272a" strokeWidth="0.8" />
+        ))}
+
+        {/* === 11. 搬入口の白い庇と柱 === */}
+        {/* 柱 (手前側のみ) */}
+        <Cube x={49} y={81} z={0} w={2} d={2} h={14} cTop={colors.eaveRight} cLeft={colors.eaveLeft} cRight={colors.eaveRight} />
+        {/* 庇本体 */}
+        <Cube x={45.1} y={63} z={14} w={6} d={22} h={3} cTop={colors.eaveTop} cLeft={colors.eaveLeft} cRight={colors.eaveRight} />
+
+        {/* === 12. 屋根 === */}
+        {/* 斜面1 (一番奥、裏側で見えにくいが立体感のため描画) */}
+        <polygon points={`${iso(3,27.5,47)} ${iso(47,27.5,47)} ${iso(47,3,27)} ${iso(3,3,27)}`} fill={colors.roofDark} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 斜面2 (奥の山の手前斜面) */}
+        <polygon points={`${iso(3,27.5,47)} ${iso(47,27.5,47)} ${iso(47,50,27)} ${iso(3,50,27)}`} fill={colors.roofLight} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 斜面3 (手前の山の奥斜面) */}
+        <polygon points={`${iso(3,72.5,47)} ${iso(47,72.5,47)} ${iso(47,50,27)} ${iso(3,50,27)}`} fill={colors.roofDark} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 斜面4 (一番手前) */}
+        <polygon points={`${iso(3,72.5,47)} ${iso(47,72.5,47)} ${iso(47,97,25)} ${iso(3,97,25)}`} fill={colors.roofLight} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+
+        {/* === 13. 屋根の縁取り（厚み） === */}
+        {/* 左面のM字の断面 */}
+        <polygon points={`
+          ${iso(47, 3, 25)} ${iso(47, 27.5, 45)} ${iso(47, 50, 25)} ${iso(47, 72.5, 45)} ${iso(47, 97, 23)}
+          ${iso(47, 97, 25)} ${iso(47, 72.5, 47)} ${iso(47, 50, 27)} ${iso(47, 27.5, 47)} ${iso(47, 3, 27)}
+        `} fill={colors.roofEdgeSide} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 右手前（先端）の断面 */}
+        <polygon points={`${iso(3,97,23)} ${iso(47,97,23)} ${iso(47,97,25)} ${iso(3,97,25)}`} fill={colors.roofEdgeFront} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+
+      </g>
+    </svg>
+  );
+};
 
 export const SvgMarket = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
@@ -1159,21 +1399,197 @@ export const SvgMarket = () => (
   </svg>
 );
 
-export const SvgPort = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-35,-2 -15,-12 5,-2 -15,8" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-35,-2 -15,8 -15,12 -35,2" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 -10,-10 15,2.5 25,-2.5" fill="#78350f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 15,2.5 15,5 0,-12" fill="#451a03" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-10, -5)">
-        <polygon points="0,0 -2.5,-1 -2.5,-20 0,-18" fill="#ca8a04" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,0 2.5,-1 2.5,-20 0,-18" fill="#facc15" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,-20 15,-28 15,-26 0,-18" fill="#facc15" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+export const SvgPort = () => {
+  // 100x100の2Dグリッドをアイソメトリックベースにマッピングする関数
+  const iso = (x, y, z = 0) => {
+    const ptX = (x - y) * 0.44;
+    const ptY = -44 + (x + y) * 0.22 - z;
+    return `${ptX.toFixed(2)},${ptY.toFixed(2)}`;
+  };
+
+  // カラーパレット
+  const colors = {
+    contWhite: { top: '#f8fafc', left: '#e2e8f0', right: '#cbd5e1' },
+    contBlue:  { top: '#38bdf8', left: '#0284c7', right: '#0369a1' },
+    contRed:   { top: '#f87171', left: '#dc2828', right: '#b91c1c' },
+    contYellow:{ top: '#facc15', left: '#eab308', right: '#ca8a04' },
+    contGreen: { top: '#4ade80', left: '#22c55e', right: '#16a34a' },
+    shipHull:  { top: '#475569', left: '#c2410c', right: '#ea580c' },
+    craneRed:  { top: '#f87171', left: '#ef4444', right: '#dc2828' },
+    craneDark: { top: '#475569', left: '#334155', right: '#1e293b' },
+  };
+
+  const boxColors = [colors.contWhite, colors.contBlue, colors.contRed, colors.contYellow, colors.contGreen];
+
+  // 描画オブジェクトを保持する配列
+  const objects = [];
+
+  // 直方体を追加
+  const addCube = (x, y, z, w, d, h, c) => {
+    objects.push({ cx: x + w / 2, cy: y + d / 2, cz: z + h / 2, type: 'cube', x, y, z, w, d, h, c });
+  };
+
+  // 船首（斜めカット）を追加
+  const addBow = (x, y, z, w, d, h, c) => {
+    objects.push({ cx: x + w / 2, cy: y + d / 3, cz: z + h / 2, type: 'bow', x, y, z, w, d, h, c });
+  };
+
+  // トラックを追加
+  const addTruck = (x, y, z) => {
+    addCube(x, y, z, 3, 8, 4, colors.contWhite);
+    addCube(x + 0.5, y - 2, z, 2, 2, 3, colors.contBlue);
+  };
+
+  const seaZ = -4; // 海面の高さ
+
+  // === 1. コンテナ船 ===
+  addCube(56, 15, seaZ, 26, 60, 12, colors.shipHull); // 船体
+  addBow(56, 5, seaZ, 26, 10, 12, colors.shipHull);   // 船首
+  addCube(58, 65, seaZ + 12, 22, 8, 8, colors.contWhite); // ブリッジ1階
+  addCube(60, 67, seaZ + 20, 18, 5, 6, colors.contWhite); // ブリッジ2階
+  addCube(68, 70, seaZ + 26, 4, 3, 10, colors.craneDark); // 煙突
+
+  // 船上のコンテナ
+  for (let cx = 58; cx <= 74; cx += 8) {
+    for (let cy = 20; cy <= 60; cy += 13) {
+      for (let cz = seaZ + 12; cz <= seaZ + 24; cz += 6) {
+        if ((cx * cy * cz) % 7 < 2) continue; // ランダムに間引く
+        addCube(cx, cy, cz, 7, 12.5, 5.5, boxColors[(cx + cy + cz) % boxColors.length]);
+      }
+    }
+  }
+
+  // === 2. 陸のコンテナ山 ===
+  for (let cx = 5; cx <= 25; cx += 8) {
+    for (let cy = 10; cy <= 80; cy += 14) {
+      for (let cz = 0; cz <= 6; cz += 6) {
+        if ((cx + cy * cz) % 5 < 2) continue;
+        addCube(cx, cy, cz, 7, 13, 5.5, boxColors[(cx * cy + cz) % boxColors.length]);
+      }
+    }
+  }
+
+  // === 3. ガントリークレーン（2基） ===
+  [28, 58].forEach(cy => {
+    // 左足 (陸奥側) と 右足 (海側・岸壁ギリギリ)
+    addCube(25, cy, 0, 3, 3, 26, colors.craneRed);
+    addCube(25, cy + 6, 0, 3, 3, 26, colors.craneRed);
+    addCube(25, cy, 12, 3, 9, 2, colors.craneRed);
+    
+    addCube(45, cy, 0, 3, 3, 26, colors.craneRed);
+    addCube(45, cy + 6, 0, 3, 3, 26, colors.craneRed);
+    addCube(45, cy, 12, 3, 9, 2, colors.craneRed);
+
+    // 足の間の横繋ぎ
+    addCube(25, cy, 26, 23, 3, 3, colors.craneRed);
+    addCube(25, cy + 6, 26, 23, 3, 3, colors.craneRed);
+
+    // メインブーム (海へ突き出す梁) ※重心ハックのため陸側と海側に分割
+    addCube(20, cy + 2.5, 29, 30, 4, 3, colors.craneRed); // 陸側
+    addCube(50, cy + 2.5, 29, 35, 4, 3, colors.craneRed); // 海側
+
+    // Aフレーム (上部の支柱)
+    objects.push({ cx: 35, cy: cy + 2.5, cz: 37, type: 'poly', fill: colors.craneRed.left,
+      points3d: [{x: 35, y: cy + 2.5, z: 44}, {x: 26, y: cy + 2.5, z: 32}, {x: 46, y: cy + 2.5, z: 32}] });
+    objects.push({ cx: 35, cy: cy + 6.5, cz: 37, type: 'poly', fill: colors.craneRed.left,
+      points3d: [{x: 35, y: cy + 6.5, z: 44}, {x: 26, y: cy + 6.5, z: 32}, {x: 46, y: cy + 6.5, z: 32}] });
+
+    // ワイヤー
+    objects.push({ cx: 55, cy: cy + 2.5, cz: 38, type: 'line', stroke: '#ef4444', strokeWidth: 1,
+      p1: {x: 35, y: cy + 2.5, z: 44}, p2: {x: 75, y: cy + 2.5, z: 32} });
+    objects.push({ cx: 55, cy: cy + 6.5, cz: 38, type: 'line', stroke: '#ef4444', strokeWidth: 1,
+      p1: {x: 35, y: cy + 6.5, z: 44}, p2: {x: 75, y: cy + 6.5, z: 32} });
+
+    // 吊り具とコンテナ
+    objects.push({ cx: 65, cy: cy + 4.5, cz: 24, type: 'line', stroke: '#1e293b', strokeWidth: 1,
+      p1: {x: 65, y: cy + 4.5, z: 29}, p2: {x: 65, y: cy + 4.5, z: 19} });
+    addCube(61.5, cy + 3, 19, 7, 3, 1, colors.craneDark);
+    addCube(61.5, cy + 2, 13.5, 7, 5, 5.5, boxColors[cy % boxColors.length]);
+  });
+
+  // === 4. トラック ===
+  addTruck(35, 20, 0);
+  addTruck(35, 45, 0);
+  addTruck(30, 80, 0);
+
+  // === Zソートの実行 (重心のX+Y+Zで奥から手前へ並び替え) ===
+  objects.sort((a, b) => (a.cx + a.cy + a.cz) - (b.cx + b.cy + b.cz));
+
+  // オブジェクトのレンダリング
+  const renderObject = (obj, i) => {
+    if (obj.type === 'cube') {
+      const { x, y, z, w, d, h, c } = obj;
+      return (
+        <g key={`obj-${i}`}>
+          <polygon points={`${iso(x,y+d,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={c.left} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+          <polygon points={`${iso(x+w,y,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(x+w,y,z+h)}`} fill={c.right} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+          <polygon points={`${iso(x,y,z+h)} ${iso(x+w,y,z+h)} ${iso(x+w,y+d,z+h)} ${iso(x,y+d,z+h)}`} fill={c.top} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+        </g>
+      );
+    }
+    if (obj.type === 'bow') {
+      const { x, y, z, w, d, h, c } = obj;
+      const tipX = x + w / 2;
+      return (
+        <g key={`obj-${i}`}>
+          <polygon points={`${iso(x,y+d,z)} ${iso(tipX,y,z)} ${iso(tipX,y,z+h)} ${iso(x,y+d,z+h)}`} fill={c.left} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+          <polygon points={`${iso(tipX,y,z)} ${iso(x+w,y+d,z)} ${iso(x+w,y+d,z+h)} ${iso(tipX,y,z+h)}`} fill={c.right} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+          <polygon points={`${iso(x,y+d,z+h)} ${iso(tipX,y,z+h)} ${iso(x+w,y+d,z+h)}`} fill={c.top} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+        </g>
+      );
+    }
+    if (obj.type === 'poly') {
+      const pts = obj.points3d.map(p => iso(p.x, p.y, p.z)).join(' ');
+      return <polygon key={`obj-${i}`} points={pts} fill={obj.fill} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />;
+    }
+    if (obj.type === 'line') {
+      const p1 = iso(obj.p1.x, obj.p1.y, obj.p1.z).split(',');
+      const p2 = iso(obj.p2.x, obj.p2.y, obj.p2.z).split(',');
+      return <line key={`obj-${i}`} x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} stroke={obj.stroke} strokeWidth={obj.strokeWidth} />;
+    }
+    return null;
+  };
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
+      <g transform="translate(50, 100) scale(1.15)">
+        
+        {/* 背景の土台（海と陸） */}
+        <polygon points={`${iso(50,0,seaZ)} ${iso(100,0,seaZ)} ${iso(100,100,seaZ)} ${iso(50,100,seaZ)}`} fill="#0891b2" />
+        <polygon points={`${iso(0,0,0)} ${iso(50,0,0)} ${iso(50,100,0)} ${iso(0,100,0)}`} fill="#94a3b8" />
+        <polygon points={`${iso(50,0,seaZ)} ${iso(50,100,seaZ)} ${iso(50,100,0)} ${iso(50,0,0)}`} fill="#64748b" stroke="#334155" strokeWidth="0.5" />
+
+        {/* トラックの通り道（アスファルトの装飾） */}
+        <polygon points={`${iso(33,0,0.02)} ${iso(38,0,0.02)} ${iso(38,100,0.02)} ${iso(33,100,0.02)}`} fill="#cbd5e1" opacity="0.6" />
+
+        {/* 岸壁のゼブラ模様 */}
+        <polygon points={`${iso(46,0,0.05)} ${iso(50,0,0.05)} ${iso(50,100,0.05)} ${iso(46,100,0.05)}`} fill="#334155" />
+        {Array.from({ length: 15 }).map((_, i) => (
+          <polygon key={`zebra-${i}`} 
+            points={`${iso(46, i*6.5+1, 0.1)} ${iso(50, i*6.5+3, 0.1)} ${iso(50, i*6.5+5.5, 0.1)} ${iso(46, i*6.5+3.5, 0.1)}`}
+            fill="#eab308" />
+        ))}
+
+        {/* 海面の波 */}
+        {[...Array(20)].map((_, i) => {
+          const px = 60 + (i * 7) % 35;
+          const py = 10 + (i * 13) % 85;
+          return (
+            <line key={`wave-${i}`}
+              x1={iso(px, py, seaZ).split(',')[0]} y1={iso(px, py, seaZ).split(',')[1]}
+              x2={iso(px+3, py, seaZ).split(',')[0]} y2={iso(px+3, py, seaZ).split(',')[1]}
+              stroke="#22d3ee" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+          );
+        })}
+
+        {/* Zソートされたすべての立体オブジェクト */}
+        {objects.map(renderObject)}
+
       </g>
-    </g>
-  </svg>
-);
+    </svg>
+  );
+};
 
 export const SvgGarden = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="garden" color="#86efac" thickness={3} /></svg>;
 
