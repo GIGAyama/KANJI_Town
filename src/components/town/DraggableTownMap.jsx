@@ -400,16 +400,17 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         const megaH = megaInfo.item.isoHeight || 48;
         const megaCenterX = toIsoX(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
         const megaCenterY = toIsoY(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
+        const megaZIndex = depth + (mw + mh - 2) * 100 + 140; // １マスの建物(+140)と基準を揃え、最前面のタイルの奥側に判定を置く
         const megaStyle = {
           position: 'absolute',
           left: megaCenterX - TILE_W * mw / 2,
           top: megaCenterY - megaH,
           width: TILE_W * mw,
           height: TILE_H * mh + megaH,
-          zIndex: depth + (mw + mh - 2) * 100 + 1, // 少しだけ浮かせて同等深度のオブジェクトの手前に表示
+          zIndex: megaZIndex,
         };
-        result.push({ depth: depth + (mw + mh - 2) * 100 + 1, element:
-          <div key={key} style={megaStyle}
+        result.push({ depth: megaZIndex, element:
+          <div key={`${key}-mega`} style={megaStyle}
             className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
             <megaInfo.item.svg />
           </div>
@@ -448,46 +449,59 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       // 通常セル（更地・建物・雑草）
       const groundColors = isTerrain ? terrainColors : TERRAIN_COLORS.t_cleared;
 
+      // ======================================
+      // 1. 地面レイヤー（足元）
+      // ======================================
       result.push({ depth, element:
-        <div key={key} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2 }}
+        <div key={`${key}-ground`} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
           className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
-          {/* 地面ダイヤモンド（建物の下に描画） */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, width: TILE_W }}>
-            <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
-          </div>
-          {/* 建物SVG */}
-          <AnimatePresence mode="popLayout">
-            {item && !isTerrain ? (
-              <motion.div key={itemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
-                transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
-                className="absolute inset-0 flex items-end justify-center"
-                style={{ bottom: 2 }}>
-                <div style={{
-                  width: TILE_W,
-                  height: Math.max(TILE_W, TILE_H + isoHeight),
-                  transform: isFlipped ? 'scaleX(-1)' : 'none',
-                  filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
-                }}>
-                  <item.svg />
-                </div>
-              </motion.div>
-            ) : item && item.id === 't_weed' ? (
-              <motion.div key="weed" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                className="absolute inset-0 flex items-end justify-center" style={{ bottom: 4 }}>
-                <div style={{ width: TILE_W * 0.7, height: TILE_H * 0.7 }}>
-                  <item.svg />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-          {/* ゴースト */}
-          {hasGhost && (
-            <motion.div animate={{ y: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute z-20 text-2xl drop-shadow-lg pointer-events-none select-none"
-              style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
-          )}
+          <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
         </div>
       });
+
+      // ======================================
+      // 2. 建物・オブジェクトレイヤー（立体物）
+      // ======================================
+      if ((item && !isTerrain) || (item && item.id === 't_weed') || hasGhost) {
+        const objZIndex = depth + 140; // タイルの奥から約70%の位置を基準とし、手前を歩く住人が前に来るようにする
+        
+        result.push({ depth: objZIndex, element:
+          <div key={`${key}-obj`} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2, zIndex: objZIndex }}
+            className={`select-none pointer-events-none ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
+            {/* 建物SVG */}
+            <AnimatePresence mode="popLayout">
+              {item && !isTerrain ? (
+                <motion.div key={itemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
+                  transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
+                  className="absolute inset-0 flex items-end justify-center"
+                  style={{ bottom: 2 }}>
+                  <div style={{
+                    width: TILE_W,
+                    height: Math.max(TILE_W, TILE_H + isoHeight),
+                    transform: isFlipped ? 'scaleX(-1)' : 'none',
+                    filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
+                  }}>
+                    <item.svg />
+                  </div>
+                </motion.div>
+              ) : item && item.id === 't_weed' ? (
+                <motion.div key="weed" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  className="absolute inset-0 flex items-end justify-center" style={{ bottom: 4 }}>
+                  <div style={{ width: TILE_W * 0.7, height: TILE_H * 0.7 }}>
+                    <item.svg />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+            {/* ゴースト */}
+            {hasGhost && (
+              <motion.div animate={{ y: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 2 }}
+                className="absolute z-60 text-2xl drop-shadow-lg pointer-events-none select-none"
+                style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
+            )}
+          </div>
+        });
+      }
     }
     return result;
   }, [safeMapData, ghosts, isDanger, isEditing, exploredRadius, viewRange, megaAnchors, timeOfDay]);
