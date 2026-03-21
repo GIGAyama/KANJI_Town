@@ -238,6 +238,13 @@ const RESULT_TO_TOWN_ITEM = {
   gold_statue: 't_gold_statue',
   festival_stage: 't_festival_stage',
   // 新規オブジェクト
+  grass_flat: 't_grass_flat',
+  brick: 't_brick',
+  asphalt: 't_asphalt',
+  magma: 't_magma',
+  crosswalk: 't_crosswalk',
+  railway: 't_railway',
+  dirt: 't_dirt',
   cafe: 't_cafe',
   bakery: 't_bakery',
   burger_shop: 't_burger_shop',
