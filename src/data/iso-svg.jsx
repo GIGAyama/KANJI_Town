@@ -1529,7 +1529,41 @@ export const SvgNationalLibrary = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-4 -32,-20 0,-36 32,-20" fill="#cbd5e1" /><polygon points="0,-15 -28,-29 -28,-45 0,-31" fill="#fde68a" /><polygon points="0,-15 28,-29 28,-45 0,-31" fill="#fef08a" /><polygon points="0,-33 -30,-48 0,-60 30,-48" fill="#d6d3d1" /><polygon points="0,-31 -30,-46 -30,-48 0,-33" fill="#94a3b8" /><polygon points="0,-31 30,-46 30,-48 0,-33" fill="#cbd5e1" /><g transform="translate(0, -42)"><polygon points="0,0 -12,-6 -12,-12 0,-6" fill="#d4d4d8" /><polygon points="0,0 12,-6 12,-12 0,-6" fill="#e4e4e7" /><path d="M -12,-12 C -12,-28 12,-28 12,-12" fill="#0f766e" /><polygon points="-2,-27 2,-27 2,-30 -2,-30" fill="#e2e8f0" /><polygon points="-3,-30 3,-30 0,-33" fill="#0f766e" /></g></g></svg>);
 
 export const SvgWell = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="-2" rx="14" ry="7" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -12,-6 -12,-14 0,-8" fill="#64748b" /><polygon points="0,0 12,-6 12,-14 0,-8" fill="#94a3b8" /><polygon points="0,-8 -12,-14 0,-20 12,-14" fill="#cbd5e1" /><polygon points="0,-11 -8,-15 0,-19 8,-15" fill="url(#grad-water)" opacity="0.9" /><polygon points="-14,-22 0,-15 0,-30 -14,-37" fill="#b45309" /><polygon points="14,-22 0,-15 0,-30 14,-37" fill="#d97706" /><polygon points="-2,-10 2,-8 2,-5 -2,-7" fill="#92400e" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 100) scale(2.0)">
+      {/* 影 */}
+      <ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.2" filter="url(#soft-shadow)" />
+      
+      {/* 井戸の基礎（石造り） */}
+      <path d="M -14,-10 L -14,0 A 14,7 0 0 0 14,0 L 14,-10 A 14,7 0 0 1 -14,-10 Z" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <ellipse cx="0" cy="-10" rx="14" ry="7" fill="#94a3b8" stroke="#000" strokeWidth="1.5" />
+      <ellipse cx="0" cy="-10" rx="11" ry="5.5" fill="#475569" stroke="#000" strokeWidth="1" />
+      <ellipse cx="0" cy="-11" rx="10" ry="5" fill="url(#grad-water)" opacity="0.8" />
+
+      {/* 支柱 */}
+      <polygon points="-12,-10 -9,-11.5 -9,-40 -12,-38.5" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points="9,-18.5 12,-20 12,-48.5 9,-47" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+      {/* 横木（回転軸） */}
+      <line x1="-10.5" y1="-37" x2="10.5" y2="-47" stroke="#451a03" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M 0,-42 L 0,-25" stroke="#78350f" strokeWidth="1.2" /> {/* 縄 */}
+
+      {/* 屋根 */}
+      <g>
+        {/* 左斜面 */}
+        <polygon points="-18,-45 0,-54 20,-44 2,-35" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="-18,-45 2,-35 2,-33 -18,-43" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* 右斜面 */}
+        <polygon points="0,-54 18,-63 -2,-53 -20,-44" fill="#f59e0b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="18,-63 -2,-53 -2,-51 18,-61" fill="#d97706" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      </g>
+
+      {/* ハンドル */}
+      <path d="M 12,-48 L 16,-46 L 16,-42 L 14,-41" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  </svg>
+);
 
 export const SvgTownhall = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="-2" rx="30" ry="15" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,-4 -24,-16 0,-28 24,-16" fill="#e2e8f0" /><polygon points="0,-4 -22,-15 -22,-24 0,-13" fill="#b91c1c" /><polygon points="0,-4 22,-15 22,-24 0,-13" fill="#ef4444" /><polygon points="-2,-14 -24,-25 -14,-31 8,-20" fill="url(#grad-roof-slate)" /><polygon points="2,-14 24,-25 14,-31 -8,-20" fill="url(#grad-roof-slate)" /><polygon points="0,-4 -8,-8 -8,-40 0,-36" fill="#f8fafc" /><polygon points="0,-4 8,-8 8,-40 0,-36" fill="#e2e8f0" /><polygon points="0,-4 -4,-6 -4,-12 0,-10" fill="#1e293b" /><circle cx="-4" cy="-28" r="2.5" fill="#fcd34d" /><circle cx="4" cy="-28" r="2.5" fill="#fcd34d" /><polygon points="-10,-39 0,-34 10,-39 0,-50" fill="url(#grad-roof-blue)" /><line x1="0" y1="-50" x2="0" y2="-56" stroke="#fcd34d" strokeWidth="1" /><circle cx="0" cy="-57" r="1" fill="#fcd34d" /></g></svg>);
