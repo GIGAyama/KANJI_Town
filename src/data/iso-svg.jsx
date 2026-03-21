@@ -565,69 +565,138 @@ export const SvgHouse1 = () => (
   </svg>
 );
 
-export const SvgHouse2 = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      {/* Ground Shadow */}
-      <ellipse cx="8" cy="-8" rx="34" ry="17" fill="rgba(0,0,0,0.15)" />
+export const SvgHouse2 = () => {
+  const ptX = (i, j) => (i - 1.0) * 26 - (j - 0.5) * 26;
+  const ptY = (i, j, k) => (i - 1.0) * 13 + (j - 0.5) * 13 - k * 22;
+  const pt = (i, j, k) => `${ptX(i,j).toFixed(1)},${ptY(i,j,k).toFixed(1)}`;
 
-      {/* Main House Left Wall (Facing SW -> appears left) */}
-      <polygon points="-16,-20 0,-12 0,-46 -16,-54" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Main House Right Wall (Facing SE -> appears right) */}
-      <polygon points="0,-12 32,-28 32,-62 0,-46" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      
-      {/* 2nd floor Windows on Main House Left Wall */}
-      <polygon points="-12,-38 -8,-36 -8,-44 -12,-46" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+  const wallSW = "#f5f5f4";
+  const wallSE = "#e7e5e4";
+  const wallBaseSW = "#a8a29e";
+  const wallBaseSE = "#78716c";
+  const roofSW = "#ef4444";
+  const roofSE = "#dc2626";
+  const roofNW = "#b91c1c";
+  const roofNE = "#b91c1c";
 
-      {/* Main House Base Trim */}
-      <polygon points="-16,-20 0,-12 0,-15 -16,-23" fill="#a8a29e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,-12 32,-28 32,-31 0,-15" fill="#d6d3d1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-      {/* Entrance Door on Main House Right Wall */}
-      <polygon points="20,-22 26,-25 26,-36 20,-33" fill="#ea580c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="21.5" cy="-28" r="0.8" fill="#fff" />
-      
-      {/* 2nd floor Windows on Main House Right Wall */}
-      <polygon points="12,-34 16,-36 16,-44 12,-42" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="20,-38 24,-40 24,-48 20,-46" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="26,-41 30,-43 30,-51 26,-49" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-      {/* Main House Roof (Gable on the Left face) */}
-      {/* Left Gable Triangle */}
-      <polygon points="-16,-54 0,-46 -8,-68" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Front Roof Slope (Facing SE) */}
-      <polygon points="-8,-68 24,-84 32,-62 0,-46" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      
-      {/* Garage Block (In front) */}
-      {/* Garage Left Wall (Faces SW) */}
-      <polygon points="-12,-8 0,-2 0,-20 -12,-26" fill="#e7e5e4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Garage Right Wall (Faces SE) */}
-      <polygon points="0,-2 18,-11 18,-29 0,-20" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      
-      {/* Garage Base Trim */}
-      <polygon points="-12,-8 0,-2 0,-5 -12,-11" fill="#a8a29e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,-2 18,-11 18,-14 0,-5" fill="#d6d3d1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      
-      {/* Garage Door on Right Wall */}
-      <polygon points="4,-6 14,-11 14,-22 4,-17" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Garage Door horizontal seams */}
-      <line x1="4" y1="-10" x2="14" y2="-15" stroke="#cbd5e1" strokeWidth="1" />
-      <line x1="4" y1="-14" x2="14" y2="-19" stroke="#cbd5e1" strokeWidth="1" />
-      
-      {/* Windows on Garage Left Wall */}
-      <polygon points="-10,-12 -7,-10.5 -7,-16.5 -10,-18" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="-5,-9.5 -2,-8 -2,-14 -5,-15.5" fill="#38bdf8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-      {/* Garage Gable Triangle (on Right Wall) */}
-      <polygon points="0,-20 18,-29 9,-38.5" fill="#f5f5f4" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      
-      {/* Garage Roof Left Slope (Faces SW, visible) */}
-      <polygon points="9,-38.5 -3,-44.5 -12,-26 0,-20" fill="#dc2626" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Garage Roof Right Slope (Faces NE, mostly occluded but drawn to cut Main House) */}
-      <polygon points="9,-38.5 -3,-44.5 6,-35 18,-29" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+  const FaceSW = ({ i1, i2, j, k1, k2, fill = wallSW, hasBase = true }) => (
+    <g>
+      {hasBase && <polygon points={`${pt(i1,j,k1)} ${pt(i2,j,k1)} ${pt(i2,j,k1+0.2)} ${pt(i1,j,k1+0.2)}`} fill={wallBaseSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />}
+      <polygon points={`${pt(i1,j, k1 + (hasBase?0.2:0))} ${pt(i2,j, k1 + (hasBase?0.2:0))} ${pt(i2,j,k2)} ${pt(i1,j,k2)}`} fill={fill} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
     </g>
-  </svg>
-);
+  );
+
+  const FaceSE = ({ i, j1, j2, k1, k2, fill = wallSE, hasBase = true }) => (
+    <g>
+      {hasBase && <polygon points={`${pt(i,j1,k1)} ${pt(i,j2,k1)} ${pt(i,j2,k1+0.2)} ${pt(i,j1,k1+0.2)}`} fill={wallBaseSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />}
+      <polygon points={`${pt(i,j1,k1 + (hasBase?0.2:0))} ${pt(i,j2,k1 + (hasBase?0.2:0))} ${pt(i,j2,k2)} ${pt(i,j1,k2)}`} fill={fill} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+    </g>
+  );
+
+  const WindowSW = ({ i, j, k }) => {
+    const w = 0.12; const h = 0.35;
+    return (
+      <g>
+        <polygon points={`${pt(i-w,j,k)} ${pt(i+w,j,k)} ${pt(i+w,j,k+h)} ${pt(i-w,j,k+h)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+        <polygon points={`${pt(i-w*0.7,j,k+0.05)} ${pt(i+w*0.7,j,k+0.05)} ${pt(i+w*0.7,j,k+h-0.05)} ${pt(i-w*0.7,j,k+h-0.05)}`} fill="#38bdf8" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"/>
+        <line x1={ptX(i,j)} y1={ptY(i,j,k+0.05)} x2={ptX(i,j)} y2={ptY(i,j,k+h-0.05)} stroke="#1e293b" strokeWidth="1"/>
+        <line x1={ptX(i-w*0.7,j)} y1={ptY(i-w*0.7,j,k+h*0.5)} x2={ptX(i+w*0.7,j)} y2={ptY(i+w*0.7,j,k+h*0.5)} stroke="#1e293b" strokeWidth="1"/>
+      </g>
+    );
+  };
+
+  const WindowSE = ({ i, j, k }) => {
+    const w = 0.12; const h = 0.35;
+    return (
+      <g>
+        <polygon points={`${pt(i,j-w,k)} ${pt(i,j+w,k)} ${pt(i,j+w,k+h)} ${pt(i,j-w,k+h)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+        <polygon points={`${pt(i,j-w*0.7,k+0.05)} ${pt(i,j+w*0.7,k+0.05)} ${pt(i,j+w*0.7,k+h-0.05)} ${pt(i,j-w*0.7,k+h-0.05)}`} fill="#38bdf8" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"/>
+        <line x1={ptX(i,j)} y1={ptY(i,j,k+0.05)} x2={ptX(i,j)} y2={ptY(i,j,k+h-0.05)} stroke="#1e293b" strokeWidth="1"/>
+        <line x1={ptX(i,j-w*0.7)} y1={ptY(i,j-w*0.7,k+h*0.5)} x2={ptX(i,j+w*0.7)} y2={ptY(i,j+w*0.7,k+h*0.5)} stroke="#1e293b" strokeWidth="1"/>
+      </g>
+    );
+  };
+
+  const RoofJ = ({ i1, i2, j1, j2, kBase, kPeak, drawGableSW = true }) => {
+    const iMid = (i1 + i2) / 2;
+    return (
+      <g>
+        {drawGableSW && <polygon points={`${pt(i1, j2, kBase)} ${pt(i2, j2, kBase)} ${pt(iMid, j2, kPeak)}`} fill={wallSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
+        <polygon points={`${pt(i1, j2, kBase)} ${pt(iMid, j2, kPeak)} ${pt(iMid, j1, kPeak)} ${pt(i1, j1, kBase)}`} fill={roofNW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+        <polygon points={`${pt(iMid, j2, kPeak)} ${pt(i2, j2, kBase)} ${pt(i2, j1, kBase)} ${pt(iMid, j1, kPeak)}`} fill={roofSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+      </g>
+    );
+  };
+
+  const RoofI = ({ i1, i2, j1, j2, kBase, kPeak, drawGableSE = true }) => {
+    const jMid = (j1 + j2) / 2;
+    return (
+      <g>
+        {drawGableSE && <polygon points={`${pt(i2, j1, kBase)} ${pt(i2, j2, kBase)} ${pt(i2, jMid, kPeak)}`} fill={wallSE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>}
+        <polygon points={`${pt(i1, jMid, kPeak)} ${pt(i2, jMid, kPeak)} ${pt(i2, j2, kBase)} ${pt(i1, j2, kBase)}`} fill={roofSW} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+        <polygon points={`${pt(i1, j1, kBase)} ${pt(i2, j1, kBase)} ${pt(i2, jMid, kPeak)} ${pt(i1, jMid, kPeak)}`} fill={roofNE} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+      </g>
+    );
+  };
+
+  const GarageDoor = ({ i, j, k }) => {
+    const w = 0.25; const h = 0.55;
+    return (
+      <g>
+         <polygon points={`${pt(i-w, j, k)} ${pt(i+w, j, k)} ${pt(i+w, j, k+h)} ${pt(i-w, j, k+h)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
+         <line x1={ptX(i-w,j)} y1={ptY(i-w,j,k+h*0.33)} x2={ptX(i+w,j)} y2={ptY(i+w,j,k+h*0.33)} stroke="#cbd5e1" strokeWidth="1"/>
+         <line x1={ptX(i-w,j)} y1={ptY(i-w,j,k+h*0.66)} x2={ptX(i+w,j)} y2={ptY(i+w,j,k+h*0.66)} stroke="#cbd5e1" strokeWidth="1"/>
+      </g>
+    );
+  };
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 75) scale(2.5)">
+        {/* Driveway & Path to use 2x1 ground space beautifully */}
+        <polygon points={`${pt(0.2, 0.85, 0)} ${pt(0.7, 0.85, 0)} ${pt(0.7, 1.0, 0)} ${pt(0.2, 1.0, 0)}`} fill="#d1d5db" opacity="0.6" strokeLinejoin="round" />
+        <polygon points={`${pt(1.4, 0.6, 0)} ${pt(1.8, 0.6, 0)} ${pt(1.8, 1.0, 0)} ${pt(1.4, 1.0, 0)}`} fill="#d1d5db" opacity="0.8" strokeLinejoin="round" />
+        
+        {/* Back Main House */}
+        {/* Left Wall */}
+        <FaceSE i={0.8} j1={0.1} j2={0.6} k1={0} k2={1.4} fill={wallSE} />
+        {/* Right Wall */}
+        <FaceSE i={1.9} j1={0.1} j2={0.6} k1={0} k2={1.4} fill={wallSE} />
+        <WindowSE i={1.9} j={0.25} k={0.3} />
+        <WindowSE i={1.9} j={0.45} k={0.3} />
+        
+        {/* Front Wall */}
+        <FaceSW i1={0.8} i2={1.9} j={0.6} k1={0} k2={1.4} fill={wallSW} />
+        
+        {/* Main House Door & Windows 1F */}
+        <polygon points={`${pt(1.5, 0.6, 0.2)} ${pt(1.7, 0.6, 0.2)} ${pt(1.7, 0.6, 0.75)} ${pt(1.5, 0.6, 0.75)}`} fill="#ea580c" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <circle cx={ptX(1.53, 0.6)} cy={ptY(1.53, 0.6, 0.45)} r="0.6" fill="#fff" />
+        <WindowSW i={1.05} j={0.6} k={0.25} />
+        <WindowSW i={1.3} j={0.6} k={0.25} />
+
+        {/* Main House Windows 2F */}
+        <WindowSW i={1.05} j={0.6} k={0.9} />
+        <WindowSW i={1.3} j={0.6} k={0.9} />
+        <WindowSW i={1.6} j={0.6} k={0.9} />
+
+        <RoofI i1={0.8} i2={1.9} j1={0.1} j2={0.6} kBase={1.4} kPeak={2.2} />
+
+        {/* Front Garage Block */}
+        <FaceSW i1={0.1} i2={0.8} j={0.85} k1={0} k2={1.0} />
+        <FaceSE i={0.8} j1={0.3} j2={0.85} k1={0} k2={1.0} />
+        
+        <GarageDoor i={0.45} j={0.85} k={0.2} />
+        <RoofJ i1={0.1} i2={0.8} j1={0.3} j2={0.85} kBase={1.0} kPeak={1.6} />
+
+        {/* Small decorations */}
+        <g>
+          <ellipse cx={ptX(1.8, 0.75)} cy={ptY(1.8, 0.75, 0.05)} rx="4" ry="2" fill="#166534" />
+          <ellipse cx={ptX(1.8, 0.75)} cy={ptY(1.8, 0.75, 0.15)} rx="3" ry="1.5" fill="#22c55e" />
+        </g>
+      </g>
+    </svg>
+  );
+};
 
 // SvgHouse3 helper components inside the file scope, or defined concisely within SvgHouse3
 export const SvgHouse3 = () => {
