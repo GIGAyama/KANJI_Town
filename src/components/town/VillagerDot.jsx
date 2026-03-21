@@ -30,10 +30,11 @@ const CULTIVATABLE_TERRAIN = new Set([
 // 距離計算ヘルパー
 const distance = (x1, y1, x2, y2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 
-const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
+const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthChange }) => {
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用
   const [gridPos, setGridPos] = useState({ x: villager.x, y: villager.y });
+  const prevDepthRef = useRef(Math.round(villager.x + villager.y));
   const [aiState, setAiState] = useState('IDLE'); // 'IDLE' | 'MOVING' | 'INTERACTING'
   const [emotion, setEmotion] = useState(null); // 'heart' | 'note' | 'exclamation' | 'sleep' | null
   const [facesRight, setFacesRight] = useState(false); // 進行方向による翻転
@@ -178,6 +179,15 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
     frameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frameRef.current);
   }, [mapData, villager.id.length]);
+
+  // 深度変化を親に通知（DOM順ソート用）
+  useEffect(() => {
+    const newDepth = Math.round(gridPos.x + gridPos.y);
+    if (newDepth !== prevDepthRef.current) {
+      prevDepthRef.current = newDepth;
+      onDepthChange?.(villager.id, newDepth);
+    }
+  }, [gridPos.x, gridPos.y, onDepthChange, villager.id]);
 
   // CSS描画用位置計算
   const baseIsoX = toIsoX(gridPos.x, gridPos.y);

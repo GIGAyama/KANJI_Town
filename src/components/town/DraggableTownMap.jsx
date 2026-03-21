@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut, Users } from 'lucide-react';
 import { TOWN_ITEMS } from '../../data/town-items';
@@ -305,8 +305,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     });
   }, [isDanger, isEditing, reviewCount, exploredRadius, safeMapData]);
 
-  // ── セル描画 ──
-  const cells = useMemo(() => {
+  // ── セル描画（深度データ付き） ──
+  const cellsWithDepth = useMemo(() => {
     const result = [];
     const { startX, startY, endX, endY } = viewRange;
     // Y+X順でソート（奥から手前へ描画）
@@ -372,23 +372,23 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
 
       // フォグ（未探索）
       if (!isVisible) {
-        result.push(
+        result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
             <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H} style={{ display: 'block' }}>
               <polygon points="32,0 64,16 32,32 0,16" fill="#0f172a" />
             </svg>
           </div>
-        );
+        });
         continue;
       }
 
       // 岩盤
       if (itemId === 't_bedrock') {
-        result.push(
+        result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
             <GroundDiamond colors={TERRAIN_COLORS.t_bedrock} tint={null} isEditing={false} />
           </div>
-        );
+        });
         continue;
       }
 
@@ -398,7 +398,6 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         const mw = megaInfo.w;
         const mh = megaInfo.h;
         const megaH = megaInfo.item.isoHeight || 48;
-        // メガ建築の中心位置を計算
         const megaCenterX = toIsoX(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
         const megaCenterY = toIsoY(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
         const megaStyle = {
@@ -409,13 +408,12 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           height: TILE_H * mh + megaH,
           zIndex: depth + mw + mh,
         };
-        result.push(
+        result.push({ depth: depth + mw + mh, element:
           <div key={key} style={megaStyle}
-
             className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
             <megaInfo.item.svg />
           </div>
-        );
+        });
         continue;
       }
 
@@ -423,9 +421,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       const terrainColors = isTerrain ? (TERRAIN_COLORS[itemId] || TERRAIN_COLORS.t_roughland) : null;
 
       if (CULTIVATABLE_TERRAIN.has(itemId)) {
-        result.push(
+        result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
-
             className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
             <GroundDiamond colors={terrainColors} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
             {isEditing && (
@@ -434,26 +431,25 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
               </div>
             )}
           </div>
-        );
+        });
         continue;
       }
 
       // 浅瀬
       if (itemId === 't_shallow_water') {
-        result.push(
+        result.push({ depth, element:
           <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}>
             <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} isEditing={false} />
           </div>
-        );
+        });
         continue;
       }
 
       // 通常セル（更地・建物・雑草）
       const groundColors = isTerrain ? terrainColors : TERRAIN_COLORS.t_cleared;
 
-      result.push(
+      result.push({ depth, element:
         <div key={key} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2 }}
-
           className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
           {/* 地面ダイヤモンド（建物の下に描画） */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, width: TILE_W }}>
@@ -466,8 +462,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
                 transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
                 className="absolute inset-0 flex items-end justify-center"
                 style={{ bottom: 2 }}>
-                <div style={{ 
-                  width: TILE_W, 
+                <div style={{
+                  width: TILE_W,
                   height: Math.max(TILE_W, TILE_H + isoHeight),
                   transform: isFlipped ? 'scaleX(-1)' : 'none',
                   filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
@@ -491,11 +487,43 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
               style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
           )}
         </div>
-      );
+      });
     }
     return result;
   }, [safeMapData, ghosts, isDanger, isEditing, exploredRadius, viewRange, megaAnchors, timeOfDay]);
 
+  // ── 住人の深度追跡 ──
+  const [villagerDepthMap, setVillagerDepthMap] = useState({});
+  const handleVillagerDepthChange = useCallback((id, depth) => {
+    setVillagerDepthMap(prev => prev[id] === depth ? prev : { ...prev, [id]: depth });
+  }, []);
+
+  // ── セル＋住人を深度順に統合ソート（DOM描画順 = 奥→手前）──
+  const sortedElements = useMemo(() => {
+    // セル: sortKey = depth * 2（セルが先に描画される）
+    // 住人: sortKey = depth * 2 + 1（同深度ならセルの手前に描画）
+    const combined = cellsWithDepth.map(c => ({ sortKey: c.depth * 2, element: c.element }));
+
+    for (const v of visibleVillagers) {
+      const depth = villagerDepthMap[v.id] ?? Math.round(v.x + v.y);
+      combined.push({
+        sortKey: depth * 2 + 1,
+        element: (
+          <VillagerDot
+            key={`v-${v.id}`}
+            villager={v}
+            mapData={safeMapData}
+            tileW={TILE_W}
+            tileH={TILE_H}
+            onDepthChange={handleVillagerDepthChange}
+          />
+        ),
+      });
+    }
+
+    combined.sort((a, b) => a.sortKey - b.sortKey);
+    return combined.map(item => item.element);
+  }, [cellsWithDepth, visibleVillagers, villagerDepthMap, safeMapData, handleVillagerDepthChange]);
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
@@ -572,11 +600,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         transformOrigin: '0 0',
         isolation: 'isolate',
       }}>
-        {cells}
-        {/* 住民（セルと同じコンテナ内でz-indexによる前後関係を正しく処理） */}
-        {visibleVillagers.map(v => (
-          <VillagerDot key={v.id} villager={v} mapData={safeMapData} tileW={TILE_W} tileH={TILE_H} />
-        ))}
+        {sortedElements}
         {/* ホバーハイライト */}
         {hoveredCell && (
           <div style={{
