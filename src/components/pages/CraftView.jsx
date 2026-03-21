@@ -61,10 +61,16 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     return false;
   };
 
+  // Count upgrade sources on map
+  const getUpgradeSourceCount = (recipe) => {
+    if (!recipe.requires) return Infinity;
+    return Object.values(stats.townMap || {}).filter(id => id === recipe.requires).length;
+  };
+
   // Check if upgrade source exists on map
   const hasUpgradeSource = (recipe) => {
     if (!recipe.requires) return true;
-    return Object.values(stats.townMap || {}).includes(recipe.requires);
+    return getUpgradeSourceCount(recipe) > 0;
   };
 
   // Occupation craft bonuses
@@ -108,12 +114,17 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
         newStats.townItems = { ...newStats.townItems, [townItemId]: (newStats.townItems?.[townItemId] || 0) + result.result.amount };
       }
 
-      // Upgrade: remove old building from inventory, add new one
+      // Upgrade: マップ上の元建物を指定数だけ撤去する
       if (recipe.category === 'upgrade' && recipe.requires) {
-        const oldCount = newStats.townItems?.[recipe.requires] || 0;
-        if (oldCount > 0) {
-          newStats.townItems[recipe.requires] = oldCount - 1;
+        let removedCount = 0;
+        const newTownMap = { ...(newStats.townMap || {}) };
+        for (const [coord, id] of Object.entries(newTownMap)) {
+          if (id === recipe.requires && removedCount < quantity) {
+            delete newTownMap[coord];
+            removedCount++;
+          }
         }
+        newStats.townMap = newTownMap;
       }
     }
 
@@ -138,6 +149,12 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     const coinCost = recipe.coinCost || 0;
     const { discountedIngredients } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
     let max = Infinity;
+
+    // アップグレードの場合、マップ上にある元建物の数が上限になる
+    if (recipe.category === 'upgrade' && recipe.requires) {
+      max = Math.min(max, getUpgradeSourceCount(recipe));
+    }
+
     if (coinCost > 0) {
       max = Math.min(max, Math.floor((stats.coins || 0) / coinCost));
     }
@@ -261,7 +278,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           const coinCost = recipe.coinCost || 0;
           const maxCraftable = isUnlocked ? getMaxCraftable(recipe) : 0;
           const currentQty = craftQuantities[recipe.id] || 1;
-          const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
+          const craftable = isUnlocked && currentQty <= maxCraftable && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
           
           const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
           const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
