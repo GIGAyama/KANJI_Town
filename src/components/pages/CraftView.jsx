@@ -27,6 +27,7 @@ const CATEGORIES = [
 const CraftView = ({ stats, setStats, setView, onCraft }) => {
   const [category, setCategory] = useState('material');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [craftQuantity, setCraftQuantity] = useState(1);
   const [craftResult, setCraftResult] = useState(null);
   const [filterTier, setFilterTier] = useState(0);
 
@@ -75,10 +76,10 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
   const [craftError, setCraftError] = useState(null);
 
-  const handleCraft = (recipe) => {
+  const handleCraft = (recipe, quantity = 1) => {
     const matsCopy = { ...(stats.materials || {}) };
     const playerCoins = stats.coins || 0;
-    const result = craft(matsCopy, recipe, villagers, playerCoins);
+    const result = craft(matsCopy, recipe, villagers, playerCoins, quantity);
     if (!result.success) {
       audioCtrl.playSE('stamp_bad');
       // Show error feedback
@@ -101,7 +102,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     }
 
     if (recipe.category === 'material') {
-      newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + (result.bonusYield ? result.result.amount * 2 : result.result.amount);
+      newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + result.result.amount;
     } else {
       const townItemId = getResultTownItemId(result.result.type);
       if (townItemId) {
@@ -128,8 +129,26 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
     setStats(newStats);
     StorageAPI.saveStats(newStats);
     if (onCraft) onCraft();
-    setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, discount: result.discount, coinBonus: result.coinBonus, coinCost: result.coinCost });
+    setCraftResult({ recipe, result: result.result, bonusYield: result.bonusYield, bonusYieldCount: result.bonusYieldCount, discount: result.discount, coinBonus: result.coinBonus, coinCost: result.coinCost, quantity: result.quantity });
     setTimeout(() => setCraftResult(null), 2500);
+    setCraftQuantity(1); // クラフト後は1に戻す
+  };
+
+  // 最大作成可能数を計算
+  const getMaxCraftable = (recipe) => {
+    const coinCost = recipe.coinCost || 0;
+    const { discountedIngredients } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
+    let max = Infinity;
+    if (coinCost > 0) {
+      max = Math.min(max, Math.floor((stats.coins || 0) / coinCost));
+    }
+    for (const ing of discountedIngredients) {
+      const have = materials[ing.material] || 0;
+      if (ing.amount > 0) {
+        max = Math.min(max, Math.floor(have / ing.amount));
+      }
+    }
+    return max === Infinity ? 0 : Math.max(0, max);
   };
 
   // Get discounted ingredients for display
@@ -179,7 +198,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
         {/* カテゴリ切り替え */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(cat => (
-            <button key={cat.key} onClick={() => { setCategory(cat.key); setSelectedRecipe(null); setFilterTier(0); audioCtrl.playSE('click'); }}
+            <button key={cat.key} onClick={() => { setCategory(cat.key); setSelectedRecipe(null); setCraftQuantity(1); setFilterTier(0); audioCtrl.playSE('click'); }}
               className={`px-3 py-2 rounded-xl border-[3px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-1 ${category === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
               <span>{cat.icon}</span> {cat.label}
             </button>
@@ -241,8 +260,11 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
           const isUnlocked = isTierUnlocked && (category !== 'rare' || isRareUnlocked(recipe)) && (category !== 'upgrade' || hasUpgradeSource(recipe));
           const displayIngredients = getDisplayIngredients(recipe);
           const coinCost = recipe.coinCost || 0;
-          const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
           const isSelected = selectedRecipe?.id === recipe.id;
+          const maxCraftable = isUnlocked ? getMaxCraftable(recipe) : 0;
+          const currentQty = isSelected ? craftQuantity : 1;
+          const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
+          
           const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
           const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
           const resultMat = recipe.category === 'material' ? MATERIALS[recipe.result.type] : null;
@@ -255,19 +277,22 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
 
           return (
             <div key={recipe.id}>
-              <button
-                onClick={() => {
-                  audioCtrl.playSE('click');
-                  setSelectedRecipe(isSelected ? null : recipe);
-                }}
-                className={`w-full bg-[var(--panel)] border-[3px] rounded-xl p-3 transition-all text-left ${
+              <div
+                className={`w-full bg-[var(--panel)] border-[3px] rounded-xl overflow-hidden transition-all text-left ${
                   !isUnlocked ? 'border-gray-300 opacity-50 grayscale'
                   : isSelected ? 'border-[var(--primary)] shadow-lg'
-                  : craftable ? 'border-[var(--text)] hover:border-[var(--secondary)]'
-                  : 'border-[var(--text)] opacity-70'
+                  : 'border-[var(--text)] hover:shadow-md'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {/* メイン情報部分（タップで詳細表示/非表示） */}
+                <div 
+                  className="p-3 flex items-center gap-3 cursor-pointer hover:bg-black/5 transition-colors"
+                  onClick={() => { 
+                    audioCtrl.playSE('click'); 
+                    setSelectedRecipe(isSelected ? null : recipe); 
+                    setCraftQuantity(1);
+                  }}
+                >
                   <div className={`w-12 h-12 shrink-0 rounded-xl border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
                     {townItem ? <townItem.svg /> : resultMat ? <span className="text-2xl">{resultMat.icon}</span> : <span className="text-xl">?</span>}
                     {!isUnlocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30"><Lock size={16} className="text-white" /></div>}
@@ -281,42 +306,97 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                       {badgeIcon}
                       {(recipe.size || townItem?.size) && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-300">{(recipe.size || townItem.size).w}×{(recipe.size || townItem.size).h}</span>}
                     </div>
-                    {/* Unlock status for rare/upgrade */}
-                    {category === 'rare' && !isRareUnlocked(recipe) && (
-                      <div className="text-[9px] text-purple-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> {recipe.unlockDesc}</div>
+                    {/* 解放条件 or 説明 */}
+                    {!isUnlocked ? (
+                      <div className="text-[9px] font-bold mt-0.5 flex items-center gap-1 text-red-500 opacity-80">
+                        <Lock size={10} /> 
+                        {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
+                      </div>
+                    ) : (
+                      recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>
                     )}
-                    {category === 'upgrade' && !hasUpgradeSource(recipe) && (
-                      <div className="text-[9px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"><Lock size={10} /> {F("元","もと")}の{F("建物","たてもの")}がマップに{F("必要","ひつよう")}</div>
-                    )}
-                    {recipe.desc && <div className="text-[9px] text-[var(--text)] opacity-50 mt-0.5">{recipe.desc}</div>}
-                    {/* 素材プレビュー + コインコスト */}
-                    <div className="flex gap-1 mt-1.5 flex-wrap items-center">
-                      {coinCost >= 0 && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                          <Coins size={10} />{coinCost}
+                  </div>
+                  <ChevronRight size={16} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
+                </div>
+
+                {/* クラフト操作エリア（解放済みの場合のみ表示） */}
+                {isUnlocked && (
+                  <div className="px-3 pb-3 pt-1 border-t-2 border-dashed border-black/5 flex flex-col gap-2">
+                    {/* 素材プレビュー */}
+                    <div className="flex gap-1 flex-wrap items-center">
+                      <div className="text-[10px] font-black mr-1 opacity-60">コスト:</div>
+                      {coinCost > 0 && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost * currentQty ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                          <Coins size={10} />{coinCost * currentQty}
                         </span>
                       )}
                       {displayIngredients.map((ing, i) => {
                         const origIng = recipe.ingredients[i];
                         const mat = MATERIALS[ing.material];
                         const have = materials[ing.material] || 0;
-                        const enough = have >= ing.amount;
+                        const totalReq = ing.amount * currentQty;
+                        const enough = have >= totalReq;
                         const isDiscounted = origIng && ing.amount < origIng.amount;
                         return (
                           <span key={i} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                            {mat?.icon}<span className="opacity-70">{mat?.name}</span>{isDiscounted ? <><s className="opacity-50">{origIng.amount}</s>{ing.amount}</> : ing.amount}
+                            {mat?.icon}<span className="opacity-70">{mat?.name}</span>{isDiscounted ? <><s className="opacity-50">{origIng.amount * currentQty}</s>{totalReq}</> : totalReq}
                             <span className="opacity-50">/{have}</span>
                           </span>
                         );
                       })}
                       {craftable && <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 rounded-full">OK</span>}
                     </div>
-                  </div>
-                  <ChevronRight size={16} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
-                </div>
-              </button>
 
-              {/* 展開詳細 — 3×3クラフトグリッド */}
+                    {/* アクションボタン & 数量選択 */}
+                    <div className="flex items-center gap-2">
+                      {isSelected && maxCraftable > 1 && (
+                        <div className="flex items-center bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl overflow-hidden h-10">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.max(1, craftQuantity - 1)); audioCtrl.playSE('click'); }}
+                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black"
+                          >
+                            -
+                          </button>
+                          <div className="w-10 text-center font-black text-xs border-x-2 border-[var(--text)]">
+                            {craftQuantity}
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setCraftQuantity(Math.min(maxCraftable, craftQuantity + 1)); audioCtrl.playSE('click'); }}
+                            className="w-8 h-full flex items-center justify-center hover:bg-black/10 font-black"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                      
+                      {craftable ? (
+                        <MotionButton
+                          variant="primary"
+                          onClick={(e) => { e.stopPropagation(); handleCraft(recipe, currentQty); }}
+                          className="flex-1 py-2 text-xs border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"
+                        >
+                          <Hammer size={14} /> {currentQty > 1 ? `${currentQty}個クラフトする` : 'クラフトする'}
+                        </MotionButton>
+                      ) : (
+                        <div className="flex-1 py-2 bg-gray-100 border-[3px] border-gray-300 rounded-xl text-center text-[10px] font-black text-gray-400 flex items-center justify-center gap-1.5">
+                          <Lock size={12} /> {coinCost * currentQty > (stats.coins || 0) ? 'コイン不足' : '素材不足'}
+                        </div>
+                      )}
+                      
+                      {isSelected && maxCraftable > 1 && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setCraftQuantity(maxCraftable); audioCtrl.playSE('click'); }}
+                          className="px-2 py-2 bg-amber-100 border-2 border-amber-400 text-amber-700 rounded-xl text-[9px] font-black hover:bg-amber-200"
+                        >
+                          MAX
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 詳細表示（グリッド等） */}
               <AnimatePresence>
                 {isSelected && (
                   <motion.div
@@ -343,58 +423,22 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
                         </div>
                       </div>
 
-                      {/* コインコスト表示 */}
-                      {coinCost >= 0 && (
-                        <div className="mt-2 flex items-center justify-center gap-1">
-                          <span className={`text-[11px] font-black flex items-center gap-1 ${(stats.coins || 0) >= coinCost ? 'text-yellow-600' : 'text-red-500'}`}>
-                            {F("必要","ひつよう")}コイン: <Coins size={14} /> {coinCost} {(stats.coins || 0) < coinCost && ` (${F("不足","ふそく")}: ${F("あと","あと")}${coinCost - (stats.coins || 0)})`}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* 不足素材の詳細 */}
+                      {/* 素材が足りない場合のヒント表示 */}
                       {!craftable && isUnlocked && (
-                        <div className="mt-3 text-center">
-                          <div className="text-[10px] text-red-500 font-bold">{F("不足","ふそく")}:</div>
-                          <div className="flex gap-1 justify-center mt-1 flex-wrap">
+                        <div className="mt-4 p-2 bg-red-50 border-2 border-red-200 rounded-lg text-center">
+                          <div className="text-[10px] text-red-600 font-bold mb-1">{F("不足している素材","ふそくしているそざい")}</div>
+                          <div className="flex gap-1 justify-center flex-wrap">
                             {coinCost > 0 && (stats.coins || 0) < coinCost && (
-                              <span className="text-[10px] bg-red-50 border border-red-300 text-red-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5"><Coins size={10} /> コイン あと{coinCost - (stats.coins || 0)}</span>
+                              <span className="text-[9px] font-bold text-red-500 flex items-center gap-0.5"><Coins size={10} /> コイン あと{coinCost - (stats.coins || 0)}</span>
                             )}
                             {displayIngredients.filter(ing => (materials[ing.material] || 0) < ing.amount).map((ing, i) => {
                               const mat = MATERIALS[ing.material];
                               const have = materials[ing.material] || 0;
-                              return <span key={i} className="text-[10px] bg-red-50 border border-red-300 text-red-600 px-2 py-0.5 rounded-full font-bold">{mat?.icon} {mat?.name} あと{ing.amount - have}</span>;
+                              return <span key={i} className="text-[9px] font-bold text-red-500">{mat?.icon} {mat?.name} あと{ing.amount - have}</span>;
                             })}
                           </div>
                         </div>
                       )}
-
-                      <div className="mt-3 flex flex-col items-center gap-2">
-                        {isUnlocked ? (
-                          <>
-                            {craftable ? (
-                              <MotionButton
-                                variant="primary"
-                                onClick={() => handleCraft(recipe)}
-                                className="px-6 py-3 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"
-                              >
-                                <Hammer size={16} /> クラフトする
-                              </MotionButton>
-                            ) : (
-                              <button
-                                disabled
-                                className="px-6 py-3 text-sm font-black rounded-xl bg-gray-300 text-gray-500 border-[3px] border-gray-400 cursor-not-allowed flex items-center gap-2"
-                              >
-                                <Hammer size={16} /> クラフトできません
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                            <Lock size={14} /> {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : category === 'rare' ? recipe.unlockDesc : '元の建物が必要'}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -463,7 +507,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
               <Sparkles size={32} className="text-[var(--accent)]" />
               <div className="text-lg font-black text-[var(--text)]">{F("完成","かんせい")}！</div>
               <div className="text-sm font-bold text-[var(--primary)]">{craftResult.recipe.name} ×{craftResult.result.amount}</div>
-              {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! 2倍生産!</div>}
+              {craftResult.bonusYield && <div className="text-xs font-bold text-amber-500">ボーナス! {craftResult.bonusYieldCount}個追加!</div>}
               {craftResult.discount > 0 && <div className="text-[10px] font-bold text-blue-500">素材{Math.round(craftResult.discount * 100)}%節約</div>}
               {craftResult.coinCost > 0 && <div className="text-[10px] font-bold text-red-400">-{craftResult.coinCost}コイン</div>}
               {craftResult.coinBonus > 0 && <div className="text-[10px] font-bold text-yellow-600">+{craftResult.coinBonus}コイン</div>}
