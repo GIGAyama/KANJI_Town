@@ -484,14 +484,14 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
                     transform: isFlipped ? 'scaleX(-1)' : 'none',
                     filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
                   }}>
-                    <item.svg />
+                    <item.svg seed={seedVal} />
                   </div>
                 </motion.div>
               ) : item && item.id === 't_weed' ? (
                 <motion.div key="weed" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                   className="absolute inset-0 flex items-end justify-center" style={{ bottom: 4 }}>
                   <div style={{ width: TILE_W * 0.7, height: TILE_H * 0.7 }}>
-                    <item.svg />
+                    <item.svg seed={seedVal} />
                   </div>
                 </motion.div>
               ) : null}
@@ -527,7 +527,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
                     height: Math.max(TILE_W, TILE_H + topIsoHeight),
                     filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
                   }}>
-                    <topItem.svg />
+                    <topItem.svg seed={seedVal} />
                   </div>
               </motion.div>
             </AnimatePresence>

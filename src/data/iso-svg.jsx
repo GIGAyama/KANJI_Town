@@ -587,20 +587,67 @@ export const SvgHouse3 = () => (
   </svg>
 );
 
-export const SvgShop = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,-2 -20,-12 -20,-30 0,-20" fill="#fef08a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2 22,-13 22,-31 0,-20" fill="#fde047" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-16,-10 -10,-7 -10,-17 -16,-20" fill="#78350f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="4,-14 18,-21 18,-27 4,-20" fill="#1e293b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M 4,-18 Q 6,-16 8,-18 Q 10,-16 12,-18 Q 14,-16 16,-18 Q 18,-16 20,-18 L 22,-27 L 4,-18 Z" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,-20 -20,-30 2,-41 22,-31" fill="#ca8a04" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-20 -20,-30 -20,-32 0,-22" fill="#fef08a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-20 22,-31 22,-33 0,-22" fill="#fde047" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-    </g>
-  </svg>
-);
+export const SvgShop = ({ seed = 0 }) => {
+  const variants = [
+    { id: 'blue',   light: '#38bdf8', dark: '#0284c7' }, // Lawson
+    { id: 'green',  light: '#4ade80', dark: '#16a34a' }, // FamilyMart
+    { id: 'orange', light: '#fb923c', dark: '#ea580c' }, // Seicomart
+  ];
+  const v = variants[(seed || 0) % variants.length];
+
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 100) scale(2.5)">
+        {/* Ground Shadow */}
+        <ellipse cx="0" cy="0" rx="26" ry="13" fill="rgba(0,0,0,0.15)" />
+
+        {/* Pole Sign */}
+        <g transform="translate(-24, 4)">
+          {/* Pole */}
+          <polygon points="0,0 -2,-1 -2,-25 0,-24" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,0 2,-1 2,-25 0,-24" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          {/* Sign box */}
+          <polygon points="0,-18 -4,-20 -4,-30 0,-28" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,-18 6,-15 6,-25 0,-28" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          <polygon points="0,-28 6,-25 2,-27 -4,-30" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+          {/* Sign colored area */}
+          <polygon points="-1,-19 -3,-20 -3,-27 -1,-26" fill={v.dark} />
+          <polygon points="1,-17.5 5,-15.5 5,-22.5 1,-24.5" fill={v.light} />
+          <polygon points="-1,-19 -1,-26 0,-26.5 0,-19.5" fill="#ffffff" opacity="0.5" />
+        </g>
+
+        {/* Building Base / Walls */}
+        <polygon points="0,-4 -20,-14 -20,-34 0,-24" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="0,-4 20,-14 20,-34 0,-24" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* Roof */}
+        <polygon points="0,-24 -20,-34 0,-44 20,-34" fill="#f1f5f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        
+        {/* Colored Stripe on Wall */}
+        <polygon points="0,-16 -20,-26 -20,-30 0,-20" fill={v.dark} stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points="0,-16 20,-26 20,-30 0,-20" fill={v.light} stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+        {/* Small Logo / Sign on the Left Stripe */}
+        <polygon points="-6,-18 -14,-22 -14,-26 -6,-22" fill="#ffffff" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="6,-18 14,-22 14,-26 6,-22" fill="#ffffff" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
+        
+        {/* Door and Window on the Left Face */}
+        {/* Door */}
+        <polygon points="-2,-5 -10,-9 -10,-21 -2,-17" fill="#67e8f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <line x1="-6" y1="-7" x2="-6" y2="-19" stroke="#000" strokeWidth="1" />
+        
+        {/* Display Window */}
+        <polygon points="-12,-13 -18,-16 -18,-25 -12,-22" fill="#67e8f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <line x1="-15" y1="-14.5" x2="-15" y2="-23.5" stroke="#000" strokeWidth="1" />
+        
+        {/* Display Window on Right Face */}
+        <polygon points="2,-5 18,-13 18,-25 2,-17" fill="#67e8f9" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <line x1="6" y1="-7" x2="6" y2="-19" stroke="#000" strokeWidth="1" />
+        <line x1="10" y1="-9" x2="10" y2="-21" stroke="#000" strokeWidth="1" />
+        <line x1="14" y1="-11" x2="14" y2="-23" stroke="#000" strokeWidth="1" />
+      </g>
+    </svg>
+  );
+};
 
 export const SvgSchool = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
