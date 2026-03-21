@@ -367,7 +367,6 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         left: isoX - TILE_W / 2,
         top: isoY - isoHeight,
         width: TILE_W,
-        zIndex: depth,
       };
 
       // フォグ（未探索）
@@ -406,7 +405,6 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           top: megaCenterY - megaH,
           width: TILE_W * mw,
           height: TILE_H * mh + megaH,
-          zIndex: depth + mw + mh,
         };
         result.push({ depth: depth + mw + mh, element:
           <div key={key} style={megaStyle}
@@ -610,7 +608,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
             width: TILE_W,
             height: TILE_H,
             pointerEvents: 'none',
-            zIndex: hoveredCell.x + hoveredCell.y + 1,
+            zIndex: 9999,
           }}>
             <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H}>
               <polygon points="32,0 64,16 32,32 0,16" fill="rgba(255, 255, 255, 0.2)" stroke="rgba(255, 255, 255, 0.8)" strokeWidth="2" />

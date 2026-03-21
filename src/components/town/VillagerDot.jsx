@@ -208,12 +208,9 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH, onDepthC
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
   const isHidden = CULTIVATABLE_TERRAIN.has(currentTileId);
 
-  // Z-Indexはアイソメトリックの深さに依存させる (x + y)
-  const zIndex = Math.round(gridPos.x + gridPos.y);
-
   return (
     <div className={`pointer-events-none flex flex-col items-center justify-end transition-opacity duration-500 ${isHidden ? 'opacity-0' : 'opacity-100'}`}
-      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH, zIndex }}>
+      style={{ position: 'absolute', left: screenX, top: screenY, width: vW, height: vH }}>
       
       {/* 感情ふきだし (AIステート起因) */}
       <AnimatePresence>
