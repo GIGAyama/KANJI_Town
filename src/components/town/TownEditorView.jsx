@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, ChevronRight, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { MATERIALS } from '../../data/materials';
@@ -53,7 +53,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
   const [sideTab, setSideTab] = useState('items');
   // Craft state
   const [craftCategory, setCraftCategory] = useState('material');
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [craftResult, setCraftResult] = useState(null);
   const [filterTier, setFilterTier] = useState(0);
   // Resident state
@@ -306,10 +305,10 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
     return discountedIngredients;
   };
 
-  const handleCraft = (recipe) => {
+  const handleCraft = (recipe, quantity = 1) => {
     const matsCopy = { ...(stats.materials || {}) };
     const playerCoins = stats.coins || 0;
-    const result = craft(matsCopy, recipe, villagers, playerCoins);
+    const result = craft(matsCopy, recipe, villagers, playerCoins, quantity);
     if (!result.success) { audioCtrl.playSE('stamp_bad'); return; }
 
     audioCtrl.playSE('success');
@@ -461,7 +460,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft }) => {
                 />}
                 {dockOpen === 'craft' && <CraftPanel
                   craftCategory={craftCategory} setCraftCategory={setCraftCategory}
-                  craftRecipes={craftRecipes} selectedRecipe={selectedRecipe} setSelectedRecipe={setSelectedRecipe}
+                  craftRecipes={craftRecipes}
                   filterTier={filterTier} setFilterTier={setFilterTier}
                   materials={materials} villagers={villagers} playerLevel={playerLevel} stats={stats}
                   isRareUnlocked={isRareUnlocked} hasUpgradeSource={hasUpgradeSource}
@@ -573,7 +572,22 @@ const CRAFT_CATEGORIES = [
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
-const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRecipe, setSelectedRecipe, filterTier, setFilterTier, materials, villagers, playerLevel, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => (
+const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier, setFilterTier, materials, villagers, playerLevel, stats, isRareUnlocked, hasUpgradeSource, getDisplayIngredients, handleCraft, craftBonuses }) => {
+  const [craftQuantities, setCraftQuantities] = React.useState({});
+
+  const getMaxCraftable = (recipe) => {
+    const coinCost = recipe.coinCost || 0;
+    const { discountedIngredients } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
+    let max = Infinity;
+    if (coinCost > 0) max = Math.min(max, Math.floor((stats.coins || 0) / coinCost));
+    for (const ing of discountedIngredients) {
+      const have = materials[ing.material] || 0;
+      if (ing.amount > 0) max = Math.min(max, Math.floor(have / ing.amount));
+    }
+    return max === Infinity ? 0 : Math.max(0, max);
+  };
+
+  return (
   <div className="flex flex-col gap-3">
     {/* Materials inventory - sticky */}
     <div className="sticky top-0 z-10 bg-[var(--panel)] -mx-3 px-3 pt-0 pb-2 -mt-0">
@@ -605,7 +619,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
     {/* Category tabs */}
     <div className="flex flex-wrap gap-1">
       {CRAFT_CATEGORIES.map(cat => (
-        <button key={cat.key} onClick={() => { setCraftCategory(cat.key); setSelectedRecipe(null); setFilterTier(0); audioCtrl.playSE('click'); }}
+        <button key={cat.key} onClick={() => { setCraftCategory(cat.key); setCraftQuantities({}); setFilterTier(0); audioCtrl.playSE('click'); }}
           className={`px-2.5 py-1.5 rounded-lg border-[2px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-0.5 ${craftCategory === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
           {cat.icon} {cat.label}
         </button>
@@ -629,71 +643,89 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, selectedRec
         const isUnlocked = isTierUnlocked && (craftCategory !== 'rare' || isRareUnlocked(recipe)) && (craftCategory !== 'upgrade' || hasUpgradeSource(recipe));
         const displayIngredients = getDisplayIngredients(recipe);
         const coinCost = recipe.coinCost || 0;
-        const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0);
-        const isSelected = selectedRecipe?.id === recipe.id;
+        const maxCraftable = isUnlocked ? getMaxCraftable(recipe) : 0;
+        const currentQty = craftQuantities[recipe.id] || 1;
+        const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
         const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
         const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
         const resultMat = recipe.category === 'material' ? MATERIALS[recipe.result.type] : null;
 
         return (
-          <div key={recipe.id}>
-            <button
-              onClick={() => { audioCtrl.playSE('click'); setSelectedRecipe(isSelected ? null : recipe); }}
-              className={`w-full bg-[var(--panel)] border-[2px] rounded-xl p-2.5 transition-all text-left ${!isUnlocked ? 'border-gray-300 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] shadow-md' : craftable ? 'border-[var(--text)] hover:border-[var(--secondary)]' : 'border-[var(--text)] opacity-70'}`}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-10 h-10 shrink-0 rounded-lg border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
-                  {townItem ? <townItem.svg /> : resultMat ? <span className="text-xl">{resultMat.icon}</span> : <span>?</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm font-black text-[var(--text)]">{recipe.name}</span>
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-full border text-white" style={{ backgroundColor: TIER_COLORS[recipe.tier] || '#64748b', borderColor: TIER_COLORS[recipe.tier] || '#64748b' }}>T{recipe.tier}</span>
-                  </div>
-                  <div className="flex gap-1 mt-0.5 flex-wrap">
-                    {displayIngredients.map((ing, i) => {
-                      const mat = MATERIALS[ing.material];
-                      const have = materials[ing.material] || 0;
-                      const enough = have >= ing.amount;
-                      return (
-                        <span key={i} className={`text-[9px] font-bold px-1 py-0.5 rounded border ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                          {mat?.icon}{ing.amount}{!enough && `(${have})`}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-                <ChevronRight size={14} className={`shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''} text-[var(--text)] opacity-40`} />
+          <div key={recipe.id}
+            className={`w-full bg-[var(--panel)] border-[2px] rounded-xl p-2.5 transition-all text-left ${!isUnlocked ? 'border-gray-300 opacity-50 grayscale' : craftable ? 'border-[var(--text)]' : 'border-[var(--text)] opacity-70'}`}
+          >
+            {/* レシピ情報 */}
+            <div className="flex items-center gap-2">
+              <div className={`w-10 h-10 shrink-0 rounded-lg border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
+                {townItem ? <townItem.svg /> : resultMat ? <span className="text-xl">{resultMat.icon}</span> : <span>?</span>}
               </div>
-            </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-black text-[var(--text)]">{recipe.name}</span>
+                  <span className="text-[8px] font-bold px-1 py-0.5 rounded-full border text-white" style={{ backgroundColor: TIER_COLORS[recipe.tier] || '#64748b', borderColor: TIER_COLORS[recipe.tier] || '#64748b' }}>T{recipe.tier}</span>
+                </div>
+                <div className="flex gap-1 mt-0.5 flex-wrap">
+                  {coinCost > 0 && (
+                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded border flex items-center gap-0.5 ${(stats.coins || 0) >= coinCost * currentQty ? 'bg-yellow-50 border-yellow-300 text-yellow-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                      <Coins size={9} />{coinCost * currentQty}
+                    </span>
+                  )}
+                  {displayIngredients.map((ing, i) => {
+                    const mat = MATERIALS[ing.material];
+                    const have = materials[ing.material] || 0;
+                    const totalReq = ing.amount * currentQty;
+                    const enough = have >= totalReq;
+                    return (
+                      <span key={i} className={`text-[9px] font-bold px-1 py-0.5 rounded border ${enough ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                        {mat?.icon}{totalReq}{!enough && <span className="opacity-50">/{have}</span>}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
-            <AnimatePresence>
-              {isSelected && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                  <div className="bg-[var(--bg)] border-[2px] border-t-0 border-[var(--text)] rounded-b-xl p-3 flex flex-col items-center gap-2">
-                    {!craftable && isUnlocked && (
-                      <div className="text-[10px] text-red-500 font-bold text-center">
-                        素材が足りません
-                      </div>
-                    )}
-                    {isUnlocked ? (
-                      <MotionButton variant={craftable ? 'primary' : 'secondary'} disabled={!craftable} onClick={() => handleCraft(recipe)} className={`px-5 py-2.5 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] ${!craftable ? 'opacity-40 grayscale' : ''}`}>
-                        <Hammer size={14} /> クラフトする
-                      </MotionButton>
-                    ) : (
-                        <div className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : '条件未達成'}</div>
-                    )}
+            {/* クラフトボタン＆数量セレクター（常時表示） */}
+            {isUnlocked && (
+              <div className="flex items-center gap-2 mt-2">
+                {maxCraftable > 1 && (
+                  <div className="flex items-center bg-[var(--bg)] border-2 border-[var(--text)] rounded-lg overflow-hidden h-8 shadow-[1px_1px_0_var(--text)]">
+                    <button type="button" onClick={() => { setCraftQuantities(q => ({ ...q, [recipe.id]: Math.max(1, (q[recipe.id] || 1) - 1) })); audioCtrl.playSE('click'); }}
+                      className="w-7 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm">-</button>
+                    <div className="w-8 text-center font-black text-xs border-x-2 border-[var(--text)] flex items-center justify-center h-full">{currentQty}</div>
+                    <button type="button" onClick={() => { setCraftQuantities(q => ({ ...q, [recipe.id]: Math.min(maxCraftable, (q[recipe.id] || 1) + 1) })); audioCtrl.playSE('click'); }}
+                      className="w-7 h-full flex items-center justify-center hover:bg-black/10 font-black text-sm">+</button>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                )}
+                {maxCraftable > 1 && (
+                  <button type="button" onClick={() => { setCraftQuantities(q => ({ ...q, [recipe.id]: maxCraftable })); audioCtrl.playSE('click'); }}
+                    className="px-2 h-8 bg-amber-100 border-2 border-[var(--text)] text-amber-700 rounded-lg text-[10px] font-black hover:bg-amber-200 shadow-[1px_1px_0_var(--text)] transition-all active:translate-y-0.5 active:shadow-none">
+                    MAX
+                  </button>
+                )}
+                {craftable ? (
+                  <MotionButton variant="primary" onClick={() => { handleCraft(recipe, currentQty); setCraftQuantities(q => { const next = { ...q }; delete next[recipe.id]; return next; }); }}
+                    className="flex-1 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] flex items-center justify-center gap-1.5">
+                    <Hammer size={13} /> {currentQty > 1 ? `${currentQty}個クラフト` : 'クラフトする'}
+                  </MotionButton>
+                ) : (
+                  <div className="flex-1 py-2 bg-gray-100 border-[2px] border-gray-300 rounded-xl text-center text-[10px] font-black text-gray-400 flex items-center justify-center gap-1 opacity-60">
+                    <Lock size={11} /> {!isTierUnlocked ? `Lv.${getMinLevelForGrade(recipe.tier || 1)}で解放` : coinCost * currentQty > (stats.coins || 0) ? 'コイン不足' : '素材不足'}
+                  </div>
+                )}
+              </div>
+            )}
+            {!isUnlocked && (
+              <div className="mt-2 text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> {!isTierUnlocked ? `レベル${getMinLevelForGrade(recipe.tier || 1)}で解放` : '条件未達成'}</div>
+            )}
           </div>
         );
       })}
       {craftRecipes.length === 0 && <div className="text-center text-sm text-[var(--text)] opacity-40 py-4">レシピなし</div>}
     </div>
   </div>
-);
+  );
+};
 
 // ── Residents Panel ──
 const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentStats, dailyPreview, villagers, expandedOcc, setExpandedOcc, playerLevel }) => (
