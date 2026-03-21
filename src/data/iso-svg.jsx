@@ -1531,7 +1531,7 @@ export const SvgNationalLibrary = () => (
 export const SvgWell = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
     <SharedDefs />
-    <g transform="translate(50, 58) scale(1.6)">
+    <g transform="translate(50, 50) scale(1.6)">
       {/* 影 */}
       <ellipse cx="0" cy="22" rx="24" ry="12" fill="#020617" opacity="0.18" filter="url(#soft-shadow)" />
 
