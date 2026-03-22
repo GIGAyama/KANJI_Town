@@ -70,7 +70,7 @@ const TOWN_ITEMS = [
   { id: 't_garden',     svg: SvgGarden,     name: '庭園',       price: 400,   pros: 100,  type: 'building', bg: 'bg-[#86efac]', minGrade: 3, isoHeight: 8 },
   { id: 't_smithy',     svg: SvgSmithy,     name: '鍛冶場',     price: 700,   pros: 300,  type: 'building', bg: 'bg-[#78350f]', minGrade: 4, isoHeight: 26 },
   { id: 't_factory',    svg: SvgFactory,    name: '工場',       price: 1800,  pros: 600,  type: 'building', bg: 'bg-[#64748b]', minGrade: 4, isoHeight: 34, size: { w: 2, h: 1 } },
-  { id: 't_watermill',  svg: SvgWatermill,  name: '水車小屋',   price: 500,   pros: 200,  type: 'building', bg: 'bg-[#d4a96a]', minGrade: 4, isoHeight: 24 },
+  { id: 't_watermill',  svg: SvgWatermill,  name: '水車小屋',   price: 800,   pros: 350,  type: 'building', bg: 'bg-[#d4a96a]', minGrade: 4, isoHeight: 30, size: { w: 2, h: 1 } },
   { id: 't_mine',       svg: SvgMine,       name: '鉱山',       price: 600,   pros: 250,  type: 'building', bg: 'bg-[#78716c]', minGrade: 4, isoHeight: 22 },
   { id: 't_library',    svg: SvgLibrary,    name: '図書館',     price: 2000,  pros: 700,  type: 'building', bg: 'bg-[#fef3c7]', minGrade: 5, isoHeight: 32, size: { w: 2, h: 1 } },
   { id: 't_townhall',   svg: SvgTownhall,   name: '役所',       price: 2400,  pros: 900,  type: 'building', bg: 'bg-[#f8fafc]', minGrade: 5, isoHeight: 34, size: { w: 2, h: 1 } },
