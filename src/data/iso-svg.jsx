@@ -1650,22 +1650,113 @@ export const SvgFactory = () => (
   </svg>
 );
 
-export const SvgWatermill = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -16,-8 -16,-20 0,-12" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 16,-8 16,-20 0,-12" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-16, -8)">
-        <ellipse cx="-2" cy="1" rx="6" ry="12" fill="#78350f" stroke="#000" strokeWidth="2" />
-        <line x1="-2" y1="-11" x2="-2" y2="13" stroke="#000" strokeWidth="1.5" />
-        <line x1="-8" y1="1" x2="4" y2="1" stroke="#000" strokeWidth="1.5" />
+export const SvgWatermill = () => {
+  const iso = (x, y, z = 0) => {
+    const ptX = (x - y) * 0.44;
+    const ptY = -44 + (x + y) * 0.22 - z;
+    return `${ptX.toFixed(2)},${ptY.toFixed(2)}`;
+  };
+  const colors = {
+    base: '#f1f5f9', water: '#73a2a6',
+    wallLeft: '#c0906a', wallRight: '#9b7150',
+    roofLight: '#8c7961', roofDark: '#6e5f4d',
+    roofEdge: '#524333', roofEdgeDark: '#3e3124',
+    woodDark: '#3a2210', woodMedium: '#5a3820', woodLight: '#7a4a2a',
+    stoneTop: '#a8b0b2', stoneSide: '#8b9396'
+  };
+  const getWheelPath = (x, cy, cz, r, thickness) => {
+    const pts = [];
+    for (let i = 0; i <= 360; i += 15) {
+      const rad = i * Math.PI / 180;
+      pts.push(iso(x, cy + r * Math.cos(rad), cz + r * Math.sin(rad)));
+    }
+    for (let i = 360; i >= 0; i -= 15) {
+      const rad = i * Math.PI / 180;
+      pts.push(iso(x, cy + (r - thickness) * Math.cos(rad), cz + (r - thickness) * Math.sin(rad)));
+    }
+    return pts.join(' ');
+  };
+  const drawPaddles = (x1, x2, cy, cz, r, thickness) => {
+    const paddles = [];
+    for (let i = 0; i < 360; i += 15) {
+      const rad = i * Math.PI / 180;
+      const dy1 = r * Math.cos(rad), dz1 = r * Math.sin(rad);
+      const dy2 = (r - thickness) * Math.cos(rad), dz2 = (r - thickness) * Math.sin(rad);
+      paddles.push(
+        <polygon key={`pad-${i}`}
+          points={`${iso(x1, cy+dy1, cz+dz1)} ${iso(x2, cy+dy1, cz+dz1)} ${iso(x2, cy+dy2, cz+dz2)} ${iso(x1, cy+dy2, cz+dz2)}`}
+          fill="#4a3219" stroke="#332010" strokeWidth="0.5" strokeLinejoin="round" />
+      );
+    }
+    return paddles;
+  };
+  const drawSpokes = (x, cy, cz, r, count = 8) => {
+    const spokes = [];
+    const step = 180 / count;
+    for (let i = 0; i < 180; i += step) {
+      const rad = i * Math.PI / 180;
+      const c = Math.cos(rad), s = Math.sin(rad);
+      const w = 1.2;
+      spokes.push(
+        <polygon key={`spk-${x}-${i}`}
+          points={`${iso(x, cy+r*c+w*s, cz+r*s-w*c)} ${iso(x, cy+r*c-w*s, cz+r*s+w*c)} ${iso(x, cy-r*c-w*s, cz-r*s+w*c)} ${iso(x, cy-r*c+w*s, cz-r*s-w*c)}`}
+          fill="#8a5a33" stroke="#4a3219" strokeWidth="0.5" strokeLinejoin="round" />
+      );
+    }
+    return spokes;
+  };
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
+      <g transform="translate(50, 95) scale(1.15)">
+        {/* 地面と水路 */}
+        <polygon points={`${iso(0,0,0)} ${iso(65,0,0)} ${iso(65,100,0)} ${iso(0,100,0)}`} fill={colors.base} />
+        <polygon points={`${iso(65,0,0)} ${iso(65,100,0)} ${iso(65,100,-5)} ${iso(65,0,-5)}`} fill={colors.stoneSide} />
+        <polygon points={`${iso(65,0,-5)} ${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(65,100,-5)}`} fill={colors.water} />
+        {[10, 30, 50, 70, 90].map(wy => (
+          <line key={`wave-${wy}`}
+            x1={iso(70, wy, -5).split(',')[0]} y1={iso(70, wy, -5).split(',')[1]}
+            x2={iso(78, wy+8, -5).split(',')[0]} y2={iso(78, wy+8, -5).split(',')[1]}
+            stroke="#99c8cb" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+        ))}
+        {/* 建物の壁 */}
+        <polygon points={`${iso(60,10,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(60,10,29.1)}`} fill={colors.wallRight} stroke="#8a5a33" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(60.1,72,10)} ${iso(60.1,78,10)} ${iso(60.1,78,20)} ${iso(60.1,72,20)}`} fill="#382613" />
+        <polygon points={`${iso(60.2,73,11)} ${iso(60.2,77,11)} ${iso(60.2,77,19)} ${iso(60.2,73,19)}`} fill="#fef3c7" />
+        <line x1={iso(60.3,75,11).split(',')[0]} y1={iso(60.3,75,11).split(',')[1]} x2={iso(60.3,75,19).split(',')[0]} y2={iso(60.3,75,19).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+        <line x1={iso(60.3,73,15).split(',')[0]} y1={iso(60.3,73,15).split(',')[1]} x2={iso(60.3,77,15).split(',')[0]} y2={iso(60.3,77,15).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+        <polygon points={`${iso(15,80,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(37.5,80,45)} ${iso(15,80,29.1)}`} fill={colors.wallLeft} stroke="#a07a5a" strokeWidth="0.5" strokeLinejoin="round" />
+        {/* 正面窓（格子引き戸） */}
+        <polygon points={`${iso(25,80.1,5)} ${iso(45,80.1,5)} ${iso(45,80.1,20)} ${iso(25,80.1,20)}`} fill="#382613" />
+        <polygon points={`${iso(26,80.1,6)} ${iso(44,80.1,6)} ${iso(44,80.1,19)} ${iso(26,80.1,19)}`} fill="#fef3c7" />
+        {[29, 32, 35, 38, 41].map(wx => (
+          <line key={`v-${wx}`} x1={iso(wx, 80.2, 6).split(',')[0]} y1={iso(wx, 80.2, 6).split(',')[1]} x2={iso(wx, 80.2, 19).split(',')[0]} y2={iso(wx, 80.2, 19).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+        ))}
+        {[9, 12.5, 16].map(wz => (
+          <line key={`h-${wz}`} x1={iso(26, 80.2, wz).split(',')[0]} y1={iso(26, 80.2, wz).split(',')[1]} x2={iso(44, 80.2, wz).split(',')[0]} y2={iso(44, 80.2, wz).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+        ))}
+        {/* 屋根 */}
+        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(12,8,27)} ${iso(12,82,27)}`} fill={colors.roofDark} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(63,8,27)} ${iso(63,82,27)}`} fill={colors.roofLight} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,47)} ${iso(12,82,29)} ${iso(12,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdgeDark} stroke={colors.roofEdgeDark} strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,47)} ${iso(63,82,29)} ${iso(63,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdge} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(36,79,47)} ${iso(36,11,47)} ${iso(39,11,47)} ${iso(39,79,47)}`} fill="#4a3b2c" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(39,79,47)} ${iso(39,11,47)} ${iso(39,11,45)} ${iso(39,79,45)}`} fill="#3e3124" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(36,79,47)} ${iso(39,79,47)} ${iso(39,79,45)} ${iso(36,79,45)}`} fill="#2c2219" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
+        {/* 水車 */}
+        <polygon points={getWheelPath(61, 45, 10, 19, 3)} fill={colors.woodMedium} fillRule="evenodd" />
+        {drawSpokes(61.5, 45, 10, 16, 8)}
+        {drawPaddles(61, 75, 45, 10, 19, 3)}
+        <polygon points={`${iso(59, 43, 8)} ${iso(77, 43, 8)} ${iso(77, 47, 12)} ${iso(59, 47, 12)}`} fill={colors.woodDark} stroke="#1f1208" strokeWidth="0.5" />
+        <polygon points={getWheelPath(75, 45, 10, 19, 3)} fill={colors.woodLight} fillRule="evenodd" />
+        {drawSpokes(74.5, 45, 10, 16, 8)}
+        {/* 手前の土手 */}
+        <polygon points={`${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(85,100,0)} ${iso(85,0,0)}`} fill={colors.stoneSide} stroke="#7a8285" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(85,0,0)} ${iso(100,0,0)} ${iso(100,100,0)} ${iso(85,100,0)}`} fill={colors.stoneTop} stroke="#7a8285" strokeWidth="0.5" strokeLinejoin="round" />
       </g>
-      <polygon points="0,-14 -16,-22 -16,-34 0,-26" fill="#fdf8f6" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-14 16,-22 16,-34 0,-26" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="2,-26 18,-34 8,-44 -10,-38" fill="#a16207" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-    </g>
-  </svg>
-);
+    </svg>
+  );
+};
 
 export const SvgMine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
