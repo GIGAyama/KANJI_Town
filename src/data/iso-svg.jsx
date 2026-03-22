@@ -1685,7 +1685,7 @@ export const SvgWatermill = () => {
       paddles.push(
         <polygon key={`pad-${i}`}
           points={`${iso(x1, cy+dy1, cz+dz1)} ${iso(x2, cy+dy1, cz+dz1)} ${iso(x2, cy+dy2, cz+dz2)} ${iso(x1, cy+dy2, cz+dz2)}`}
-          fill="#4a3219" stroke="#332010" strokeWidth="0.5" strokeLinejoin="round" />
+          fill="#4a3219" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
       );
     }
     return paddles;
@@ -1700,7 +1700,7 @@ export const SvgWatermill = () => {
       spokes.push(
         <polygon key={`spk-${x}-${i}`}
           points={`${iso(x, cy+r*c+w*s, cz+r*s-w*c)} ${iso(x, cy+r*c-w*s, cz+r*s+w*c)} ${iso(x, cy-r*c-w*s, cz-r*s+w*c)} ${iso(x, cy-r*c+w*s, cz-r*s-w*c)}`}
-          fill="#8a5a33" stroke="#4a3219" strokeWidth="0.5" strokeLinejoin="round" />
+          fill="#8a5a33" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
       );
     }
     return spokes;
@@ -1710,49 +1710,49 @@ export const SvgWatermill = () => {
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       <g transform="translate(-2, 126) scale(2.35)">
         {/* 地面と水路 */}
-        <polygon points={`${iso(0,0,0)} ${iso(65,0,0)} ${iso(65,100,0)} ${iso(0,100,0)}`} fill={colors.base} />
-        <polygon points={`${iso(65,0,0)} ${iso(65,100,0)} ${iso(65,100,-5)} ${iso(65,0,-5)}`} fill={colors.stoneSide} />
-        <polygon points={`${iso(65,0,-5)} ${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(65,100,-5)}`} fill={colors.water} />
+        <polygon points={`${iso(0,0,0)} ${iso(65,0,0)} ${iso(65,100,0)} ${iso(0,100,0)}`} fill={colors.base} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(65,0,0)} ${iso(65,100,0)} ${iso(65,100,-5)} ${iso(65,0,-5)}`} fill={colors.stoneSide} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(65,0,-5)} ${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(65,100,-5)}`} fill={colors.water} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
         {[10, 30, 50, 70, 90].map(wy => (
           <line key={`wave-${wy}`}
             x1={iso(70, wy, -5).split(',')[0]} y1={iso(70, wy, -5).split(',')[1]}
             x2={iso(78, wy+8, -5).split(',')[0]} y2={iso(78, wy+8, -5).split(',')[1]}
-            stroke="#99c8cb" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+            stroke="#99c8cb" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
         ))}
         {/* 建物の壁 */}
-        <polygon points={`${iso(60,10,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(60,10,29.1)}`} fill={colors.wallRight} stroke="#8a5a33" strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(60.1,72,10)} ${iso(60.1,78,10)} ${iso(60.1,78,20)} ${iso(60.1,72,20)}`} fill="#382613" />
-        <polygon points={`${iso(60.2,73,11)} ${iso(60.2,77,11)} ${iso(60.2,77,19)} ${iso(60.2,73,19)}`} fill="#fef3c7" />
-        <line x1={iso(60.3,75,11).split(',')[0]} y1={iso(60.3,75,11).split(',')[1]} x2={iso(60.3,75,19).split(',')[0]} y2={iso(60.3,75,19).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
-        <line x1={iso(60.3,73,15).split(',')[0]} y1={iso(60.3,73,15).split(',')[1]} x2={iso(60.3,77,15).split(',')[0]} y2={iso(60.3,77,15).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
-        <polygon points={`${iso(15,80,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(37.5,80,45)} ${iso(15,80,29.1)}`} fill={colors.wallLeft} stroke="#a07a5a" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(60,10,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(60,10,29.1)}`} fill={colors.wallRight} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(60.1,72,10)} ${iso(60.1,78,10)} ${iso(60.1,78,20)} ${iso(60.1,72,20)}`} fill="#382613" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(60.2,73,11)} ${iso(60.2,77,11)} ${iso(60.2,77,19)} ${iso(60.2,73,19)}`} fill="#fef3c7" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <line x1={iso(60.3,75,11).split(',')[0]} y1={iso(60.3,75,11).split(',')[1]} x2={iso(60.3,75,19).split(',')[0]} y2={iso(60.3,75,19).split(',')[1]} stroke="#1e293b" strokeWidth="1" />
+        <line x1={iso(60.3,73,15).split(',')[0]} y1={iso(60.3,73,15).split(',')[1]} x2={iso(60.3,77,15).split(',')[0]} y2={iso(60.3,77,15).split(',')[1]} stroke="#1e293b" strokeWidth="1" />
+        <polygon points={`${iso(15,80,0)} ${iso(60,80,0)} ${iso(60,80,29.1)} ${iso(37.5,80,45)} ${iso(15,80,29.1)}`} fill={colors.wallLeft} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
         {/* 正面窓（格子引き戸） */}
-        <polygon points={`${iso(25,80.1,5)} ${iso(45,80.1,5)} ${iso(45,80.1,20)} ${iso(25,80.1,20)}`} fill="#382613" />
-        <polygon points={`${iso(26,80.1,6)} ${iso(44,80.1,6)} ${iso(44,80.1,19)} ${iso(26,80.1,19)}`} fill="#fef3c7" />
+        <polygon points={`${iso(25,80.1,5)} ${iso(45,80.1,5)} ${iso(45,80.1,20)} ${iso(25,80.1,20)}`} fill="#382613" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(26,80.1,6)} ${iso(44,80.1,6)} ${iso(44,80.1,19)} ${iso(26,80.1,19)}`} fill="#fef3c7" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
         {[29, 32, 35, 38, 41].map(wx => (
-          <line key={`v-${wx}`} x1={iso(wx, 80.2, 6).split(',')[0]} y1={iso(wx, 80.2, 6).split(',')[1]} x2={iso(wx, 80.2, 19).split(',')[0]} y2={iso(wx, 80.2, 19).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+          <line key={`v-${wx}`} x1={iso(wx, 80.2, 6).split(',')[0]} y1={iso(wx, 80.2, 6).split(',')[1]} x2={iso(wx, 80.2, 19).split(',')[0]} y2={iso(wx, 80.2, 19).split(',')[1]} stroke="#1e293b" strokeWidth="1" />
         ))}
         {[9, 12.5, 16].map(wz => (
-          <line key={`h-${wz}`} x1={iso(26, 80.2, wz).split(',')[0]} y1={iso(26, 80.2, wz).split(',')[1]} x2={iso(44, 80.2, wz).split(',')[0]} y2={iso(44, 80.2, wz).split(',')[1]} stroke="#5c3a21" strokeWidth="0.8" />
+          <line key={`h-${wz}`} x1={iso(26, 80.2, wz).split(',')[0]} y1={iso(26, 80.2, wz).split(',')[1]} x2={iso(44, 80.2, wz).split(',')[0]} y2={iso(44, 80.2, wz).split(',')[1]} stroke="#1e293b" strokeWidth="1" />
         ))}
         {/* 屋根 */}
-        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(12,8,27)} ${iso(12,82,27)}`} fill={colors.roofDark} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(63,8,27)} ${iso(63,82,27)}`} fill={colors.roofLight} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(37.5,82,47)} ${iso(12,82,29)} ${iso(12,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdgeDark} stroke={colors.roofEdgeDark} strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(37.5,82,47)} ${iso(63,82,29)} ${iso(63,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdge} stroke={colors.roofEdge} strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(36,79,47)} ${iso(36,11,47)} ${iso(39,11,47)} ${iso(39,79,47)}`} fill="#4a3b2c" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(39,79,47)} ${iso(39,11,47)} ${iso(39,11,45)} ${iso(39,79,45)}`} fill="#3e3124" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(36,79,47)} ${iso(39,79,47)} ${iso(39,79,45)} ${iso(36,79,45)}`} fill="#2c2219" stroke="#2c2219" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(12,8,27)} ${iso(12,82,27)}`} fill={colors.roofDark} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,45)} ${iso(37.5,8,45)} ${iso(63,8,27)} ${iso(63,82,27)}`} fill={colors.roofLight} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,47)} ${iso(12,82,29)} ${iso(12,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdgeDark} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(37.5,82,47)} ${iso(63,82,29)} ${iso(63,80,27)} ${iso(37.5,80,45)}`} fill={colors.roofEdge} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(36,79,47)} ${iso(36,11,47)} ${iso(39,11,47)} ${iso(39,79,47)}`} fill="#4a3b2c" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(39,79,47)} ${iso(39,11,47)} ${iso(39,11,45)} ${iso(39,79,45)}`} fill="#3e3124" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(36,79,47)} ${iso(39,79,47)} ${iso(39,79,45)} ${iso(36,79,45)}`} fill="#2c2219" stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
         {/* 水車 */}
-        <polygon points={getWheelPath(61, 45, 10, 19, 3)} fill={colors.woodMedium} fillRule="evenodd" />
+        <polygon points={getWheelPath(61, 45, 10, 19, 3)} fill={colors.woodMedium} stroke="#1e293b" strokeWidth="1" fillRule="evenodd" strokeLinejoin="round" />
         {drawSpokes(61.5, 45, 10, 16, 8)}
         {drawPaddles(61, 75, 45, 10, 19, 3)}
-        <polygon points={`${iso(59, 43, 8)} ${iso(77, 43, 8)} ${iso(77, 47, 12)} ${iso(59, 47, 12)}`} fill={colors.woodDark} stroke="#1f1208" strokeWidth="0.5" />
-        <polygon points={getWheelPath(75, 45, 10, 19, 3)} fill={colors.woodLight} fillRule="evenodd" />
+        <polygon points={`${iso(59, 43, 8)} ${iso(77, 43, 8)} ${iso(77, 47, 12)} ${iso(59, 47, 12)}`} fill={colors.woodDark} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={getWheelPath(75, 45, 10, 19, 3)} fill={colors.woodLight} stroke="#1e293b" strokeWidth="1" fillRule="evenodd" strokeLinejoin="round" />
         {drawSpokes(74.5, 45, 10, 16, 8)}
         {/* 手前の土手 */}
-        <polygon points={`${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(85,100,0)} ${iso(85,0,0)}`} fill={colors.stoneSide} stroke="#7a8285" strokeWidth="0.5" strokeLinejoin="round" />
-        <polygon points={`${iso(85,0,0)} ${iso(100,0,0)} ${iso(100,100,0)} ${iso(85,100,0)}`} fill={colors.stoneTop} stroke="#7a8285" strokeWidth="0.5" strokeLinejoin="round" />
+        <polygon points={`${iso(85,0,-5)} ${iso(85,100,-5)} ${iso(85,100,0)} ${iso(85,0,0)}`} fill={colors.stoneSide} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
+        <polygon points={`${iso(85,0,0)} ${iso(100,0,0)} ${iso(100,100,0)} ${iso(85,100,0)}`} fill={colors.stoneTop} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
       </g>
     </svg>
   );
