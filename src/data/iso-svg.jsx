@@ -1708,7 +1708,7 @@ export const SvgWatermill = () => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
-      <g transform="translate(50, 95) scale(1.15)">
+      <g transform="translate(50, 126) scale(3.52)">
         {/* 地面と水路 */}
         <polygon points={`${iso(0,0,0)} ${iso(65,0,0)} ${iso(65,100,0)} ${iso(0,100,0)}`} fill={colors.base} />
         <polygon points={`${iso(65,0,0)} ${iso(65,100,0)} ${iso(65,100,-5)} ${iso(65,0,-5)}`} fill={colors.stoneSide} />
