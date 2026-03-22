@@ -48,6 +48,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
 
   const getCoords = (e) => { const rect = writeRef.current.getBoundingClientRect(); const scaleX = canvasSize / rect.width; const scaleY = canvasSize / rect.height; const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }; };
   const lastPos = useRef({ x: 0, y: 0 }); const currentStrokeRef = useRef(currentStroke); currentStrokeRef.current = currentStroke; const isDrawingRef = useRef(isDrawing); isDrawingRef.current = isDrawing;
+  const handleStartRef = useRef(null); const handleMoveRef = useRef(null); const handleEndRef = useRef(null);
 
   const handleStart = (e) => {
     e.preventDefault(); audioCtrl.init(); if (currentStrokeRef.current >= paths.length) return;
@@ -93,12 +94,24 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
     } else { clearCanvas(writeRef); setStatusMsg("さいごまで なぞってね💦"); audioCtrl.playSE('stamp_bad'); }
   };
 
+  handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
+  useEffect(() => {
+    const canvas = writeRef.current; if (!canvas) return;
+    const onStart = (e) => handleStartRef.current(e);
+    const onMove = (e) => handleMoveRef.current(e);
+    const onEnd = (e) => handleEndRef.current(e);
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd, { passive: false });
+    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+  }, []);
+
   const main = (
     <div className="relative border-[4px] border-[var(--text)] rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none transition-all duration-200 shrink-0 shadow-[8px_8px_0_var(--text)]" style={{ width: canvasSize, maxWidth: '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
       <Confetti active={showConfetti} />
       <AnimatePresence>{floatingTexts.map(ft => (<motion.div key={ft.id} initial={{ opacity: 1, y: ft.y, x: ft.x, scale: 0.5 * ft.scale }} animate={{ opacity: 0, y: ft.y - 40 * ft.scale, scale: 1.2 * ft.scale }} exit={{ opacity: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="absolute z-50 font-black pointer-events-none drop-shadow-md whitespace-nowrap -translate-x-1/2 -translate-y-1/2" style={{ color: ft.color, fontSize: '24px' }}>{ft.text}</motion.div>))}</AnimatePresence>
       <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" /><div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
-      <canvas ref={guideRef} className="absolute inset-0 z-0 pointer-events-none w-full h-full" /><canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" /><canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+      <canvas ref={guideRef} className="absolute inset-0 z-0 pointer-events-none w-full h-full" /><canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" /><canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
     </div>
   );
 

@@ -65,6 +65,8 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
     });
   }, [canvasSize]);
 
+  const handleStartRef = useRef(null); const handleMoveRef = useRef(null); const handleEndRef = useRef(null);
+
   const getCoords = (e) => {
     const rect = writeRef.current.getBoundingClientRect();
     const scaleX = canvasSize / rect.width;
@@ -117,6 +119,18 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
     if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
   };
 
+  handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
+  useEffect(() => {
+    const canvas = writeRef.current; if (!canvas) return;
+    const onStart = (e) => handleStartRef.current(e);
+    const onMove = (e) => handleMoveRef.current(e);
+    const onEnd = (e) => handleEndRef.current(e);
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd, { passive: false });
+    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+  }, []);
+
   const handleClear = () => {
     setUserStrokes([]);
     [inkRef, writeRef].forEach(ref => {
@@ -152,7 +166,7 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
-        <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+        <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
         {disabled && (
           <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center" />
         )}
