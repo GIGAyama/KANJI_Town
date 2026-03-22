@@ -48,6 +48,8 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
     setShowAnswer(false); setUserStrokes([]); setGradeResult(null); setRecommendedEval(null);
   }, [kanji, canvasSize]);
 
+  const startDrawRef = useRef(null); const drawRef = useRef(null); const stopDrawRef = useRef(null);
+
   const getCoords = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = canvasSize / rect.width; const scaleY = canvasSize / rect.height;
@@ -84,6 +86,18 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
       setUserStrokes(prev => [...prev, [...currentPathRef.current]]);
     }
   };
+
+  startDrawRef.current = startDraw; drawRef.current = draw; stopDrawRef.current = stopDraw;
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const onStart = (e) => startDrawRef.current(e);
+    const onMove = (e) => drawRef.current(e);
+    const onEnd = (e) => stopDrawRef.current(e);
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd, { passive: false });
+    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+  }, []);
 
   const redrawStrokes = (strokes) => {
     const ctx = canvasRef.current?.getContext('2d');
@@ -130,7 +144,7 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
       <div className="relative border-[4px] border-[var(--text)] rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none transition-all duration-200 shadow-[4px_4px_0_var(--text)] md:shadow-[8px_8px_0_var(--text)] shrink-0" style={{ width: canvasSize, maxWidth: showAnswer ? 'calc(50% - 16px)' : '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
-        <canvas ref={canvasRef} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} className="absolute inset-0 z-10 cursor-crosshair w-full h-full" />
+        <canvas ref={canvasRef} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} className="absolute inset-0 z-10 cursor-crosshair w-full h-full" />
         <div className="absolute top-3 left-3 bg-[var(--text)] text-[var(--panel)] text-[10px] md:text-xs font-bold px-3 py-1 rounded-full opacity-50 pointer-events-none">かくところ</div>
         {!showAnswer && userStrokes.length > 0 && (
           <div className="absolute bottom-3 right-3 z-20 flex gap-1.5">
