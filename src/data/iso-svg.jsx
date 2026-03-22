@@ -1173,7 +1173,7 @@ export const SvgWarehouse = () => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       {typeof SharedDefs !== 'undefined' && <SharedDefs />}
-      <g transform="translate(50, 100) scale(1.15)">
+      <g transform="translate(50, 100) scale(2.2)">
         
         {/* === 1. 土台 === */}
         <polygon points={`${iso(5,5,5)} ${iso(95,5,5)} ${iso(95,95,5)} ${iso(5,95,5)}`} fill={colors.baseTop} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
