@@ -8,6 +8,7 @@ import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp } from './utils/level-system';
+import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE } from './constants/gameConfig';
 
 // Data
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
@@ -59,19 +60,38 @@ import FeatureHint from './components/tutorial/FeatureHint';
 
 // ローディングスピナー
 const LazyFallback = () => (
-  <div className="flex items-center justify-center h-full">
+  <div className="flex items-center justify-center h-full" role="status" aria-label="読み込み中">
     <div className="text-center">
-      <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+      <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" aria-hidden="true" />
       <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
     </div>
   </div>
 );
 
+/** セッションデータの初期値を生成する */
+function createInitialSessionData(overrides = {}) {
+  return {
+    queue: [],
+    earnedExp: 0,
+    oldExp: 0,
+    expMultiplier: 1,
+    perfectCount: 0,
+    easyCount: 0,
+    reviewedCount: 0,
+    newKanjiCount: 0,
+    unlockedItems: [],
+    rareDrop: null,
+    isDrill: false,
+    newVillager: null,
+    ...overrides,
+  };
+}
+
 export default function App() {
   const [view, setView] = useState('home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(StorageAPI.getStats());
-  const [sessionData, setSessionData] = useState({ queue: [], earnedExp: 0, oldExp: 0, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null });
+  const [sessionData, setSessionData] = useState(createInitialSessionData);
   const [hostDrill, setHostDrill] = useState(null);
 
   // Phase 5: チュートリアル
@@ -143,10 +163,10 @@ export default function App() {
 
   // 日付変更の監視（開きっぱなし対策）
   useEffect(() => {
-    // 1分ごとに日付を生成してチェック
+    // 1分ごとに日付変更をチェック
     const timer = setInterval(() => {
       refreshDailyData(StorageAPI.getStats());
-    }, 60000);
+    }, DEBOUNCE.DATE_CHECK_INTERVAL);
 
     // タブに戻った時にチェック
     const handleVisibilityChange = () => {
@@ -162,14 +182,18 @@ export default function App() {
     };
   }, [refreshDailyData]);
 
-  useEffect(() => {
-    const link1 = document.createElement('link'); link1.href = 'https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap'; link1.rel = 'stylesheet'; document.head.appendChild(link1);
-    const link2 = document.createElement('link'); link2.href = 'https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap'; link2.rel = 'stylesheet'; document.head.appendChild(link2);
-  }, []);
+  // フォントはindex.htmlで事前読み込み済み
 
   useEffect(() => {
-    if (!isMuted) { if (view === 'session' || view === 'survival' || view === 'flashcard' || view === 'boss') audioCtrl.playBGM(view === 'boss' ? 'boss' : 'game'); else if (view === 'result') { audioCtrl.stopBGM(); } else audioCtrl.playBGM('home'); }
-    else audioCtrl.stopBGM();
+    if (isMuted) { audioCtrl.stopBGM(); return; }
+    const gameViews = new Set(['session', 'survival', 'flashcard', 'boss']);
+    if (gameViews.has(view)) {
+      audioCtrl.playBGM(view === 'boss' ? 'boss' : 'game');
+    } else if (view === 'result') {
+      audioCtrl.stopBGM();
+    } else {
+      audioCtrl.playBGM('home');
+    }
   }, [view, isMuted]);
 
   // チュートリアル完了
@@ -219,8 +243,9 @@ export default function App() {
   const startSession = (selectedGrade) => {
     audioCtrl.init(); const now = Date.now();
     const sessionSize = stats.settings?.sessionSize || 'normal';
-    const reviewLimit = sessionSize === 'small' ? 10 : sessionSize === 'large' ? 30 : 20;
-    const newLimit = sessionSize === 'small' ? 3 : sessionSize === 'large' ? 8 : 5;
+    const limits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
+    const reviewLimit = limits.review;
+    const newLimit = limits.new;
     const reviewTargets = KANJI_DATA
       .filter(k => {
         const s = stats.kanjiStats?.[k.id];
@@ -235,43 +260,69 @@ export default function App() {
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     const queue = reviewTargets.length > 0 ? reviewTargets : newTargets;
     if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); }
+    if (queue.length > 0) {
+      setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
+      setView('session');
+    }
   };
 
   const startDrillSession = (drill) => {
-    audioCtrl.init(); const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
+    audioCtrl.init();
+    const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    if (queue.length > 0) { setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: true, newVillager: null }); setView('session'); }
+    if (queue.length > 0) {
+      setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier, isDrill: true }));
+      setView('session');
+    }
   };
 
-  const startSingleSession = (kanji) => { 
-    audioCtrl.init(); 
+  const startSingleSession = (kanji) => {
+    audioCtrl.init();
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue: [kanji], earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('session'); 
+    setSessionData(createInitialSessionData({ queue: [kanji], oldExp: stats.totalExp, expMultiplier }));
+    setView('session');
   };
-  const startFlashcard = () => { 
-    audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
-    const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10); 
+
+  const startFlashcard = () => {
+    audioCtrl.init();
+    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
+    if (learned.length === 0) return;
+    const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('flashcard'); 
+    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
+    setView('flashcard');
   };
-  const startSurvival = () => { 
-    audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
-    const queue = [...learned].sort(() => Math.random() - 0.5); 
+
+  const startSurvival = () => {
+    audioCtrl.init();
+    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
+    if (learned.length === 0) return;
+    const queue = [...learned].sort(() => Math.random() - 0.5);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('survival'); 
+    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
+    setView('survival');
   };
-  const startBossBattle = () => { 
-    audioCtrl.init(); const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new'); if (learned.length === 0) return; 
-    const queue = [...learned].sort((a, b) => { const ma = stats.kanjiStats[a.id].mistakes || 0; const mb = stats.kanjiStats[b.id].mistakes || 0; return mb - ma; }).slice(0, 10); while (queue.length > 0 && queue.length < 10) queue.push(queue[Math.floor(Math.random() * queue.length)]); 
+
+  const startBossBattle = () => {
+    audioCtrl.init();
+    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
+    if (learned.length === 0) return;
+    const queue = [...learned]
+      .sort((a, b) => (stats.kanjiStats[b.id].mistakes || 0) - (stats.kanjiStats[a.id].mistakes || 0))
+      .slice(0, 10);
+    // 10問に満たない場合はランダムに複製して埋める
+    while (queue.length > 0 && queue.length < 10) {
+      queue.push(queue[Math.floor(Math.random() * queue.length)]);
+    }
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData({ queue, earnedExp: 0, oldExp: stats.totalExp, expMultiplier, perfectCount: 0, easyCount: 0, reviewedCount: 0, newKanjiCount: 0, unlockedItems: [], rareDrop: null, isDrill: false, newVillager: null }); setView('boss'); 
+    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
+    setView('boss');
   };
 
   const handleUpdateStat = (kanjiObj, evalType) => {
     const id = kanjiObj.id;
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    if (sessionData.isDrill) { setSessionData(d => ({ ...d, earnedExp: d.earnedExp + (evalType === 'again' ? 0 : 5), reviewedCount: (d.reviewedCount || 0) + 1 })); return evalType !== 'again'; }
+    if (sessionData.isDrill) { setSessionData(d => ({ ...d, earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL), reviewedCount: (d.reviewedCount || 0) + 1 })); return evalType !== 'again'; }
 
     const next = calculateNextReview(cur, evalType);
     const wasNew = cur.status === 'new';
@@ -280,7 +331,7 @@ export default function App() {
     let exp = 0; let unlockedItem = null; let newVillager = null;
 
     if (evalType !== 'again') {
-      const baseExp = wasNew ? 50 : evalType === 'easy' ? 15 : evalType === 'good' ? 10 : 5;
+      const baseExp = wasNew ? EXP.NEW_KANJI : evalType === 'easy' ? EXP.EASY : evalType === 'good' ? EXP.GOOD : EXP.HARD;
       exp = Math.round(baseExp * (sessionData.expMultiplier || 1));
 
       // 素材ドロップ（漢字回答成功時）
@@ -333,23 +384,22 @@ export default function App() {
     return evalType !== 'again';
   };
 
-  const handleRecordPerfect = useCallback(() => { 
-    setSessionData(d => ({ 
-      ...d, 
-      perfectCount: d.perfectCount + 1, 
-      earnedExp: d.earnedExp + Math.round(5 * (d.expMultiplier || 1))
-    })); 
+  const handleRecordPerfect = useCallback(() => {
+    setSessionData(d => ({
+      ...d,
+      perfectCount: d.perfectCount + 1,
+      earnedExp: d.earnedExp + Math.round(EXP.PERFECT_BONUS * (d.expMultiplier || 1))
+    }));
   }, []);
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0); 
-    const coinBonus = Math.floor(totalExp / 4) + (additionalResults.coins || 0); 
-    const rareChance = 0.1 + (stats.streak * 0.01); 
+    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0);
+    const coinBonus = Math.floor(totalExp / ECONOMY.EXP_TO_COIN_DIVISOR) + (additionalResults.coins || 0);
+    const rareChance = RARE_DROP.BASE_CHANCE + (stats.streak * RARE_DROP.STREAK_BONUS);
     let rareDrop = additionalResults.rareDrop || null;
-    if (!rareDrop && Math.random() < Math.min(rareChance, 0.5)) { 
-      const rares = ['t_torii', 't_temple', 't_castle', 't_dragon']; 
-      rareDrop = rares[Math.floor(Math.random() * rares.length)]; 
+    if (!rareDrop && Math.random() < Math.min(rareChance, RARE_DROP.MAX_CHANCE)) {
+      rareDrop = RARE_DROP.ITEMS[Math.floor(Math.random() * RARE_DROP.ITEMS.length)];
     }
     
     // レベルアップ判定と報酬計算
@@ -394,9 +444,8 @@ export default function App() {
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
 
       // learningフェーズの漢字がセッション直後にお化けとして出ないよう、
-      // nextReviewに最低30分の猶予を持たせる
-      const gracePeriod = 30 * 60 * 1000; // 30分
-      const minNextReview = Date.now() + gracePeriod;
+      // nextReviewに猶予を持たせる
+      const minNextReview = Date.now() + SESSION.GRACE_PERIOD;
       sessionData.queue.forEach(k => {
         const ks = newStats.kanjiStats?.[k.id];
         if (ks && !ks.graduated && ks.status !== 'new' && ks.nextReview < minNextReview) {
@@ -504,19 +553,19 @@ export default function App() {
       </AnimatePresence>
 
       {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && (
-        <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500">
-          <div className="flex items-center cursor-pointer gap-2" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} role="button" aria-label="ホームに戻る">
-            <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]"><PenTool size={22} strokeWidth={3} /></div>
+        <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500" role="banner">
+          <button className="flex items-center cursor-pointer gap-2 bg-transparent border-none p-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] rounded-lg" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る">
+            <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]" aria-hidden="true"><PenTool size={22} strokeWidth={3} /></div>
             <h1 className="text-xl font-black text-[var(--text)] tracking-wide">マイ{F("漢字","かんじ")}タウン</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
-              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} className="text-[var(--secondary)]" />}
+          </button>
+          <nav className="flex items-center gap-1" aria-label="メイン操作">
+            <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} aria-pressed={!isMuted} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
+              {isMuted ? <VolumeX size={24} aria-hidden="true" /> : <Volume2 size={24} className="text-[var(--secondary)]" aria-hidden="true" />}
             </button>
-            <button onClick={() => { audioCtrl.playSE('click'); setView('settings'); }} aria-label="設定" className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <Settings size={24} />
+            <button onClick={() => { audioCtrl.playSE('click'); setView('settings'); }} aria-label="設定を開く" className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <Settings size={24} aria-hidden="true" />
             </button>
-          </div>
+          </nav>
         </header>
       )}
 
