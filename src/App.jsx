@@ -8,7 +8,7 @@ import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp } from './utils/level-system';
-import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE } from './constants/gameConfig';
+import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
 
 // Data
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
@@ -47,6 +47,7 @@ const SessionView = lazy(() => import('./components/session/SessionView'));
 const FlashcardView = lazy(() => import('./components/training/FlashcardView'));
 const SurvivalView = lazy(() => import('./components/training/SurvivalView'));
 const BossBattleView = lazy(() => import('./components/training/BossBattleView'));
+const DrillTestView = lazy(() => import('./components/training/DrillTestView'));
 
 // Social
 const TeacherHostView = lazy(() => import('./components/social/TeacherHostView'));
@@ -82,6 +83,7 @@ function createInitialSessionData(overrides = {}) {
     unlockedItems: [],
     rareDrop: null,
     isDrill: false,
+    isTest: false,
     newVillager: null,
     ...overrides,
   };
@@ -186,7 +188,7 @@ export default function App() {
 
   useEffect(() => {
     if (isMuted) { audioCtrl.stopBGM(); return; }
-    const gameViews = new Set(['session', 'survival', 'flashcard', 'boss']);
+    const gameViews = new Set(['session', 'survival', 'flashcard', 'boss', 'drillTest']);
     if (gameViews.has(view)) {
       audioCtrl.playBGM(view === 'boss' ? 'boss' : 'game');
     } else if (view === 'result') {
@@ -273,6 +275,28 @@ export default function App() {
     if (queue.length > 0) {
       setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier, isDrill: true }));
       setView('session');
+    }
+  };
+
+  const startDrillTest = (drill, questionCount) => {
+    audioCtrl.init();
+    let candidates = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
+    if (questionCount < candidates.length) {
+      candidates.sort((a, b) => {
+        const aMistakes = stats.kanjiStats?.[a.id]?.mistakes || 0;
+        const bMistakes = stats.kanjiStats?.[b.id]?.mistakes || 0;
+        if (bMistakes !== aMistakes) return bMistakes - aMistakes;
+        const aReview = stats.kanjiStats?.[a.id]?.nextReview || 0;
+        const bReview = stats.kanjiStats?.[b.id]?.nextReview || 0;
+        return aReview - bReview;
+      });
+      candidates = candidates.slice(0, questionCount);
+    }
+    candidates.sort(() => Math.random() - 0.5);
+    const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
+    if (candidates.length > 0) {
+      setSessionData(createInitialSessionData({ queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true }));
+      setView('drillTest');
     }
   };
 
@@ -556,7 +580,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && (
+      {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && view !== 'drillTest' && (
         <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500" role="banner">
           <button className="flex items-center cursor-pointer gap-2 bg-transparent border-none p-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] rounded-lg" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る">
             <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]" aria-hidden="true"><PenTool size={22} strokeWidth={3} /></div>
@@ -602,7 +626,7 @@ export default function App() {
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
           {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
-          {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
+          {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} startDrillTest={startDrillTest} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor"><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
@@ -611,6 +635,7 @@ export default function App() {
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} stats={stats} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} startDrillSession={startDrillSession} setView={setView} setSessionData={setSessionData} createInitialSessionData={createInitialSessionData} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
         </Suspense>
