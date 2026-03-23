@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { AnimatePresence } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { useIsMobile } from './hooks/useIsMobile';
 import OfflineBanner from './components/ui/OfflineBanner';
+import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
@@ -121,6 +123,7 @@ export default function App() {
   // Phase 5: ヒント
   const [seenHints, setSeenHints] = useState(stats.seenHints || []);
   const isOnline = useOnlineStatus();
+  const isMobile = useIsMobile();
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
@@ -593,26 +596,26 @@ export default function App() {
       </AnimatePresence>
 
       {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && view !== 'drillTest' && (
-        <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[4px] border-[var(--text)] py-3 px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500" role="banner">
-          <button className="flex items-center cursor-pointer gap-2 bg-transparent border-none p-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] rounded-lg" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る">
-            <div className="bg-[var(--primary)] p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]" aria-hidden="true"><PenTool size={22} strokeWidth={3} /></div>
-            <h1 className="text-xl font-black text-[var(--text)] tracking-wide">マイ{F("漢字","かんじ")}タウン</h1>
+        <header className="flex-shrink-0 bg-[var(--panel)]/90 backdrop-blur border-b-[3px] md:border-b-[4px] border-[var(--text)] py-2 md:py-3 px-3 md:px-5 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_0_var(--text)] transition-colors duration-500" role="banner">
+          <button className="flex items-center cursor-pointer gap-1.5 md:gap-2 bg-transparent border-none p-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] rounded-lg" onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る">
+            <div className="bg-[var(--primary)] p-1 md:p-1.5 rounded-lg text-[var(--panel)] shadow-sm border-2 border-[var(--text)]" aria-hidden="true"><PenTool size={isMobile ? 18 : 22} strokeWidth={3} /></div>
+            <h1 className="text-base md:text-xl font-black text-[var(--text)] tracking-wide">マイ{F("漢字","かんじ")}タウン</h1>
           </button>
-          <nav className="flex items-center gap-1" aria-label="メイン操作">
-            <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} aria-pressed={!isMuted} className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
-              {isMuted ? <VolumeX size={24} aria-hidden="true" /> : <Volume2 size={24} className="text-[var(--secondary)]" aria-hidden="true" />}
+          <nav className="flex items-center gap-0.5 md:gap-1" aria-label="メイン操作">
+            <button onClick={() => setIsMuted(audioCtrl.toggle())} aria-label={isMuted ? "音をオンにする" : "音をオフにする"} aria-pressed={!isMuted} className="text-[var(--text)] opacity-50 hover:opacity-100 p-1.5 md:p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[40px] min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center">
+              {isMuted ? <VolumeX size={isMobile ? 20 : 24} aria-hidden="true" /> : <Volume2 size={isMobile ? 20 : 24} className="text-[var(--secondary)]" aria-hidden="true" />}
             </button>
-            <button onClick={() => { audioCtrl.playSE('click'); setView('settings'); }} aria-label="設定を開く" className="text-[var(--text)] opacity-50 hover:opacity-100 p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <Settings size={24} aria-hidden="true" />
+            <button onClick={() => { audioCtrl.playSE('click'); setView('settings'); }} aria-label="設定を開く" className="text-[var(--text)] opacity-50 hover:opacity-100 p-1.5 md:p-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--primary)] border-2 border-transparent hover:border-[var(--text)] hover:bg-[var(--bg)] min-w-[40px] min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center">
+              <Settings size={isMobile ? 20 : 24} aria-hidden="true" />
             </button>
           </nav>
         </header>
       )}
 
-      <main className="flex-grow relative overflow-hidden p-0 md:p-4">
+      <main className="flex-grow relative overflow-hidden p-0 md:p-4 min-h-0">
         <Suspense fallback={<LazyFallback />}>
         <AnimatePresence mode="wait">
-          {view === 'home' && <PageWrapper key="home" wide><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} /></ErrorBoundary></PageWrapper>}
+          {view === 'home' && <PageWrapper key="home" wide><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} isMobile={isMobile} /></ErrorBoundary></PageWrapper>}
           {view === 'dictionary' && <PageWrapper key="dict" wide><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="dictionary" seenHints={seenHints} onDismiss={handleDismissHint} /><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
           {view === 'townEditor' && <FullScreenWrapper key="townEditor"><ErrorBoundary onReset={() => setView('home')}><TownEditorView setView={setView} stats={stats} setStats={setStats} onCraft={() => {
                 setDailyMissions(prev => {
@@ -652,6 +655,15 @@ export default function App() {
         </AnimatePresence>
         </Suspense>
       </main>
+      {/* モバイルボトムナビ（ホーム画面のみ表示） */}
+      {isMobile && view === 'home' && (
+        <MobileBottomNav
+          setView={setView}
+          currentView={view}
+          isCraftUnlocked={levelInfo.level >= 3}
+          isTownEditorUnlocked={levelInfo.level >= 1}
+        />
+      )}
       <Footer />
     </div>
   );
