@@ -360,6 +360,10 @@ const StorageAPI = {
     // ── サボり検出：街が廃れる仕組み ──
     StorageAPI._applyNeglectPenalties(stats);
 
+    // ── 実績の進捗を起動時に一括更新（新規追加分も反映） ──
+    if (!stats.achievements) stats.achievements = {};
+    StorageAPI._updateAchievements(stats);
+
     return stats;
   },
 
