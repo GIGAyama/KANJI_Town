@@ -116,10 +116,17 @@ const QRScanner = ({ onScan, onClose }) => {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = window.jsQR(imageData.data, canvas.width, canvas.height);
     if (code && code.data) {
-      // kanji-town- プレフィックスを含むID、または4桁の数字を検出
+      // URL形式（?connect=XXXX）、kanji-town-プレフィックス、または4桁の数字を検出
       let peerId = code.data;
-      if (peerId.startsWith(PEER_ID_PREFIX)) {
-        peerId = peerId.replace(PEER_ID_PREFIX, '');
+      try {
+        const url = new URL(peerId);
+        const connectParam = url.searchParams.get('connect');
+        if (connectParam) peerId = connectParam;
+      } catch {
+        // URL形式でない場合はそのまま処理
+        if (peerId.startsWith(PEER_ID_PREFIX)) {
+          peerId = peerId.replace(PEER_ID_PREFIX, '');
+        }
       }
       if (/^\d{4}$/.test(peerId)) {
         audioCtrl.playSE('success');
@@ -187,9 +194,9 @@ const QRScanner = ({ onScan, onClose }) => {
   );
 };
 
-const StudentClientView = ({ setView, stats, setStats }) => {
+const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
   const isPeerLoaded = usePeerJS();
-  const [hostId, setHostId] = useState('');
+  const [hostId, setHostId] = useState(initialConnectId || '');
   const [status, setStatus] = useState('');
   const [receivedDrill, setReceivedDrill] = useState(null);
   const [showScanner, setShowScanner] = useState(false);

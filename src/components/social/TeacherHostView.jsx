@@ -23,11 +23,12 @@ const TeacherHostView = ({ setView, drill }) => {
   const qrCanvasRef = useRef(null);
   const retryCountRef = useRef(0);
 
-  // QRコード描画
-  const renderQR = useCallback((id) => {
-    if (!isQRLoaded || !qrCanvasRef.current || !id) return;
+  // QRコード描画（接続用URLをエンコード）
+  const renderQR = useCallback((numId) => {
+    if (!isQRLoaded || !qrCanvasRef.current || !numId) return;
     try {
-      window.QRCode.toCanvas(qrCanvasRef.current, id, {
+      const url = `${window.location.origin}${window.location.pathname}?connect=${numId}`;
+      window.QRCode.toCanvas(qrCanvasRef.current, url, {
         width: 200,
         margin: 2,
         color: { dark: '#292f36', light: '#ffffff' },
@@ -51,7 +52,7 @@ const TeacherHostView = ({ setView, drill }) => {
         setNumericId(id4);
         setStatus('IDができました！');
         retryCountRef.current = 0;
-        renderQR(fullId);
+        renderQR(id4);
       });
 
       peer.on('connection', conn => {
@@ -88,7 +89,7 @@ const TeacherHostView = ({ setView, drill }) => {
   // QRコードが後からロードされた場合に再描画
   useEffect(() => {
     if (numericId && isQRLoaded) {
-      renderQR(PEER_ID_PREFIX + numericId);
+      renderQR(numericId);
     }
   }, [numericId, isQRLoaded, renderQR]);
 
