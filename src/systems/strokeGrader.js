@@ -98,7 +98,6 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     };
   }
 
-  const strokeCountScore = WEIGHTS.STROKE_COUNT;
   details.push(`画数：${expectedCount}画 ✓`);
 
   // ── 始点精度 ──
@@ -150,11 +149,11 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   const orderScore = Math.round((orderCorrect / expectedCount) * WEIGHTS.CROSS_ACCURACY);
   details.push(getAccuracyFeedback('書き順', orderScore, WEIGHTS.CROSS_ACCURACY));
 
-  const total = strokeCountScore + startScore + endScore + orderScore;
+  const total = startScore + endScore + orderScore;
 
   return {
     total,
-    strokeCount: strokeCountScore,
+    strokeCount: 0,
     startPoints: startScore,
     endPoints: endScore,
     order: orderScore,
