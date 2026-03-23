@@ -15,6 +15,7 @@ const MISSION_ICONS = {
   exp: '⚡',
   new_kanji: '🆕',
   master: '🏅',
+  earn_coins: '🪙',
 };
 
 const DailyMissionsPanel = ({ missions, onClaim }) => {

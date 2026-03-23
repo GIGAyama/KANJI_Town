@@ -470,6 +470,7 @@ export default function App() {
       updated = updateMissionProgress(updated, 'exp', totalExp);
       updated = updateMissionProgress(updated, 'new_kanji', newKanjiCount);
       updated = updateMissionProgress(updated, 'master', masteredCount);
+      updated = updateMissionProgress(updated, 'earn_coins', coinBonus);
       // statsに保存
       setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
       return updated;
