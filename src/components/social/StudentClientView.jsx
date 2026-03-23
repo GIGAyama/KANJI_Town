@@ -90,72 +90,84 @@ const QRScanner = ({ onScan, onClose }) => {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const animFrameRef = useRef(null);
+  const onScanRef = useRef(onScan);
   const isJsQRLoaded = useJsQR();
   const [error, setError] = useState('');
 
+  // onScanの最新値をrefで保持（useEffect/useCallbackの依存に含めない）
+  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
+
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animFrameRef.current = null;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
   }, []);
 
-  const scan = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || !window.jsQR) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-      animFrameRef.current = requestAnimationFrame(scan);
-      return;
-    }
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = window.jsQR(imageData.data, canvas.width, canvas.height);
-    if (code && code.data) {
-      // URL形式（?connect=XXXX）、kanji-town-プレフィックス、または4桁の数字を検出
-      let peerId = code.data;
-      try {
-        const url = new URL(peerId);
-        const connectParam = url.searchParams.get('connect');
-        if (connectParam) peerId = connectParam;
-      } catch {
-        // URL形式でない場合はそのまま処理
-        if (peerId.startsWith(PEER_ID_PREFIX)) {
-          peerId = peerId.replace(PEER_ID_PREFIX, '');
-        }
-      }
-      if (/^\d{4}$/.test(peerId)) {
-        audioCtrl.playSE('success');
-        stopCamera();
-        onScan(peerId);
+  // スキャンループ（依存が安定しているため、カメラのuseEffectが不要に再実行されない）
+  const startScanLoop = useCallback(() => {
+    const tick = () => {
+      if (!videoRef.current || !canvasRef.current || !window.jsQR) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        animFrameRef.current = requestAnimationFrame(tick);
         return;
       }
-    }
-    animFrameRef.current = requestAnimationFrame(scan);
-  }, [onScan, stopCamera]);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = window.jsQR(imageData.data, canvas.width, canvas.height);
+      if (code && code.data) {
+        // URL形式（?connect=XXXX）、kanji-town-プレフィックス、または4桁の数字を検出
+        let peerId = code.data;
+        try {
+          const url = new URL(peerId);
+          const connectParam = url.searchParams.get('connect');
+          if (connectParam) peerId = connectParam;
+        } catch {
+          // URL形式でない場合はそのまま処理
+          if (peerId.startsWith(PEER_ID_PREFIX)) {
+            peerId = peerId.replace(PEER_ID_PREFIX, '');
+          }
+        }
+        if (/^\d{4}$/.test(peerId)) {
+          audioCtrl.playSE('success');
+          stopCamera();
+          onScanRef.current(peerId);
+          return;
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, [stopCamera]);
 
+  // カメラ初期化（isJsQRLoadedのみに依存し、安定して1回だけ実行）
   useEffect(() => {
     if (!isJsQRLoaded) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setError('このブラウザではカメラがつかえません');
       return;
     }
+    let cancelled = false;
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play();
-          animFrameRef.current = requestAnimationFrame(scan);
+          startScanLoop();
         }
       })
-      .catch(() => setError('カメラをつかえません'));
-    return stopCamera;
-  }, [isJsQRLoaded, scan, stopCamera]);
+      .catch(() => { if (!cancelled) setError('カメラをつかえません'); });
+    return () => { cancelled = true; stopCamera(); };
+  }, [isJsQRLoaded, startScanLoop, stopCamera]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -247,10 +259,10 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
     setView('myDrills');
   };
 
-  const handleQRScan = (scannedId) => {
+  const handleQRScan = useCallback((scannedId) => {
     setShowScanner(false);
     setHostId(scannedId);
-  };
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 pb-8">
