@@ -132,8 +132,15 @@ export default function App() {
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
   // ログインボーナス＆デイリーミッション初期化関数
-  const refreshDailyData = useCallback((currentStats) => {
+  const refreshDailyData = useCallback((currentStats, isInitial = false) => {
     const today = getTodayString();
+
+    // 日付が変わっていなければ何もしない（初回ロード時を除く）
+    const dateChanged = currentStats.dailyMissionsDate !== today
+      || currentStats.lastLoginBonusDate !== today
+      || currentStats.lastCollectionDate !== today;
+    if (!isInitial && !dateChanged) return;
+
     let updatedStats = { ...currentStats };
     let needsSave = false;
 
@@ -143,7 +150,7 @@ export default function App() {
       setDailyMissions(missions);
       updatedStats = { ...updatedStats, dailyMissions: missions, dailyMissionsDate: today };
       needsSave = true;
-    } else {
+    } else if (isInitial) {
       setDailyMissions(updatedStats.dailyMissions || []);
     }
 
@@ -179,7 +186,7 @@ export default function App() {
 
   // 初回ロード時
   useEffect(() => {
-    refreshDailyData(stats);
+    refreshDailyData(stats, true);
   }, []);
 
   // 日付変更の監視（開きっぱなし対策）
