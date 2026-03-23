@@ -143,10 +143,10 @@ export const STROKE_ANALYSIS = {
 /** 採点の重み設定 */
 export const GRADING = {
   WEIGHTS: {
-    STROKE_COUNT: 20,
-    START_ACCURACY: 30,
-    END_ACCURACY: 30,
-    CROSS_ACCURACY: 20,
+    STROKE_COUNT: 0,
+    START_ACCURACY: 35,
+    END_ACCURACY: 35,
+    CROSS_ACCURACY: 30,
   },
   /** 評価ラベルの閾値 */
   LABELS: [
