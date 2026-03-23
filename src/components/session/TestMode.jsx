@@ -169,80 +169,81 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
     </div>
   );
 
-  const sidebar = (
-    <>
-      {commonSidebar}
-      <div className="bg-[var(--panel)] rounded-2xl p-4 text-center border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2 mt-4">
-        <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この{F("漢字","かんじ")}、{F("書","か")}ける？</div>
-        <div className="text-2xl md:text-3xl font-black text-[var(--text)] tracking-wider">
-          {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
-          {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
-          {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>)) : ''}
-        </div>
+  const info = (
+    <div className="bg-[var(--panel)] rounded-2xl p-3 md:p-4 text-center border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2">
+      <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この{F("漢字","かんじ")}、{F("書","か")}ける？</div>
+      <div className="text-xl md:text-3xl font-black text-[var(--text)] tracking-wider">
+        {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
+        {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
+        {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>)) : ''}
       </div>
-      <div className="mt-auto pt-4 flex flex-col gap-3 pb-2">
-        {!showAnswer ? (
-          <MotionButton variant="primary" onClick={handleReveal} className="w-full py-8 text-2xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] animate-pulse"><Eye size={32} /> こたえあわせ</MotionButton>
-        ) : (
-          <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-2">
-            {banner ? (
-              <div className="text-center text-sm font-bold py-2 px-3 rounded-xl border-[3px] border-[var(--text)] shadow-sm mb-1" style={{ backgroundColor: banner.color, color: banner.textColor }}>
-                {banner.text}
-              </div>
-            ) : (
-              <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mb-1">
-                {F("自分","じぶん")}に{F("正直","しょうじき")}に{F("評価","ひょうか")}しよう！
-              </div>
-            )}
-            {recommendedEval && (
-              <div className="text-center text-xs font-bold text-[var(--text)] opacity-70 -mt-1 mb-1">
-                コンピューターの おすすめだよ！ちがうと おもったら ほかのボタンでも OK👌
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-2">
-              {EVAL_BUTTONS.map(btn => {
-                const isRecommended = recommendedEval === btn.key;
-                const hasRecommendation = recommendedEval !== null;
-                return (
-                  <div key={btn.key} className="relative">
-                    {isRecommended && (
-                      <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="absolute -top-2 -right-2 z-10 bg-[var(--accent)] text-[var(--text)] text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-[var(--text)] animate-bounce"
-                      >
-                        👈 おすすめ！
-                      </motion.div>
-                    )}
-                    <MotionButton
-                      variant={btn.variant}
-                      onClick={() => onEvaluate(btn.key)}
-                      className={`w-full font-black border-[var(--text)] ${
-                        isRecommended
-                          ? `py-5 text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`
-                          : hasRecommendation
-                            ? `py-3 text-base border-[3px] opacity-60`
-                            : `py-5 text-2xl border-[4px] ${btn.shadow}`
-                      }`}
-                    >
-                      {btn.key === 'good' ? <>{F("書","か")}けた👍</> : btn.key === 'again' ? <>{F("忘","わす")}れた💦</> : btn.label}
-                      <span className="text-sm font-bold opacity-70 ml-1">
-                        （{btn.key === 'easy' ? <>{F("次回","じかい")}：4{F("日後","にちご")}〜</> :
-                          btn.key === 'good' ? <>{F("次回","じかい")}：{F("翌日","よくじつ")}〜</> :
-                          btn.key === 'hard' ? <>{F("次回","じかい")}：まもなく</> :
-                          <>もう{F("一度","いちど")}</>}）
-                      </span>
-                    </MotionButton>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </>
+    </div>
   );
-  return <ModeLayout mainContent={main} sidebarContent={sidebar} />;
+
+  const action = (
+    <div className="flex flex-col gap-2 md:gap-3">
+      {!showAnswer ? (
+        <MotionButton variant="primary" onClick={handleReveal} className="w-full py-5 md:py-8 text-xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] animate-pulse"><Eye size={28} /> こたえあわせ</MotionButton>
+      ) : (
+        <div className="flex flex-col gap-2 md:gap-3 animate-in slide-in-from-bottom-2">
+          {banner ? (
+            <div className="text-center text-sm font-bold py-2 px-3 rounded-xl border-[3px] border-[var(--text)] shadow-sm" style={{ backgroundColor: banner.color, color: banner.textColor }}>
+              {banner.text}
+            </div>
+          ) : (
+            <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm">
+              {F("自分","じぶん")}に{F("正直","しょうじき")}に{F("評価","ひょうか")}しよう！
+            </div>
+          )}
+          {recommendedEval && (
+            <div className="text-center text-[10px] md:text-xs font-bold text-[var(--text)] opacity-70">
+              コンピューターの おすすめだよ！ちがうと おもったら ほかのボタンでも OK👌
+            </div>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+            {EVAL_BUTTONS.map(btn => {
+              const isRecommended = recommendedEval === btn.key;
+              const hasRecommendation = recommendedEval !== null;
+              return (
+                <div key={btn.key} className="relative">
+                  {isRecommended && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -top-2 -right-2 z-10 bg-[var(--accent)] text-[var(--text)] text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-[var(--text)] animate-bounce"
+                    >
+                      おすすめ！
+                    </motion.div>
+                  )}
+                  <MotionButton
+                    variant={btn.variant}
+                    onClick={() => onEvaluate(btn.key)}
+                    className={`w-full font-black border-[var(--text)] ${
+                      isRecommended
+                        ? `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`
+                        : hasRecommendation
+                          ? `py-2 md:py-3 text-sm md:text-base border-[3px] opacity-60`
+                          : `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow}`
+                    }`}
+                  >
+                    {btn.key === 'good' ? <>{F("書","か")}けた👍</> : btn.key === 'again' ? <>{F("忘","わす")}れた💦</> : btn.label}
+                    <span className="text-[10px] md:text-sm font-bold opacity-70 ml-1">
+                      （{btn.key === 'easy' ? <>{F("次回","じかい")}：4{F("日後","にちご")}〜</> :
+                        btn.key === 'good' ? <>{F("次回","じかい")}：{F("翌日","よくじつ")}〜</> :
+                        btn.key === 'hard' ? <>{F("次回","じかい")}：まもなく</> :
+                        <>もう{F("一度","いちど")}</>}）
+                    </span>
+                  </MotionButton>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
 };
 
 export default TestMode;

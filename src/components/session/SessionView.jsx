@@ -55,8 +55,8 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
   if (!currentKanji) return null;
 
   const commonSidebarTop = (
-    <div className="flex flex-col gap-3 shrink-0 mb-4">
-      <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
+    <div className="flex flex-col gap-2 md:gap-3 shrink-0 mb-1 md:mb-4">
+      <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 md:gap-2">
         {[{ id: 'read', icon: <Volume2 size={18} />, label: <>{F("音","おん")}{F("読","どく")}</> }, { id: 'watch', icon: <PlayCircle size={18} />, label: <>{F("書","か")}き{F("順","じゅん")}</> }, { id: 'write', icon: <Pencil size={18} />, label: "なぞる" }, { id: 'test', icon: <CheckCircle2 size={18} />, label: "テスト" }].map((t, idx) => {
           const isDisabled = isNew && idx > reachedStep;
           return (<button key={t.id} onClick={() => { if (isDisabled) { audioCtrl.playSE('stamp_bad'); return; } audioCtrl.playSE('click'); setMode(t.id); }} className={`flex flex-col items-center justify-center py-2.5 rounded-xl font-bold text-[10px] sm:text-xs border-[3px] transition-all ${mode === t.id ? "bg-[var(--text)] text-[var(--panel)] border-[var(--text)] shadow-[2px_2px_0_var(--primary)] scale-105" : isDisabled ? "bg-gray-100 text-gray-400 border-gray-300 opacity-50 cursor-not-allowed" : "bg-[var(--panel)] text-[var(--text)] border-[var(--text)] hover:bg-[var(--bg)]"}`}>{t.icon} <span className="mt-1">{t.label}</span></button>);

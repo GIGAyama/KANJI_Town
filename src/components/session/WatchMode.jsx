@@ -21,20 +21,22 @@ const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSid
       <style>{`@keyframes drawStroke { to { stroke-dashoffset: 0; } } @keyframes fadeIn { to { opacity: 1; } }`}</style>
     </div>
   );
-  const sidebar = (
-    <>
-      {commonSidebar}
-      <div className="bg-[var(--panel)] p-4 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] text-center flex flex-col gap-2 mt-4">
-        <div className="text-base font-black text-[var(--panel)] bg-[var(--secondary)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mx-2">1{F("画","かく")}ずつ よく{F("見","み")}よう！</div>
-        <p className="text-xs md:text-sm text-[var(--text)] font-bold opacity-70 px-2 mt-2 leading-relaxed">{F("正","ただ")}しい{F("書","か")}き{F("順","じゅん")}で{F("書","か")}くと、<br />{F("漢字","かんじ")}がきれいに{F("書","か")}けるようになるよ。</p>
-      </div>
-      <div className="mt-auto pt-4 flex flex-col gap-3 pb-2">
-        <MotionButton variant="secondary" onClick={() => setKey(k => k + 1)} className="py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]"><RefreshCw size={20} /> もう{F("一度","いちど")}みる</MotionButton>
-        <MotionButton variant="primary" onClick={onNext} className="w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">なぞり{F("書","が")}きへ <ChevronRight size={28} /></MotionButton>
-      </div>
-    </>
+
+  const info = (
+    <div className="bg-[var(--panel)] p-3 md:p-4 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] text-center flex flex-col gap-2">
+      <div className="text-base font-black text-[var(--panel)] bg-[var(--secondary)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm mx-2">1{F("画","かく")}ずつ よく{F("見","み")}よう！</div>
+      <p className="text-xs md:text-sm text-[var(--text)] font-bold opacity-70 px-2 mt-1 md:mt-2 leading-relaxed">{F("正","ただ")}しい{F("書","か")}き{F("順","じゅん")}で{F("書","か")}くと、<br />{F("漢字","かんじ")}がきれいに{F("書","か")}けるようになるよ。</p>
+    </div>
   );
-  return <ModeLayout mainContent={main} sidebarContent={sidebar} />;
+
+  const action = (
+    <div className="flex flex-col gap-2 md:gap-3">
+      <MotionButton variant="secondary" onClick={() => setKey(k => k + 1)} className="py-3 md:py-4 text-base md:text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]"><RefreshCw size={20} /> もう{F("一度","いちど")}みる</MotionButton>
+      <MotionButton variant="primary" onClick={onNext} className="w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">なぞり{F("書","が")}きへ <ChevronRight size={28} /></MotionButton>
+    </div>
+  );
+
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
 };
 
 export default WatchMode;
