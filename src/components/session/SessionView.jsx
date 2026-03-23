@@ -66,7 +66,7 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
   );
 
   return (
-    <div className="flex-1 bg-[var(--panel)] rounded-[24px] shadow-[6px_6px_0_var(--text)] border-[4px] border-[var(--text)] p-3 md:p-5 flex flex-col h-full overflow-hidden relative">
+    <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-5 flex flex-col h-full overflow-hidden relative">
       <StampEffect stamp={activeStamp} />
       <div className="flex justify-between items-center mb-3 shrink-0">
         <div className="text-[var(--text)] font-bold text-sm bg-[var(--bg)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-2">のこり <span className="text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
