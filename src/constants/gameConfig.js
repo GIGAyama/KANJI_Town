@@ -182,6 +182,12 @@ export const WEATHER = {
   SAKURA_CHANCE: 20,
 };
 
+/** テストモード設定 */
+export const TEST = {
+  PASS_THRESHOLD: 60,
+  QUESTION_OPTIONS: [10, 20, 50, 100],
+};
+
 /** PWA / Service Worker */
 export const PWA = {
   SW_PATH: '/KANJI_Town/sw.js',
