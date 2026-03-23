@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useIsMobile } from './hooks/useIsMobile';
+import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import OfflineBanner from './components/ui/OfflineBanner';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
@@ -124,6 +125,9 @@ export default function App() {
   const [seenHints, setSeenHints] = useState(stats.seenHints || []);
   const isOnline = useOnlineStatus();
   const isMobile = useIsMobile();
+
+  // オンライン時に対象学年の漢字筆順データを事前キャッシュ（オフライン学習対応）
+  usePrefetchKanji(isOnline, stats.targetGrade, KANJI_DATA);
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
