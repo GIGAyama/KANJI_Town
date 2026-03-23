@@ -247,7 +247,7 @@ const DrillTestView = ({ queue, stats, onUpdateStat, onFinish, startDrillSession
   const handleSubmitStrokes = (userStrokes) => {
     if (phase !== 'testing') return;
     const result = gradeStrokes(userStrokes, strokeData, canvasSize);
-    const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch;
+    const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch && result.crossMatch !== false;
 
     // EXP累積のためonUpdateStatを呼ぶ
     onUpdateStat(kanji, passed ? 'good' : 'again');

@@ -8,7 +8,7 @@ import { audioCtrl } from '../../systems/audio';
 import { gradeStrokes } from '../../systems/strokeGrader';
 
 function scoreToRecommendation(result) {
-  if (!result.strokeCountMatch) return 'again';
+  if (!result.strokeCountMatch || !result.crossMatch) return 'again';
   if (result.total >= 80) return 'easy';
   if (result.total >= 55) return 'good';
   if (result.total >= 30) return 'hard';
@@ -18,6 +18,7 @@ function scoreToRecommendation(result) {
 function getScoreBanner(result) {
   if (!result) return null;
   if (!result.strokeCountMatch) return { text: 'かくすうが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
+  if (!result.crossMatch) return { text: 'せんの まじわりが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
   if (result.total >= 80) return { text: 'よく 書けているよ！✨', color: 'var(--secondary)', textColor: 'var(--panel)' };
   if (result.total >= 55) return { text: 'おしい！もうすこし！', color: 'var(--accent)', textColor: 'var(--text)' };
   if (result.total >= 30) return { text: 'むずかしかったね…', color: '#fbbf24', textColor: 'var(--text)' };

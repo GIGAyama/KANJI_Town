@@ -129,4 +129,27 @@ export const Analyzer = {
     }
     return false;
   },
+
+  /**
+   * 2つのストローク間の交差セグメント対の数を返す
+   * checkCross が真偽だけを返すのに対し、こちらは交差の「程度」を測定する。
+   * わずかなドット単位の接触（1-2対）と明確な突き抜け（多数対）を区別するために使う。
+   * @param {Array<{x: number, y: number}>} stroke1
+   * @param {Array<{x: number, y: number}>} stroke2
+   * @returns {number} 交差しているセグメント対の数
+   */
+  countCrossings: (stroke1, stroke2) => {
+    if (!stroke1 || !stroke2 || stroke1.length < 2 || stroke2.length < 2) {
+      return 0;
+    }
+    let count = 0;
+    for (let i = 0; i < stroke1.length - 1; i++) {
+      for (let j = 0; j < stroke2.length - 1; j++) {
+        if (Analyzer.isIntersecting(stroke1[i], stroke1[i + 1], stroke2[j], stroke2[j + 1])) {
+          count++;
+        }
+      }
+    }
+    return count;
+  },
 };

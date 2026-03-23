@@ -4,6 +4,7 @@
 // ==========================================
 import { STROKE_THRESHOLDS } from '../constants/strokeConfig';
 import { GRADING } from '../constants/gameConfig';
+import { Analyzer } from './analyzer';
 
 const { WEIGHTS } = GRADING;
 
@@ -69,15 +70,16 @@ function getAccuracyFeedback(label, score, maxScore) {
  * ユーザーのストロークを正解データと比較して採点する
  *
  * 採点基準（合計100点）:
- * - 画数の一致:  20点（不一致は即0点）
- * - 始点の精度:  30点
- * - 終点の精度:  30点
- * - 書き順:      20点
+ * - 画数の一致:  不一致は即0点
+ * - 交差の一致:  不一致は即0点（突き抜けるべき画が突き抜けていない、またはその逆）
+ * - 始点の精度:  35点
+ * - 終点の精度:  35点
+ * - 書き順:      30点
  *
  * @param {Array<Array<{x: number, y: number, time: number}>>} userStrokes
  * @param {Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array}>} strokeData
  * @param {number} canvasSize
- * @returns {{ total: number, strokeCount: number, startPoints: number, endPoints: number, order: number, strokeCountMatch: boolean, details: string[] }}
+ * @returns {{ total: number, strokeCount: number, startPoints: number, endPoints: number, order: number, strokeCountMatch: boolean, crossMatch: boolean, details: string[] }}
  */
 export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   const details = [];
@@ -94,11 +96,46 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
       endPoints: 0,
       order: 0,
       strokeCountMatch: false,
+      crossMatch: false,
       details,
     };
   }
 
   details.push(`画数：${expectedCount}画 ✓`);
+
+  // ── 交差判定 ──
+  // 正解データとユーザーストロークの交差パターンを比較する。
+  // CROSS_COUNT_MIN 未満の交差はドット単位の接触として無視し、
+  // 明確な突き抜けのみを「交差あり」と判定する。
+  const normalizedUserStrokes = userStrokes.map(stroke =>
+    stroke.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize }))
+  );
+  for (let i = 0; i < expectedCount; i++) {
+    for (let j = i + 1; j < expectedCount; j++) {
+      const expectedCrossed = Analyzer.countCrossings(strokeData[i].points, strokeData[j].points)
+        >= STROKE_THRESHOLDS.CROSS_COUNT_MIN;
+      const actualCrossed = Analyzer.countCrossings(normalizedUserStrokes[i], normalizedUserStrokes[j])
+        >= STROKE_THRESHOLDS.CROSS_COUNT_MIN;
+      if (expectedCrossed !== actualCrossed) {
+        details.push(
+          actualCrossed
+            ? `${i + 1}画目と${j + 1}画目が交差してはいけない！`
+            : `${i + 1}画目と${j + 1}画目が交差していない！`
+        );
+        return {
+          total: 0,
+          strokeCount: 0,
+          startPoints: 0,
+          endPoints: 0,
+          order: 0,
+          strokeCountMatch: true,
+          crossMatch: false,
+          details,
+        };
+      }
+    }
+  }
+  details.push('交差：正しい ✓');
 
   // ── 始点精度 ──
   let startTotal = 0;
@@ -158,6 +195,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     endPoints: endScore,
     order: orderScore,
     strokeCountMatch: true,
+    crossMatch: true,
     details,
   };
 }

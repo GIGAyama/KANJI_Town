@@ -254,7 +254,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
     setPhase('judging');
     setBattleMessage('時間切れ！');
     audioCtrl.playSE('stamp_bad');
-    setGradeResult({ total: 0, strokeCountMatch: false, details: ['時間切れ！書けなかった…'] });
+    setGradeResult({ total: 0, strokeCountMatch: false, crossMatch: false, details: ['時間切れ！書けなかった…'] });
 
     // ボスからの強攻撃（2ダメージ）
     setTimeout(() => {
@@ -280,6 +280,13 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         setBattleMessage('画数がちがう！一撃アウト！');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, '画数ミス！ボスの猛攻撃！');
+        addToFailedKanji(kanji);
+        onUpdateStat(kanji, 'again');
+      } else if (!result.crossMatch) {
+        // 交差ミス → 一撃アウト（0点）、ボス強攻撃2ダメージ
+        setBattleMessage('せんの交わりがちがう！一撃アウト！');
+        audioCtrl.playSE('stamp_bad');
+        doBossAttack(2, '交差ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
         onUpdateStat(kanji, 'again');
       } else if (result.total >= 80) {

@@ -13,7 +13,7 @@ const MAX_TIME = 60;
 
 // gradeStrokes の 0-100 スコアをサバイバルのランクに変換
 function scoreToRank(result) {
-  if (!result.strokeCountMatch) return 'miss';
+  if (!result.strokeCountMatch || !result.crossMatch) return 'miss';
   if (result.total >= 80) return 'perfect';
   if (result.total >= 60) return 'ok';
   return 'miss';
@@ -426,7 +426,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     // 判定情報をセット
     setJudgeInfo({
       rank,
-      score: result.strokeCountMatch ? result.total : null,
+      score: (result.strokeCountMatch && result.crossMatch !== false) ? result.total : null,
       details: result.details,
       timeChange: totalTimeChange,
     });
