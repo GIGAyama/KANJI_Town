@@ -7,3 +7,4 @@ export { default as StampEffect } from './StampEffect';
 export { default as Footer } from './Footer';
 export { R, FormatKun } from './FormatKun';
 export { default as OfflineBanner } from './OfflineBanner';
+export { default as MobileBottomNav } from './MobileBottomNav';

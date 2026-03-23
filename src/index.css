@@ -60,3 +60,15 @@ ruby.survival-blank rt {
   color: var(--primary);
   font-weight: 700;
 }
+
+/* モバイルセーフエリア対応（ノッチ・ホームバー） */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* モバイルでフッターを非表示（ボトムナビ表示時にスペースを節約） */
+@media (max-width: 767px) {
+  footer {
+    display: none;
+  }
+}
