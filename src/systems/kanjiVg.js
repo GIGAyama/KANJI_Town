@@ -3,7 +3,7 @@
 // 三層キャッシュ: メモリ → IndexedDB → ネットワーク
 // タイムアウト・リトライ・指数バックオフ対応
 // ==========================================
-import { idbGet, idbSet, migrateFromLocalStorage } from './idb-cache';
+import { idbGet, idbSet, idbGetAllKeys, migrateFromLocalStorage } from './idb-cache';
 import { KANJI_VG } from '../constants/gameConfig';
 
 const LEGACY_STORAGE_KEY = 'kanji_vg_cache';
@@ -136,4 +136,54 @@ export async function fetchKanjiVg(char) {
   idbSet(hex, pathStrings);
 
   return { paths: pathStrings, strokeData: buildStrokeData(pathStrings) };
+}
+
+/**
+ * 指定された漢字リストのKanjiVG SVGデータをバックグラウンドで事前キャッシュする
+ * オンライン時に呼び出し、オフライン学習に備える
+ *
+ * @param {Array<{char: string}>} kanjiList - 漢字オブジェクトの配列
+ * @returns {Promise<{cached: number, total: number}>} キャッシュ結果
+ */
+export async function prefetchKanjiVg(kanjiList) {
+  // 既にキャッシュ済みのキーを取得
+  const cachedKeys = new Set(await idbGetAllKeys());
+  const uncached = kanjiList.filter(k => {
+    const hex = k.char.charCodeAt(0).toString(16).padStart(5, '0');
+    return !memoryCache.has(hex) && !cachedKeys.has(hex);
+  });
+
+  let cached = kanjiList.length - uncached.length;
+  for (const k of uncached) {
+    // オフラインになったら中断
+    if (!navigator.onLine) break;
+    const hex = k.char.charCodeAt(0).toString(16).padStart(5, '0');
+    try {
+      const res = await fetchWithTimeout(
+        `${KANJI_VG.CDN_URL}/${hex}.svg`,
+        KANJI_VG.FETCH_TIMEOUT
+      );
+      if (res.ok) {
+        const text = await res.text();
+        const pathStrings = extractPathStrings(text);
+        memoryCache.set(hex, pathStrings);
+        await idbSet(hex, pathStrings);
+        cached++;
+      }
+    } catch {
+      // 個別の失敗は無視して次へ
+    }
+    // サーバー負荷軽減のため少し間隔を空ける
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return { cached, total: kanjiList.length };
+}
+
+/**
+ * キャッシュ済み漢字数を取得する
+ * @returns {Promise<number>}
+ */
+export async function getCachedKanjiCount() {
+  const keys = await idbGetAllKeys();
+  return keys.length;
 }

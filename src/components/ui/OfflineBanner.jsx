@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { WifiOff } from 'lucide-react';
+import { getCachedKanjiCount } from '../../systems/kanjiVg';
 
 /**
  * オフライン状態を画面上部に固定表示するバナー
- * GIGAスクール端末でネットワーク断が発生した際に子供に分かりやすく通知
+ * キャッシュ状況に応じてメッセージを切り替える
  */
 export default function OfflineBanner() {
+  const [cachedCount, setCachedCount] = useState(null);
+
+  useEffect(() => {
+    getCachedKanjiCount().then(setCachedCount).catch(() => setCachedCount(0));
+  }, []);
+
+  const hasCachedData = cachedCount !== null && cachedCount > 0;
+
   return (
     <div
       role="status"
@@ -18,7 +27,11 @@ export default function OfflineBanner() {
       }}
     >
       <WifiOff size={16} strokeWidth={3} />
-      <span>オフラインモード — ネットなしでもべんきょうできるよ！</span>
+      <span>
+        {hasCachedData
+          ? `オフラインモード — ダウンロードずみの ${cachedCount}もじ でべんきょうできるよ！`
+          : 'オフラインモード — ネットにつないで もじデータを ダウンロードしてね'}
+      </span>
     </div>
   );
 }

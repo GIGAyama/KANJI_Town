@@ -75,6 +75,24 @@ export async function idbSet(key, value) {
 }
 
 /**
+ * IndexedDBに保存されている全キーを取得する
+ * @returns {Promise<string[]>} キーの配列
+ */
+export async function idbGetAllKeys() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).getAllKeys();
+      req.onsuccess = () => resolve(req.result ?? []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * localStorageからIndexedDBへキャッシュデータを一括移行する
  * 旧バージョンで蓄積されたlocalStorageのキャッシュを
  * IndexedDBに移行し、localStorage容量を解放する
