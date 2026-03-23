@@ -509,6 +509,12 @@ const StorageAPI = {
       }
     });
 
+    // 通算ログイン日数（daily オブジェクトのキー数）
+    const loginDays = Object.keys(stats.daily || {}).length;
+
+    // 通算復習回数（daily.reviewed の合計）
+    const reviewTotal = Object.values(stats.daily || {}).reduce((sum, d) => sum + (d.reviewed || 0), 0);
+
     // 実績タイプ → 現在値のマッピング
     const currentValues = {
       streak: stats.streak,
@@ -518,6 +524,10 @@ const StorageAPI = {
       building: buildingCount,
       population: stats.population || 0,
       session: stats.sessionCount || 0,
+      coins: stats.coins || 0,
+      exp: stats.totalExp || 0,
+      login_days: loginDays,
+      review_total: reviewTotal,
     };
 
     ACHIEVEMENTS.forEach(a => {
