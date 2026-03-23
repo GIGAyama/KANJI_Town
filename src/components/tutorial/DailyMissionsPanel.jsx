@@ -1,10 +1,10 @@
-// デイリーミッションパネル — マイ漢字タウン（Phase 7）
+// デイリーミッションパネル — マイ漢字タウン（Phase 7+）
 // HomeView に表示する今日のミッション進捗
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Check, Coins } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import { F } from '../ui/FormatKun';
+import { RubyText } from '../ui/FormatKun';
 
 const MISSION_ICONS = {
   review: '📖',
@@ -14,6 +14,7 @@ const MISSION_ICONS = {
   place: '🏠',
   exp: '⚡',
   new_kanji: '🆕',
+  master: '🏅',
 };
 
 const DailyMissionsPanel = ({ missions, onClaim }) => {
@@ -29,8 +30,8 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
     >
       <div className="flex items-center gap-2 mb-2">
         <Target size={16} className="text-[var(--primary)]" />
-        <span className="text-sm font-black text-[var(--text)]">{F("今日","きょう")}のミッション</span>
-        {allDone && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-300">{F("達成","たっせい")}！</span>}
+        <span className="text-sm font-black text-[var(--text)]"><RubyText text="今日（きょう）のミッション" /></span>
+        {allDone && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-300"><RubyText text="達成（たっせい）！" /></span>}
       </div>
       <div className="flex flex-col gap-1.5">
         {missions.map((m, i) => {
@@ -47,7 +48,7 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
               <span className="text-lg shrink-0">{MISSION_ICONS[m.type] || '📋'}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-bold text-[var(--text)] truncate">{m.name}</span>
+                  <span className="text-xs font-bold text-[var(--text)] truncate"><RubyText text={m.name} /></span>
                   <span className="text-[10px] text-[var(--text)] opacity-50 shrink-0">
                     {m.current || 0}/{m.target}
                   </span>

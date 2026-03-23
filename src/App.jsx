@@ -378,6 +378,7 @@ export default function App() {
       earnedExp: d.earnedExp + exp,
       reviewedCount: (d.reviewedCount || 0) + 1,
       newKanjiCount: (d.newKanjiCount || 0) + (wasNew ? 1 : 0),
+      masteredCount: (d.masteredCount || 0) + (isMastering && cur.status !== 'mastered' ? 1 : 0),
       unlockedItems: unlockedItem ? [...d.unlockedItems, unlockedItem] : d.unlockedItems,
       newVillager: d.newVillager || newVillager,
     }));
@@ -462,11 +463,13 @@ export default function App() {
       const reviewCount = sessionData.reviewedCount + (additionalResults.reviewedCount || 0);
       const perfectCount = sessionData.perfectCount + (additionalResults.perfectCount || 0);
       const newKanjiCount = (sessionData.newKanjiCount || 0) + (additionalResults.newKanjiCount || 0);
+      const masteredCount = (sessionData.masteredCount || 0) + (additionalResults.masteredCount || 0);
       let updated = updateMissionProgress(prev, 'session', 1);
       updated = updateMissionProgress(updated, 'review', reviewCount);
       updated = updateMissionProgress(updated, 'perfect', perfectCount);
       updated = updateMissionProgress(updated, 'exp', totalExp);
       updated = updateMissionProgress(updated, 'new_kanji', newKanjiCount);
+      updated = updateMissionProgress(updated, 'master', masteredCount);
       // statsに保存
       setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
       return updated;

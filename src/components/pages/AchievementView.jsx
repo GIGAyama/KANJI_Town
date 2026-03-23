@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Medal, Trophy, Gift, Lock, Coins, ArrowLeft, Check } from 'lucide-react';
+import { Medal, Trophy, Gift, Lock, Coins, ArrowLeft } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { TOWN_ITEMS } from '../../data/town-items';
 import { StorageAPI } from '../../systems/storage';
-import { F } from '../ui/FormatKun';
+import { RubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const AchievementView = ({ setView, stats, setStats }) => {
@@ -14,11 +14,11 @@ const AchievementView = ({ setView, stats, setStats }) => {
   const handleClaim = (achievement) => {
     const current = stats.achievements?.[achievement.id];
     if (!current || current.claimed || current.current < achievement.target) return;
-    const newStats = { 
-      ...stats, 
-      coins: stats.coins + achievement.reward, 
+    const newStats = {
+      ...stats,
+      coins: stats.coins + achievement.reward,
       totalExp: (stats.totalExp || 0) + (achievement.rewardExp || 0),
-      achievements: { ...stats.achievements, [achievement.id]: { ...current, claimed: true } } 
+      achievements: { ...stats.achievements, [achievement.id]: { ...current, claimed: true } }
     };
     if (achievement.rewardItem) newStats.townItems = { ...newStats.townItems, [achievement.rewardItem]: (newStats.townItems?.[achievement.rewardItem] || 0) + 1 };
     setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('chest_open');
@@ -37,8 +37,8 @@ const AchievementView = ({ setView, stats, setStats }) => {
       <div className="flex items-center gap-3">
         <button onClick={() => setView('home')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
         <div className="flex-1">
-          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> {F("実績","じっせき")}</h2>
-          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} {F("達成","たっせい")} ({completedCount}{F("個","こ")}{F("受取","うけとり")}{F("可能","かのう")})</div>
+          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> <RubyText text="実績（じっせき）" /></h2>
+          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} <RubyText text="達成（たっせい）" /> ({completedCount}<RubyText text="個（こ）受取（うけとり）可能（かのう）" />)</div>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
                 isActive ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'
               }`}
             >
-              {cat.emoji} {cat.name}
+              {cat.emoji} <RubyText text={cat.name} />
               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--panel)] text-[var(--text)]' : 'bg-[var(--text)]/10'}`}>
                 {catClaimed}/{catAchievements.length}
               </span>
@@ -89,9 +89,9 @@ const AchievementView = ({ setView, stats, setStats }) => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     {progress.claimed ? <Trophy size={18} className="text-emerald-500 shrink-0" /> : canClaim ? <Gift size={18} className="text-amber-500 shrink-0" /> : <Lock size={18} className="text-[var(--text)] opacity-30 shrink-0" />}
-                    <span className="font-black text-[var(--text)]">{a.name}</span>
+                    <span className="font-black text-[var(--text)]"><RubyText text={a.name} /></span>
                   </div>
-                  <p className="text-xs text-[var(--text)] opacity-60 mb-2">{a.desc}</p>
+                  <p className="text-xs text-[var(--text)] opacity-60 mb-2"><RubyText text={a.desc} /></p>
                   <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden border border-gray-300">
                     <motion.div animate={{ width: `${pct}%` }} className={`h-full rounded-full ${progress.claimed ? 'bg-emerald-400' : canClaim ? 'bg-amber-400' : 'bg-[var(--secondary)]'}`} />
                   </div>
@@ -99,12 +99,12 @@ const AchievementView = ({ setView, stats, setStats }) => {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>
-                    {a.rewardExp && <div className="flex items-center gap-1 text-[10px] font-black text-blue-500">⚡+{a.rewardExp} EXP</div>}
+                    {a.reward > 0 && <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>}
+                    {a.rewardExp > 0 && <div className="flex items-center gap-1 text-[10px] font-black text-blue-500">⚡+{a.rewardExp} EXP</div>}
                   </div>
                   {rewardItemDef && <div className={`w-10 h-10 ${rewardItemDef.bg} rounded-lg border-2 border-[var(--text)] flex items-center justify-center`}><rewardItemDef.svg /></div>}
-                  {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1">うけとる！</MotionButton>)}
-                  {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300">{F("受取済","うけとりずみ")}</span>}
+                  {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1"><RubyText text="受（う）けとる！" /></MotionButton>)}
+                  {progress.claimed && <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-300"><RubyText text="受取済（うけとりずみ）" /></span>}
                 </div>
               </div>
             </motion.div>

@@ -518,6 +518,8 @@ const StorageAPI = {
       building: buildingCount,
       population: stats.population || 0,
       session: stats.sessionCount || 0,
+      coins: stats.coins || 0,
+      exp: stats.totalExp || 0,
     };
 
     ACHIEVEMENTS.forEach(a => {
