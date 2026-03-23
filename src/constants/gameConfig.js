@@ -184,7 +184,7 @@ export const WEATHER = {
 
 /** テストモード設定 */
 export const TEST = {
-  PASS_THRESHOLD: 60,
+  PASS_THRESHOLD: 70,
   QUESTION_OPTIONS: [10, 20, 50, 100],
 };
 
