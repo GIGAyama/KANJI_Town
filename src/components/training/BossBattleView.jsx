@@ -346,7 +346,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         audioCtrl.playSE('rare');
       }, 1000);
       setTimeout(() => {
-        onFinish({ ...earnedRef.current, rareDrop: 't_gold_castle' });
+        onFinish({ coins: earnedRef.current.coins, perfectCount: earnedRef.current.perfectCount, rareDrop: 't_gold_castle' });
       }, 3000);
       return;
     }
@@ -384,7 +384,6 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         }, 800);
         setTimeout(() => {
           onBossDefeat({
-            exp: Math.floor(earnedRef.current.exp / 2),
             coins: Math.floor(earnedRef.current.coins / 2),
             perfectCount: earnedRef.current.perfectCount,
             failedKanji: failedKanjiRef.current,
