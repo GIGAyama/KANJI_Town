@@ -33,17 +33,12 @@ const LEVEL_TABLE = [
     let reward = null;
     let desc = '日々の鍛錬';
 
-    // 節目ごとの報酬設定
-    if (i % 5 === 0) {
-      // 5レベル毎にマップ拡大
-      const newRad = Math.min(25, 5 + Math.floor((i - 10) / 5));
-      reward = { type: 'radius', amount: newRad, text: 'マップがまた少し広がった！' };
-      desc = '領土拡大';
-    } else if (i % 10 === 0) {
+    // 節目ごとの報酬設定（10レベル毎 → 5レベル毎 → 偶数レベルの順で判定）
+    if (i % 10 === 0) {
       // 10レベル毎に大型報酬や色解放
       reward = { type: 'coins', amount: i * 500, text: `大量のコイン(${i*500}枚)をゲット！` };
       desc = '大台突破記念';
-      
+
       // 特定レベルでテーマカラー解放
       if (i === 30) {
         reward = { type: 'feature', id: 'theme_ocean', text: 'テーマ色「オーシャン」解放！' };
@@ -55,6 +50,11 @@ const LEVEL_TABLE = [
         reward = { type: 'feature', id: 'theme_gold', text: 'テーマ色「ゴールド」解放！' };
         desc = '黄金の夜明け';
       }
+    } else if (i % 5 === 0) {
+      // 5レベル毎にマップ拡大（10の倍数は上で処理済み）
+      const newRad = Math.min(25, 5 + Math.floor((i - 10) / 5));
+      reward = { type: 'radius', amount: newRad, text: 'マップがまた少し広がった！' };
+      desc = '領土拡大';
     } else if (i % 2 === 0) {
       // 2レベル刻みで少しコイン
       reward = { type: 'coins', amount: 500 };

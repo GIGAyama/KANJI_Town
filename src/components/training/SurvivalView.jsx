@@ -323,6 +323,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const [okCount, setOkCount] = useState(0);
   const [missCount, setMissCount] = useState(0);
   const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
+  const waveBonusExpRef = useRef(0);
 
   // KanjiVGデータ
   const [strokeData, setStrokeData] = useState([]);
@@ -361,7 +362,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   useEffect(() => {
     if (phase === 'finished') {
       const timer = setTimeout(() => {
-        onFinish(earnedRef.current);
+        onFinish({ exp: waveBonusExpRef.current, coins: earnedRef.current.coins, perfectCount: earnedRef.current.perfectCount });
       }, 3500);
       return () => clearTimeout(timer);
     }
@@ -478,6 +479,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
         setShowWaveClear(true);
         audioCtrl.playSE('success');
         earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 30 };
+        waveBonusExpRef.current += 30;
         timeLeftRef.current = Math.min(MAX_TIME, timeLeftRef.current + 5);
         setTimeLeft(timeLeftRef.current);
 
