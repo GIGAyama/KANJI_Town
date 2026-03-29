@@ -72,3 +72,39 @@ ruby.survival-blank rt {
     display: none;
   }
 }
+
+/* 印刷用スタイル（複数ページ対応） */
+@media print {
+  body {
+    background-color: #fff;
+  }
+
+  /* absolute配置を解除してスクロール内容を全て表示 */
+  .absolute.inset-0 {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* ナビゲーション・フッター・ボトムバーを非表示 */
+  nav, footer, [role="navigation"] {
+    display: none !important;
+  }
+
+  /* overflow-hiddenを解除 */
+  .overflow-hidden, .overflow-y-auto, .overflow-x-hidden {
+    overflow: visible !important;
+  }
+
+  /* 高さ制限を解除 */
+  .h-full, .h-screen, [class*="h-[100dvh]"] {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* アニメーション無効化 */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
