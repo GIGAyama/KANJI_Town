@@ -1,6 +1,6 @@
 // マイ漢字タウン Service Worker
 // 戦略キャッシュでGIGAスクール端末のオフライン環境に完全対応
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_STATIC = `kanji-town-static-v${CACHE_VERSION}`;
 const CACHE_KANJIVG = `kanji-town-kanjivg-v${CACHE_VERSION}`;
 const CACHE_FONTS = `kanji-town-fonts-v${CACHE_VERSION}`;
@@ -79,17 +79,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── ナビゲーション: Network-first → キャッシュ → オフラインページ ──
+  // ── ナビゲーション(SPA): Network-first → キャッシュ(ルート) → オフラインページ ──
+  // SPAなので全てのナビゲーションをルートページ(index.html)で処理する
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          // 200のみキャッシュ（404等をキャッシュしない）
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(BASE, clone));
+          }
           return response;
         })
         .catch(() =>
-          caches.match(request).then((cached) =>
+          // オフライン時はルートページのキャッシュで応答（SPA対応）
+          caches.match(BASE).then((cached) =>
             cached || caches.match(BASE + 'offline.html')
           )
         )
