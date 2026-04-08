@@ -1,6 +1,6 @@
 // マイ漢字タウン Service Worker
 // 戦略キャッシュでGIGAスクール端末のオフライン環境に完全対応
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const CACHE_STATIC = `kanji-town-static-v${CACHE_VERSION}`;
 const CACHE_KANJIVG = `kanji-town-kanjivg-v${CACHE_VERSION}`;
 const CACHE_FONTS = `kanji-town-fonts-v${CACHE_VERSION}`;
@@ -22,7 +22,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// ── アクティベート: 古いバージョンのキャッシュを削除 ──
+// ── アクティベート: 古いバージョンのキャッシュを削除してからクライアントを引き取る ──
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -31,9 +31,8 @@ self.addEventListener('activate', (event) => {
           .filter((k) => !ALL_CACHES.includes(k))
           .map((k) => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // ── フェッチ: リソース種別ごとの戦略キャッシュ ──
@@ -102,20 +101,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── JS/CSS/画像 (ビルドアセット): Stale-While-Revalidate ──
+  // ── JS/CSS/画像 (ビルドアセット): Cache-first → Network ──
   // ハッシュ付きアセットは変わらないのでキャッシュ優先、なければネットワーク
   if (url.includes('/assets/') || url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.png') || url.endsWith('.svg') || url.endsWith('.ico')) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const networkFetch = fetch(request).then((response) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, clone));
           }
           return response;
-        }).catch(() => cached);
-
-        return cached || networkFetch;
+        });
       })
     );
     return;
@@ -131,7 +129,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(request).then((cached) => cached || new Response('', { status: 503 })))
   );
 });
 
