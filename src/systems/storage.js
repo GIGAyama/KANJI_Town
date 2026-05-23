@@ -57,6 +57,13 @@ let _saveDebounceTimer = null;
 /** @type {boolean} 前回の保存が容量不足で失敗したか */
 let _lastSaveFailed = false;
 
+/** @type {Set<(info: {reason: string}) => void>} 保存失敗リスナー */
+const _saveErrorListeners = new Set();
+
+function _notifySaveError(reason) {
+  _saveErrorListeners.forEach(fn => { try { fn({ reason }); } catch {} });
+}
+
 const StorageAPI = {
   /**
    * localStorageからJSONを安全に取得する
@@ -88,34 +95,72 @@ const StorageAPI = {
       _lastSaveFailed = false;
       return true;
     } catch (e) {
-      // QuotaExceededError: 古い日次データを圧縮して再試行
-      if (e.name === 'QuotaExceededError' && val && val.daily) {
-        logStorageError('safeSet:quota', 'ストレージ容量不足 - 古いデータを圧縮します');
-        const compressed = StorageAPI._compressDailyData(val);
+      // QuotaExceededError: 多段階フォールバック
+      if (e.name === 'QuotaExceededError' && val && typeof val === 'object') {
+        logStorageError('safeSet:quota', 'ストレージ容量不足 - データを段階的に圧縮します');
+
+        // ステージ1: 30日より古い日次データを削除
         try {
+          const compressed = StorageAPI._compressDailyData(val, 30);
           window.localStorage.setItem(key, JSON.stringify(compressed));
           _lastSaveFailed = false;
+          _notifySaveError('compressed-30d');
           return true;
         } catch (e2) {
-          logStorageError('safeSet:quota:retry', e2);
+          logStorageError('safeSet:quota:retry1', e2);
+        }
+
+        // ステージ2: 7日より古い日次データを削除 + 無関係なlocalStorageキーを掃除
+        try {
+          StorageAPI._purgeUnrelatedKeys();
+          const compressed = StorageAPI._compressDailyData(val, 7);
+          window.localStorage.setItem(key, JSON.stringify(compressed));
+          _lastSaveFailed = false;
+          _notifySaveError('compressed-7d');
+          return true;
+        } catch (e3) {
+          logStorageError('safeSet:quota:retry2', e3);
+        }
+
+        // ステージ3: 日次データを完全に消し、必須フィールドのみ残す
+        try {
+          const minimal = StorageAPI._minimalStats(val);
+          window.localStorage.setItem(key, JSON.stringify(minimal));
+          _lastSaveFailed = false;
+          _notifySaveError('minimal');
+          return true;
+        } catch (e4) {
+          logStorageError('safeSet:quota:retry3', e4);
         }
       }
       logStorageError('safeSet', e);
       _lastSaveFailed = true;
+      _notifySaveError(e.name === 'QuotaExceededError' ? 'quota' : 'unknown');
       return false;
     }
   },
 
   /**
-   * 古い日次データを圧縮する（30日より古いデータを月単位に集約）
+   * 保存失敗イベントを購読する（UI で通知バナーを出すため）
+   * @param {(info: {reason: string}) => void} listener
+   * @returns {() => void} 解除関数
+   */
+  onSaveError: (listener) => {
+    _saveErrorListeners.add(listener);
+    return () => _saveErrorListeners.delete(listener);
+  },
+
+  /**
+   * 古い日次データを削除する
    * @param {object} stats
+   * @param {number} keepDays - 残す日数
    * @returns {object}
    */
-  _compressDailyData: (stats) => {
+  _compressDailyData: (stats, keepDays = 30) => {
     if (!stats.daily) return stats;
     const compressed = { ...stats, daily: { ...stats.daily } };
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
+    cutoff.setDate(cutoff.getDate() - keepDays);
     const cutoffStr = formatDate(cutoff);
 
     Object.keys(compressed.daily).forEach(dateKey => {
@@ -125,6 +170,56 @@ const StorageAPI = {
     });
     return compressed;
   },
+
+  /**
+   * アプリ管理外の localStorage キーや任意削除可能なキャッシュを削除する
+   * 容量逼迫時の最終手段
+   */
+  _purgeUnrelatedKeys: () => {
+    try {
+      const KEEP = new Set([STORAGE_KEY, ...LEGACY_KEYS, 'kanji_town_resident_mode']);
+      const removable = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (!k) continue;
+        // エラーログや古いキャッシュは削除候補
+        if (!KEEP.has(k) && (k.startsWith('kanji_town_errors') || k.startsWith('kanji_vg_cache') || !k.startsWith('kanji_'))) {
+          removable.push(k);
+        }
+      }
+      removable.forEach(k => { try { window.localStorage.removeItem(k); } catch {} });
+    } catch {}
+  },
+
+  /**
+   * 最小限のフィールドだけ残した stats を返す（最終救援用）
+   * @param {object} stats
+   * @returns {object}
+   */
+  _minimalStats: (stats) => ({
+    totalExp: stats.totalExp || 0,
+    streak: stats.streak || 0,
+    lastDate: stats.lastDate || '',
+    coins: stats.coins || 0,
+    targetGrade: stats.targetGrade || 1,
+    townMap: stats.townMap || {},
+    townItems: stats.townItems || {},
+    daily: {},
+    kanjiStats: stats.kanjiStats || {},
+    unlockedKanji: stats.unlockedKanji || [],
+    achievements: stats.achievements || {},
+    perfectCountTotal: stats.perfectCountTotal || 0,
+    myDrills: stats.myDrills || [],
+    population: stats.population || 0,
+    villagers: stats.villagers || [],
+    exploredRadius: stats.exploredRadius || MAP.INITIAL_EXPLORE_RADIUS,
+    schemaVersion: stats.schemaVersion || 8,
+    mapSize: stats.mapSize || MAP.GRID_SIZE,
+    materials: stats.materials || {},
+    tutorialCompleted: stats.tutorialCompleted,
+    settings: stats.settings,
+    seenHints: stats.seenHints || [],
+  }),
 
   /**
    * 前回の保存が失敗したかどうか

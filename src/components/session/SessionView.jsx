@@ -12,32 +12,60 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
 
 const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRecordPerfect, onRecordEasy }) => {
-  const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false); const [canvasSize] = useState(window.innerWidth < 768 ? 280 : 400); const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
+  const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
+  // モバイルでは画面幅の 80% を使う（最小 300px・最大 360px）。デスクトップは 400px 固定。
+  const [canvasSize] = useState(() => {
+    if (typeof window === 'undefined') return 400;
+    const w = window.innerWidth;
+    if (w >= 768) return 400;
+    return Math.max(300, Math.min(360, Math.floor(w * 0.8)));
+  });
+  const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
   const currentKanji = queue[0]; const isNew = !stats[currentKanji?.id] || stats[currentKanji?.id].status === 'new'; const MODES = useMemo(() => ['read', 'watch', 'write', 'test'], []);
   const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     if (!currentKanji) return; setMode(isNew ? 'read' : 'test'); setReachedStep(isNew ? 0 : 3);
-    let cancelled = false;
+    const abortCtrl = new AbortController();
     const load = async () => {
       setIsLoading(true); setFetchError(null);
       try {
-        const { paths: p, strokeData: data } = await fetchKanjiVg(currentKanji.char);
-        if (cancelled) return;
+        const { paths: p, strokeData: data } = await fetchKanjiVg(currentKanji.char, { signal: abortCtrl.signal });
+        if (abortCtrl.signal.aborted) return;
         setPaths(p); setStrokeData(data);
         const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
         setCrossMatrix(cMatrix);
       } catch (e) {
-        if (cancelled) return;
+        if (abortCtrl.signal.aborted || e?.name === 'AbortError') return;
         setPaths([]); setCrossMatrix([]); setStrokeData([]);
         setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。');
+      } finally {
+        if (!abortCtrl.signal.aborted) setIsLoading(false);
       }
-      setIsLoading(false);
     }; load();
-    return () => { cancelled = true; };
+    return () => { abortCtrl.abort(); };
   }, [currentKanji, isNew]);
 
   useEffect(() => { const stepIdx = MODES.indexOf(mode); if (stepIdx > reachedStep) setReachedStep(stepIdx); }, [mode, reachedStep, MODES]);
+
+  // キーボードで mode をタブ切替（test モード以外。test は内部で書き取り操作と競合）
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (mode === 'test' || mode === 'write') return; // 描画系では無効
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      const curIdx = MODES.indexOf(mode);
+      const nextIdx = curIdx + dir;
+      if (nextIdx < 0 || nextIdx >= MODES.length) return;
+      if (isNew && nextIdx > reachedStep) return;
+      e.preventDefault();
+      audioCtrl.playSE('click');
+      setMode(MODES[nextIdx]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, MODES, isNew, reachedStep]);
 
   const handleEvaluation = (evalType) => {
     if (evalType === 'easy') onRecordEasy();
@@ -59,7 +87,19 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
       <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 md:gap-2">
         {[{ id: 'read', icon: <Volume2 size={18} />, label: <>{F("音","おん")}{F("読","どく")}</> }, { id: 'watch', icon: <PlayCircle size={18} />, label: <>{F("書","か")}き{F("順","じゅん")}</> }, { id: 'write', icon: <Pencil size={18} />, label: "なぞる" }, { id: 'test', icon: <CheckCircle2 size={18} />, label: "テスト" }].map((t, idx) => {
           const isDisabled = isNew && idx > reachedStep;
-          return (<button key={t.id} onClick={() => { if (isDisabled) { audioCtrl.playSE('stamp_bad'); return; } audioCtrl.playSE('click'); setMode(t.id); }} className={`flex flex-col items-center justify-center py-2.5 rounded-xl font-bold text-[10px] sm:text-xs border-[3px] transition-all ${mode === t.id ? "bg-[var(--text)] text-[var(--panel)] border-[var(--text)] shadow-[2px_2px_0_var(--primary)] scale-105" : isDisabled ? "bg-gray-100 text-gray-400 border-gray-300 opacity-50 cursor-not-allowed" : "bg-[var(--panel)] text-[var(--text)] border-[var(--text)] hover:bg-[var(--bg)]"}`}>{t.icon} <span className="mt-1">{t.label}</span></button>);
+          return (
+            <button
+              key={t.id}
+              onClick={() => { if (isDisabled) { audioCtrl.playSE('stamp_bad'); return; } audioCtrl.playSE('click'); setMode(t.id); }}
+              disabled={isDisabled}
+              aria-current={mode === t.id ? 'step' : undefined}
+              aria-disabled={isDisabled || undefined}
+              title={isDisabled ? `まずは「${MODES[reachedStep] === 'read' ? '音読' : MODES[reachedStep] === 'watch' ? '書き順' : MODES[reachedStep] === 'write' ? 'なぞる' : 'テスト'}」をやってみよう` : undefined}
+              className={`flex flex-col items-center justify-center py-2.5 rounded-xl font-bold text-[10px] sm:text-xs border-[3px] transition-all ${mode === t.id ? "bg-[var(--text)] text-[var(--panel)] border-[var(--text)] shadow-[2px_2px_0_var(--primary)] scale-105" : isDisabled ? "bg-gray-100 text-gray-400 border-gray-300 opacity-50 cursor-not-allowed" : "bg-[var(--panel)] text-[var(--text)] border-[var(--text)] hover:bg-[var(--bg)]"}`}
+            >
+              {t.icon} <span className="mt-1">{t.label}</span>
+            </button>
+          );
         })}
       </div>
     </div>
@@ -80,7 +120,25 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
           <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
             <div className="text-5xl">😢</div>
             <p className="text-[var(--text)] font-bold text-lg whitespace-pre-line">{fetchError}</p>
-            <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(currentKanji.char).then(({ paths: p, strokeData: data }) => { setPaths(p); setStrokeData(data); const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points))); setCrossMatrix(cMatrix); setIsLoading(false); }).catch(() => { setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。'); setIsLoading(false); }); }} className="bg-[var(--primary)] text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-[var(--text)] shadow-[3px_3px_0_var(--text)] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど ためす</button>
+            <button
+              disabled={isLoading}
+              onClick={() => {
+                if (isLoading) return;
+                setFetchError(null);
+                setIsLoading(true);
+                fetchKanjiVg(currentKanji.char)
+                  .then(({ paths: p, strokeData: data }) => {
+                    setPaths(p); setStrokeData(data);
+                    const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
+                    setCrossMatrix(cMatrix);
+                  })
+                  .catch(() => setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。'))
+                  .finally(() => setIsLoading(false));
+              }}
+              className={`bg-[var(--primary)] text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-[var(--text)] shadow-[3px_3px_0_var(--text)] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              {isLoading ? 'よみこみ中...' : '🔄 もういちど ためす'}
+            </button>
           </div>
         ) : (
           <>

@@ -125,13 +125,25 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     return () => clearInterval(timer);
   }, []);
 
-  // コンテナサイズ監視
+  // コンテナサイズ監視（向き・サイズが大きく変わったら再フィット）
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       if (width > 0 && height > 0) {
-        setContainerSize({ w: width, h: height });
+        setContainerSize(prev => {
+          // 縦横比が大きく変わったら（画面回転など）再フィットを発火
+          if (prev.w > 0 && prev.h > 0) {
+            const prevRatio = prev.w / prev.h;
+            const newRatio = width / height;
+            const ratioChanged = Math.abs(prevRatio - newRatio) / prevRatio > 0.2;
+            const sizeChanged = Math.abs(prev.w - width) / prev.w > 0.3 || Math.abs(prev.h - height) / prev.h > 0.3;
+            if (ratioChanged || sizeChanged) {
+              setInitialFitDone(false);
+            }
+          }
+          return { w: width, h: height };
+        });
       }
     });
     ro.observe(containerRef.current);
