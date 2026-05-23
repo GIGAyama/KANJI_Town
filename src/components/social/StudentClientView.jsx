@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Download, Wifi, Gift, ArrowLeft, Camera, X, Delete } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
-import { usePeerJS } from '../../hooks/usePeerJS';
+import { usePeerJSStatus } from '../../hooks/usePeerJS';
 import { useJsQR } from '../../hooks/useQRCode';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { StorageAPI } from '../../systems/storage';
@@ -207,7 +207,7 @@ const QRScanner = ({ onScan, onClose }) => {
 };
 
 const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
-  const isPeerLoaded = usePeerJS();
+  const { isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJSStatus();
   const [hostId, setHostId] = useState(initialConnectId || '');
   const [status, setStatus] = useState('');
   const [receivedDrill, setReceivedDrill] = useState(null);
@@ -301,9 +301,15 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
             <Camera size={22} /> QRコードでよみとる
           </MotionButton>
 
-          {!isPeerLoaded && (
+          {!isPeerLoaded && !peerLoadError && (
             <div className="text-xs text-center text-[var(--text)] opacity-50">
               じゅんびしています...
+            </div>
+          )}
+          {peerLoadError && (
+            <div className="text-xs text-center text-rose-600 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-3 py-2">
+              つうしんライブラリのよみこみに しっぱいしました。<br />
+              ネットワークをかくにんしてください。
             </div>
           )}
         </div>

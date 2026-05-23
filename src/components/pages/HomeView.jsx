@@ -18,7 +18,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const now = Date.now();
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
   const handleGradeChange = (g) => { setSelectedGrade(g); let newStats = { ...stats, targetGrade: g }; setStats(newStats); StorageAPI.saveStats(newStats); };
-  const reviewTargetsCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new' && stats.kanjiStats[k.id].nextReview <= now).length;
+  const reviewTargetsCount = KANJI_DATA.filter(k => {
+    const s = stats.kanjiStats?.[k.id];
+    return s && s.status !== 'new' && (s.nextReview || 0) <= now;
+  }).length;
   const isReviewNeeded = reviewTargetsCount > 0;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Wifi, ArrowLeft, Copy, Check } from 'lucide-react';
-import { usePeerJS } from '../../hooks/usePeerJS';
+import { usePeerJSStatus } from '../../hooks/usePeerJS';
 import { useQRCode } from '../../hooks/useQRCode';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
@@ -14,7 +14,7 @@ const generate4DigitId = () => {
 const PEER_ID_PREFIX = 'kanji-town-';
 
 const TeacherHostView = ({ setView, drill }) => {
-  const isPeerLoaded = usePeerJS();
+  const { isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJSStatus();
   const isQRLoaded = useQRCode();
   const [numericId, setNumericId] = useState('');
   const [status, setStatus] = useState('起動中...');
@@ -144,9 +144,15 @@ const TeacherHostView = ({ setView, drill }) => {
           </>
         )}
 
-        {!isPeerLoaded && (
+        {!isPeerLoaded && !peerLoadError && (
           <div className="text-sm text-[var(--text)] opacity-50">
             じゅんびしています...
+          </div>
+        )}
+        {peerLoadError && (
+          <div className="text-sm text-rose-600 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-3 py-2 text-center">
+            つうしんライブラリのよみこみに しっぱいしました。<br />
+            ネットワークをかくにんして もういちど ひらいてください。
           </div>
         )}
       </div>

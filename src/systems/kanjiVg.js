@@ -15,15 +15,25 @@ const memoryCache = new Map();
 migrateFromLocalStorage(LEGACY_STORAGE_KEY);
 
 /**
- * タイムアウト付きfetch
+ * タイムアウト付きfetch（外部 AbortSignal も連携）
  * @param {string} url
  * @param {number} timeout - タイムアウト(ms)
+ * @param {AbortSignal} [externalSignal] - 呼び出し側のキャンセル信号
  * @returns {Promise<Response>}
  */
-function fetchWithTimeout(url, timeout) {
+function fetchWithTimeout(url, timeout, externalSignal) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+  // 外部 signal が aborted されたら自分も abort
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+  return fetch(url, { signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId);
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+  });
 }
 
 /**
@@ -31,21 +41,30 @@ function fetchWithTimeout(url, timeout) {
  * @param {string} url
  * @param {number} maxRetries
  * @param {number} timeout
+ * @param {AbortSignal} [externalSignal]
  * @returns {Promise<Response>}
  * @throws {Error} 全リトライ失敗時
  */
-async function fetchWithRetry(url, maxRetries, timeout) {
+async function fetchWithRetry(url, maxRetries, timeout, externalSignal) {
   let lastError;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (externalSignal?.aborted) throw new DOMException('Aborted', 'AbortError');
     try {
-      const res = await fetchWithTimeout(url, timeout);
+      const res = await fetchWithTimeout(url, timeout, externalSignal);
       if (res.ok) return res;
       lastError = new Error(`HTTP ${res.status}`);
     } catch (e) {
+      // 外部からのキャンセルは即座に伝播
+      if (externalSignal?.aborted) throw e;
       lastError = e;
     }
     if (attempt < maxRetries - 1) {
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      await new Promise((r, rej) => {
+        const t = setTimeout(r, 1000 * Math.pow(2, attempt));
+        if (externalSignal) {
+          externalSignal.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('Aborted', 'AbortError')); }, { once: true });
+        }
+      });
     }
   }
   throw lastError;
@@ -103,11 +122,16 @@ function buildStrokeData(pathStrings) {
  * 3. ネットワーク取得（リトライ付き）
  *
  * @param {string} char - 漢字1文字
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] - キャンセル用シグナル
  * @returns {Promise<{ paths: string[], strokeData: Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array}> }>}
- * @throws {Error} 全リトライ失敗時
+ * @throws {Error} 全リトライ失敗時 or AbortError
  */
-export async function fetchKanjiVg(char) {
+export async function fetchKanjiVg(char, options = {}) {
+  const { signal } = options;
   const hex = char.charCodeAt(0).toString(16).padStart(5, '0');
+
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
   // 1. メモリキャッシュ
   if (memoryCache.has(hex)) {
@@ -117,6 +141,7 @@ export async function fetchKanjiVg(char) {
 
   // 2. IndexedDB キャッシュ
   const idbCached = await idbGet(hex);
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   if (idbCached) {
     memoryCache.set(hex, idbCached);
     return { paths: idbCached, strokeData: buildStrokeData(idbCached) };
@@ -126,7 +151,8 @@ export async function fetchKanjiVg(char) {
   const res = await fetchWithRetry(
     `${KANJI_VG.CDN_URL}/${hex}.svg`,
     KANJI_VG.MAX_RETRIES,
-    KANJI_VG.FETCH_TIMEOUT
+    KANJI_VG.FETCH_TIMEOUT,
+    signal
   );
   const text = await res.text();
   const pathStrings = extractPathStrings(text);

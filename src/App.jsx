@@ -5,6 +5,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useIsMobile } from './hooks/useIsMobile';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import OfflineBanner from './components/ui/OfflineBanner';
+import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
@@ -132,6 +133,7 @@ export default function App() {
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
 
   // ログインボーナス＆デイリーミッション初期化関数
+  // 関数型 setStats を使い、stale な currentStats を上書きしないようにする
   const refreshDailyData = useCallback((currentStats, isInitial = false) => {
     const today = getTodayString();
 
@@ -141,46 +143,50 @@ export default function App() {
       || currentStats.lastCollectionDate !== today;
     if (!isInitial && !dateChanged) return;
 
-    let updatedStats = { ...currentStats };
     let needsSave = false;
+    let missionsToSet = null;
 
     // デイリーミッション初期化
-    if (updatedStats.dailyMissionsDate !== today) {
-      const missions = getDailyMissions(today).map(m => ({ ...m, current: 0, claimed: false }));
-      setDailyMissions(missions);
-      updatedStats = { ...updatedStats, dailyMissions: missions, dailyMissionsDate: today };
+    if (currentStats.dailyMissionsDate !== today) {
+      missionsToSet = getDailyMissions(today).map(m => ({ ...m, current: 0, claimed: false }));
+      setDailyMissions(missionsToSet);
       needsSave = true;
     } else if (isInitial) {
-      setDailyMissions(updatedStats.dailyMissions || []);
+      setDailyMissions(currentStats.dailyMissions || []);
     }
 
     // ログインボーナス受取
-    if (updatedStats.tutorialCompleted && updatedStats.lastLoginBonusDate !== today && (updatedStats.streak || 0) >= 1) {
-      const bonusDay = getLoginBonusDay(updatedStats.streak);
+    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && (currentStats.streak || 0) >= 1) {
+      const bonusDay = getLoginBonusDay(currentStats.streak);
       const reward = getLoginBonusReward(bonusDay);
-      setLoginBonusReward({ ...reward, bonusDay, streak: updatedStats.streak });
+      setLoginBonusReward({ ...reward, bonusDay, streak: currentStats.streak });
       setShowLoginBonus(true);
     }
 
-    // ── 住民の自動素材収集（1日1回）──
-    if (updatedStats.lastCollectionDate !== today && (updatedStats.villagers || []).length > 0) {
-      // 収集実行（StorageAPIのロジックを借用してStatsを更新）
-      updatedStats = StorageAPI.updateDaily(updatedStats, 0, { reviewedCount: 0, perfectCount: 0 });
-      if (updatedStats.lastCollectionResult) {
-        const sat = updatedStats.satisfaction || 0;
-        setResidentCollectionResult({
-          result: updatedStats.lastCollectionResult,
-          satisfaction: sat,
-          satLabel: getSatisfactionLabel(sat)
-        });
-        setShowResidentCollection(true);
-      }
-      needsSave = true;
-    }
+    const willCollect = currentStats.lastCollectionDate !== today && (currentStats.villagers || []).length > 0;
 
-    if (needsSave) {
-      setStats(updatedStats);
-      StorageAPI.saveStats(updatedStats);
+    if (needsSave || willCollect) {
+      setStats(prev => {
+        let updated = { ...prev };
+        if (missionsToSet) {
+          updated.dailyMissions = missionsToSet;
+          updated.dailyMissionsDate = today;
+        }
+        if (willCollect && updated.lastCollectionDate !== today) {
+          updated = StorageAPI.updateDaily(updated, 0, { reviewedCount: 0, perfectCount: 0 });
+          if (updated.lastCollectionResult) {
+            const sat = updated.satisfaction || 0;
+            setResidentCollectionResult({
+              result: updated.lastCollectionResult,
+              satisfaction: sat,
+              satLabel: getSatisfactionLabel(sat),
+            });
+            setShowResidentCollection(true);
+          }
+        }
+        StorageAPI.saveStats(updated);
+        return updated;
+      });
     }
   }, []);
 
@@ -279,7 +285,7 @@ export default function App() {
         const s = stats.kanjiStats?.[k.id];
         return s && s.status !== 'new' && (s.nextReview || 0) <= now;
       })
-      .sort((a, b) => (stats.kanjiStats[a.id].nextReview || 0) - (stats.kanjiStats[b.id].nextReview || 0))
+      .sort((a, b) => (stats.kanjiStats?.[a.id]?.nextReview || 0) - (stats.kanjiStats?.[b.id]?.nextReview || 0))
       .slice(0, reviewLimit);
     const newTargets = KANJI_DATA
       .filter(k => k.grade === selectedGrade && (!stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new'))
@@ -358,7 +364,7 @@ export default function App() {
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
     if (learned.length === 0) return;
     const queue = [...learned]
-      .sort((a, b) => (stats.kanjiStats[b.id].mistakes || 0) - (stats.kanjiStats[a.id].mistakes || 0))
+      .sort((a, b) => (stats.kanjiStats?.[b.id]?.mistakes || 0) - (stats.kanjiStats?.[a.id]?.mistakes || 0))
       .slice(0, 10);
     // 10問に満たない場合はランダムに複製して埋める
     while (queue.length > 0 && queue.length < 10) {
@@ -571,6 +577,9 @@ export default function App() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle />
+
+      {/* ストレージ保存失敗バナー（オフラインバナーより上に表示） */}
+      <StorageErrorBanner />
 
       {/* オフラインバナー */}
       {!isOnline && <OfflineBanner />}

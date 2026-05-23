@@ -182,6 +182,33 @@ export const calculateNextReview = (card, evaluation) => {
   }
 };
 
+/** nextReview の妥当範囲（クライアント時刻ズレ対策） */
+const MAX_FUTURE_MS = 365 * 24 * 60 * 60 * 1000; // 1年
+const MAX_PAST_MS = 365 * 24 * 60 * 60 * 1000; // 1年前まで許容
+
+/**
+ * nextReview が時刻ズレで異常値になっていないか確認し、必要なら補正する
+ * @param {object} card
+ * @returns {object} 補正後のカード
+ */
+function sanitizeNextReview(card) {
+  const now = Date.now();
+  const nr = card.nextReview;
+  if (typeof nr !== 'number' || !isFinite(nr)) {
+    return { ...card, nextReview: now };
+  }
+  // 未来に1年以上はあり得ない → 適切な間隔で再計算
+  if (nr - now > MAX_FUTURE_MS) {
+    const interval = Math.min(card.interval || GRADUATING_INTERVAL, MAX_FUTURE_MS);
+    return { ...card, interval, nextReview: now + interval };
+  }
+  // 過去に1年以上は古すぎる → いますぐ復習対象に
+  if (now - nr > MAX_PAST_MS) {
+    return { ...card, nextReview: now };
+  }
+  return card;
+}
+
 /**
  * 古いカードデータを現在のスキーマに移行する
  * @param {object|null} card
@@ -201,12 +228,12 @@ export const migrateCard = (card) => {
     };
   }
   // easeフィールドがあれば移行済み
-  if (card.ease !== undefined) return card;
-  return {
+  if (card.ease !== undefined) return sanitizeNextReview(card);
+  return sanitizeNextReview({
     ...card,
     ease: DEFAULT_EASE,
     graduated: (card.interval || 0) >= GRADUATING_INTERVAL,
     stepIdx: 0,
     lapses: 0,
-  };
+  });
 };
