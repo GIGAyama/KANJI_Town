@@ -182,8 +182,9 @@ const StorageAPI = {
       for (let i = 0; i < window.localStorage.length; i++) {
         const k = window.localStorage.key(i);
         if (!k) continue;
-        // エラーログや古いキャッシュは削除候補
-        if (!KEEP.has(k) && (k.startsWith('kanji_town_errors') || k.startsWith('kanji_vg_cache') || !k.startsWith('kanji_'))) {
+        // 自アプリのエラーログ・旧キャッシュのみ削除する
+        // （GitHub Pagesではオリジンを他アプリと共有するため、無関係なキーには触れない）
+        if (!KEEP.has(k) && (k.startsWith('kanji_town_errors') || k.startsWith('kanji_vg_cache'))) {
           removable.push(k);
         }
       }

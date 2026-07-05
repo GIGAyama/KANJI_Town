@@ -7,6 +7,7 @@ import { TOWN_ITEMS } from '../../data/town-items';
 import { StorageAPI } from '../../systems/storage';
 import { RubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
+import { grantExpWithLevelRewards } from '../../utils/level-system';
 
 const AchievementView = ({ setView, stats, setStats }) => {
   const [activeCategory, setActiveCategory] = useState('study');
@@ -14,14 +15,18 @@ const AchievementView = ({ setView, stats, setStats }) => {
   const handleClaim = (achievement) => {
     const current = stats.achievements?.[achievement.id];
     if (!current || current.claimed || current.current < achievement.target) return;
+    // rewardExpでレベルアップした場合の報酬も確実に付与する
+    const { stats: granted, levelUpData } = grantExpWithLevelRewards(stats, achievement.rewardExp || 0);
     const newStats = {
-      ...stats,
-      coins: stats.coins + achievement.reward,
-      totalExp: (stats.totalExp || 0) + (achievement.rewardExp || 0),
-      achievements: { ...stats.achievements, [achievement.id]: { ...current, claimed: true } }
+      ...granted,
+      coins: (granted.coins || 0) + achievement.reward,
+      achievements: { ...granted.achievements, [achievement.id]: { ...current, claimed: true } }
     };
     if (achievement.rewardItem) newStats.townItems = { ...newStats.townItems, [achievement.rewardItem]: (newStats.townItems?.[achievement.rewardItem] || 0) + 1 };
     setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('chest_open');
+    if (levelUpData.isLevelUp) {
+      setTimeout(() => audioCtrl.playSE('level_up', 0.5), 400);
+    }
   };
 
   const categories = Object.entries(ACHIEVEMENT_CATEGORIES).sort((a, b) => a[1].order - b[1].order);

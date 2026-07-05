@@ -299,7 +299,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
   // levelInfo and playerLevel are now defined at the top
-  const perfectCount = stats.perfectCount || 0;
+  const perfectCount = stats.perfectCountTotal || 0;
 
   const craftRecipes = useMemo(() => {
     let base;
@@ -352,7 +352,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     }
 
     if (recipe.category === 'material') {
-      newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + (result.bonusYield ? result.result.amount * 2 : result.result.amount);
+      // result.result.amount にはボーナス分がすでに含まれている
+      newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + result.result.amount;
     } else {
       const townItemId = getResultTownItemId(result.result.type);
       if (townItemId) {
@@ -360,7 +361,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       }
       if (recipe.category === 'upgrade' && recipe.requires) {
         const oldCount = newStats.townItems?.[recipe.requires] || 0;
-        if (oldCount > 0) newStats.townItems[recipe.requires] = oldCount - 1;
+        newStats.townItems = { ...newStats.townItems, [recipe.requires]: Math.max(0, oldCount - quantity) };
       }
     }
 
@@ -610,6 +611,10 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
     const coinCost = recipe.coinCost || 0;
     const { discountedIngredients } = applyOccupationDiscount(recipe.ingredients, recipe, villagers);
     let max = Infinity;
+    // アップグレードは手持ちの元建物数が上限
+    if (recipe.category === 'upgrade' && recipe.requires) {
+      max = Math.min(max, stats.townItems?.[recipe.requires] || 0);
+    }
     if (coinCost > 0) max = Math.min(max, Math.floor((stats.coins || 0) / coinCost));
     for (const ing of discountedIngredients) {
       const have = materials[ing.material] || 0;

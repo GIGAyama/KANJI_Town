@@ -214,6 +214,11 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
   const [showScanner, setShowScanner] = useState(false);
   const peerRef = useRef(null);
 
+  // 画面を離れるときにPeer接続を破棄する（接続リーク防止）
+  useEffect(() => {
+    return () => { if (peerRef.current) peerRef.current.destroy(); };
+  }, []);
+
   const handleConnect = useCallback(() => {
     if (!isPeerLoaded || hostId.length !== 4) return;
     const fullId = PEER_ID_PREFIX + hostId;

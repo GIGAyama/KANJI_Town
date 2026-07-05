@@ -16,7 +16,7 @@ const LEVEL_TABLE = [
   { level: 5,  exp: 500,    reward: { type: 'item', id: 't_house1', amount: 1, text: '「民家」をもらった！' }, desc: '住民を増やそう' },
   { level: 6,  exp: 800,    reward: { type: 'coins', amount: 1000 }, desc: 'コイン1000枚ゲット！' },
   { level: 7,  exp: 1200,   reward: { type: 'radius', amount: 5, text: 'マップが広がった！' }, desc: '未開の地へ' },
-  { level: 8,  exp: 1700,   reward: { type: 'item', id: 't_sakura_tree', amount: 1, text: '「桜の木」をもらった！' }, desc: '村を飾ろう' },
+  { level: 8,  exp: 1700,   reward: { type: 'item', id: 't_sakura', amount: 1, text: '「桜の木」をもらった！' }, desc: '村を飾ろう' },
   { level: 9,  exp: 2300,   reward: { type: 'coins', amount: 1500 }, desc: 'お金持ちへの道' },
   { level: 10, exp: 3000,   reward: { type: 'feature', id: 'theme_sakura', text: 'テーマ色「さくら」解放！' }, desc: '春の訪れ' },
   // 以降、緩やかな二次曲線に近い形でテーブルを自動生成（Lv11〜Lv100まで）
@@ -151,6 +151,36 @@ export const checkLevelUp = (oldExp, newExp) => {
     return { isLevelUp: true, oldLevel: oldLvlInfo.level, newLevel: newLvlInfo.level, rewards };
   }
   return { isLevelUp: false, oldLevel: oldLvlInfo.level, newLevel: newLvlInfo.level, rewards: [] };
+};
+
+/**
+ * EXP付与とレベルアップ報酬の適用をまとめて行う
+ * セッション外（ミッション・実績の受取など）でEXPが増える場合に使い、
+ * レベルアップ報酬（コイン・アイテム・探索半径）が失われないようにする
+ * @param {object} stats - 現在のstats（変更されない）
+ * @param {number} exp - 付与するEXP
+ * @returns {{ stats: object, levelUpData: object }} 新しいstatsとレベルアップ情報
+ */
+export const grantExpWithLevelRewards = (stats, exp) => {
+  const oldExp = stats.totalExp || 0;
+  const newExp = oldExp + (exp || 0);
+  const levelUpData = checkLevelUp(oldExp, newExp);
+  const next = { ...stats, totalExp: newExp };
+  if (levelUpData.isLevelUp) {
+    levelUpData.rewards.forEach(({ reward }) => {
+      if (!reward) return;
+      if (reward.type === 'coins') {
+        next.coins = (next.coins || 0) + reward.amount;
+      } else if (reward.type === 'item') {
+        next.townItems = { ...(next.townItems || {}) };
+        next.townItems[reward.id] = (next.townItems[reward.id] || 0) + reward.amount;
+      } else if (reward.type === 'radius') {
+        next.exploredRadius = Math.max(next.exploredRadius || 3, reward.amount);
+      }
+      // type: 'feature' はレベル値そのものから解放されるため適用不要
+    });
+  }
+  return { stats: next, levelUpData };
 };
 
 /**

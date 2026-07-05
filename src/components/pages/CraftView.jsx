@@ -34,7 +34,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
   const playerLevel = levelInfo.level;
   const materials = stats.materials || {};
   const villagers = stats.villagers || [];
-  const perfectCount = stats.perfectCount || 0;
+  const perfectCount = stats.perfectCountTotal || 0;
 
   // Get recipes for current category
   const recipes = useMemo(() => {
@@ -89,7 +89,7 @@ const CraftView = ({ stats, setStats, setView, onCraft }) => {
       audioCtrl.playSE('stamp_bad');
       // Show error feedback
       const coinCost = recipe.coinCost || 0;
-      if (coinCost > 0 && playerCoins < coinCost) {
+      if (coinCost > 0 && playerCoins < coinCost * quantity) {
         setCraftError('コイン不足');
       } else {
         setCraftError('素材不足');

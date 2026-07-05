@@ -171,6 +171,10 @@ class AudioController {
     this.bgmInterval = null;
     /** @type {string|null} 現在再生中のBGMタイプ */
     this._currentBGM = null;
+    /** @type {number} マスター音量(0-1) */
+    this._volume = 1;
+    /** @type {GainNode|null} マスター音量用ゲインノード */
+    this.masterGain = null;
   }
 
   /**
@@ -180,6 +184,9 @@ class AudioController {
     if (!this.ctx) {
       try {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this._volume;
+        this.masterGain.connect(this.ctx.destination);
       } catch (e) {
         if (import.meta.env.DEV) console.warn('[Audio] AudioContext初期化失敗:', e);
         return;
@@ -188,6 +195,21 @@ class AudioController {
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+  }
+
+  /** マスター音量(0-1)。設定画面から audioCtrl.volume = 0.6 の形で変更される */
+  get volume() {
+    return this._volume;
+  }
+
+  set volume(v) {
+    this._volume = Math.max(0, Math.min(1, Number(v) || 0));
+    if (this.masterGain) this.masterGain.gain.value = this._volume;
+  }
+
+  /** 出力先ノード（マスターゲインがあればそちらへ） */
+  _output() {
+    return this.masterGain || this.ctx.destination;
   }
 
   /**
@@ -244,7 +266,7 @@ class AudioController {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this._output());
       osc.type = def.type;
       osc.frequency.setValueAtTime(def.freq, t);
 
@@ -278,7 +300,7 @@ class AudioController {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this._output());
         osc.type = def.type;
         def.notes.forEach((freq, i) => {
           osc.frequency.setValueAtTime(freq, t + i * def.interval);
@@ -295,7 +317,7 @@ class AudioController {
           osc.type = def.type;
           osc.frequency.value = freq;
           osc.connect(gain);
-          gain.connect(this.ctx.destination);
+          gain.connect(this._output());
           const noteStart = t + i * def.interval;
           gain.gain.setValueAtTime(def.gain * volumeScale, noteStart);
           gain.gain.exponentialRampToValueAtTime(0.001, noteStart + def.duration);
@@ -334,7 +356,7 @@ class AudioController {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this._output());
         osc.type = pattern.type;
         osc.frequency.value = pattern.notes[step % pattern.notes.length] / 2;
         gain.gain.setValueAtTime(pattern.gain, t);

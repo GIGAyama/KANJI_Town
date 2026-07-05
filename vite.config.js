@@ -16,7 +16,7 @@ export default defineConfig({
           'recipes': ['./src/data/recipes.js'],
           'vendor-react': ['react', 'react-dom'],
           'vendor-motion': ['framer-motion'],
-          // peerjs は動的importされるため自動チャンクに任せる
+          // peerjs / qrcode / jsQR は CDN からロードするため依存に含めない
         },
       },
     },
