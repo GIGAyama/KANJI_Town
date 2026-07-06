@@ -64,6 +64,79 @@ const lighten = (hex, amt = 20) => {
   return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`;
 };
 
+// ==========================================
+// 共有アイソメトリック描画ヘルパー
+// 100×100 の論理グリッドをひし形（幅88・高さ44）にマッピングする。
+// SvgWarehouse / SvgSchool と同じ座標系で、
+// translate(50, 100) scale(2.0〜2.4) と組み合わせて使う。
+// ==========================================
+const isoPt = (x, y, z = 0) => [(x - y) * 0.44, -44 + (x + y) * 0.22 - z];
+const iso3 = (x, y, z = 0) => {
+  const [px, py] = isoPt(x, y, z);
+  return `${px.toFixed(2)},${py.toFixed(2)}`;
+};
+
+/** 直方体（左面=南西・右面=南東・天面） */
+const IsoCube = ({ x, y, z = 0, w, d, h, top, left, right, stroke = '#1e293b', sw = 0.8 }) => (
+  <g>
+    <polygon points={`${iso3(x, y + d, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`} fill={left} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+    <polygon points={`${iso3(x + w, y, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x + w, y, z + h)}`} fill={right} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+    <polygon points={`${iso3(x, y, z + h)} ${iso3(x + w, y, z + h)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`} fill={top} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+  </g>
+);
+
+/** 南西向きの壁面パネル（窓・ドア・看板用） */
+const FaceSW = ({ x1, x2, y, z1, z2, fill, stroke = '#1e293b', sw = 0.8 }) => (
+  <polygon points={`${iso3(x1, y, z1)} ${iso3(x2, y, z1)} ${iso3(x2, y, z2)} ${iso3(x1, y, z2)}`} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+);
+
+/** 南東向きの壁面パネル */
+const FaceSE = ({ x, y1, y2, z1, z2, fill, stroke = '#1e293b', sw = 0.8 }) => (
+  <polygon points={`${iso3(x, y1, z1)} ${iso3(x, y2, z1)} ${iso3(x, y2, z2)} ${iso3(x, y1, z2)}`} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+);
+
+/** 格子入りの窓（南西向き） */
+const WinSW = ({ x1, x2, y, z1, z2 }) => (
+  <g>
+    <FaceSW x1={x1} x2={x2} y={y} z1={z1} z2={z2} fill="#f8fafc" sw={1} />
+    <FaceSW x1={x1 + 1} x2={x2 - 1} y={y + 0.1} z1={z1 + 1} z2={z2 - 1} fill="#7dd3fc" sw={0.5} />
+    <line x1={isoPt((x1 + x2) / 2, y, z1)[0]} y1={isoPt((x1 + x2) / 2, y, z1)[1]} x2={isoPt((x1 + x2) / 2, y, z2)[0]} y2={isoPt((x1 + x2) / 2, y, z2)[1]} stroke="#1e293b" strokeWidth="0.6" />
+  </g>
+);
+
+/** 格子入りの窓（南東向き） */
+const WinSE = ({ x, y1, y2, z1, z2 }) => (
+  <g>
+    <FaceSE x={x} y1={y1} y2={y2} z1={z1} z2={z2} fill="#f8fafc" sw={1} />
+    <FaceSE x={x + 0.1} y1={y1 + 1} y2={y2 - 1} z1={z1 + 1} z2={z2 - 1} fill="#7dd3fc" sw={0.5} />
+    <line x1={isoPt(x, (y1 + y2) / 2, z1)[0]} y1={isoPt(x, (y1 + y2) / 2, z1)[1]} x2={isoPt(x, (y1 + y2) / 2, z2)[0]} y2={isoPt(x, (y1 + y2) / 2, z2)[1]} stroke="#1e293b" strokeWidth="0.6" />
+  </g>
+);
+
+/** 縞模様のひさし（南西面から手前へ張り出す） */
+const AwningSW = ({ x1, x2, y, z, c1 = '#ef4444', c2 = '#f8fafc', depth = 9, drop = 4, stripes = 6 }) => {
+  const segs = [];
+  for (let i = 0; i < stripes; i++) {
+    const a = x1 + ((x2 - x1) * i) / stripes;
+    const b = x1 + ((x2 - x1) * (i + 1)) / stripes;
+    segs.push(
+      <polygon key={i} points={`${iso3(a, y, z)} ${iso3(b, y, z)} ${iso3(b, y + depth, z - drop)} ${iso3(a, y + depth, z - drop)}`}
+        fill={i % 2 === 0 ? c1 : c2} stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+    );
+  }
+  return (
+    <g>
+      {segs}
+      <polygon points={`${iso3(x1, y + depth, z - drop)} ${iso3(x2, y + depth, z - drop)} ${iso3(x2, y + depth, z - drop - 2.5)} ${iso3(x1, y + depth, z - drop - 2.5)}`} fill={darken(c1, 40)} stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+    </g>
+  );
+};
+
+/** 接地影 */
+const IsoShadow = ({ cx = 0, cy = -21, rx = 40, ry = 19, o = 0.16 }) => (
+  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#020617" opacity={o} />
+);
+
 // --- Flat surface component (道・水路・庭園) ---
 const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, type = 'road' }) => {
   const dx = 25 * scale;
@@ -1074,28 +1147,73 @@ export const SvgWall = () => (
 
 export const SvgFence = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-16,-8 -18,-9 -18,-19 -16,-18" fill="#92400e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="-16,-8 -14,-9 -14,-19 -16,-18" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,0 -2,-1 -2,-11 0,-10" fill="#92400e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,0 2,-1 2,-11 0,-10" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="16,8 14,7 14,-3 16,-2" fill="#92400e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="16,8 18,7 18,-3 16,-2" fill="#b45309" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M -16,-14 L 16,0" stroke="#000" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M -16,-10 L 16,4" stroke="#000" strokeWidth="2.5" strokeLinecap="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 草地の細長い基礎 */}
+      <polygon points={`${iso3(30, 6, 0)} ${iso3(70, 6, 0)} ${iso3(70, 94, 0)} ${iso3(30, 94, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 支柱4本（斜めのラインに沿って） */}
+      {[14, 40, 64, 88].map(y => (
+        <g key={y}>
+          <polygon points={`${iso3(48, y, 0)} ${iso3(52, y, 0)} ${iso3(52, y, 15)} ${iso3(48, y, 15)}`} fill="#b45309" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+          <polygon points={`${iso3(52, y - 2, 0)} ${iso3(52, y, 0)} ${iso3(52, y, 15)} ${iso3(52, y - 2, 15)}`} fill="#92400e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+          {/* 支柱の頭（斜めカット） */}
+          <polygon points={`${iso3(48, y, 15)} ${iso3(52, y, 15)} ${iso3(52, y - 2, 15)} ${iso3(48, y - 2, 15)}`} fill="#d97706" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+        </g>
+      ))}
+      {/* 横板2段 */}
+      <polygon points={`${iso3(47, 8, 10)} ${iso3(47, 92, 10)} ${iso3(47, 92, 13)} ${iso3(47, 8, 13)}`} fill="#f59e0b" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(47, 8, 4)} ${iso3(47, 92, 4)} ${iso3(47, 92, 7)} ${iso3(47, 8, 7)}`} fill="#d97706" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* 足元の草 */}
+      {[[42, 24], [58, 52], [42, 76]].map(([gx, gy], i) => (
+        <g key={i} transform={`translate(${isoPt(gx, gy, 0)[0].toFixed(1)}, ${isoPt(gx, gy, 0)[1].toFixed(1)})`}>
+          <path d="M 0,0 Q -1.4,-3 -2.6,-4 M 0,0 Q 0.2,-3.6 1,-5 M 0,0 Q 1.8,-2.6 3,-3.4" fill="none" stroke="#16a34a" strokeWidth="1" strokeLinecap="round" />
+        </g>
+      ))}
     </g>
   </svg>
 );
 
 export const SvgBridge = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <path d="M -25,10 Q -5,-15 25,10 L 25,20 Q -5,-5 -25,20 Z" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -25,10 Q -5,-15 25,10 L 20,5 Q 0,-20 -20,5 Z" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-25,10 -27,15 -27,5 -25,0" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="-25,0 -23,-3 -23,7 -25,10" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="25,10 23,15 23,5 25,0" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="25,0 27,-3 27,7 25,10" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 水面 */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
+      {[[16, 60], [80, 30], [24, 24], [76, 78]].map(([wx, wy], i) => (
+        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+      ))}
+      {/* 橋（南西→北東方向のアーチ橋を横から見た立体） */}
+      <g>
+        {/* アーチの側面（手前・左面） */}
+        <path d={`M ${iso3(30, 96, 2)} C ${iso3(30, 74, 14)} ${iso3(30, 26, 14)} ${iso3(30, 4, 2)}
+                 L ${iso3(30, 12, 2)} C ${iso3(30, 30, 10)} ${iso3(30, 70, 10)} ${iso3(30, 88, 2)} Z`}
+          fill="#a8a29e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 桁下のアーチ開口（影） */}
+        <path d={`M ${iso3(30, 70, 0)} C ${iso3(30, 62, 7)} ${iso3(30, 38, 7)} ${iso3(30, 30, 0)} Z`} fill="#1e293b" opacity="0.55" />
+        {/* 路面（上面） */}
+        <path d={`M ${iso3(30, 96, 2)} C ${iso3(30, 74, 14)} ${iso3(30, 26, 14)} ${iso3(30, 4, 2)}
+                 L ${iso3(58, 4, 2)} C ${iso3(58, 26, 14)} ${iso3(58, 74, 14)} ${iso3(58, 96, 2)} Z`}
+          fill="#e7e5e4" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* 石畳のライン */}
+        {[20, 36, 50, 64, 80].map(y => {
+          const zz = 2 + 10.5 * Math.sin(Math.PI * (y - 4) / 92);
+          return <line key={y} x1={isoPt(31, y, zz)[0]} y1={isoPt(31, y, zz)[1]} x2={isoPt(57, y, zz)[0]} y2={isoPt(57, y, zz)[1]} stroke="#a8a29e" strokeWidth="0.7" opacity="0.9" />;
+        })}
+        {/* 欄干（手前側） */}
+        {[8, 24, 40, 56, 72, 88].map(y => {
+          const zz = 2 + 10.5 * Math.sin(Math.PI * (y - 4) / 92);
+          return (
+            <line key={y} x1={isoPt(30.5, y, zz)[0]} y1={isoPt(30.5, y, zz)[1]} x2={isoPt(30.5, y, zz + 6)[0]} y2={isoPt(30.5, y, zz + 6)[1]} stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+          );
+        })}
+        <path d={`M ${iso3(30.5, 92, 9)} C ${iso3(30.5, 72, 20)} ${iso3(30.5, 28, 20)} ${iso3(30.5, 8, 9)}`} fill="none" stroke="#92400e" strokeWidth="2.2" strokeLinecap="round" />
+        {/* 欄干（奥側） */}
+        {[8, 24, 40, 56, 72, 88].map(y => {
+          const zz = 2 + 10.5 * Math.sin(Math.PI * (y - 4) / 92);
+          return (
+            <line key={`b-${y}`} x1={isoPt(57.5, y, zz)[0]} y1={isoPt(57.5, y, zz)[1]} x2={isoPt(57.5, y, zz + 5)[0]} y2={isoPt(57.5, y, zz + 5)[1]} stroke="#78350f" strokeWidth="1.3" strokeLinecap="round" />
+          );
+        })}
+        <path d={`M ${iso3(57.5, 92, 8)} C ${iso3(57.5, 72, 19)} ${iso3(57.5, 28, 19)} ${iso3(57.5, 8, 8)}`} fill="none" stroke="#92400e" strokeWidth="1.8" strokeLinecap="round" />
+      </g>
     </g>
   </svg>
 );
@@ -1380,21 +1498,58 @@ export const SvgGrandWarehouse = () => {
   );
 };
 
+/** 屋台1台（縞テント＋商品台） */
+const MarketStall = ({ gx, gy, c1, c2, goods }) => {
+  const [px, py] = isoPt(gx, gy, 0);
+  return (
+    <g transform={`translate(${px.toFixed(1)}, ${py.toFixed(1)})`}>
+      {/* 台（カウンター） */}
+      <polygon points="-11,-2.5 0,3 11,-2.5 0,-8" fill="#d97706" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points="-11,-2.5 0,3 0,7 -11,1.5" fill="#92400e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points="11,-2.5 0,3 0,7 11,1.5" fill="#b45309" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 商品（果物かご） */}
+      {goods.map(([ox, oy, c], i) => (
+        <circle key={i} cx={ox} cy={oy} r="1.8" fill={c} stroke="#1e293b" strokeWidth="0.6" />
+      ))}
+      {/* 支柱 */}
+      <line x1="-11" y1="-2.5" x2="-11" y2="-16" stroke="#78350f" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="11" y1="-2.5" x2="11" y2="-16" stroke="#78350f" strokeWidth="1.4" strokeLinecap="round" />
+      {/* 縞テント屋根 */}
+      {[0, 1, 2, 3].map(i => (
+        <polygon key={i} points={`${-13 + i * 6.5},-15 ${-6.5 + i * 6.5},-15 ${-4.5 + i * 6.5},-20.5 ${-11 + i * 6.5},-20.5`}
+          fill={i % 2 === 0 ? c1 : c2} stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      ))}
+      {/* テントの波形の縁 */}
+      <path d="M -13,-15 Q -11.4,-12.8 -9.8,-15 Q -8.2,-12.8 -6.6,-15 Q -5,-12.8 -3.4,-15 Q -1.8,-12.8 -0.2,-15 Q 1.4,-12.8 3,-15 Q 4.6,-12.8 6.2,-15 Q 7.8,-12.8 9.4,-15 Q 11,-12.8 12.6,-15 L 13,-15 L 13,-16 L -13,-16 Z" fill={c1} stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+    </g>
+  );
+};
+
 export const SvgMarket = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -30,-15 0,-30 30,-15" fill="#d6d3d1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 30,-15 30,-12 0,3" fill="#a8a29e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 -30,-15 -30,-12 0,3" fill="#78716c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      {[{x:-12,y:-5,c:'#ef4444'},{x:15,y:-12,c:'#3b82f6'},{x:0,y:-22,c:'#facc15'}].map((s,i) => (
-        <g key={`mst-${i}`} transform={`translate(${s.x}, ${s.y})`}>
-          <polygon points="0,-4 -8,-8 -8,-10 0,-6" fill="#78350f" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-          <polygon points="0,-4 8,-8 8,-10 0,-6" fill="#b45309" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-          <polygon points="0,-6 -8,-10 0,-14 8,-10" fill="#d97706" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-          <polygon points="-2,-16 -12,-21 0,-27 10,-22" fill="#fff" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="-2,-16 -7,-18.5 -1,-22 4,-19.5" fill={s.c} stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-        </g>
-      ))}
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 石畳の広場 */}
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <g stroke="#a8a29e" strokeWidth="0.6" opacity="0.7">
+        <line x1={isoPt(4, 35, 0)[0]} y1={isoPt(4, 35, 0)[1]} x2={isoPt(96, 35, 0)[0]} y2={isoPt(96, 35, 0)[1]} />
+        <line x1={isoPt(4, 66, 0)[0]} y1={isoPt(4, 66, 0)[1]} x2={isoPt(96, 66, 0)[0]} y2={isoPt(96, 66, 0)[1]} />
+        <line x1={isoPt(35, 4, 0)[0]} y1={isoPt(35, 4, 0)[1]} x2={isoPt(35, 96, 0)[0]} y2={isoPt(35, 96, 0)[1]} />
+        <line x1={isoPt(66, 4, 0)[0]} y1={isoPt(66, 4, 0)[1]} x2={isoPt(66, 96, 0)[0]} y2={isoPt(66, 96, 0)[1]} />
+      </g>
+      {/* 屋台3台（奥から手前へ） */}
+      <MarketStall gx={30} gy={26} c1="#ef4444" c2="#f8fafc" goods={[[-5, -4.5, '#ef4444'], [-1.5, -3.5, '#f97316'], [2, -4.8, '#ef4444']]} />
+      <MarketStall gx={72} gy={40} c1="#3b82f6" c2="#f8fafc" goods={[[-4, -4.5, '#facc15'], [0, -3.5, '#a3e635'], [4, -5, '#facc15']]} />
+      <MarketStall gx={42} gy={70} c1="#22c55e" c2="#fef9c3" goods={[[-5, -4.5, '#f97316'], [-1, -3.6, '#ef4444'], [3, -4.6, '#a855f7']]} />
+      {/* 木箱 */}
+      <IsoCube x={80} y={74} w={11} d={11} h={7} top="#fcd34d" left="#fbbf24" right="#f59e0b" sw={0.8} />
+      <IsoCube x={83} y={64} w={9} d={9} z={0} h={6} top="#d6d3d1" left="#a8a29e" right="#78716c" sw={0.8} />
+      {/* のぼり旗 */}
+      <g transform={`translate(${isoPt(12, 84, 0)[0].toFixed(1)}, ${isoPt(12, 84, 0)[1].toFixed(1)})`}>
+        <line x1="0" y1="1" x2="0" y2="-21" stroke="#78350f" strokeWidth="1.2" strokeLinecap="round" />
+        <rect x="0.4" y="-20" width="5.4" height="13" rx="0.6" fill="#ef4444" stroke="#1e293b" strokeWidth="0.8" />
+        <circle cx="3.1" cy="-15.5" r="1.7" fill="#fef9c3" />
+      </g>
     </g>
   </svg>
 );
@@ -1589,25 +1744,101 @@ export const SvgPort = () => {
   );
 };
 
-export const SvgGarden = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="garden" color="#86efac" thickness={3} /></svg>;
+export const SvgGarden = () => (
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 芝生ベース */}
+      <IsoCube x={4} y={4} w={92} d={92} h={2.5} top="#4ade80" left="#22c55e" right="#16a34a" sw={1} />
+      {/* 小道（斜めのS字） */}
+      <path d={`M ${iso3(14, 88, 2.6)} C ${iso3(40, 70, 2.6)} ${iso3(36, 40, 2.6)} ${iso3(60, 30, 2.6)} C ${iso3(74, 24, 2.6)} ${iso3(82, 18, 2.6)} ${iso3(88, 12, 2.6)}`}
+        fill="none" stroke="#e7e5e4" strokeWidth="5" strokeLinecap="round" opacity="0.95" />
+      <path d={`M ${iso3(14, 88, 2.6)} C ${iso3(40, 70, 2.6)} ${iso3(36, 40, 2.6)} ${iso3(60, 30, 2.6)}`}
+        fill="none" stroke="#d6d3d1" strokeWidth="1" strokeDasharray="2,3" opacity="0.9" />
+      {/* 花壇（左） */}
+      <g>
+        <polygon points={`${iso3(14, 14, 2.6)} ${iso3(44, 14, 2.6)} ${iso3(44, 44, 2.6)} ${iso3(14, 44, 2.6)}`} fill="#92400e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso3(17, 17, 2.7)} ${iso3(41, 17, 2.7)} ${iso3(41, 41, 2.7)} ${iso3(17, 41, 2.7)}`} fill="#78350f" />
+        {[[22, 22, '#f472b6'], [30, 20, '#facc15'], [36, 26, '#f472b6'], [24, 32, '#fb923c'], [34, 36, '#f8fafc']].map(([fx, fy, c], i) => (
+          <g key={i} transform={`translate(${isoPt(fx, fy, 3)[0].toFixed(1)}, ${isoPt(fx, fy, 3)[1].toFixed(1)})`}>
+            <line x1="0" y1="0" x2="0" y2="-3" stroke="#16a34a" strokeWidth="0.9" />
+            <circle cx="0" cy="-4.2" r="1.9" fill={c} stroke="#1e293b" strokeWidth="0.6" />
+            <circle cx="0" cy="-4.2" r="0.7" fill="#fef08a" />
+          </g>
+        ))}
+      </g>
+      {/* 花壇（右手前・丸型） */}
+      <g>
+        <ellipse cx={isoPt(70, 66, 2.7)[0]} cy={isoPt(70, 66, 2.7)[1]} rx="12.5" ry="6" fill="#92400e" stroke="#1e293b" strokeWidth="1" />
+        <ellipse cx={isoPt(70, 66, 2.9)[0]} cy={isoPt(70, 66, 2.9)[1]} rx="9.5" ry="4.4" fill="#78350f" />
+        {[[66, 62, '#a855f7'], [74, 64, '#ef4444'], [69, 70, '#facc15']].map(([fx, fy, c], i) => (
+          <g key={i} transform={`translate(${isoPt(fx, fy, 3.2)[0].toFixed(1)}, ${isoPt(fx, fy, 3.2)[1].toFixed(1)})`}>
+            <line x1="0" y1="0" x2="0" y2="-3.4" stroke="#16a34a" strokeWidth="0.9" />
+            <circle cx="0" cy="-4.6" r="2.1" fill={c} stroke="#1e293b" strokeWidth="0.6" />
+            <circle cx="0" cy="-4.6" r="0.8" fill="#fef9c3" />
+          </g>
+        ))}
+      </g>
+      {/* 刈り込みの丸い低木 */}
+      {[[86, 42], [52, 82]].map(([bx, by], i) => (
+        <g key={i} transform={`translate(${isoPt(bx, by, 2.6)[0].toFixed(1)}, ${isoPt(bx, by, 2.6)[1].toFixed(1)})`}>
+          <ellipse cx="0" cy="0.6" rx="5" ry="2.2" fill="#020617" opacity="0.15" />
+          <circle cx="0" cy="-3.6" r="4.6" fill="#16a34a" stroke="#1e293b" strokeWidth="1" />
+          <path d="M -3.4,-5.4 A 4.6,4.6 0 0 1 0,-8.2" fill="none" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" />
+        </g>
+      ))}
+      {/* 蝶 */}
+      <g transform={`translate(${isoPt(48, 48, 12)[0].toFixed(1)}, ${isoPt(48, 48, 12)[1].toFixed(1)})`}>
+        <path d="M 0,0 Q -3,-2.6 -1,-4 Q 0.4,-4.4 0,-1 Q 1.6,-4.6 3.4,-3 Q 3.4,-0.8 0,0 Z" fill="#facc15" stroke="#1e293b" strokeWidth="0.6" strokeLinejoin="round" />
+      </g>
+    </g>
+  </svg>
+);
 
 export const SvgSmithy = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-20,-16 -20,-30 0,-20 0,-6" fill="#78350f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-20 -20,-30 -10,-40" fill="#78350f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-8, -10)">
-        <polygon points="0,0 -8,-4 -8,-16 0,-12" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 8,-4 8,-16 0,-12" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-12 -8,-16 0,-20 8,-16" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <circle cx="0" cy="-8" r="3" fill="#f97316" stroke="#000" strokeWidth="1" />
-        <polygon points="0,-20 -4,-22 -4,-45 0,-43" fill="#334155" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,-20 4,-22 4,-45 0,-43" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={40} />
+      {/* 土の敷地 */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#a8a29e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 石造りの工房 */}
+      <IsoCube x={18} y={14} w={62} d={58} h={22} top="#78716c" left="#a8a29e" right="#78716c" sw={1.1} />
+      {/* 石のテクスチャ */}
+      <g stroke="#57534e" strokeWidth="0.7" opacity="0.8">
+        <line x1={isoPt(24, 72.1, 6)[0]} y1={isoPt(24, 72.1, 6)[1]} x2={isoPt(40, 72.1, 6)[0]} y2={isoPt(40, 72.1, 6)[1]} />
+        <line x1={isoPt(60, 72.1, 9)[0]} y1={isoPt(60, 72.1, 9)[1]} x2={isoPt(74, 72.1, 9)[0]} y2={isoPt(74, 72.1, 9)[1]} />
+        <line x1={isoPt(30, 72.1, 15)[0]} y1={isoPt(30, 72.1, 15)[1]} x2={isoPt(44, 72.1, 15)[0]} y2={isoPt(44, 72.1, 15)[1]} />
       </g>
-      <g transform="translate(8, -6)">
-        <polygon points="0,-9 -4,-11 2,-14 6,-12" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 炉の開口（オレンジに光る） */}
+      <FaceSW x1={26} x2={48} y={72.2} z1={0} z2={14} fill="#1c1917" sw={1.1} />
+      <FaceSW x1={28.5} x2={45.5} y={72.4} z1={0} z2={11.5} fill="#7c2d12" sw={0.6} />
+      <g transform={`translate(${isoPt(37, 72.5, 5)[0].toFixed(1)}, ${isoPt(37, 72.5, 5)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="4.6" fill="#f97316" filter="url(#glow-effect)" />
+        <circle cx="0" cy="0.6" r="2.4" fill="#fde047" />
       </g>
-      <polygon points="4,-19 24,-29 12,-43 -12,-31" fill="#451a03" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+      {/* 窓（南東面） */}
+      <WinSE x={80.2} y1={28} y2={44} z1={8} z2={17} />
+      {/* 傾斜屋根（片流れの板葺き） */}
+      <polygon points={`${iso3(14, 10, 22)} ${iso3(84, 10, 22)} ${iso3(84, 78, 28)} ${iso3(14, 78, 28)}`} fill="#57534e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(14, 78, 28)} ${iso3(84, 78, 28)} ${iso3(84, 78, 25.5)} ${iso3(14, 78, 25.5)}`} fill="#44403c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(84, 10, 22)} ${iso3(84, 78, 28)} ${iso3(84, 78, 25.5)} ${iso3(84, 10, 19.5)}`} fill="#292524" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* れんが煙突＋煙 */}
+      <IsoCube x={62} y={20} w={12} d={12} z={24} h={22} top="#57534e" left="#b91c1c" right="#7f1d1d" sw={1} />
+      <g transform={`translate(${isoPt(68, 26, 48)[0].toFixed(1)}, ${isoPt(68, 26, 48)[1].toFixed(1)})`} opacity="0.85">
+        <circle cx="0" cy="-2" r="3.4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="0.7" />
+        <circle cx="2.8" cy="-6.5" r="4.2" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.7" />
+        <circle cx="6.4" cy="-11.5" r="5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="0.7" />
+      </g>
+      {/* 金床（アンビル） */}
+      <g transform={`translate(${isoPt(74, 84, 0)[0].toFixed(1)}, ${isoPt(74, 84, 0)[1].toFixed(1)})`}>
+        <polygon points="-4,0 4,0 3,-2.6 -3,-2.6" fill="#57534e" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+        <path d="M -5.5,-2.6 L 5.5,-2.6 L 6.8,-4.2 L 3,-6 L -3.6,-6 L -5.5,-4.4 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <path d="M -5.5,-4.4 L -8.5,-4.8 L -7,-6 L -3.6,-6" fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      </g>
+      {/* ハンマー（立てかけ） */}
+      <g transform={`translate(${isoPt(88, 60, 0)[0].toFixed(1)}, ${isoPt(88, 60, 0)[1].toFixed(1)}) rotate(18)`}>
+        <line x1="0" y1="0" x2="0" y2="-9" stroke="#92400e" strokeWidth="1.3" strokeLinecap="round" />
+        <rect x="-2.6" y="-12" width="5.2" height="3.2" rx="0.7" fill="#64748b" stroke="#1e293b" strokeWidth="0.8" />
+      </g>
     </g>
   </svg>
 );
@@ -1911,111 +2142,386 @@ export const SvgDragon = () => (
 
 export const SvgMegaGrandMarket = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,5 -42,-16 0,-37 42,-16" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,5 42,-16 42,-12 0,9" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -16)">
-        <polygon points="0,0 -16,-8 -16,-20 0,-12" fill="#f1f5f9" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 16,-8 16,-20 0,-12" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-12 -16,-20 0,-36 16,-20" fill="#93c5fd" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      </g>
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 石畳広場 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 大ホールの壁 */}
+      <IsoCube x={10} y={8} w={72} d={56} h={16} top="#f1f5f9" left="#fef3c7" right="#fde68a" sw={1.1} />
+      {/* 正面の大アーチ開口（市場の入口） */}
+      <FaceSW x1={20} x2={44} y={64.2} z1={0} z2={11} fill="#78350f" sw={1} />
+      <path d={`M ${iso3(20, 64.2, 11)} Q ${iso3(32, 64.2, 17)} ${iso3(44, 64.2, 11)}`} fill="#78350f" stroke="#1e293b" strokeWidth="0.9" />
+      <FaceSW x1={50} x2={74} y={64.2} z1={0} z2={11} fill="#92400e" sw={1} />
+      <path d={`M ${iso3(50, 64.2, 11)} Q ${iso3(62, 64.2, 17)} ${iso3(74, 64.2, 11)}`} fill="#92400e" stroke="#1e293b" strokeWidth="0.9" />
+      {/* 大きなアーチ屋根（赤白の縞） */}
+      {[0, 1, 2, 3, 4, 5].map(i => {
+        const x1 = 6 + i * 13.34; const x2 = 6 + (i + 1) * 13.34;
+        return (
+          <path key={i} d={`M ${iso3(x1, 64, 18)} L ${iso3(x2, 64, 18)} C ${iso3(x2, 36, 34)} ${iso3(x2, 32, 34)} ${iso3(x2, 4, 18)} L ${iso3(x1, 4, 18)} C ${iso3(x1, 32, 34)} ${iso3(x1, 36, 34)} ${iso3(x1, 64, 18)} Z`}
+            fill={i % 2 === 0 ? '#ef4444' : '#f8fafc'} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        );
+      })}
+      {/* アーチ屋根の手前断面 */}
+      <path d={`M ${iso3(86, 4, 18)} C ${iso3(86, 32, 34)} ${iso3(86, 36, 34)} ${iso3(86, 64, 18)} L ${iso3(86, 64, 15.5)} C ${iso3(86, 36, 31.5)} ${iso3(86, 32, 31.5)} ${iso3(86, 4, 15.5)} Z`}
+        fill="#b91c1c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 旗 */}
+      <line x1={isoPt(46, 34, 30)[0]} y1={isoPt(46, 34, 30)[1]} x2={isoPt(46, 34, 42)[0]} y2={isoPt(46, 34, 42)[1]} stroke="#1e293b" strokeWidth="1" />
+      <polygon points={`${isoPt(46, 34, 42)[0]},${isoPt(46, 34, 42)[1]} ${isoPt(46, 34, 42)[0] + 7},${isoPt(46, 34, 42)[1] + 1.7} ${isoPt(46, 34, 42)[0]},${isoPt(46, 34, 42)[1] + 3.4}`} fill="#facc15" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+      {/* 前面の屋台と木箱 */}
+      <MarketStall gx={24} gy={82} c1="#3b82f6" c2="#f8fafc" goods={[[-5, -4.5, '#facc15'], [-1, -3.6, '#ef4444'], [3, -4.6, '#a3e635']]} />
+      <MarketStall gx={62} gy={86} c1="#22c55e" c2="#fef9c3" goods={[[-4, -4.5, '#f97316'], [0, -3.5, '#ef4444'], [4, -5, '#facc15']]} />
+      <IsoCube x={86} y={70} w={10} d={10} h={6.5} top="#fcd34d" left="#fbbf24" right="#f59e0b" sw={0.8} />
+      <IsoCube x={88} y={82} w={9} d={9} h={5.5} top="#d6d3d1" left="#a8a29e" right="#78716c" sw={0.8} />
     </g>
   </svg>
 );
 
 export const SvgMegaFortress = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,3 -35,-14.5 0,-32 35,-14.5" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2 -25,-14.5 -25,-25 0,-12.5" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2 25,-14.5 25,-25 0,-12.5" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-12 -20,-22 -20,-38 0,-28" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-12 20,-22 20,-38 0,-28" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -32)">
-        <polygon points="0,0 -12,-6 -12,-30 0,-24" fill="#0f172a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 12,-6 12,-30 0,-24" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-24 -15,-31.5 0,-39 15,-31.5" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      </g>
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 岩盤の基礎 */}
+      <IsoCube x={2} y={2} w={96} d={96} h={4} top="#78716c" left="#57534e" right="#44403c" sw={1} />
+      {/* 城壁（外周） */}
+      <IsoCube x={8} y={8} w={84} d={84} z={4} h={14} top="#94a3b8" left="#64748b" right="#475569" sw={1.1} />
+      {/* 城壁の銃眼（手前2辺の凸凹） */}
+      {[12, 26, 40, 54, 68, 82].map(x => (
+        <IsoCube key={`m1-${x}`} x={x} y={88} w={7} d={4} z={18} h={4} top="#94a3b8" left="#64748b" right="#475569" sw={0.8} />
+      ))}
+      {[12, 26, 40, 54, 68, 82].map(y => (
+        <IsoCube key={`m2-${y}`} x={88} y={y} w={4} d={7} z={18} h={4} top="#94a3b8" left="#64748b" right="#475569" sw={0.8} />
+      ))}
+      {/* 城門（落とし格子） */}
+      <FaceSW x1={38} x2={62} y={92.2} z1={4} z2={15} fill="#1c1917" sw={1.1} />
+      <path d={`M ${iso3(38, 92.2, 15)} Q ${iso3(50, 92.2, 21)} ${iso3(62, 92.2, 15)}`} fill="#1c1917" stroke="#1e293b" strokeWidth="1" />
+      {[42, 47, 52, 57].map(x => (
+        <line key={x} x1={isoPt(x, 92.4, 4)[0]} y1={isoPt(x, 92.4, 4)[1]} x2={isoPt(x, 92.4, 16)[0]} y2={isoPt(x, 92.4, 16)[1]} stroke="#78716c" strokeWidth="1" />
+      ))}
+      {/* 四隅の円塔 */}
+      {[[10, 10], [90, 10], [10, 90], [90, 90]].map(([tx, ty], i) => {
+        const [px, py] = isoPt(tx, ty, 4);
+        return (
+          <g key={i} transform={`translate(${px.toFixed(1)}, ${py.toFixed(1)})`}>
+            <path d="M -7,0 L -7,-26 A 7,3 0 0 1 7,-26 L 7,0 A 7,3 0 0 1 -7,0 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+            <path d="M 0,0 L 0,-26 L 7,-26 L 7,0 A 7,3 0 0 1 0,0 Z" fill="#64748b" stroke="none" />
+            <path d="M -7,0 L -7,-26 A 7,3 0 0 1 7,-26 L 7,0 A 7,3 0 0 1 -7,0 Z" fill="none" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+            {/* 狭間窓 */}
+            <rect x="-1.2" y="-20" width="2.4" height="5" rx="1" fill="#1c1917" />
+            {/* 円錐屋根 */}
+            <path d="M -9,-26 A 9,3.6 0 0 1 9,-26 L 0,-42 Z" fill="#b91c1c" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+            <path d="M 0,-42 L 9,-26 A 9,3.6 0 0 1 4.5,-23.5 Z" fill="#7f1d1d" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+            {/* 旗 */}
+            <line x1="0" y1="-42" x2="0" y2="-49" stroke="#1e293b" strokeWidth="0.9" />
+            <polygon points="0,-49 6,-47.4 0,-45.8" fill="#ef4444" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+          </g>
+        );
+      })}
+      {/* 中央の天守（キープ） */}
+      <IsoCube x={32} y={32} w={36} d={36} z={4} h={30} top="#64748b" left="#475569" right="#334155" sw={1.1} />
+      {[36, 46, 56].map(x => (
+        <rect key={x} x={isoPt(x, 68.2, 22)[0] - 1} y={isoPt(x, 68.2, 22)[1] - 5} width="2" height="5" rx="1" fill="#1c1917" />
+      ))}
+      {/* キープの銃眼 */}
+      {[34, 46, 58].map(x => (
+        <IsoCube key={`k-${x}`} x={x} y={64} w={7} d={4} z={34} h={4} top="#64748b" left="#475569" right="#334155" sw={0.8} />
+      ))}
+      <IsoCube x={40} y={40} w={20} d={20} z={38} h={8} top="#475569" left="#334155" right="#1e293b" sw={1} />
+      {/* 大旗 */}
+      <line x1={isoPt(50, 50, 46)[0]} y1={isoPt(50, 50, 46)[1]} x2={isoPt(50, 50, 62)[0]} y2={isoPt(50, 50, 62)[1]} stroke="#1e293b" strokeWidth="1.2" />
+      <polygon points={`${isoPt(50, 50, 62)[0]},${isoPt(50, 50, 62)[1]} ${isoPt(50, 50, 62)[0] + 9},${isoPt(50, 50, 62)[1] + 2.2} ${isoPt(50, 50, 62)[0]},${isoPt(50, 50, 62)[1] + 4.4}`} fill="#dc2626" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
     </g>
   </svg>
 );
 
 export const SvgMegaAcademy = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,4 -38,-15 0,-34 38,-15" fill="#22c55e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,4 38,-15 38,-11 0,8" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -18)">
-        <polygon points="0,0 -14,-7 -14,-25 0,-18" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 14,-7 14,-25 0,-18" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M -12,-32 C -12,-48 12,-48 12,-32" fill="#93c5fd" stroke="#000" strokeWidth="2" />
-      </g>
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* キャンパス緑地 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#4ade80" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(44, 52, 0.1)} ${iso3(56, 52, 0.1)} ${iso3(56, 100, 0.1)} ${iso3(44, 100, 0.1)}`} fill="#e7e5e4" />
+      {/* 左右の学舎 */}
+      <IsoCube x={4} y={22} w={24} d={36} h={18} top="#cbd5e1" left="#f8fafc" right="#e2e8f0" sw={1} />
+      <IsoCube x={72} y={22} w={24} d={36} h={18} top="#cbd5e1" left="#f8fafc" right="#e2e8f0" sw={1} />
+      {[[7, 13], [18, 24]].map(([a, b], i) => <WinSW key={`l-${i}`} x1={a} x2={b} y={58.2} z1={5} z2={13} />)}
+      {[[75, 81], [86, 92]].map(([a, b], i) => <WinSW key={`r-${i}`} x1={a} x2={b} y={58.2} z1={5} z2={13} />)}
+      <IsoCube x={2} y={20} w={28} d={40} z={18} h={2.5} top="#3b82f6" left="#60a5fa" right="#1d4ed8" sw={0.9} />
+      <IsoCube x={70} y={20} w={28} d={40} z={18} h={2.5} top="#3b82f6" left="#60a5fa" right="#1d4ed8" sw={0.9} />
+      {/* 中央講堂 */}
+      <IsoCube x={30} y={14} w={40} d={44} h={26} top="#e2e8f0" left="#fef3c7" right="#fde68a" sw={1.1} />
+      {/* 講堂の列柱ファサード */}
+      {[34, 41, 59, 66].map(x => (
+        <polygon key={x} points={`${iso3(x - 1.5, 58.3, 0)} ${iso3(x + 1.5, 58.3, 0)} ${iso3(x + 1.5, 58.3, 18)} ${iso3(x - 1.5, 58.3, 18)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      ))}
+      <FaceSW x1={45} x2={55} y={58.4} z1={0} z2={13} fill="#7c2d12" sw={1} />
+      <path d={`M ${iso3(45, 58.5, 13)} Q ${iso3(50, 58.5, 17.5)} ${iso3(55, 58.5, 13)}`} fill="#7c2d12" stroke="#1e293b" strokeWidth="0.9" />
+      {/* ペディメント（三角破風） */}
+      <polygon points={`${iso3(30, 59, 18)} ${iso3(70, 59, 18)} ${iso3(70, 59, 21)} ${iso3(30, 59, 21)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(28, 59.5, 21)} ${iso3(72, 59.5, 21)} ${iso3(50, 59.5, 32)}`} fill="#f5f5f4" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <circle cx={isoPt(50, 59.6, 25)[0]} cy={isoPt(50, 59.6, 25)[1]} r="2.6" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.8" />
+      {/* 大ドーム（青銅） */}
+      <ellipse cx={isoPt(50, 36, 26)[0]} cy={isoPt(50, 36, 26)[1]} rx="15" ry="6.5" fill="#a8a29e" stroke="#1e293b" strokeWidth="1" />
+      <path d={`M ${isoPt(50, 36, 26)[0] - 14},${isoPt(50, 36, 26)[1]} C ${isoPt(50, 36, 26)[0] - 14},${isoPt(50, 36, 26)[1] - 20} ${isoPt(50, 36, 26)[0] + 14},${isoPt(50, 36, 26)[1] - 20} ${isoPt(50, 36, 26)[0] + 14},${isoPt(50, 36, 26)[1]} Z`}
+        fill="#0f766e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d={`M ${isoPt(50, 36, 26)[0]},${isoPt(50, 36, 26)[1] - 15} C ${isoPt(50, 36, 26)[0] + 8},${isoPt(50, 36, 26)[1] - 14} ${isoPt(50, 36, 26)[0] + 14},${isoPt(50, 36, 26)[1] - 8} ${isoPt(50, 36, 26)[0] + 14},${isoPt(50, 36, 26)[1]} L ${isoPt(50, 36, 26)[0]},${isoPt(50, 36, 26)[1]} Z`}
+        fill="#14b8a6" opacity="0.6" />
+      <line x1={isoPt(50, 36, 26)[0]} y1={isoPt(50, 36, 26)[1] - 15} x2={isoPt(50, 36, 26)[0]} y2={isoPt(50, 36, 26)[1] - 21} stroke="#1e293b" strokeWidth="1" />
+      <circle cx={isoPt(50, 36, 26)[0]} cy={isoPt(50, 36, 26)[1] - 22} r="1.4" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.6" />
+      {/* 並木 */}
+      {[[16, 78], [84, 78], [30, 88], [70, 88]].map(([bx, by], i) => (
+        <g key={i} transform={`translate(${isoPt(bx, by, 0)[0].toFixed(1)}, ${isoPt(bx, by, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-6" stroke="#78350f" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="0" cy="-9.5" r="4.8" fill="#16a34a" stroke="#1e293b" strokeWidth="0.9" />
+          <circle cx="-1.6" cy="-11" r="2" fill="#4ade80" opacity="0.8" />
+        </g>
+      ))}
     </g>
   </svg>
 );
 
 export const SvgMegaImperialPalace = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,2 -35,-15.5 -35,-20 0,-2.5" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,2 35,-15.5 35,-20 0,-2.5" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2.5 -35,-20 0,-37.5 35,-20" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -25)">
-        <polygon points="0,0 -16,-8 -16,-20 0,-12" fill="#991b1b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 16,-8 16,-20 0,-12" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-14 -16,-22 0,-30 16,-22" fill="#fbbf24" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 玉砂利の敷地＋堀 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(0, 88, 0.1)} ${iso3(100, 88, 0.1)} ${iso3(100, 100, 0.1)} ${iso3(0, 100, 0.1)}`} fill="url(#grad-water)" />
+      <polygon points={`${iso3(42, 88, 0.3)} ${iso3(58, 88, 0.3)} ${iso3(58, 100, 0.3)} ${iso3(42, 100, 0.3)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+      {/* 石垣（算木積みの台座） */}
+      <IsoCube x={12} y={12} w={76} d={64} h={12} top="#d6d3d1" left="#a8a29e" right="#78716c" sw={1.1} />
+      <g stroke="#57534e" strokeWidth="0.6" opacity="0.7">
+        <line x1={isoPt(18, 76.1, 4)[0]} y1={isoPt(18, 76.1, 4)[1]} x2={isoPt(40, 76.1, 4)[0]} y2={isoPt(40, 76.1, 4)[1]} />
+        <line x1={isoPt(52, 76.1, 8)[0]} y1={isoPt(52, 76.1, 8)[1]} x2={isoPt(80, 76.1, 8)[0]} y2={isoPt(80, 76.1, 8)[1]} />
       </g>
+      {/* 御殿1層目（白壁＋朱柱） */}
+      <IsoCube x={22} y={20} w={56} d={44} z={12} h={14} top="#e7e5e4" left="#f8fafc" right="#e7e5e4" sw={1.1} />
+      {[26, 38, 62, 74].map(x => (
+        <polygon key={x} points={`${iso3(x - 1.3, 64.2, 12)} ${iso3(x + 1.3, 64.2, 12)} ${iso3(x + 1.3, 64.2, 26)} ${iso3(x - 1.3, 64.2, 26)}`} fill="#b91c1c" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      ))}
+      <FaceSW x1={44} x2={56} y={64.3} z1={12} z2={23} fill="#7c2d12" sw={1} />
+      <line x1={isoPt(50, 64.4, 12)[0]} y1={isoPt(50, 64.4, 12)[1]} x2={isoPt(50, 64.4, 23)[0]} y2={isoPt(50, 64.4, 23)[1]} stroke="#1e293b" strokeWidth="0.8" />
+      {/* 1層目の緑屋根（入母屋・反り） */}
+      <path d={`M ${iso3(14, 14, 26)} L ${iso3(86, 14, 26)} L ${iso3(86, 70, 26)} L ${iso3(14, 70, 26)} Z`} fill="#15803d" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d={`M ${iso3(14, 70, 26)} L ${iso3(86, 70, 26)} Q ${iso3(88, 74, 24)} ${iso3(90, 78, 24.5)} L ${iso3(10, 78, 24.5)} Q ${iso3(12, 74, 24)} ${iso3(14, 70, 26)} Z`}
+        fill="#22c55e" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* 2層目（上御殿） */}
+      <IsoCube x={32} y={26} w={36} d={30} z={26} h={11} top="#e7e5e4" left="#f8fafc" right="#e7e5e4" sw={1} />
+      {[36, 50, 64].map(x => (
+        <polygon key={x} points={`${iso3(x - 1.2, 56.2, 26)} ${iso3(x + 1.2, 56.2, 26)} ${iso3(x + 1.2, 56.2, 37)} ${iso3(x - 1.2, 56.2, 37)}`} fill="#b91c1c" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+      ))}
+      {/* 2層目の屋根（緑＋金の棟飾り） */}
+      <polygon points={`${iso3(26, 20, 37)} ${iso3(74, 20, 37)} ${iso3(74, 62, 37)} ${iso3(26, 62, 37)}`} fill="#16a34a" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(26, 62, 37)} ${iso3(74, 62, 37)} ${iso3(50, 41, 50)}`} fill="#22c55e" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(74, 20, 37)} ${iso3(74, 62, 37)} ${iso3(50, 41, 50)}`} fill="#166534" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(26, 20, 37)} ${iso3(74, 20, 37)} ${iso3(50, 41, 50)}`} fill="#4ade80" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 金鯱 */}
+      <circle cx={isoPt(50, 41, 51.5)[0]} cy={isoPt(50, 41, 51.5)[1]} r="2" fill="url(#grad-gold)" stroke="#1e293b" strokeWidth="0.8" filter="url(#glow-effect)" />
+      {/* 門灯篭 */}
+      {[[34, 82], [66, 82]].map(([lx, ly], i) => (
+        <g key={i} transform={`translate(${isoPt(lx, ly, 0)[0].toFixed(1)}, ${isoPt(lx, ly, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-6" stroke="#57534e" strokeWidth="1.6" strokeLinecap="round" />
+          <rect x="-2.4" y="-9.6" width="4.8" height="3.6" rx="0.6" fill="#e7e5e4" stroke="#1e293b" strokeWidth="0.8" />
+          <circle cx="0" cy="-7.8" r="1" fill="#fef08a" filter="url(#glow-effect)" />
+          <polygon points="-3.2,-9.6 3.2,-9.6 0,-12" fill="#57534e" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        </g>
+      ))}
     </g>
   </svg>
 );
 
 export const SvgMegaWonder = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,-3 -30,-18 0,-33 30,-18" fill="#fbbf24" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-9 -22,-20 0,-31 22,-20" fill="#fcd34d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -45)">
-        <polygon points="0,-25 -15,0 0,25 15,0" fill="#38bdf8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 神聖な床 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#fef3c7" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(20, 20, 0.1)} ${iso3(80, 20, 0.1)} ${iso3(80, 80, 0.1)} ${iso3(20, 80, 0.1)}`} fill="none" stroke="#d97706" strokeWidth="0.8" opacity="0.7" />
+      {/* 黄金のジッグラト（3段） */}
+      <IsoCube x={16} y={16} w={68} d={68} h={9} top="#fcd34d" left="#fbbf24" right="#d97706" sw={1.1} />
+      <IsoCube x={26} y={26} w={48} d={48} z={9} h={9} top="#fde68a" left="#fcd34d" right="#f59e0b" sw={1.1} />
+      <IsoCube x={36} y={36} w={28} d={28} z={18} h={9} top="#fef08a" left="#fde047" right="#fbbf24" sw={1.1} />
+      {/* 正面階段 */}
+      {[0, 1, 2, 3, 4, 5].map(i => (
+        <polygon key={i} points={`${iso3(45, 84 - i * 10, i * 4.5)} ${iso3(55, 84 - i * 10, i * 4.5)} ${iso3(55, 79 - i * 10, i * 4.5 + 2.2)} ${iso3(45, 79 - i * 10, i * 4.5 + 2.2)}`}
+          fill="#fef3c7" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      ))}
+      {/* 頂上の4本柱 */}
+      {[[40, 40], [60, 40], [40, 60], [60, 60]].map(([px0, py0], i) => (
+        <polygon key={i} points={`${iso3(px0 - 1.4, py0, 27)} ${iso3(px0 + 1.4, py0, 27)} ${iso3(px0 + 1.4, py0, 38)} ${iso3(px0 - 1.4, py0, 38)}`}
+          fill="#f59e0b" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      ))}
+      {/* 浮遊する大クリスタル */}
+      <g transform={`translate(${isoPt(50, 50, 52)[0].toFixed(1)}, ${isoPt(50, 50, 52)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="16" rx="10" ry="3.6" fill="#0ea5e9" opacity="0.25" />
+        <g filter="url(#glow-effect)">
+          <polygon points="0,-16 -9,-2 0,14 9,-2" fill="#38bdf8" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+          <polygon points="0,-16 -9,-2 0,2 " fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <polygon points="0,-16 0,2 9,-2" fill="#0284c7" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        </g>
+        {/* 輝きの粒 */}
+        <circle cx="-12" cy="-8" r="1.2" fill="#fef9c3" />
+        <circle cx="13" cy="-4" r="1.5" fill="#fef9c3" />
+        <circle cx="8" cy="-14" r="1" fill="#fff" />
+        <path d="M -15,4 L -13,4 M -14,3 L -14,5" stroke="#fff" strokeWidth="0.8" strokeLinecap="round" />
       </g>
+      {/* 光柱 */}
+      <polygon points={`${isoPt(50, 50, 27)[0] - 7},${isoPt(50, 50, 27)[1]} ${isoPt(50, 50, 27)[0] + 7},${isoPt(50, 50, 27)[1]} ${isoPt(50, 50, 60)[0] + 3},${isoPt(50, 50, 60)[1]} ${isoPt(50, 50, 60)[0] - 3},${isoPt(50, 50, 60)[1]}`}
+        fill="#fef08a" opacity="0.35" />
     </g>
   </svg>
 );
 
 export const SvgMegaHarborTown = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-40,-2 0,18 40,-2 0,-22" fill="#0ea5e9" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-40,-2 -10,-17 0,-12 -30,3" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="40,-2 10,-17 0,-12 30,3" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, 4)">
-        <path d="M -12,-2 C -15,5 -5,8 10,5 C 15,3 18,-2 15,-6" fill="#78350f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 海と陸 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(0, 0, 0.1)} ${iso3(100, 0, 0.1)} ${iso3(100, 42, 0.1)} ${iso3(0, 42, 0.1)}`} fill="#fde68a" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {[[24, 66], [70, 60], [40, 84], [82, 82]].map(([wx, wy], i) => (
+        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+      ))}
+      {/* 灯台（縞模様） */}
+      <g transform={`translate(${isoPt(14, 30, 0)[0].toFixed(1)}, ${isoPt(14, 30, 0)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="0.5" rx="8" ry="3.2" fill="#020617" opacity="0.15" />
+        <path d="M -6,-0.5 L -4,-26 L 4,-26 L 6,-0.5 A 6,2.4 0 0 1 -6,-0.5 Z" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M -5.4,-8 L 5.4,-8 L 4.9,-14 L -4.9,-14 Z" fill="#ef4444" stroke="#1e293b" strokeWidth="0.8" />
+        <path d="M -4.6,-19 L 4.6,-19 L 4.3,-23 L -4.3,-23 Z" fill="#ef4444" stroke="#1e293b" strokeWidth="0.8" />
+        <rect x="-4.4" y="-31" width="8.8" height="5" rx="0.8" fill="#1e293b" stroke="#0f172a" strokeWidth="0.8" />
+        <rect x="-3" y="-30.2" width="6" height="3.4" rx="0.5" fill="#fef08a" filter="url(#glow-effect)" />
+        <polygon points="-5.2,-31 5.2,-31 0,-36" fill="#dc2626" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
       </g>
+      {/* 港町の家並み（3軒） */}
+      {[[38, 16, '#ef4444', '#fff7ed'], [58, 22, '#3b82f6', '#f0f9ff'], [78, 14, '#f59e0b', '#fefce8']].map(([hx, hy, roof, wall], i) => (
+        <g key={i}>
+          <IsoCube x={hx} y={hy} w={16} d={14} h={10} top={wall} left={wall} right={darken(wall, 30)} sw={1} />
+          <polygon points={`${iso3(hx - 2, hy - 1, 10)} ${iso3(hx + 18, hy - 1, 10)} ${iso3(hx + 18, hy + 7, 16)} ${iso3(hx - 2, hy + 7, 16)}`} fill={roof} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+          <polygon points={`${iso3(hx - 2, hy + 7, 16)} ${iso3(hx + 18, hy + 7, 16)} ${iso3(hx + 18, hy + 15, 10)} ${iso3(hx - 2, hy + 15, 10)}`} fill={darken(roof, 40)} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+          <FaceSW x1={hx + 3} x2={hx + 8} y={hy + 14.2} z1={2.5} z2={7.5} fill="#7dd3fc" sw={0.7} />
+          <FaceSW x1={hx + 10} x2={hx + 13.5} y={hy + 14.2} z1={0} z2={6.5} fill="#78350f" sw={0.7} />
+        </g>
+      ))}
+      {/* 桟橋 */}
+      <polygon points={`${iso3(56, 42, 2)} ${iso3(68, 42, 2)} ${iso3(68, 84, 2)} ${iso3(56, 84, 2)}`} fill="#b45309" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {[50, 60, 70, 78].map(y => (
+        <line key={y} x1={isoPt(56, y, 2)[0]} y1={isoPt(56, y, 2)[1]} x2={isoPt(68, y, 2)[0]} y2={isoPt(68, y, 2)[1]} stroke="#92400e" strokeWidth="0.8" />
+      ))}
+      {[[57, 46], [67, 46], [57, 80], [67, 80]].map(([px0, py0], i) => (
+        <line key={i} x1={isoPt(px0, py0, 2)[0]} y1={isoPt(px0, py0, 2)[1]} x2={isoPt(px0, py0, -3)[0]} y2={isoPt(px0, py0, -3)[1] + 5} stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+      ))}
+      {/* 小舟 */}
+      <g transform={`translate(${isoPt(82, 70, 0)[0].toFixed(1)}, ${isoPt(82, 70, 0)[1].toFixed(1)})`}>
+        <path d="M -9,-3 C -9,0 -5,2 0,2 C 5,2 9,0 9,-3 L 6,-3 C 6,-1 3,0 0,0 C -3,0 -6,-1 -6,-3 Z" fill="#78350f" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <path d="M -6,-3 L 6,-3 L 4.6,-1 L -4.6,-1 Z" fill="#b45309" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        <line x1="0" y1="-3" x2="0" y2="-13" stroke="#78350f" strokeWidth="1.2" strokeLinecap="round" />
+        <polygon points="0.8,-13 7,-9.5 0.8,-6.5" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      </g>
+      {/* カモメ */}
+      <path d={`M ${isoPt(36, 62, 24)[0]},${isoPt(36, 62, 24)[1]} q 2,-2.4 4,0 q 2,-2.4 4,0`} fill="none" stroke="#334155" strokeWidth="1" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgMegaShrineComplex = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,2 -38,-17 0,-36 38,-17" fill="#15803d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,2 38,-17 38,-13 0,6" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -30)">
-        <polygon points="0,-4 -20,-14 0,-24 20,-14" fill="#e7e5e4" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="-14,-13 -4,-18 -4,-28 -14,-23" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="14,-13 4,-18 4,-28 14,-23" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={46} />
+      {/* 鎮守の森の緑地 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#15803d" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 参道 */}
+      <polygon points={`${iso3(44, 30, 0.1)} ${iso3(56, 30, 0.1)} ${iso3(56, 100, 0.1)} ${iso3(44, 100, 0.1)}`} fill="#e7e5e4" stroke="#a8a29e" strokeWidth="0.6" />
+      {/* 本殿 */}
+      <g>
+        <IsoCube x={30} y={10} w={40} d={26} h={14} top="#e7e5e4" left="#f8fafc" right="#e7e5e4" sw={1} />
+        {[34, 46, 62].map(x => (
+          <polygon key={x} points={`${iso3(x - 1.2, 36.2, 0)} ${iso3(x + 1.2, 36.2, 0)} ${iso3(x + 1.2, 36.2, 14)} ${iso3(x - 1.2, 36.2, 14)}`} fill="#b91c1c" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        ))}
+        <FaceSW x1={52} x2={58} y={36.3} z1={0} z2={10} fill="#7c2d12" sw={0.8} />
+        {/* 千木のある屋根 */}
+        <polygon points={`${iso3(24, 6, 14)} ${iso3(76, 6, 14)} ${iso3(76, 23, 24)} ${iso3(24, 23, 24)}`} fill="#292524" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <polygon points={`${iso3(24, 40, 14)} ${iso3(76, 40, 14)} ${iso3(76, 23, 24)} ${iso3(24, 23, 24)}`} fill="#44403c" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <line x1={isoPt(24, 23, 24)[0]} y1={isoPt(24, 23, 24)[1]} x2={isoPt(24, 23, 30)[0] - 3} y2={isoPt(24, 23, 30)[1]} stroke="#1c1917" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1={isoPt(24, 23, 24)[0]} y1={isoPt(24, 23, 24)[1]} x2={isoPt(24, 23, 30)[0] + 3} y2={isoPt(24, 23, 30)[1]} stroke="#1c1917" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1={isoPt(76, 23, 24)[0]} y1={isoPt(76, 23, 24)[1]} x2={isoPt(76, 23, 30)[0] - 3} y2={isoPt(76, 23, 30)[1]} stroke="#1c1917" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1={isoPt(76, 23, 24)[0]} y1={isoPt(76, 23, 24)[1]} x2={isoPt(76, 23, 30)[0] + 3} y2={isoPt(76, 23, 30)[1]} stroke="#1c1917" strokeWidth="1.4" strokeLinecap="round" />
       </g>
+      {/* 摂社（小さな社） */}
+      <g>
+        <IsoCube x={10} y={46} w={18} d={14} h={9} top="#e7e5e4" left="#f8fafc" right="#e7e5e4" sw={0.9} />
+        <polygon points={`${iso3(6, 44, 9)} ${iso3(32, 44, 9)} ${iso3(32, 53, 16)} ${iso3(6, 53, 16)}`} fill="#292524" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso3(6, 62, 9)} ${iso3(32, 62, 9)} ${iso3(32, 53, 16)} ${iso3(6, 53, 16)}`} fill="#44403c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      </g>
+      {/* 朱の鳥居（参道上） */}
+      <g transform={`translate(${isoPt(50, 74, 0)[0].toFixed(1)}, ${isoPt(50, 74, 0)[1].toFixed(1)})`}>
+        <polygon points="-11,0 -8.4,0 -8.4,-19 -11,-19" fill="#dc2626" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <polygon points="8.4,0 11,0 11,-19 8.4,-19" fill="#b91c1c" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <rect x="-12.5" y="-17.5" width="25" height="2.6" fill="#dc2626" stroke="#1e293b" strokeWidth="1" />
+        <path d="M -15,-23.5 Q 0,-26.5 15,-23.5 L 15,-20.8 Q 0,-23.8 -15,-20.8 Z" fill="#b91c1c" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <rect x="-1.3" y="-17.5" width="2.6" height="4.5" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.7" />
+      </g>
+      {/* 石灯篭（参道両脇） */}
+      {[[38, 86], [62, 86]].map(([lx, ly], i) => (
+        <g key={i} transform={`translate(${isoPt(lx, ly, 0)[0].toFixed(1)}, ${isoPt(lx, ly, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-5" stroke="#78716c" strokeWidth="1.7" strokeLinecap="round" />
+          <rect x="-2.2" y="-8.6" width="4.4" height="3.6" rx="0.5" fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.8" />
+          <circle cx="0" cy="-6.8" r="1" fill="#fef08a" filter="url(#glow-effect)" />
+          <polygon points="-3,-8.6 3,-8.6 0,-11" fill="#78716c" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        </g>
+      ))}
+      {/* ご神木 */}
+      {[[84, 30], [14, 20], [84, 74]].map(([tx, ty], i) => (
+        <g key={i} transform={`translate(${isoPt(tx, ty, 0)[0].toFixed(1)}, ${isoPt(tx, ty, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-9" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="0" cy="-14" r="6.6" fill="#166534" stroke="#1e293b" strokeWidth="1" />
+          <circle cx="-2.2" cy="-16" r="2.6" fill="#22c55e" opacity="0.8" />
+        </g>
+      ))}
     </g>
   </svg>
 );
 
 export const SvgCherryPavilion = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,-5 -18,-14 0,-23 18,-14" fill="#b45309" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 0,-45 Q -12,-30 -24,-24 Q 0,-35 0,-45" fill="#be185d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 0,-45 Q 12,-30 24,-24 Q 0,-35 0,-45" fill="#db2777" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="-25" cy="-10" r="6" fill="#fbcfe8" stroke="#000" strokeWidth="1.5" />
-      <circle cx="22" cy="-5" r="7" fill="#fbcfe8" stroke="#000" strokeWidth="1.5" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={40} />
+      {/* 庭園の地面 */}
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <ellipse cx={isoPt(50, 50, 0.1)[0]} cy={isoPt(50, 50, 0.1)[1]} rx="27" ry="12.5" fill="#fdf2f8" opacity="0.85" />
+      {/* 高床の basement */}
+      <IsoCube x={28} y={28} w={44} d={44} h={6} top="#e7e5e4" left="#d6d3d1" right="#a8a29e" sw={1} />
+      {/* 朱塗りの柱4本 */}
+      {[[33, 33], [67, 33], [33, 67], [67, 67]].map(([px0, py0], i) => (
+        <polygon key={i} points={`${iso3(px0 - 1.6, py0, 6)} ${iso3(px0 + 1.6, py0, 6)} ${iso3(px0 + 1.6, py0, 24)} ${iso3(px0 - 1.6, py0, 24)}`}
+          fill="#dc2626" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      ))}
+      {/* 高欄（手すり） */}
+      <line x1={isoPt(30, 70, 12)[0]} y1={isoPt(30, 70, 12)[1]} x2={isoPt(70, 70, 12)[0]} y2={isoPt(70, 70, 12)[1]} stroke="#b91c1c" strokeWidth="1.4" />
+      <line x1={isoPt(70, 30, 12)[0]} y1={isoPt(70, 30, 12)[1]} x2={isoPt(70, 70, 12)[0]} y2={isoPt(70, 70, 12)[1]} stroke="#991b1b" strokeWidth="1.4" />
+      {/* 一層目の桜色屋根（反り屋根） */}
+      <path d={`M ${iso3(20, 20, 24)} L ${iso3(80, 20, 24)} Q ${iso3(86, 50, 22)} ${iso3(80, 80, 24)} L ${iso3(20, 80, 24)} Q ${iso3(14, 50, 22)} ${iso3(20, 20, 24)} Z`}
+        fill="#f472b6" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(28, 28, 30)} ${iso3(72, 28, 30)} ${iso3(72, 72, 30)} ${iso3(28, 72, 30)}`} fill="#ec4899" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 二層目（小さな楼閣） */}
+      <IsoCube x={38} y={38} w={24} d={24} z={30} h={10} top="#fdf2f8" left="#fff1f2" right="#fce7f3" sw={1} />
+      <FaceSW x1={44} x2={56} y={62.2} z1={32} z2={38} fill="#7c2d12" sw={0.8} />
+      {/* 頂上の反り屋根 */}
+      <path d={`M ${iso3(32, 32, 40)} L ${iso3(68, 32, 40)} L ${iso3(68, 68, 40)} L ${iso3(32, 68, 40)} Z`} fill="#db2777" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d={`M ${iso3(32, 68, 40)} L ${iso3(68, 68, 40)} Q ${iso3(50, 50, 52)} ${iso3(32, 68, 40)} Z`} fill="#f472b6" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <path d={`M ${iso3(68, 32, 40)} L ${iso3(68, 68, 40)} Q ${iso3(50, 50, 52)} ${iso3(68, 32, 40)} Z`} fill="#be185d" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <circle cx={isoPt(50, 50, 53)[0]} cy={isoPt(50, 50, 53)[1]} r="1.8" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.7" />
+      {/* 桜の木2本 */}
+      {[[14, 78], [86, 74]].map(([tx, ty], i) => (
+        <g key={i} transform={`translate(${isoPt(tx, ty, 0)[0].toFixed(1)}, ${isoPt(tx, ty, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-8" stroke="#78350f" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="-3.4" cy="-11" r="4.6" fill="#f9a8d4" stroke="#1e293b" strokeWidth="0.9" />
+          <circle cx="3.4" cy="-11" r="4.6" fill="#f472b6" stroke="#1e293b" strokeWidth="0.9" />
+          <circle cx="0" cy="-15" r="5" fill="#fbcfe8" stroke="#1e293b" strokeWidth="0.9" />
+        </g>
+      ))}
+      {/* 舞う花びら */}
+      {[[30, 20, 26], [74, 40, 34], [20, 46, 18], [60, 14, 30]].map(([fx, fy, fz], i) => (
+        <path key={i} d={`M ${isoPt(fx, fy, fz)[0]},${isoPt(fx, fy, fz)[1]} q 1.4,-1.8 2.8,0 q -1.4,1.8 -2.8,0`} fill="#fbcfe8" stroke="#ec4899" strokeWidth="0.5" />
+      ))}
     </g>
   </svg>
 );
@@ -2032,68 +2538,299 @@ export const SvgCrystalTower = () => (
 
 export const SvgPhilosophersLab = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,-15 -14,-22 -14,-45 0,-38" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 14,-22 14,-45 0,-38" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-16,-44 0,-36 0,-60" fill="#6366f1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="16,-44 0,-36 0,-60" fill="#4f46e5" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={38} />
+      {/* 魔法陣の刻まれた床 */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#312e81" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <ellipse cx={isoPt(50, 50, 0.2)[0]} cy={isoPt(50, 50, 0.2)[1]} rx="30" ry="14" fill="none" stroke="#a5b4fc" strokeWidth="0.9" opacity="0.8" />
+      <ellipse cx={isoPt(50, 50, 0.2)[0]} cy={isoPt(50, 50, 0.2)[1]} rx="22" ry="10" fill="none" stroke="#818cf8" strokeWidth="0.7" opacity="0.7" />
+      {[[50, 18], [82, 50], [50, 82], [18, 50]].map(([sx0, sy0], i) => (
+        <path key={i} d={`M ${isoPt(sx0, sy0, 0.3)[0] - 1.8},${isoPt(sx0, sy0, 0.3)[1]} L ${isoPt(sx0, sy0, 0.3)[0] + 1.8},${isoPt(sx0, sy0, 0.3)[1]} M ${isoPt(sx0, sy0, 0.3)[0]},${isoPt(sx0, sy0, 0.3)[1] - 1.8} L ${isoPt(sx0, sy0, 0.3)[0]},${isoPt(sx0, sy0, 0.3)[1] + 1.8}`}
+          stroke="#c7d2fe" strokeWidth="0.8" strokeLinecap="round" />
+      ))}
+      {/* 石造の塔 */}
+      <g transform={`translate(${isoPt(50, 50, 0)[0].toFixed(1)}, ${isoPt(50, 50, 0)[1].toFixed(1)})`}>
+        <path d="M -13,0 L -13,-36 A 13,5 0 0 1 13,-36 L 13,0 A 13,5.2 0 0 1 -13,0 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M 0,2.6 A 13,5.2 0 0 0 13,0 L 13,-36 L 0,-38 Z" fill="#64748b" />
+        <path d="M -13,0 L -13,-36 A 13,5 0 0 1 13,-36 L 13,0 A 13,5.2 0 0 1 -13,0 Z" fill="none" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        {/* 石積みライン */}
+        <path d="M -12.4,-8 A 12.4,4.8 0 0 0 12.4,-8 M -12.4,-20 A 12.4,4.8 0 0 0 12.4,-20" fill="none" stroke="#475569" strokeWidth="0.7" opacity="0.8" />
+        {/* 扉と丸窓 */}
+        <path d="M -4,1.6 L -4,-8 A 4,3.4 0 0 1 4,-8 L 4,1.6 Z" fill="#1e1b4b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <circle cx="0" cy="-27" r="3.6" fill="#fbbf24" stroke="#1e293b" strokeWidth="1" filter="url(#glow-effect)" />
+        <path d="M -3.6,-27 L 3.6,-27 M 0,-30.6 L 0,-23.4" stroke="#92400e" strokeWidth="0.7" />
+        {/* とんがり屋根（藍色・星模様） */}
+        <path d="M -16,-36 A 16,6 0 0 1 16,-36 L 0,-64 Z" fill="#4338ca" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M 0,-64 L 16,-36 A 16,6 0 0 1 8,-31.6 Z" fill="#312e81" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {[[-6, -42], [4, -50], [-2, -56]].map(([px0, py0], i) => (
+          <path key={i} d={`M ${px0 - 1.6},${py0} L ${px0 + 1.6},${py0} M ${px0},${py0 - 1.6} L ${px0},${py0 + 1.6}`} stroke="#fde047" strokeWidth="0.8" strokeLinecap="round" />
+        ))}
+        {/* 頂上の輝く宝珠 */}
+        <circle cx="0" cy="-66.5" r="2.6" fill="#a5b4fc" stroke="#1e293b" strokeWidth="0.9" filter="url(#glow-effect)" />
+      </g>
+      {/* 浮遊する本 */}
+      <g transform={`translate(${isoPt(20, 74, 14)[0].toFixed(1)}, ${isoPt(20, 74, 14)[1].toFixed(1)}) rotate(-8)`}>
+        <path d="M -4.6,0 C -2.6,-1.8 -0.6,-1.8 0,-0.6 C 0.6,-1.8 2.6,-1.8 4.6,0 L 4.6,3 C 2.6,1.4 0.6,1.4 0,2.6 C -0.6,1.4 -2.6,1.4 -4.6,3 Z" fill="#ef4444" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      </g>
+      <g transform={`translate(${isoPt(82, 68, 20)[0].toFixed(1)}, ${isoPt(82, 68, 20)[1].toFixed(1)}) rotate(7)`}>
+        <path d="M -4,0 C -2.2,-1.6 -0.5,-1.6 0,-0.5 C 0.5,-1.6 2.2,-1.6 4,0 L 4,2.6 C 2.2,1.2 0.5,1.2 0,2.2 C -0.5,1.2 -2.2,1.2 -4,2.6 Z" fill="#22c55e" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      </g>
+      {/* フラスコ台 */}
+      <g transform={`translate(${isoPt(80, 88, 0)[0].toFixed(1)}, ${isoPt(80, 88, 0)[1].toFixed(1)})`}>
+        <path d="M -1.4,-8 L -1.4,-4.6 L -4,-0.6 A 3.6,2.8 0 0 0 4,-0.6 L 1.4,-4.6 L 1.4,-8 Z" fill="#e0f2fe" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+        <path d="M -3,-0.8 A 3,2.2 0 0 0 3,-0.8 L 1.6,-3 L -1.6,-3 Z" fill="#a855f7" opacity="0.85" />
+        <circle cx="0.6" cy="-4.6" r="0.7" fill="#d8b4fe" />
+      </g>
     </g>
   </svg>
 );
 
 export const SvgDragonShrine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-8,-12 -22,-19 -22,-23 -8,-16" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-8,-12 12,-22 12,-26 -8,-16" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -4,-50 Q -14,-35 -20,-30 Q -4,-38 -4,-50" fill="#047857" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -4,-50 Q 6,-35 12,-30 Q -4,-38 -4,-50" fill="#059669" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 神域の床 */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#064e3b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <ellipse cx={isoPt(50, 50, 0.2)[0]} cy={isoPt(50, 50, 0.2)[1]} rx="32" ry="15" fill="none" stroke="#34d399" strokeWidth="0.8" opacity="0.6" />
+      {/* 石の台座（2段） */}
+      <IsoCube x={22} y={22} w={56} d={56} h={7} top="#d6d3d1" left="#a8a29e" right="#78716c" sw={1.1} />
+      <IsoCube x={32} y={32} w={36} d={36} z={7} h={6} top="#e7e5e4" left="#d6d3d1" right="#a8a29e" sw={1} />
+      {/* 神殿（朱柱＋銅屋根） */}
+      {[[37, 37], [63, 37], [37, 63], [63, 63]].map(([px0, py0], i) => (
+        <polygon key={i} points={`${iso3(px0 - 1.7, py0, 13)} ${iso3(px0 + 1.7, py0, 13)} ${iso3(px0 + 1.7, py0, 30)} ${iso3(px0 - 1.7, py0, 30)}`}
+          fill="#b91c1c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      ))}
+      {/* 銅葺きの反り屋根 */}
+      <path d={`M ${iso3(28, 28, 30)} L ${iso3(72, 28, 30)} Q ${iso3(78, 50, 27)} ${iso3(72, 72, 30)} L ${iso3(28, 72, 30)} Q ${iso3(22, 50, 27)} ${iso3(28, 28, 30)} Z`}
+        fill="#0f766e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(36, 36, 35)} ${iso3(64, 36, 35)} ${iso3(64, 64, 35)} ${iso3(36, 64, 35)}`} fill="#14b8a6" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(36, 64, 35)} ${iso3(64, 64, 35)} ${iso3(50, 50, 44)}`} fill="#0d9488" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(64, 36, 35)} ${iso3(64, 64, 35)} ${iso3(50, 50, 44)}`} fill="#115e59" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 御神体の宝珠 */}
+      <circle cx={isoPt(50, 50, 21)[0]} cy={isoPt(50, 50, 21)[1]} r="4.4" fill="#fbbf24" stroke="#1e293b" strokeWidth="1" filter="url(#glow-effect)" />
+      {/* 巻きつく龍（塔を旋回） */}
+      <g>
+        <path d={`M ${isoPt(20, 84, 0)[0]},${isoPt(20, 84, 0)[1]}
+                 C ${isoPt(4, 60, 6)[0]},${isoPt(4, 60, 6)[1]} ${isoPt(16, 30, 16)[0]},${isoPt(16, 30, 16)[1]} ${isoPt(42, 22, 24)[0]},${isoPt(42, 22, 24)[1]}
+                 C ${isoPt(72, 16, 32)[0]},${isoPt(72, 16, 32)[1]} ${isoPt(88, 40, 40)[0]},${isoPt(88, 40, 40)[1]} ${isoPt(64, 56, 48)[0]},${isoPt(64, 56, 48)[1]}`}
+          fill="none" stroke="#1e293b" strokeWidth="7.5" strokeLinecap="round" />
+        <path d={`M ${isoPt(20, 84, 0)[0]},${isoPt(20, 84, 0)[1]}
+                 C ${isoPt(4, 60, 6)[0]},${isoPt(4, 60, 6)[1]} ${isoPt(16, 30, 16)[0]},${isoPt(16, 30, 16)[1]} ${isoPt(42, 22, 24)[0]},${isoPt(42, 22, 24)[1]}
+                 C ${isoPt(72, 16, 32)[0]},${isoPt(72, 16, 32)[1]} ${isoPt(88, 40, 40)[0]},${isoPt(88, 40, 40)[1]} ${isoPt(64, 56, 48)[0]},${isoPt(64, 56, 48)[1]}`}
+          fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" />
+        {/* 背びれ */}
+        {[[10, 46, 11], [26, 24, 20], [58, 17, 28], [84, 28, 37]].map(([bx, by, bz], i) => (
+          <path key={i} d={`M ${isoPt(bx, by, bz)[0]},${isoPt(bx, by, bz)[1]} l -1.6,-4.4 l 3.6,1.4 Z`} fill="#059669" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        ))}
+        {/* 龍の頭 */}
+        <g transform={`translate(${isoPt(64, 56, 48)[0].toFixed(1)}, ${isoPt(64, 56, 48)[1].toFixed(1)})`}>
+          <polygon points="0,2 -7,-1 -8.6,-6.6 -3,-9.6 3.6,-7.6 5,-2" fill="#10b981" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+          <circle cx="-2.6" cy="-5.4" r="1.4" fill="#fef08a" stroke="#1e293b" strokeWidth="0.6" />
+          <path d="M -3,-9.6 L -5,-14 M 0.6,-8.6 L 0,-13" stroke="#1e293b" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M 5,-2 Q 9.6,-3 11,0.6" fill="none" stroke="#f8fafc" strokeWidth="1.1" strokeLinecap="round" />
+        </g>
+      </g>
     </g>
   </svg>
 );
 
 export const SvgPerfectMonument = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,-5 -20,-15 0,-25 20,-15" fill="#0f172a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(0, -40)">
-        <circle cx="0" cy="0" r="16" fill="#fbbf24" stroke="#000" strokeWidth="2" />
-        <circle cx="-4" cy="-4" r="6" fill="#ffffff" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={36} />
+      {/* 大理石の床 */}
+      <polygon points={`${iso3(8, 8, 0)} ${iso3(92, 8, 0)} ${iso3(92, 92, 0)} ${iso3(8, 92, 0)}`} fill="#f5f5f4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 台座（3段） */}
+      <IsoCube x={26} y={26} w={48} d={48} h={6} top="#e7e5e4" left="#d6d3d1" right="#a8a29e" sw={1} />
+      <IsoCube x={34} y={34} w={32} d={32} z={6} h={6} top="#f5f5f4" left="#e7e5e4" right="#d6d3d1" sw={1} />
+      <IsoCube x={42} y={42} w={16} d={16} z={12} h={22} top="#1e293b" left="#334155" right="#0f172a" sw={1.1} />
+      {/* 金の月桂樹リース＋花丸メダル */}
+      <g transform={`translate(${isoPt(50, 50, 46)[0].toFixed(1)}, ${isoPt(50, 50, 46)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="13" fill="url(#grad-gold)" stroke="#1e293b" strokeWidth="1.4" filter="url(#glow-effect)" />
+        <circle cx="0" cy="0" r="9.4" fill="#fef3c7" stroke="#d97706" strokeWidth="0.9" />
+        {/* 花丸（💮風の渦） */}
+        <path d="M 0,4.6 C -4.6,4.6 -6.6,0.6 -4.6,-2.6 C -2.6,-5.6 2.6,-5.6 4.6,-2.6 C 6.2,-0.2 5,3 2,4 C 0.6,4.4 -0.8,4 -1.6,3 C -2.6,1.6 -2,-0.4 -0.4,-1 C 0.8,-1.4 2.2,-0.6 2.2,0.8"
+          fill="none" stroke="#ef4444" strokeWidth="1.6" strokeLinecap="round" />
+        {/* 花びら */}
+        {[0, 45, 90, 135, 180, 225, 270, 315].map(a => {
+          const rad = a * Math.PI / 180;
+          return <circle key={a} cx={11.4 * Math.cos(rad)} cy={11.4 * Math.sin(rad)} r="2.3" fill="#fbbf24" stroke="#b45309" strokeWidth="0.6" />;
+        })}
+        {/* リボン */}
+        <polygon points="-4.6,11 -8.6,19.6 -4.6,17.6 -2,20.6" fill="#dc2626" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        <polygon points="4.6,11 8.6,19.6 4.6,17.6 2,20.6" fill="#b91c1c" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
       </g>
+      {/* 金の銘板 */}
+      <FaceSW x1={44} x2={56} y={58.2} z1={16} z2={22} fill="#fbbf24" sw={0.8} />
+      {/* きらめき */}
+      {[[24, 30, 30], [78, 42, 40], [66, 78, 14]].map(([sx0, sy0, sz0], i) => (
+        <path key={i} d={`M ${isoPt(sx0, sy0, sz0)[0] - 2.2},${isoPt(sx0, sy0, sz0)[1]} L ${isoPt(sx0, sy0, sz0)[0] + 2.2},${isoPt(sx0, sy0, sz0)[1]} M ${isoPt(sx0, sy0, sz0)[0]},${isoPt(sx0, sy0, sz0)[1] - 2.2} L ${isoPt(sx0, sy0, sz0)[0]},${isoPt(sx0, sy0, sz0)[1] + 2.2}`}
+          stroke="#fde047" strokeWidth="1" strokeLinecap="round" />
+      ))}
     </g>
   </svg>
 );
 
 export const SvgHotSpring = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-20,5 -30,-5 -20,-15 -5,-20 15,-15 25,-5 15,5 0,10" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -22,-5 C -15,-12 5,-15 18,-5 C 10,2 -10,2 -22,-5 Z" fill="#7dd3fc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 敷地（石畳） */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 湯屋（木造） */}
+      <IsoCube x={8} y={8} w={44} d={38} h={16} top="#a16207" left="#d6bc8b" right="#b49468" sw={1.1} />
+      <FaceSW x1={14} x2={26} y={46.2} z1={0} z2={12} fill="#57534e" sw={0.9} />
+      <line x1={isoPt(20, 46.4, 0)[0]} y1={isoPt(20, 46.4, 0)[1]} x2={isoPt(20, 46.4, 12)[0]} y2={isoPt(20, 46.4, 12)[1]} stroke="#1e293b" strokeWidth="0.8" />
+      <WinSW x1={32} x2={44} y={46.2} z1={5} z2={12} />
+      {/* のれん（「ゆ」） */}
+      <g>
+        <line x1={isoPt(12, 47, 13.5)[0]} y1={isoPt(12, 47, 13.5)[1]} x2={isoPt(28, 47, 13.5)[0]} y2={isoPt(28, 47, 13.5)[1]} stroke="#78350f" strokeWidth="1.2" />
+        <FaceSW x1={13} x2={27} y={47} z1={7} z2={13.5} fill="#1d4ed8" sw={0.9} />
+        <line x1={isoPt(17.7, 47.1, 7)[0]} y1={isoPt(17.7, 47.1, 7)[1]} x2={isoPt(17.7, 47.1, 13.5)[0]} y2={isoPt(17.7, 47.1, 13.5)[1]} stroke="#1e3a8a" strokeWidth="0.8" />
+        <line x1={isoPt(22.3, 47.1, 7)[0]} y1={isoPt(22.3, 47.1, 7)[1]} x2={isoPt(22.3, 47.1, 13.5)[0]} y2={isoPt(22.3, 47.1, 13.5)[1]} stroke="#1e3a8a" strokeWidth="0.8" />
+        <circle cx={isoPt(20, 47.2, 10.2)[0]} cy={isoPt(20, 47.2, 10.2)[1]} r="2.2" fill="none" stroke="#f8fafc" strokeWidth="0.9" />
+      </g>
+      {/* 茅葺き屋根 */}
+      <polygon points={`${iso3(4, 4, 16)} ${iso3(56, 4, 16)} ${iso3(56, 27, 26)} ${iso3(4, 27, 26)}`} fill="#92400e" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(4, 50, 16)} ${iso3(56, 50, 16)} ${iso3(56, 27, 26)} ${iso3(4, 27, 26)}`} fill="#b45309" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(56, 4, 16)} ${iso3(56, 27, 26)} ${iso3(56, 50, 16)} ${iso3(56, 50, 14)} ${iso3(56, 27, 24)} ${iso3(56, 4, 14)}`} fill="#78350f" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 岩風呂 */}
+      <g>
+        {/* 岩の縁 */}
+        {[[60, 52, 5], [74, 46, 6], [88, 54, 5], [92, 68, 6], [88, 84, 5], [72, 92, 6], [58, 86, 5], [54, 68, 6]].map(([rx, ry, rs], i) => (
+          <g key={i} transform={`translate(${isoPt(rx, ry, 0)[0].toFixed(1)}, ${isoPt(rx, ry, 0)[1].toFixed(1)})`}>
+            <path d={`M ${-rs},0 Q ${-rs},${-rs * 1.2} 0,${-rs * 1.3} Q ${rs},${-rs * 1.2} ${rs},0 Q 0,${rs * 0.5} ${-rs},0 Z`}
+              fill={i % 2 === 0 ? '#78716c' : '#57534e'} stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+          </g>
+        ))}
+        {/* 湯面 */}
+        <ellipse cx={isoPt(73, 69, 0.5)[0]} cy={isoPt(73, 69, 0.5)[1]} rx="14" ry="7" fill="#7dd3fc" stroke="#0369a1" strokeWidth="0.9" />
+        <path d={`M ${isoPt(66, 66, 0.6)[0]},${isoPt(66, 66, 0.6)[1]} q 4,-1.6 8,0 M ${isoPt(70, 74, 0.6)[0]},${isoPt(70, 74, 0.6)[1]} q 4,-1.6 8,0`}
+          fill="none" stroke="#e0f2fe" strokeWidth="1" strokeLinecap="round" opacity="0.9" />
+        {/* 湯気 */}
+        {[[68, 64], [78, 70]].map(([mx, my], i) => (
+          <path key={i} d={`M ${isoPt(mx, my, 2)[0]},${isoPt(mx, my, 2)[1]} c -2,-4 2,-6 0,-10 c -2,-4 2,-6 0,-9`}
+            fill="none" stroke="#f8fafc" strokeWidth="1.6" strokeLinecap="round" opacity="0.75" />
+        ))}
+      </g>
+      {/* 桶とタオル */}
+      <g transform={`translate(${isoPt(48, 88, 0)[0].toFixed(1)}, ${isoPt(48, 88, 0)[1].toFixed(1)})`}>
+        <path d="M -3.6,-4.4 L -3,0 A 3,1.4 0 0 0 3,0 L 3.6,-4.4 Z" fill="#d6bc8b" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+        <ellipse cx="0" cy="-4.4" rx="3.6" ry="1.7" fill="#b49468" stroke="#1e293b" strokeWidth="0.8" />
+        <rect x="-2.4" y="-7.4" width="4.8" height="2.2" rx="0.6" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.7" />
+      </g>
+      {/* 竹垣 */}
+      {[8, 20, 32].map(y => (
+        <line key={y} x1={isoPt(96, y, 0)[0]} y1={isoPt(96, y, 0)[1]} x2={isoPt(96, y, 9)[0]} y2={isoPt(96, y, 9)[1]} stroke="#15803d" strokeWidth="1.6" strokeLinecap="round" />
+      ))}
+      <line x1={isoPt(96, 4, 7)[0]} y1={isoPt(96, 4, 7)[1]} x2={isoPt(96, 36, 7)[0]} y2={isoPt(96, 36, 7)[1]} stroke="#166534" strokeWidth="1.1" />
+      <line x1={isoPt(96, 4, 3.5)[0]} y1={isoPt(96, 4, 3.5)[1]} x2={isoPt(96, 36, 3.5)[0]} y2={isoPt(96, 36, 3.5)[1]} stroke="#166534" strokeWidth="1.1" />
     </g>
   </svg>
 );
 
 export const SvgObservatory = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <path d="M -16,0 L -16,-25 C -16,-28 16,-28 16,-25 L 16,0 C 16,4 -16,4 -16,0 Z" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -16,-30 C -16,-55 16,-55 16,-30" fill="#0f766e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -4,-30 L -4,-50 C 0,-52 4,-50 4,-30 Z" fill="#020617" stroke="#000" strokeWidth="2" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={38} />
+      {/* 星見の丘 */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#1e1b4b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {[[22, 30], [78, 24], [24, 76], [82, 70], [50, 88]].map(([sx0, sy0], i) => (
+        <path key={i} d={`M ${isoPt(sx0, sy0, 0.2)[0] - 1.4},${isoPt(sx0, sy0, 0.2)[1]} L ${isoPt(sx0, sy0, 0.2)[0] + 1.4},${isoPt(sx0, sy0, 0.2)[1]} M ${isoPt(sx0, sy0, 0.2)[0]},${isoPt(sx0, sy0, 0.2)[1] - 1.4} L ${isoPt(sx0, sy0, 0.2)[0]},${isoPt(sx0, sy0, 0.2)[1] + 1.4}`}
+          stroke="#a5b4fc" strokeWidth="0.7" strokeLinecap="round" opacity="0.85" />
+      ))}
+      {/* 管理棟 */}
+      <IsoCube x={62} y={50} w={30} d={30} h={13} top="#cbd5e1" left="#f1f5f9" right="#cbd5e1" sw={1} />
+      <WinSW x1={66} x2={76} y={80.2} z1={4} z2={10.5} />
+      <FaceSE x={92.2} y1={58} y2={68} z1={0} z2={10} fill="#334155" sw={0.8} />
+      <IsoCube x={60} y={48} w={34} d={34} z={13} h={2.5} top="#64748b" left="#94a3b8" right="#475569" sw={0.9} />
+      {/* 観測ドームの円筒基部 */}
+      <g transform={`translate(${isoPt(38, 36, 0)[0].toFixed(1)}, ${isoPt(38, 36, 0)[1].toFixed(1)})`}>
+        <path d="M -16,0 L -16,-24 A 16,6.4 0 0 1 16,-24 L 16,0 A 16,6.4 0 0 1 -16,0 Z" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M 0,6.4 A 16,6.4 0 0 0 16,0 L 16,-24 L 0,-24 Z" fill="#94a3b8" opacity="0.6" />
+        <path d="M -16,0 L -16,-24 A 16,6.4 0 0 1 16,-24 L 16,0 A 16,6.4 0 0 1 -16,0 Z" fill="none" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        {/* ドア */}
+        <path d="M -4,4.6 L -4,-6 A 4,3.4 0 0 1 4,-6 L 4,4.6 Z" fill="#334155" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 回転ドーム（スリット付き） */}
+        <path d="M -18,-24 A 18,7.2 0 0 1 18,-24 A 18,18 0 0 0 -18,-24 Z" fill="#0f766e" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M 0,-42 A 18,18 0 0 1 18,-24 A 18,7.2 0 0 0 9,-30.2 Z" fill="#115e59" opacity="0.75" />
+        <path d="M -18,-24 A 18,18 0 0 1 18,-24" fill="none" stroke="#1e293b" strokeWidth="1.3" />
+        {/* 観測スリット */}
+        <path d="M -4,-41.4 L -4,-28.6 A 16,6 0 0 1 4,-28.4 L 4,-41.4 A 8,8 0 0 0 -4,-41.4 Z" fill="#020617" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 望遠鏡の筒先 */}
+        <g transform="rotate(-24 0 -34)">
+          <rect x="-2.2" y="-46" width="4.4" height="9" rx="1" fill="#f59e0b" stroke="#1e293b" strokeWidth="0.9" />
+          <ellipse cx="0" cy="-46" rx="2.2" ry="0.9" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.7" />
+        </g>
+      </g>
+      {/* 月 */}
+      <g transform={`translate(${isoPt(80, 8, 34)[0].toFixed(1)}, ${isoPt(80, 8, 34)[1].toFixed(1)})`}>
+        <path d="M 0,-4.6 A 4.6,4.6 0 1 0 4.6,0 A 3.6,3.6 0 0 1 0,-4.6 Z" fill="#fde047" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      </g>
     </g>
   </svg>
 );
 
 export const SvgShoppingStreet = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-5,2 -25,-10 5,-28 25,-16" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-20, -10)">
-        <polygon points="0,0 -12,-7 -12,-20 0,-13" fill="#ffedd5" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,-13 -12,-20 -4,-24 8,-17" fill="#fdba74" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 石畳の通り */}
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(36, 4, 0.1)} ${iso3(64, 4, 0.1)} ${iso3(64, 96, 0.1)} ${iso3(36, 96, 0.1)}`} fill="#d6d3d1" />
+      {/* 左列の店（2軒） */}
+      {[[8, '#f97316', '#ffedd5'], [8, '#0ea5e9', '#e0f2fe']].map(([x0, awn, wall], i) => {
+        const y0 = 10 + i * 40;
+        return (
+          <g key={i}>
+            <IsoCube x={8} y={y0} w={24} d={28} h={14} top={darken(wall, 15)} left={wall} right={darken(wall, 35)} sw={1} />
+            <FaceSE x={32.2} y1={y0 + 4} y2={y0 + 13} z1={2} z2={10} fill="#7dd3fc" sw={0.7} />
+            <FaceSE x={32.2} y1={y0 + 16} y2={y0 + 24} z1={0} z2={10} fill="#78350f" sw={0.7} />
+            {/* 通りに面したひさし（南東向き） */}
+            {[0, 1, 2, 3].map(s => (
+              <polygon key={s} points={`${iso3(32, y0 + 2 + s * 6.5, 12)} ${iso3(32, y0 + 2 + (s + 1) * 6.5, 12)} ${iso3(37, y0 + 2 + (s + 1) * 6.5, 9)} ${iso3(37, y0 + 2 + s * 6.5, 9)}`}
+                fill={s % 2 === 0 ? awn : '#f8fafc'} stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+            ))}
+            <IsoCube x={6} y={y0 - 2} w={28} d={32} z={14} h={2.5} top={darken(wall, 45)} left={darken(wall, 30)} right={darken(wall, 55)} sw={0.8} />
+          </g>
+        );
+      })}
+      {/* 右列の店（2軒） */}
+      {[['#ec4899', '#fdf2f8'], ['#22c55e', '#f0fdf4']].map(([awn, wall], i) => {
+        const y0 = 14 + i * 40;
+        return (
+          <g key={i}>
+            <IsoCube x={68} y={y0} w={24} d={28} h={14} top={darken(wall, 15)} left={darken(wall, 8)} right={darken(wall, 35)} sw={1} />
+            {/* 通り側（南西…ではなく左面が通り側になるため、左面に店構え） */}
+            <FaceSW x1={71} x2={80} y={y0 + 28.2} z1={2} z2={10} fill="#7dd3fc" sw={0.7} />
+            <FaceSW x1={83} x2={89} y={y0 + 28.2} z1={0} z2={10} fill="#78350f" sw={0.7} />
+            <AwningSW x1={69} x2={91} y={y0 + 28} z={12} c1={awn} c2="#f8fafc" depth={5} drop={2.5} stripes={4} />
+            <IsoCube x={66} y={y0 - 2} w={28} d={32} z={14} h={2.5} top={darken(wall, 45)} left={darken(wall, 30)} right={darken(wall, 55)} sw={0.8} />
+          </g>
+        );
+      })}
+      {/* アーケードゲート */}
+      <g>
+        <IsoCube x={30} y={88} w={6} d={6} h={20} top="#fca5a5" left="#ef4444" right="#b91c1c" sw={0.9} />
+        <IsoCube x={64} y={88} w={6} d={6} h={20} top="#fca5a5" left="#ef4444" right="#b91c1c" sw={0.9} />
+        <path d={`M ${iso3(28, 91, 20)} Q ${iso3(50, 91, 32)} ${iso3(72, 91, 20)} L ${iso3(72, 91, 25)} Q ${iso3(50, 91, 37)} ${iso3(28, 91, 25)} Z`}
+          fill="#ef4444" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <FaceSW x1={40} x2={60} y={91.2} z1={24.5} z2={31} fill="#fef3c7" sw={0.9} />
+        {/* 提灯 */}
+        {[36, 50, 64].map(x => (
+          <g key={x} transform={`translate(${isoPt(x, 91.4, 21)[0].toFixed(1)}, ${isoPt(x, 91.4, 21)[1].toFixed(1)})`}>
+            <line x1="0" y1="-1.6" x2="0" y2="0" stroke="#1e293b" strokeWidth="0.7" />
+            <ellipse cx="0" cy="2.6" rx="2.2" ry="2.8" fill="#f97316" stroke="#1e293b" strokeWidth="0.8" />
+            <line x1="-2" y1="1.8" x2="2" y2="1.8" stroke="#7c2d12" strokeWidth="0.5" />
+            <line x1="-2.2" y1="2.8" x2="2.2" y2="2.8" stroke="#7c2d12" strokeWidth="0.5" />
+          </g>
+        ))}
       </g>
-      <g transform="translate(10, -25)">
-        <polygon points="0,0 -12,-7 -12,-20 0,-13" fill="#ecfccb" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,-13 -12,-20 -4,-24 8,-17" fill="#bef264" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* 買い物客の自転車 */}
+      <g transform={`translate(${isoPt(50, 30, 0)[0].toFixed(1)}, ${isoPt(50, 30, 0)[1].toFixed(1)}) scale(0.4)`}>
+        <circle cx="-10.5" cy="1" r="9" fill="none" stroke="#1e293b" strokeWidth="2.6" />
+        <circle cx="10.5" cy="1" r="9" fill="none" stroke="#1e293b" strokeWidth="2.6" />
+        <path d="M -10.5,1 L -3,-9 L 8,-9 M -3,-9 L 2,1 L 10.5,1 M -10.5,1 L -3.5,-12" fill="none" stroke="#dc2626" strokeWidth="2.6" strokeLinecap="round" />
       </g>
     </g>
   </svg>
@@ -2101,22 +2838,59 @@ export const SvgShoppingStreet = () => (
 
 export const SvgZenGarden = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,-3 -26,-16 0,-29 26,-16" fill="#fef08a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 -26,-13 -26,-16 0,-3" fill="#92400e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 26,-13 26,-16 0,-3" fill="#b45309" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-8, -18)">
-        <polygon points="-3,0 -1,-4 2,-3 3,1 0,2" fill="#475569" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 木枠 */}
+      <IsoCube x={4} y={4} w={92} d={92} h={3.5} top="#b45309" left="#92400e" right="#78350f" sw={1} />
+      {/* 白砂 */}
+      <polygon points={`${iso3(10, 10, 3.6)} ${iso3(90, 10, 3.6)} ${iso3(90, 90, 3.6)} ${iso3(10, 90, 3.6)}`} fill="#fef9c3" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 砂紋（縦の流れ） */}
+      {[24, 34, 44, 54, 64, 74].map(y => (
+        <line key={y} x1={isoPt(13, y, 3.7)[0]} y1={isoPt(13, y, 3.7)[1]} x2={isoPt(87, y, 3.7)[0]} y2={isoPt(87, y, 3.7)[1]} stroke="#eab308" strokeWidth="0.6" opacity="0.65" />
+      ))}
+      {/* 岩の周りの波紋＋岩（メイン） */}
+      <g>
+        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="17" ry="8" fill="none" stroke="#eab308" strokeWidth="0.7" opacity="0.8" />
+        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="12" ry="5.6" fill="none" stroke="#ca8a04" strokeWidth="0.7" opacity="0.8" />
+        <g transform={`translate(${isoPt(38, 40, 3.8)[0].toFixed(1)}, ${isoPt(38, 40, 3.8)[1].toFixed(1)})`}>
+          <path d="M -7,0 Q -7.6,-6 -3,-9 Q 2,-11.6 6,-7 Q 8.4,-4 6.6,-0.6 Q 2,2.6 -7,0 Z" fill="#57534e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M -3,-9 Q 2,-11.6 6,-7 L 2.6,-4.6 Q -1,-7.6 -3,-9 Z" fill="#78716c" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+          <path d="M -5,-1 Q -2,0.6 2,0" fill="none" stroke="#a3e635" strokeWidth="1" strokeLinecap="round" opacity="0.9" />
+        </g>
       </g>
-      <g transform="translate(12, -12)">
-        <polygon points="-2,0 -1,-3 2,-2 2,1" fill="#334155" stroke="#000" strokeWidth="1" />
+      {/* 岩（サブ2つ） */}
+      <g transform={`translate(${isoPt(66, 62, 3.8)[0].toFixed(1)}, ${isoPt(66, 62, 3.8)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="0" rx="10" ry="4.6" fill="none" stroke="#eab308" strokeWidth="0.6" opacity="0.8" />
+        <path d="M -4,-0.6 Q -4.4,-4.4 -1,-5.6 Q 2.6,-6.6 4,-3.4 Q 4.8,-1 3,0.4 Q -0.6,1.6 -4,-0.6 Z" fill="#78716c" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      </g>
+      <g transform={`translate(${isoPt(74, 26, 3.8)[0].toFixed(1)}, ${isoPt(74, 26, 3.8)[1].toFixed(1)})`}>
+        <path d="M -2.6,-0.4 Q -2.8,-3 -0.6,-3.8 Q 1.8,-4.4 2.6,-2.2 Q 3,-0.6 1.8,0.4 Q -0.6,1 -2.6,-0.4 Z" fill="#57534e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      </g>
+      {/* 苔とモミジ */}
+      <g transform={`translate(${isoPt(20, 76, 3.8)[0].toFixed(1)}, ${isoPt(20, 76, 3.8)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="0" rx="7" ry="3.2" fill="#16a34a" stroke="#1e293b" strokeWidth="0.9" />
+        <ellipse cx="-2" cy="-1" rx="3" ry="1.4" fill="#4ade80" opacity="0.8" />
+        <line x1="3" y1="-1" x2="3" y2="-9" stroke="#78350f" strokeWidth="1.2" strokeLinecap="round" />
+        <circle cx="3" cy="-11.5" r="4" fill="#ef4444" stroke="#1e293b" strokeWidth="0.9" />
+        <circle cx="1.4" cy="-12.6" r="1.6" fill="#f87171" opacity="0.9" />
+      </g>
+      {/* 石灯篭（隅） */}
+      <g transform={`translate(${isoPt(84, 82, 3.8)[0].toFixed(1)}, ${isoPt(84, 82, 3.8)[1].toFixed(1)})`}>
+        <line x1="0" y1="0" x2="0" y2="-4.6" stroke="#78716c" strokeWidth="1.6" strokeLinecap="round" />
+        <rect x="-2" y="-7.8" width="4" height="3.2" rx="0.5" fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.8" />
+        <circle cx="0" cy="-6.2" r="0.9" fill="#fef08a" />
+        <polygon points="-2.8,-7.8 2.8,-7.8 0,-10" fill="#78716c" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+      </g>
+      {/* 熊手 */}
+      <g transform={`translate(${isoPt(88, 46, 3.8)[0].toFixed(1)}, ${isoPt(88, 46, 3.8)[1].toFixed(1)}) rotate(24)`}>
+        <line x1="0" y1="0" x2="0" y2="-11" stroke="#b45309" strokeWidth="1" strokeLinecap="round" />
+        <path d="M -2.6,0 L 2.6,0 M -2.6,0 L -2.6,2 M 0,0 L 0,2 M 2.6,0 L 2.6,2" stroke="#92400e" strokeWidth="0.8" strokeLinecap="round" />
       </g>
     </g>
   </svg>
 );
 
 export const SvgNationalLibrary = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-4 -32,-20 0,-36 32,-20" fill="#cbd5e1" /><polygon points="0,-15 -28,-29 -28,-45 0,-31" fill="#fde68a" /><polygon points="0,-15 28,-29 28,-45 0,-31" fill="#fef08a" /><polygon points="0,-33 -30,-48 0,-60 30,-48" fill="#d6d3d1" /><polygon points="0,-31 -30,-46 -30,-48 0,-33" fill="#94a3b8" /><polygon points="0,-31 30,-46 30,-48 0,-33" fill="#cbd5e1" /><g transform="translate(0, -42)"><polygon points="0,0 -12,-6 -12,-12 0,-6" fill="#d4d4d8" /><polygon points="0,0 12,-6 12,-12 0,-6" fill="#e4e4e7" /><path d="M -12,-12 C -12,-28 12,-28 12,-12" fill="#0f766e" /><polygon points="-2,-27 2,-27 2,-30 -2,-30" fill="#e2e8f0" /><polygon points="-3,-30 3,-30 0,-33" fill="#0f766e" /></g></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.2)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-4 -32,-20 0,-36 32,-20" fill="#cbd5e1" /><polygon points="0,-15 -28,-29 -28,-45 0,-31" fill="#fde68a" /><polygon points="0,-15 28,-29 28,-45 0,-31" fill="#fef08a" /><polygon points="0,-33 -30,-48 0,-60 30,-48" fill="#d6d3d1" /><polygon points="0,-31 -30,-46 -30,-48 0,-33" fill="#94a3b8" /><polygon points="0,-31 30,-46 30,-48 0,-33" fill="#cbd5e1" /><g transform="translate(0, -42)"><polygon points="0,0 -12,-6 -12,-12 0,-6" fill="#d4d4d8" /><polygon points="0,0 12,-6 12,-12 0,-6" fill="#e4e4e7" /><path d="M -12,-12 C -12,-28 12,-28 12,-12" fill="#0f766e" /><polygon points="-2,-27 2,-27 2,-30 -2,-30" fill="#e2e8f0" /><polygon points="-3,-30 3,-30 0,-33" fill="#0f766e" /></g></g></svg>);
 
 export const SvgWell = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
@@ -2180,59 +2954,522 @@ export const SvgWell = () => (
 );
 
 export const SvgTownhall = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="-2" rx="30" ry="15" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,-4 -24,-16 0,-28 24,-16" fill="#e2e8f0" /><polygon points="0,-4 -22,-15 -22,-24 0,-13" fill="#b91c1c" /><polygon points="0,-4 22,-15 22,-24 0,-13" fill="#ef4444" /><polygon points="-2,-14 -24,-25 -14,-31 8,-20" fill="url(#grad-roof-slate)" /><polygon points="2,-14 24,-25 14,-31 -8,-20" fill="url(#grad-roof-slate)" /><polygon points="0,-4 -8,-8 -8,-40 0,-36" fill="#f8fafc" /><polygon points="0,-4 8,-8 8,-40 0,-36" fill="#e2e8f0" /><polygon points="0,-4 -4,-6 -4,-12 0,-10" fill="#1e293b" /><circle cx="-4" cy="-28" r="2.5" fill="#fcd34d" /><circle cx="4" cy="-28" r="2.5" fill="#fcd34d" /><polygon points="-10,-39 0,-34 10,-39 0,-50" fill="url(#grad-roof-blue)" /><line x1="0" y1="-50" x2="0" y2="-56" stroke="#fcd34d" strokeWidth="1" /><circle cx="0" cy="-57" r="1" fill="#fcd34d" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 前庭と石畳アプローチ */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(42, 60, 0.1)} ${iso3(58, 60, 0.1)} ${iso3(58, 98, 0.1)} ${iso3(42, 98, 0.1)}`} fill="#d6d3d1" />
+      {/* 本館 */}
+      <IsoCube x={10} y={8} w={80} d={52} h={26} top="#cbd5e1" left="#f8fafc" right="#e2e8f0" sw={1.1} />
+      <FaceSW x1={10} x2={90} y={60} z1={0} z2={4} fill="#94a3b8" sw={0.9} />
+      {/* 窓列（1階・2階） */}
+      {[[16, 24], [30, 38], [62, 70], [76, 84]].map(([a, b], i) => (
+        <WinSW key={`w1-${i}`} x1={a} x2={b} y={60.2} z1={6} z2={13} />
+      ))}
+      {[[16, 24], [30, 38], [46, 54], [62, 70], [76, 84]].map(([a, b], i) => (
+        <WinSW key={`w2-${i}`} x1={a} x2={b} y={60.2} z1={16.5} z2={23.5} />
+      ))}
+      {/* 玄関ポルチコ（柱＋三角ペディメント） */}
+      <FaceSW x1={44} x2={56} y={60.3} z1={0} z2={12} fill="#1e293b" sw={1} />
+      <FaceSW x1={45.5} x2={49.5} y={60.5} z1={1} z2={11} fill="#7dd3fc" sw={0.5} />
+      <FaceSW x1={50.5} x2={54.5} y={60.5} z1={1} z2={11} fill="#7dd3fc" sw={0.5} />
+      {[40, 60].map(x => (
+        <g key={x}>
+          <polygon points={`${iso3(x - 1.6, 66, 0)} ${iso3(x + 1.6, 66, 0)} ${iso3(x + 1.6, 66, 13)} ${iso3(x - 1.6, 66, 13)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        </g>
+      ))}
+      <polygon points={`${iso3(35, 67, 13)} ${iso3(65, 67, 13)} ${iso3(65, 67, 16)} ${iso3(35, 67, 16)}`} fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(35, 67, 16)} ${iso3(65, 67, 16)} ${iso3(50, 67, 24)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* 屋根 */}
+      <IsoCube x={8} y={6} w={84} d={56} z={26} h={3} top="#64748b" left="#94a3b8" right="#475569" sw={1} />
+      {/* 中央の時計塔 */}
+      <IsoCube x={40} y={20} w={20} d={20} z={29} h={16} top="#e2e8f0" left="#f8fafc" right="#e2e8f0" sw={1} />
+      <g transform={`translate(${isoPt(50, 40.2, 37.5)[0].toFixed(1)}, ${isoPt(50, 40.2, 37.5)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="3.6" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.9" />
+        <line x1="0" y1="0" x2="0" y2="-2.2" stroke="#1e293b" strokeWidth="0.7" strokeLinecap="round" />
+        <line x1="0" y1="0" x2="1.6" y2="0.8" stroke="#1e293b" strokeWidth="0.7" strokeLinecap="round" />
+      </g>
+      {/* 塔の屋根（青い方形屋根＋旗） */}
+      <polygon points={`${iso3(37, 17, 45)} ${iso3(63, 17, 45)} ${iso3(50, 30, 56)}`} fill="#3b82f6" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(63, 17, 45)} ${iso3(63, 43, 45)} ${iso3(50, 30, 56)}`} fill="#1d4ed8" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <line x1={isoPt(50, 30, 56)[0]} y1={isoPt(50, 30, 56)[1]} x2={isoPt(50, 30, 66)[0]} y2={isoPt(50, 30, 66)[1]} stroke="#1e293b" strokeWidth="1" />
+      <polygon points={`${isoPt(50, 30, 66)[0]},${isoPt(50, 30, 66)[1]} ${isoPt(50, 30, 66)[0] + 6.5},${isoPt(50, 30, 66)[1] + 1.6} ${isoPt(50, 30, 66)[0]},${isoPt(50, 30, 66)[1] + 3.2}`} fill="#ef4444" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+      {/* 両脇の植木 */}
+      {[[24, 68], [76, 68]].map(([bx, by], i) => (
+        <g key={i} transform={`translate(${isoPt(bx, by, 0)[0].toFixed(1)}, ${isoPt(bx, by, 0)[1].toFixed(1)})`}>
+          <polygon points="-3,0 3,0 2.2,-3.6 -2.2,-3.6" fill="#78716c" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <circle cx="0" cy="-6.6" r="4" fill="#16a34a" stroke="#1e293b" strokeWidth="0.9" />
+        </g>
+      ))}
+    </g>
+  </svg>
+);
 
 export const SvgEmbassy = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="30" ry="15" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="-4,2 4,2 12,-2 -12,-2" fill="#ef4444" /><polygon points="0,-4 -26,-17 -26,-30 0,-17" fill="#f1f5f9" /><polygon points="0,-4 26,-17 26,-30 0,-17" fill="#ffffff" /><polygon points="0,-17 -28,-31 -28,-34 0,-20" fill="#db2777" /><polygon points="0,-17 28,-31 28,-34 0,-20" fill="#f472b6" /><polygon points="0,-20 -28,-34 0,-48 28,-34" fill="#ec4899" /><line x1="0" y1="-48" x2="0" y2="-65" stroke="#94a3b8" strokeWidth="1" /><circle cx="0" cy="-66" r="1" fill="#fbbf24" /><polygon points="0,-64 8,-62 0,-60" fill="#3b82f6" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* 敷地（芝生＋石畳） */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(40, 56, 0.1)} ${iso3(60, 56, 0.1)} ${iso3(60, 98, 0.1)} ${iso3(40, 98, 0.1)}`} fill="#e7e5e4" />
+      {/* 鉄柵（手前2辺） */}
+      {[10, 24, 38, 62, 76, 90].map(y => (
+        <line key={`f1-${y}`} x1={isoPt(97, y, 0)[0]} y1={isoPt(97, y, 0)[1]} x2={isoPt(97, y, 6)[0]} y2={isoPt(97, y, 6)[1]} stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+      ))}
+      <line x1={isoPt(97, 4, 5)[0]} y1={isoPt(97, 4, 5)[1]} x2={isoPt(97, 96, 5)[0]} y2={isoPt(97, 96, 5)[1]} stroke="#334155" strokeWidth="1.2" />
+      {[10, 24, 66, 80, 92].map(x => (
+        <line key={`f2-${x}`} x1={isoPt(x, 97, 0)[0]} y1={isoPt(x, 97, 0)[1]} x2={isoPt(x, 97, 6)[0]} y2={isoPt(x, 97, 6)[1]} stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+      ))}
+      <line x1={isoPt(4, 97, 5)[0]} y1={isoPt(4, 97, 5)[1]} x2={isoPt(36, 97, 5)[0]} y2={isoPt(36, 97, 5)[1]} stroke="#334155" strokeWidth="1.2" />
+      <line x1={isoPt(62, 97, 5)[0]} y1={isoPt(62, 97, 5)[1]} x2={isoPt(96, 97, 5)[0]} y2={isoPt(96, 97, 5)[1]} stroke="#334155" strokeWidth="1.2" />
+      {/* 洋館本体 */}
+      <IsoCube x={12} y={8} w={76} d={48} h={24} top="#e2e8f0" left="#f8fafc" right="#e7e5e4" sw={1.1} />
+      <FaceSW x1={12} x2={88} y={56} z1={0} z2={3.5} fill="#a8a29e" sw={0.9} />
+      {/* 窓（アーチ窓風） */}
+      {[[18, 26], [32, 40], [60, 68], [74, 82]].map(([a, b], i) => (
+        <g key={i}>
+          <WinSW x1={a} x2={b} y={56.2} z1={7} z2={15} />
+          <FaceSW x1={a} x2={b} y={56.2} z1={15} z2={17} fill="#cbd5e1" sw={0.7} />
+        </g>
+      ))}
+      {/* 中央玄関（両開き扉＋庇） */}
+      <FaceSW x1={44} x2={56} y={56.3} z1={0} z2={13} fill="#7c2d12" sw={1} />
+      <line x1={isoPt(50, 56.4, 0)[0]} y1={isoPt(50, 56.4, 0)[1]} x2={isoPt(50, 56.4, 13)[0]} y2={isoPt(50, 56.4, 13)[1]} stroke="#1e293b" strokeWidth="0.8" />
+      <circle cx={isoPt(48, 56.5, 6.5)[0]} cy={isoPt(48, 56.5, 6.5)[1]} r="0.7" fill="#fbbf24" />
+      <circle cx={isoPt(52, 56.5, 6.5)[0]} cy={isoPt(52, 56.5, 6.5)[1]} r="0.7" fill="#fbbf24" />
+      <AwningSW x1={42} x2={58} y={56} z={16} c1="#1d4ed8" c2="#f8fafc" depth={6} drop={2.5} stripes={4} />
+      {/* マンサード風屋根 */}
+      <polygon points={`${iso3(10, 6, 24)} ${iso3(90, 6, 24)} ${iso3(84, 12, 34)} ${iso3(16, 12, 34)}`} fill="#334155" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" transform="translate(0,0)" />
+      <polygon points={`${iso3(10, 58, 24)} ${iso3(90, 58, 24)} ${iso3(84, 52, 34)} ${iso3(16, 52, 34)}`} fill="#475569" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(90, 6, 24)} ${iso3(90, 58, 24)} ${iso3(84, 52, 34)} ${iso3(84, 12, 34)}`} fill="#1e293b" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(16, 12, 34)} ${iso3(84, 12, 34)} ${iso3(84, 52, 34)} ${iso3(16, 52, 34)}`} fill="#64748b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 屋根窓 */}
+      <FaceSW x1={30} x2={38} y={57} z1={26} z2={31} fill="#f8fafc" sw={0.9} />
+      <FaceSW x1={62} x2={70} y={57} z1={26} z2={31} fill="#f8fafc" sw={0.9} />
+      {/* 国旗ポール */}
+      <line x1={isoPt(50, 32, 34)[0]} y1={isoPt(50, 32, 34)[1]} x2={isoPt(50, 32, 52)[0]} y2={isoPt(50, 32, 52)[1]} stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" />
+      <polygon points={`${isoPt(50, 32, 52)[0]},${isoPt(50, 32, 52)[1]} ${isoPt(50, 32, 52)[0] + 9},${isoPt(50, 32, 52)[1] + 1.2} ${isoPt(50, 32, 52)[0] + 9},${isoPt(50, 32, 52)[1] + 5} ${isoPt(50, 32, 52)[0]},${isoPt(50, 32, 52)[1] + 3.8}`} fill="#3b82f6" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      <circle cx={isoPt(50, 32, 52)[0] + 4.5} cy={isoPt(50, 32, 52)[1] + 3} r="1.1" fill="#fef08a" />
+    </g>
+  </svg>
+);
 
 export const SvgDepartment = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="30" ry="15" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -24,-12 -24,-30 0,-18" fill="#cbd5e1" /><polygon points="0,0 24,-12 24,-30 0,-18" fill="#e2e8f0" /><polygon points="-2,-3 -21,-12.5 -21,-17 -2,-7.5" fill="url(#grad-glass)" /><polygon points="2,-3 21,-12.5 21,-17 2,-7.5" fill="url(#grad-glass)" /><polygon points="-1,-7 -23,-18 -23,-16 -1,-5" fill="#15803d" /><polygon points="1,-7 23,-18 23,-16 1,-5" fill="#22c55e" /><polygon points="-4,-13 -19,-20.5 -19,-25 -4,-17.5" fill="url(#grad-glass)" /><polygon points="4,-13 19,-20.5 19,-25 4,-17.5" fill="url(#grad-glass)" /><polygon points="0,-21 -24,-33 0,-45 24,-33" fill="#e2e8f0" /><circle cx="0" cy="-33" r="3" fill="#fef08a" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={44} />
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 本体（4フロア） */}
+      <IsoCube x={12} y={10} w={76} d={70} h={42} top="#f1f5f9" left="#fef2f2" right="#fee2e2" sw={1.1} />
+      {/* 各階のガラスバンド（南西面） */}
+      {[4, 15, 26, 37].map((z, f) => (
+        <g key={z}>
+          <FaceSW x1={15} x2={85} y={80.2} z1={z} z2={z + 7.5} fill={f === 0 ? 'url(#grad-glass)' : '#bae6fd'} sw={0.7} />
+          <FaceSW x1={15} x2={85} y={80.2} z1={z + 7.5} z2={z + 9.5} fill="#f87171" sw={0.6} />
+          {[32, 50, 68].map(x => (
+            <line key={x} x1={isoPt(x, 80.3, z)[0]} y1={isoPt(x, 80.3, z)[1]} x2={isoPt(x, 80.3, z + 7.5)[0]} y2={isoPt(x, 80.3, z + 7.5)[1]} stroke="#64748b" strokeWidth="0.6" />
+          ))}
+        </g>
+      ))}
+      {/* 南東面のガラスバンド */}
+      {[4, 15, 26, 37].map(z => (
+        <FaceSE key={z} x={88.2} y1={14} y2={76} z1={z} z2={z + 7.5} fill="#7dd3fc" sw={0.7} />
+      ))}
+      {/* エントランス（回転ドア風） */}
+      <FaceSW x1={40} x2={60} y={80.4} z1={0} z2={10} fill="#0f172a" sw={1} />
+      <FaceSW x1={43} x2={49} y={80.6} z1={1} z2={9} fill="#e0f2fe" sw={0.5} />
+      <FaceSW x1={51} x2={57} y={80.6} z1={1} z2={9} fill="#bae6fd" sw={0.5} />
+      <AwningSW x1={36} x2={64} y={80} z={11.5} c1="#ef4444" c2="#f8fafc" depth={7} drop={2.5} stripes={7} />
+      {/* 屋上＋看板 */}
+      <IsoCube x={10} y={8} w={80} d={74} z={42} h={3} top="#e2e8f0" left="#f1f5f9" right="#cbd5e1" sw={0.9} />
+      <FaceSW x1={28} x2={36} y={40} z1={45} z2={50} fill="#7f1d1d" sw={0.7} />
+      <FaceSW x1={64} x2={72} y={40} z1={45} z2={50} fill="#7f1d1d" sw={0.7} />
+      <FaceSW x1={22} x2={78} y={40} z1={49} z2={64} fill="#ef4444" sw={1.1} />
+      <FaceSW x1={25} x2={75} y={40.2} z1={51} z2={62} fill="#fef2f2" sw={0.6} />
+      {/* 看板のギフトボックスグリフ */}
+      <g transform={`translate(${isoPt(50, 40.2, 56.5)[0].toFixed(1)}, ${isoPt(50, 40.2, 56.5)[1].toFixed(1)})`}>
+        <rect x="-4.6" y="-2.6" width="9.2" height="6.4" rx="0.8" fill="#f472b6" stroke="#1e293b" strokeWidth="0.8" />
+        <rect x="-5.4" y="-4.4" width="10.8" height="2.4" rx="0.7" fill="#ec4899" stroke="#1e293b" strokeWidth="0.8" />
+        <line x1="0" y1="-4.4" x2="0" y2="3.8" stroke="#fef08a" strokeWidth="1.4" />
+        <path d="M 0,-4.6 C -3,-7.6 -6,-5 -2.6,-4.4 M 0,-4.6 C 3,-7.6 6,-5 2.6,-4.4" fill="none" stroke="#fef08a" strokeWidth="1.1" />
+      </g>
+      {/* 旗の列 */}
+      {[24, 40, 60, 76].map((x, i) => (
+        <g key={x}>
+          <line x1={isoPt(x, 78, 45)[0]} y1={isoPt(x, 78, 45)[1]} x2={isoPt(x, 78, 53)[0]} y2={isoPt(x, 78, 53)[1]} stroke="#475569" strokeWidth="0.8" />
+          <polygon points={`${isoPt(x, 78, 53)[0]},${isoPt(x, 78, 53)[1]} ${isoPt(x, 78, 53)[0] + 4.6},${isoPt(x, 78, 53)[1] + 1.1} ${isoPt(x, 78, 53)[0]},${isoPt(x, 78, 53)[1] + 2.2}`} fill={['#ef4444', '#facc15', '#22c55e', '#3b82f6'][i]} stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+        </g>
+      ))}
+    </g>
+  </svg>
+);
 
 export const SvgUniversity = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="34" ry="17" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -28,-14 -28,-30 0,-16" fill="#991b1b" /><polygon points="0,0 28,-14 28,-30 0,-16" fill="#b91c1c" /><polygon points="0,-8 -28,-22 -28,-24 0,-10" fill="#cbd5e1" /><polygon points="0,-8 28,-22 28,-24 0,-10" fill="#e2e8f0" /><polygon points="0,2 -6,-1 -6,-16 0,-13" fill="#cbd5e1" /><polygon points="0,2 6,-1 6,-16 0,-13" fill="#e2e8f0" /><polygon points="0,-13 -8,-17 0,-21 8,-17" fill="#94a3b8" /><polygon points="0,1 -3,-0.5 -3,-6 0,-4.5" fill="#451a03" /><polygon points="0,1 3,-0.5 3,-6 0,-4.5" fill="#78350f" /><g transform="translate(0, -25)"><path d="M -10,-12 C -10,-24 10,-24 10,-12" fill="#0f766e" /><path d="M 0,-7 C 0,-24 10,-24 10,-12" fill="#14b8a6" /></g></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={44} />
+      {/* キャンパス敷地 */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(44, 56, 0.1)} ${iso3(56, 56, 0.1)} ${iso3(56, 100, 0.1)} ${iso3(44, 100, 0.1)}`} fill="#e7e5e4" />
+      {/* 両翼（低層） */}
+      <IsoCube x={6} y={16} w={26} d={40} h={16} top="#b91c1c" left="#dc2626" right="#991b1b" sw={1} />
+      <IsoCube x={68} y={16} w={26} d={40} h={16} top="#b91c1c" left="#dc2626" right="#991b1b" sw={1} />
+      {[[10, 16], [22, 28]].map(([a, b], i) => <WinSW key={`lw-${i}`} x1={a} x2={b} y={56.2} z1={5} z2={12} />)}
+      {[[72, 78], [84, 90]].map(([a, b], i) => <WinSW key={`rw-${i}`} x1={a} x2={b} y={56.2} z1={5} z2={12} />)}
+      <WinSE x={94.2} y1={24} y2={40} z1={5} z2={12} />
+      {/* 中央本館（れんが造り） */}
+      <IsoCube x={30} y={10} w={40} d={46} h={26} top="#e7e5e4" left="#ef4444" right="#b91c1c" sw={1.1} />
+      <FaceSW x1={30} x2={70} y={56} z1={0} z2={3.5} fill="#78716c" sw={0.9} />
+      {/* 本館の窓（白枠アーチ） */}
+      {[[34, 41], [59, 66]].map(([a, b], i) => (
+        <g key={i}>
+          <WinSW x1={a} x2={b} y={56.2} z1={7} z2={15} />
+          <WinSW x1={a} x2={b} y={56.2} z1={18} z2={23} />
+        </g>
+      ))}
+      {/* 正面玄関（石造アーチ） */}
+      <FaceSW x1={44} x2={56} y={56.3} z1={0} z2={14} fill="#e7e5e4" sw={1} />
+      <FaceSW x1={46} x2={54} y={56.5} z1={0} z2={11} fill="#1c1917" sw={0.9} />
+      <path d={`M ${iso3(46, 56.6, 11)} Q ${iso3(50, 56.6, 15.5)} ${iso3(54, 56.6, 11)}`} fill="#1c1917" stroke="#1e293b" strokeWidth="0.8" />
+      {/* 本館屋根＋時計搭 */}
+      <IsoCube x={28} y={8} w={44} d={50} z={26} h={3} top="#64748b" left="#94a3b8" right="#475569" sw={1} />
+      <IsoCube x={42} y={22} w={16} d={16} z={29} h={12} top="#e7e5e4" left="#f5f5f4" right="#d6d3d1" sw={1} />
+      <g transform={`translate(${isoPt(50, 38.2, 35)[0].toFixed(1)}, ${isoPt(50, 38.2, 35)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="3" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.8" />
+        <line x1="0" y1="0" x2="0" y2="-1.8" stroke="#1e293b" strokeWidth="0.6" strokeLinecap="round" />
+        <line x1="0" y1="0" x2="1.3" y2="0.6" stroke="#1e293b" strokeWidth="0.6" strokeLinecap="round" />
+      </g>
+      {/* 緑青ドーム */}
+      <path d={`M ${iso3(40, 30, 41)} C ${iso3(40, 30, 55)} ${iso3(60, 30, 55)} ${iso3(60, 30, 41)} Z`} fill="#0f766e" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d={`M ${iso3(50, 30, 51.5)} C ${iso3(56, 30, 51)} ${iso3(60, 30, 46)} ${iso3(60, 30, 41)} L ${iso3(50, 30, 41)} Z`} fill="#14b8a6" opacity="0.7" />
+      <line x1={isoPt(50, 30, 51.5)[0]} y1={isoPt(50, 30, 51.5)[1]} x2={isoPt(50, 30, 57)[0]} y2={isoPt(50, 30, 57)[1]} stroke="#1e293b" strokeWidth="0.9" />
+      <circle cx={isoPt(50, 30, 58)[0]} cy={isoPt(50, 30, 58)[1]} r="1.2" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.6" />
+      {/* 両翼の屋根 */}
+      <IsoCube x={4} y={14} w={30} d={44} z={16} h={2.5} top="#475569" left="#64748b" right="#334155" sw={0.9} />
+      <IsoCube x={66} y={14} w={30} d={44} z={16} h={2.5} top="#475569" left="#64748b" right="#334155" sw={0.9} />
+      {/* 並木 */}
+      {[[22, 78], [78, 78]].map(([bx, by], i) => (
+        <g key={i} transform={`translate(${isoPt(bx, by, 0)[0].toFixed(1)}, ${isoPt(bx, by, 0)[1].toFixed(1)})`}>
+          <line x1="0" y1="0" x2="0" y2="-7" stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="0" cy="-10.5" r="5.4" fill="#16a34a" stroke="#1e293b" strokeWidth="1" />
+          <circle cx="-1.8" cy="-12" r="2.2" fill="#4ade80" opacity="0.8" />
+        </g>
+      ))}
+    </g>
+  </svg>
+);
 
 export const SvgLibrary = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="24" ry="12" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -20,-10 -20,-22 0,-12" fill="#d6d3d1" /><polygon points="0,0 20,-10 20,-22 0,-12" fill="#e7e5e4" /><polygon points="0,-12 -20,-22 0,-32 20,-22" fill="#f5f5f4" /><path d="M -6,-13 C -6,-18 0,-18 0,-15 C 0,-18 6,-18 6,-13 L 6,-3 L 0,0 L -6,-3 Z" fill="#1e293b" /><path d="M -5,-12 C -5,-16 0,-16 0,-14 C 0,-16 5,-16 5,-12 L 5,-4 L 0,-1 L -5,-4 Z" fill="url(#grad-glass)" /><polygon points="-22,-21 0,-10 0,-20 -22,-31" fill="#b45309" /><polygon points="22,-21 0,-10 0,-20 22,-31" fill="#d97706" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 本体（クリーム色の石造り） */}
+      <IsoCube x={12} y={12} w={76} d={60} h={24} top="#fde68a" left="#fef3c7" right="#fde68a" sw={1.1} />
+      <FaceSW x1={12} x2={88} y={72} z1={0} z2={3.5} fill="#b45309" sw={0.9} />
+      {/* アーチ窓の列 */}
+      {[[17, 25], [30, 38], [62, 70], [75, 83]].map(([a, b], i) => (
+        <g key={i}>
+          <FaceSW x1={a} x2={b} y={72.2} z1={6} z2={16} fill="#f8fafc" sw={0.9} />
+          <FaceSW x1={a + 1} x2={b - 1} y={72.4} z1={7} z2={14} fill="#7dd3fc" sw={0.5} />
+          <path d={`M ${iso3(a + 1, 72.4, 14)} Q ${iso3((a + b) / 2, 72.4, 17)} ${iso3(b - 1, 72.4, 14)}`} fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.6" />
+        </g>
+      ))}
+      {/* 大きな玄関アーチ */}
+      <FaceSW x1={42} x2={58} y={72.3} z1={0} z2={15} fill="#d97706" sw={1} />
+      <FaceSW x1={44.5} x2={55.5} y={72.5} z1={0} z2={12} fill="#451a03" sw={0.8} />
+      <path d={`M ${iso3(44.5, 72.6, 12)} Q ${iso3(50, 72.6, 17.5)} ${iso3(55.5, 72.6, 12)}`} fill="#451a03" stroke="#1e293b" strokeWidth="0.8" />
+      {/* 屋根（緑の寄棟） */}
+      <polygon points={`${iso3(8, 8, 24)} ${iso3(92, 8, 24)} ${iso3(80, 24, 34)} ${iso3(20, 24, 34)}`} fill="#15803d" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(8, 76, 24)} ${iso3(92, 76, 24)} ${iso3(80, 60, 34)} ${iso3(20, 60, 34)}`} fill="#22c55e" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(92, 8, 24)} ${iso3(92, 76, 24)} ${iso3(80, 60, 34)} ${iso3(80, 24, 34)}`} fill="#166534" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points={`${iso3(20, 24, 34)} ${iso3(80, 24, 34)} ${iso3(80, 60, 34)} ${iso3(20, 60, 34)}`} fill="#4ade80" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 屋上の本のオブジェ */}
+      <g transform={`translate(${isoPt(50, 42, 36)[0].toFixed(1)}, ${isoPt(50, 42, 36)[1].toFixed(1)})`}>
+        <path d="M -7,-1 C -4,-3.4 -1,-3.4 0,-1.6 C 1,-3.4 4,-3.4 7,-1 L 7,4 C 4,1.8 1,1.8 0,3.6 C -1,1.8 -4,1.8 -7,4 Z"
+          fill="#3b82f6" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <line x1="0" y1="-1.6" x2="0" y2="3.6" stroke="#1e293b" strokeWidth="0.8" />
+        <path d="M -5.4,-0.4 C -3.4,-1.8 -1.4,-1.8 0,-0.6 M 5.4,-0.4 C 3.4,-1.8 1.4,-1.8 0,-0.6" fill="none" stroke="#bfdbfe" strokeWidth="0.7" />
+      </g>
+      {/* 玄関前の階段 */}
+      <polygon points={`${iso3(40, 72, 0)} ${iso3(60, 72, 0)} ${iso3(60, 78, 0)} ${iso3(40, 78, 0)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      {/* 返却ポスト */}
+      <g transform={`translate(${isoPt(66, 80, 0)[0].toFixed(1)}, ${isoPt(66, 80, 0)[1].toFixed(1)})`}>
+        <rect x="-2.6" y="-7" width="5.2" height="6" rx="0.7" fill="#3b82f6" stroke="#1e293b" strokeWidth="0.9" />
+        <rect x="-1.7" y="-5.8" width="3.4" height="1" fill="#1e293b" />
+      </g>
+    </g>
+  </svg>
+);
 
 export const SvgFountain = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)"><ellipse cx="0" cy="-2" rx="26" ry="13" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="-20,0 0,10 20,0 0,-10" fill="#94a3b8" /><polygon points="-20,0 0,10 0,14 -20,4" fill="#64748b" /><polygon points="20,0 0,10 0,14 20,4" fill="#cbd5e1" /><polygon points="-18,0 0,9 18,0 0,-9" fill="url(#grad-water)" /><polygon points="-4,-2 0,0 4,-2 0,-4" fill="#cbd5e1" /><polygon points="-4,-2 0,0 0,-12 -4,-14" fill="#94a3b8" /><polygon points="4,-2 0,0 0,-12 4,-14" fill="#e2e8f0" /><polygon points="-10,-13 0,-8 10,-13 0,-18" fill="#94a3b8" /><polygon points="-8,-13 0,-9 8,-13 0,-17" fill="url(#grad-water)" /><path d="M 0,-16 C -5,-25 -8,-20 -10,-13" fill="none" stroke="#bae6fd" strokeWidth="1.5" opacity="0.8" /><path d="M 0,-16 C 5,-25 8,-20 10,-13" fill="none" stroke="#e0f2fe" strokeWidth="1.5" opacity="0.8" /><circle cx="0" cy="-22" r="1.5" fill="#ffffff" filter="url(#glow-effect)" opacity="0.9" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 78) scale(2.4)">
+      <ellipse cx="0" cy="9" rx="21" ry="8.5" fill="#020617" opacity="0.18" />
+      {/* 水盤（下段・石の縁） */}
+      <path d="M -19,0 A 19,8 0 0 0 19,0 L 19,5 A 19,8 0 0 1 -19,5 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" />
+      <ellipse cx="0" cy="0" rx="19" ry="8" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.2" />
+      <ellipse cx="0" cy="0" rx="16" ry="6.6" fill="url(#grad-water)" stroke="#0369a1" strokeWidth="0.8" />
+      {/* 波紋 */}
+      <ellipse cx="0" cy="0" rx="11" ry="4.4" fill="none" stroke="#e0f2fe" strokeWidth="0.8" opacity="0.85" />
+      <ellipse cx="0" cy="0" rx="6.5" ry="2.6" fill="none" stroke="#bae6fd" strokeWidth="0.7" opacity="0.8" />
+      {/* 支柱 */}
+      <path d="M -2.6,-1 L -1.8,-12 L 1.8,-12 L 2.6,-1 Z" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 上段の水盤 */}
+      <path d="M -8.5,-12 A 8.5,3.4 0 0 0 8.5,-12 L 8.5,-9.6 A 8.5,3.4 0 0 1 -8.5,-9.6 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1" />
+      <ellipse cx="0" cy="-12" rx="8.5" ry="3.4" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" />
+      <ellipse cx="0" cy="-12" rx="6.4" ry="2.5" fill="#7dd3fc" stroke="#0369a1" strokeWidth="0.7" />
+      {/* 噴き上がる水 */}
+      <path d="M 0,-13 C -1.4,-19 -1.4,-22 0,-25 C 1.4,-22 1.4,-19 0,-13 Z" fill="#bae6fd" stroke="#0284c7" strokeWidth="0.8" strokeLinejoin="round" />
+      <path d="M -1,-16 C -5,-19 -6.6,-15 -7.5,-12.6" fill="none" stroke="#7dd3fc" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M 1,-16 C 5,-19 6.6,-15 7.5,-12.6" fill="none" stroke="#bae6fd" strokeWidth="1.4" strokeLinecap="round" />
+      {/* 上段からあふれる水 */}
+      <path d="M -8,-10.6 C -9.4,-7 -10.5,-4 -11.5,-1.6 M 8,-10.6 C 9.4,-7 10.5,-4 11.5,-1.6" fill="none" stroke="#bae6fd" strokeWidth="1.3" strokeLinecap="round" opacity="0.9" />
+      {/* しぶき */}
+      <circle cx="0" cy="-26.5" r="1.3" fill="#f0f9ff" stroke="#7dd3fc" strokeWidth="0.5" />
+      <circle cx="-4" cy="-21" r="0.8" fill="#e0f2fe" />
+      <circle cx="4.4" cy="-20" r="0.8" fill="#e0f2fe" />
+      {/* コイン */}
+      <ellipse cx="6" cy="1.6" rx="1.4" ry="0.7" fill="#fbbf24" stroke="#b45309" strokeWidth="0.5" />
+      <ellipse cx="-7" cy="2.4" rx="1.4" ry="0.7" fill="#facc15" stroke="#b45309" strokeWidth="0.5" />
+    </g>
+  </svg>
+);
 
 export const SvgPond = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="pond" thickness={4} /></svg>;
 
 export const SvgStoneLantern = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="10" ry="5" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-2 -8,-6 0,-10 8,-6" fill="#cbd5e1" /><polygon points="0,-6 -3,-7.5 -3,-20 0,-18.5" fill="#475569" /><polygon points="0,-6 3,-7.5 3,-20 0,-18.5" fill="#64748b" /><polygon points="0,-20 -6,-23 0,-26 6,-23" fill="#e2e8f0" /><polygon points="0,-21 -3,-22.5 -3,-26.5 0,-25" fill="#fef08a" filter="url(#glow-effect)" /><polygon points="0,-21 3,-22.5 3,-26.5 0,-25" fill="#fcd34d" /><polygon points="0,-26 -10,-31 0,-36 10,-31" fill="#475569" /><polygon points="0,-26 -10,-31 -10,-29 0,-24" fill="#64748b" /><polygon points="0,-26 10,-31 10,-29 0,-24" fill="#94a3b8" /><polygon points="0,-37 -2,-38 0,-40 2,-38" fill="#e2e8f0" /><circle cx="-4" cy="-5" r="1.5" fill="#15803d" opacity="0.8" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="10" ry="5" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-2 -8,-6 0,-10 8,-6" fill="#cbd5e1" /><polygon points="0,-6 -3,-7.5 -3,-20 0,-18.5" fill="#475569" /><polygon points="0,-6 3,-7.5 3,-20 0,-18.5" fill="#64748b" /><polygon points="0,-20 -6,-23 0,-26 6,-23" fill="#e2e8f0" /><polygon points="0,-21 -3,-22.5 -3,-26.5 0,-25" fill="#fef08a" filter="url(#glow-effect)" /><polygon points="0,-21 3,-22.5 3,-26.5 0,-25" fill="#fcd34d" /><polygon points="0,-26 -10,-31 0,-36 10,-31" fill="#475569" /><polygon points="0,-26 -10,-31 -10,-29 0,-24" fill="#64748b" /><polygon points="0,-26 10,-31 10,-29 0,-24" fill="#94a3b8" /><polygon points="0,-37 -2,-38 0,-40 2,-38" fill="#e2e8f0" /><circle cx="-4" cy="-5" r="1.5" fill="#15803d" opacity="0.8" /></g></svg>);
 
 export const SvgStatue = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)"><ellipse cx="0" cy="-2" rx="14" ry="7" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,-2 -12,-8 0,-14 12,-8" fill="#cbd5e1" /><polygon points="0,-2 -12,-8 -12,-10 0,-4" fill="#94a3b8" /><polygon points="0,-2 12,-8 12,-10 0,-4" fill="#e2e8f0" /><polygon points="0,-10 -3,-11.5 -3,-30 0,-28.5" fill="#94a3b8" /><polygon points="0,-10 3,-11.5 3,-30 0,-28.5" fill="#cbd5e1" /><polygon points="0,-28.5 -8,-32.5 0,-36.5 8,-32.5" fill="#e2e8f0" /><polygon points="0,-32 -2,-33 -2,-42 0,-41" fill="#94a3b8" /><polygon points="0,-32 2,-33 2,-42 0,-41" fill="#cbd5e1" /><circle cx="0" cy="-44" r="4" fill="#e2e8f0" /><circle cx="-1" cy="-45" r="0.8" fill="#475569" /><circle cx="1" cy="-45" r="0.8" fill="#475569" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="-2" rx="14" ry="7" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,-2 -12,-8 0,-14 12,-8" fill="#cbd5e1" /><polygon points="0,-2 -12,-8 -12,-10 0,-4" fill="#94a3b8" /><polygon points="0,-2 12,-8 12,-10 0,-4" fill="#e2e8f0" /><polygon points="0,-10 -3,-11.5 -3,-30 0,-28.5" fill="#94a3b8" /><polygon points="0,-10 3,-11.5 3,-30 0,-28.5" fill="#cbd5e1" /><polygon points="0,-28.5 -8,-32.5 0,-36.5 8,-32.5" fill="#e2e8f0" /><polygon points="0,-32 -2,-33 -2,-42 0,-41" fill="#94a3b8" /><polygon points="0,-32 2,-33 2,-42 0,-41" fill="#cbd5e1" /><circle cx="0" cy="-44" r="4" fill="#e2e8f0" /><circle cx="-1" cy="-45" r="0.8" fill="#475569" /><circle cx="1" cy="-45" r="0.8" fill="#475569" /></g></svg>);
 
 export const SvgGoldenTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="20" ry="10" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,0 -14,-7 -14,-25 0,-18" fill="#d97706" /><polygon points="0,0 14,-7 14,-25 0,-18" fill="url(#grad-gold)" /><polygon points="0,-18 -14,-25 0,-32 14,-25" fill="#fcd34d" /><polygon points="0,-22 -8,-26 -8,-40 0,-36" fill="#d97706" /><polygon points="0,-22 8,-26 8,-40 0,-36" fill="url(#grad-gold)" /><polygon points="0,-36 -8,-40 0,-44 8,-40" fill="#fef08a" /><polygon points="0,-38 -5,-41 0,-48 5,-41" fill="url(#grad-gold)" /><circle cx="0" cy="-50" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="20" ry="10" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,0 -14,-7 -14,-25 0,-18" fill="#d97706" /><polygon points="0,0 14,-7 14,-25 0,-18" fill="url(#grad-gold)" /><polygon points="0,-18 -14,-25 0,-32 14,-25" fill="#fcd34d" /><polygon points="0,-22 -8,-26 -8,-40 0,-36" fill="#d97706" /><polygon points="0,-22 8,-26 8,-40 0,-36" fill="url(#grad-gold)" /><polygon points="0,-36 -8,-40 0,-44 8,-40" fill="#fef08a" /><polygon points="0,-38 -5,-41 0,-48 5,-41" fill="url(#grad-gold)" /><circle cx="0" cy="-50" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
 
 export const SvgGuardianShrine = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="22" ry="11" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -18,-9 -18,-22 0,-13" fill="#e9d5ff" /><polygon points="0,0 18,-9 18,-22 0,-13" fill="#d8b4fe" /><polygon points="0,-13 -18,-22 0,-31 18,-22" fill="#c084fc" /><polygon points="-20,-21 0,-11 0,-28 -20,-38" fill="#9333ea" /><polygon points="20,-21 0,-11 0,-28 20,-38" fill="#7e22ce" /><circle cx="0" cy="-20" r="8" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="0" cy="-20" r="4" fill="#fef08a" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={38} />
+      {/* 神秘の床 */}
+      <polygon points={`${iso3(8, 8, 0)} ${iso3(92, 8, 0)} ${iso3(92, 92, 0)} ${iso3(8, 92, 0)}`} fill="#3b0764" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <ellipse cx={isoPt(50, 50, 0.2)[0]} cy={isoPt(50, 50, 0.2)[1]} rx="28" ry="13" fill="none" stroke="#c084fc" strokeWidth="0.8" opacity="0.7" />
+      {/* 石の台座 */}
+      <IsoCube x={24} y={24} w={52} d={52} h={7} top="#e9d5ff" left="#d8b4fe" right="#a855f7" sw={1} />
+      {/* 4本の結界柱 */}
+      {[[30, 30], [70, 30], [30, 70], [70, 70]].map(([px0, py0], i) => (
+        <g key={i}>
+          <polygon points={`${iso3(px0 - 1.8, py0, 7)} ${iso3(px0 + 1.8, py0, 7)} ${iso3(px0 + 1.8, py0, 26)} ${iso3(px0 - 1.8, py0, 26)}`}
+            fill="#7e22ce" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+          <circle cx={isoPt(px0, py0, 28.5)[0]} cy={isoPt(px0, py0, 28.5)[1]} r="1.8" fill="#e9d5ff" stroke="#1e293b" strokeWidth="0.7" filter="url(#glow-effect)" />
+        </g>
+      ))}
+      {/* 注連縄（柱間） */}
+      <path d={`M ${isoPt(30, 70, 24)[0]},${isoPt(30, 70, 24)[1]} Q ${isoPt(50, 70, 21)[0]},${isoPt(50, 70, 21)[1]} ${isoPt(70, 70, 24)[0]},${isoPt(70, 70, 24)[1]}`}
+        fill="none" stroke="#a16207" strokeWidth="1.8" strokeLinecap="round" />
+      {[40, 50, 60].map(x => (
+        <polygon key={x} points={`${isoPt(x, 70, 22)[0] - 1.2},${isoPt(x, 70, 22)[1]} ${isoPt(x, 70, 22)[0] + 1.2},${isoPt(x, 70, 22)[1]} ${isoPt(x, 70, 22)[0]},${isoPt(x, 70, 22)[1] + 4}`}
+          fill="#f8fafc" stroke="#1e293b" strokeWidth="0.5" strokeLinejoin="round" />
+      ))}
+      {/* 浮遊する守り神の宝珠 */}
+      <g transform={`translate(${isoPt(50, 50, 30)[0].toFixed(1)}, ${isoPt(50, 50, 30)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="12" rx="8" ry="3" fill="#a855f7" opacity="0.3" />
+        <circle cx="0" cy="0" r="8.5" fill="#fbbf24" stroke="#1e293b" strokeWidth="1.3" filter="url(#glow-effect)" />
+        <circle cx="-2.4" cy="-2.6" r="3" fill="#fef3c7" />
+        {/* 炎のオーラ */}
+        <path d="M -8.5,-2 Q -12,-6 -9,-10 Q -8,-6.6 -5.6,-6.4 M 8.5,-2 Q 12,-6 9,-10 Q 8,-6.6 5.6,-6.4 M 0,-8.5 Q 0,-13.6 3,-15 Q 1.4,-11 2.6,-8.2"
+          fill="none" stroke="#c084fc" strokeWidth="1.4" strokeLinecap="round" />
+      </g>
+      {/* 小さな狛犬（左右） */}
+      {[[18, 84], [84, 18]].map(([sx0, sy0], i) => (
+        <g key={i} transform={`translate(${isoPt(sx0, sy0, 0)[0].toFixed(1)}, ${isoPt(sx0, sy0, 0)[1].toFixed(1)})`}>
+          <polygon points="-3.4,0 3.4,0 2.6,-2.6 -2.6,-2.6" fill="#d8b4fe" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <path d="M -2,-2.6 Q -2.6,-6.6 0,-7 Q 2.6,-7.2 2.2,-4 L 1.6,-2.6 Z" fill="#a8a29e" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <circle cx="0.6" cy="-6" r="1.6" fill="#78716c" stroke="#1e293b" strokeWidth="0.7" />
+        </g>
+      ))}
+    </g>
+  </svg>
+);
 
 export const SvgMonument = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)" filter="url(#strong-shadow)"><polygon points="0,-60 -15,-10 0,0 15,-10" fill="#cbd5e1" /><polygon points="0,-60 -15,-10 0,-20" fill="#94a3b8" /><polygon points="0,-60 15,-10 0,-20" fill="#e2e8f0" /><line x1="0" y1="-60" x2="0" y2="0" stroke="#f8fafc" strokeWidth="0.5" opacity="0.3" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={34} />
+      {/* 広場の床 */}
+      <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#e7e5e4" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 二段の台座 */}
+      <IsoCube x={30} y={30} w={40} d={40} h={5} top="#d6d3d1" left="#a8a29e" right="#78716c" sw={1} />
+      <IsoCube x={38} y={38} w={24} d={24} z={5} h={6} top="#e7e5e4" left="#cbd5e1" right="#94a3b8" sw={1} />
+      {/* 銘板 */}
+      <FaceSW x1={42} x2={58} y={62.2} z1={6.5} z2={10} fill="#fbbf24" sw={0.7} />
+      {/* オベリスク */}
+      <g transform={`translate(${isoPt(50, 50, 11)[0].toFixed(1)}, ${isoPt(50, 50, 11)[1].toFixed(1)})`}>
+        <polygon points="-5.4,0 0,2.6 0,-38 -3.6,-40" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <polygon points="5.4,0 0,2.6 0,-38 3.6,-40" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* ピラミッド型の頂部 */}
+        <polygon points="-3.6,-40 0,-38 0,-48" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="3.6,-40 0,-38 0,-48" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 刻まれた模様 */}
+        <path d="M -2.8,-8 L -2.8,-30 M 2.8,-9 L 2.8,-31" stroke="#64748b" strokeWidth="0.7" opacity="0.9" />
+      </g>
+      {/* 献花 */}
+      <g transform={`translate(${isoPt(42, 74, 0)[0].toFixed(1)}, ${isoPt(42, 74, 0)[1].toFixed(1)})`}>
+        <circle cx="-1.6" cy="-1.6" r="1.6" fill="#f472b6" stroke="#1e293b" strokeWidth="0.5" />
+        <circle cx="1.6" cy="-1" r="1.6" fill="#facc15" stroke="#1e293b" strokeWidth="0.5" />
+        <path d="M -2.6,0 Q 0,1.4 2.6,0.6" fill="none" stroke="#16a34a" strokeWidth="1" strokeLinecap="round" />
+      </g>
+    </g>
+  </svg>
+);
 
 export const SvgGrandSmithy = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="28" ry="14" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,0 -22,-11 -22,-28 0,-17" fill="#57534e" /><polygon points="0,0 22,-11 22,-28 0,-17" fill="#78716c" /><polygon points="0,-17 -22,-28 0,-39 22,-28" fill="#292524" /><polygon points="2,-18 24,-29 12,-41 -12,-29" fill="#292524" /><polygon points="2,-18 24,-29 24,-27 2,-16" fill="#1c1917" /><circle cx="0" cy="-10" r="12" fill="#ef4444" filter="url(#glow-effect)" /><circle cx="0" cy="-10" r="6" fill="#fef08a" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={44} />
+      {/* 石畳の敷地 */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#78716c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 母屋（石造の大工房） */}
+      <IsoCube x={10} y={10} w={64} d={62} h={26} top="#44403c" left="#78716c" right="#57534e" sw={1.1} />
+      {/* 大アーチ炉口（正面） */}
+      <FaceSW x1={18} x2={48} y={72.2} z1={0} z2={15} fill="#1c1917" sw={1.1} />
+      <path d={`M ${iso3(18, 72.2, 15)} Q ${iso3(33, 72.2, 22)} ${iso3(48, 72.2, 15)}`} fill="#1c1917" stroke="#1e293b" strokeWidth="1" />
+      <g transform={`translate(${isoPt(33, 72.4, 6)[0].toFixed(1)}, ${isoPt(33, 72.4, 6)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="6.5" fill="#ef4444" filter="url(#glow-effect)" />
+        <circle cx="0" cy="0.8" r="3.4" fill="#fbbf24" />
+        <circle cx="0.6" cy="1.4" r="1.6" fill="#fef9c3" />
+      </g>
+      {/* 窓 */}
+      <WinSW x1={56} x2={66} y={72.2} z1={8} z2={17} />
+      <WinSE x={74.2} y1={22} y2={38} z1={8} z2={17} />
+      <WinSE x={74.2} y1={46} y2={62} z1={8} z2={17} />
+      {/* 切妻の大屋根 */}
+      <polygon points={`${iso3(6, 6, 26)} ${iso3(78, 6, 26)} ${iso3(78, 41, 38)} ${iso3(6, 41, 38)}`} fill="#292524" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(6, 76, 26)} ${iso3(78, 76, 26)} ${iso3(78, 41, 38)} ${iso3(6, 41, 38)}`} fill="#44403c" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <polygon points={`${iso3(78, 6, 26)} ${iso3(78, 41, 38)} ${iso3(78, 76, 26)} ${iso3(78, 76, 23.5)} ${iso3(78, 41, 35.5)} ${iso3(78, 6, 23.5)}`} fill="#1c1917" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* れんが大煙突2本＋煙 */}
+      {[[16, 18], [34, 14]].map(([cx0, cy0], i) => (
+        <g key={i}>
+          <IsoCube x={cx0} y={cy0} w={11} d={11} z={30} h={26 + i * 5} top="#57534e" left="#b91c1c" right="#7f1d1d" sw={1} />
+          <g transform={`translate(${isoPt(cx0 + 5.5, cy0 + 5.5, 58 + i * 5)[0].toFixed(1)}, ${isoPt(cx0 + 5.5, cy0 + 5.5, 58 + i * 5)[1].toFixed(1)})`} opacity="0.85">
+            <circle cx="0" cy="-2" r="3" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="0.6" />
+            <circle cx="2.6" cy="-6" r="3.8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.6" />
+            <circle cx="5.6" cy="-10.5" r="4.4" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="0.6" />
+          </g>
+        </g>
+      ))}
+      {/* 別棟（資材置き場・鉄骨屋根） */}
+      <IsoCube x={80} y={30} w={16} d={42} h={12} top="#78716c" left="#a8a29e" right="#57534e" sw={1} />
+      <polygon points={`${iso3(78, 26, 12)} ${iso3(98, 26, 12)} ${iso3(98, 76, 17)} ${iso3(78, 76, 17)}`} fill="#57534e" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 巨大な金床 */}
+      <g transform={`translate(${isoPt(62, 86, 0)[0].toFixed(1)}, ${isoPt(62, 86, 0)[1].toFixed(1)})`}>
+        <polygon points="-5,0 5,0 3.8,-3.4 -3.8,-3.4" fill="#44403c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <path d="M -7,-3.4 L 7,-3.4 L 8.6,-5.4 L 4,-7.6 L -4.6,-7.6 L -7,-5.6 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <path d="M -7,-5.6 L -11,-6.2 L -9,-7.6 L -4.6,-7.6" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      </g>
+      {/* 剣のディスプレイ */}
+      <g transform={`translate(${isoPt(86, 86, 0)[0].toFixed(1)}, ${isoPt(86, 86, 0)[1].toFixed(1)}) rotate(-8)`}>
+        <line x1="0" y1="-3" x2="0" y2="-15" stroke="#e2e8f0" strokeWidth="1.7" strokeLinecap="round" />
+        <line x1="0" y1="-15" x2="0" y2="-16.6" stroke="#f8fafc" strokeWidth="1" strokeLinecap="round" />
+        <line x1="-2.6" y1="-3.4" x2="2.6" y2="-3.4" stroke="#b45309" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="0" y1="-3" x2="0" y2="0" stroke="#78350f" strokeWidth="1.7" strokeLinecap="round" />
+      </g>
+    </g>
+  </svg>
+);
 
 export const SvgWindmill = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="18" ry="9" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -12,-6 -12,-30 0,-24" fill="#fde047" /><polygon points="0,0 12,-6 12,-30 0,-24" fill="#fef08a" /><polygon points="0,-24 -12,-30 0,-36 12,-30" fill="#ca8a04" /><path d="M 0,-28 L -18,-48 M 0,-28 L 18,-48 M 0,-28 L -18,-8 M 0,-28 L 18,-8" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" /><circle cx="0" cy="-28" r="3" fill="#d97706" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 96) scale(2.3)">
+      <ellipse cx="0" cy="1.5" rx="16" ry="6.5" fill="#020617" opacity="0.18" />
+      {/* 塔（すぼまった円錐台） */}
+      <path d="M -9,0 L -6,-30 L 6,-30 L 9,0 A 9,3.6 0 0 1 -9,0 Z" fill="#fde047" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M 0,1.8 A 9,3.6 0 0 0 9,0 L 6,-30 L 0,-30 Z" fill="#eab308" />
+      <path d="M -9,0 L -6,-30 L 6,-30 L 9,0 A 9,3.6 0 0 1 -9,0 Z" fill="none" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M -8.4,-4 L 8.4,-4 M -7.6,-11 L 7.6,-11" stroke="#ca8a04" strokeWidth="0.8" opacity="0.8" />
+      {/* 窓とドア */}
+      <path d="M -3,0.6 L -3,-7 A 3,2.6 0 0 1 3,-7 L 3,0.6 Z" fill="#78350f" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <circle cx="0" cy="-20" r="2.6" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.9" />
+      <path d="M -2.6,-20 L 2.6,-20 M 0,-22.6 L 0,-17.4" stroke="#1e293b" strokeWidth="0.6" />
+      {/* キャップ屋根 */}
+      <path d="M -7.5,-30 A 7.5,3 0 0 1 7.5,-30 L 0,-40 Z" fill="#dc2626" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* 羽根4枚（格子入り帆） */}
+      <g transform="translate(0, -33) rotate(18)">
+        {[0, 90, 180, 270].map(a => (
+          <g key={a} transform={`rotate(${a})`}>
+            <line x1="0" y1="0" x2="0" y2="-19" stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+            <polygon points="0.4,-4 6.4,-6.5 6.4,-17.5 0.4,-19" fill="#f8fafc" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+            <line x1="0.4" y1="-9" x2="6.4" y2="-10.2" stroke="#94a3b8" strokeWidth="0.7" />
+            <line x1="0.4" y1="-14" x2="6.4" y2="-14.6" stroke="#94a3b8" strokeWidth="0.7" />
+            <line x1="3.4" y1="-5.2" x2="3.4" y2="-18.2" stroke="#94a3b8" strokeWidth="0.7" />
+          </g>
+        ))}
+        <circle cx="0" cy="0" r="2.6" fill="#d97706" stroke="#1e293b" strokeWidth="1" />
+      </g>
+      {/* チューリップ */}
+      {[[-13, 1, '#ef4444'], [13, 0, '#f472b6']].map(([fx, fy, c], i) => (
+        <g key={i} transform={`translate(${fx}, ${fy})`}>
+          <line x1="0" y1="0" x2="0" y2="-4" stroke="#16a34a" strokeWidth="0.9" />
+          <path d="M -1.8,-4 Q -1.8,-7 0,-7 Q 1.8,-7 1.8,-4 Q 0.9,-2.8 0,-4 Q -0.9,-2.8 -1.8,-4 Z" fill={c} stroke="#1e293b" strokeWidth="0.6" strokeLinejoin="round" />
+        </g>
+      ))}
+    </g>
+  </svg>
+);
 
 export const SvgBellTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -12,-6 -12,-24 0,-18" fill="#ffedd5" /><polygon points="0,0 12,-6 12,-24 0,-18" fill="#fde68a" /><polygon points="0,-18 -14,-25 0,-38 14,-25" fill="#78350f" /><polygon points="0,-18 14,-25 14,-23 0,-16" fill="#451a03" /><circle cx="0" cy="-22" r="4" fill="#fbbf24" filter="url(#glow-effect)" /><path d="M 0,-26 L 0,-18" stroke="#78350f" strokeWidth="1" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -12,-6 -12,-24 0,-18" fill="#ffedd5" /><polygon points="0,0 12,-6 12,-24 0,-18" fill="#fde68a" /><polygon points="0,-18 -14,-25 0,-38 14,-25" fill="#78350f" /><polygon points="0,-18 14,-25 14,-23 0,-16" fill="#451a03" /><circle cx="0" cy="-22" r="4" fill="#fbbf24" filter="url(#glow-effect)" /><path d="M 0,-26 L 0,-18" stroke="#78350f" strokeWidth="1" /></g></svg>);
 
 export const SvgCherryRoad = () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><Fl type="road" color="#fce7f3" thickness={4} /></svg>;
 
 export const SvgClockTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -10,-5 -10,-35 0,-30" fill="#fef3c7" /><polygon points="0,0 10,-5 10,-35 0,-30" fill="#fde68a" /><polygon points="0,-30 -12,-36 0,-48 12,-36" fill="#92400e" /><polygon points="0,-30 -12,-36 -12,-34 0,-28" fill="#78350f" /><circle cx="-5" cy="-20" r="5" fill="#f8fafc" /><circle cx="5" cy="-20" r="5" fill="#f8fafc" /><line x1="-5" y1="-20" x2="-5" y2="-23" stroke="#1e293b" strokeWidth="1" /><line x1="5" y1="-20" x2="6" y2="-22" stroke="#1e293b" strokeWidth="1" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -10,-5 -10,-35 0,-30" fill="#fef3c7" /><polygon points="0,0 10,-5 10,-35 0,-30" fill="#fde68a" /><polygon points="0,-30 -12,-36 0,-48 12,-36" fill="#92400e" /><polygon points="0,-30 -12,-36 -12,-34 0,-28" fill="#78350f" /><circle cx="-5" cy="-20" r="5" fill="#f8fafc" /><circle cx="5" cy="-20" r="5" fill="#f8fafc" /><line x1="-5" y1="-20" x2="-5" y2="-23" stroke="#1e293b" strokeWidth="1" /><line x1="5" y1="-20" x2="6" y2="-22" stroke="#1e293b" strokeWidth="1" /></g></svg>);
 
 export const SvgGoldStatue = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)" filter="url(#strong-shadow)"><polygon points="0,-60 -15,-10 0,0 15,-10" fill="url(#grad-gold)" /><polygon points="0,-60 -15,-10 0,-20" fill="#fcd34d" /><polygon points="0,-60 15,-10 0,-20" fill="#b45309" /><circle cx="0" cy="-62" r="2" fill="#fef08a" filter="url(#glow-effect)" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
+    <SharedDefs />
+    <g transform="translate(50, 88) scale(2.4)">
+      <ellipse cx="0" cy="6" rx="14" ry="5.5" fill="#020617" opacity="0.2" />
+      {/* 大理石の台座（2段） */}
+      <polygon points="-11,5 11,5 9,0.6 -9,0.6" fill="#d6d3d1" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points="-7.5,0.6 7.5,0.6 6.2,-5.4 -6.2,-5.4" fill="#e7e5e4" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* 銘板 */}
+      <rect x="-3.4" y="-4" width="6.8" height="3" rx="0.5" fill="#78350f" stroke="#1e293b" strokeWidth="0.7" />
+      {/* 黄金の人物像（掲げるポーズ） */}
+      <g stroke="#1e293b" strokeLinejoin="round">
+        {/* マント */}
+        <path d="M -4.6,-6 C -7,-12 -6,-19 -3.4,-22 L 0.6,-21 L -0.6,-7 Z" fill="#d97706" strokeWidth="1" />
+        {/* 脚と胴 */}
+        <path d="M -2.8,-5.4 L -2.2,-13 L 2.6,-13 L 3.4,-5.4 L 0.8,-5.4 L 0.4,-10 L -0.6,-5.4 Z" fill="url(#grad-gold)" strokeWidth="1" />
+        <path d="M -2.6,-13 C -3.2,-18.4 -2,-21.6 0.2,-22 C 2.6,-21.8 3.6,-18 3,-13 Z" fill="url(#grad-gold)" strokeWidth="1" />
+        {/* 掲げた腕＋星 */}
+        <path d="M 2.6,-19.6 C 4.6,-21.6 6,-24 6.6,-26.6" fill="none" strokeWidth="2.4" stroke="#d97706" strokeLinecap="round" />
+        <path d="M 2.6,-19.6 C 4.6,-21.6 6,-24 6.6,-26.6" fill="none" strokeWidth="1.2" stroke="#fbbf24" strokeLinecap="round" />
+        {/* もう片方の腕（腰） */}
+        <path d="M -2.8,-18.6 C -4.2,-17.6 -4.6,-16 -4,-14.6" fill="none" strokeWidth="2.2" stroke="#d97706" strokeLinecap="round" />
+        {/* 頭部＋月桂冠 */}
+        <circle cx="0.2" cy="-25" r="3.4" fill="url(#grad-gold)" strokeWidth="1" />
+        <path d="M -3.2,-26.4 Q -3.8,-24 -2.6,-22.4 M 3.6,-26.4 Q 4.2,-24 3,-22.4" fill="none" stroke="#15803d" strokeWidth="1.1" strokeLinecap="round" />
+      </g>
+      {/* 星 */}
+      <g transform="translate(7.4, -29.4)">
+        <path d="M 0,-2.6 L 0.8,-0.8 L 2.6,-0.6 L 1.2,0.6 L 1.6,2.4 L 0,1.4 L -1.6,2.4 L -1.2,0.6 L -2.6,-0.6 L -0.8,-0.8 Z"
+          fill="#fef08a" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" filter="url(#glow-effect)" />
+      </g>
+      {/* きらめき */}
+      <path d="M -6.6,-24 L -4.6,-24 M -5.6,-25 L -5.6,-23" stroke="#fde047" strokeWidth="0.8" strokeLinecap="round" />
+      <path d="M 5.4,-12 L 7,-12 M 6.2,-12.8 L 6.2,-11.2" stroke="#fde047" strokeWidth="0.7" strokeLinecap="round" />
+    </g>
+  </svg>
+);
 
 export const SvgFestivalStage = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.0)"><ellipse cx="0" cy="0" rx="24" ry="12" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -20,-10 0,-20 20,-10" fill="#fef9c3" /><polygon points="0,0 -20,-10 -20,-14 0,-4" fill="#d97706" /><polygon points="0,0 20,-10 20,-14 0,-4" fill="#b45309" /><polygon points="0,-14 -22,-25 0,-30 22,-25" fill="#ef4444" /><polygon points="0,-14 -22,-25 -22,-23 0,-12" fill="#dc2626" /><circle cx="-10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="0" cy="-25" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="24" ry="12" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -20,-10 0,-20 20,-10" fill="#fef9c3" /><polygon points="0,0 -20,-10 -20,-14 0,-4" fill="#d97706" /><polygon points="0,0 20,-10 20,-14 0,-4" fill="#b45309" /><polygon points="0,-14 -22,-25 0,-30 22,-25" fill="#ef4444" /><polygon points="0,-14 -22,-25 -22,-23 0,-12" fill="#dc2626" /><circle cx="-10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="0" cy="-25" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
 
 export const SvgVillager = () => (
   <svg viewBox="0 -100 100 200" style={{ overflow: "visible" }}><SharedDefs /><g transform="translate(50, 100) scale(2.5)" filter="url(#strong-shadow)"><rect x="-10" y="-30" width="20" height="20" rx="4" fill="#3b82f6"/><circle cx="0" cy="-40" r="12" fill="#fde047"/><circle cx="-4" cy="-42" r="2" fill="#1e293b"/><circle cx="4" cy="-42" r="2" fill="#1e293b"/><path d="M-5,-35 Q0,-30 5,-35" fill="none" stroke="#1e293b" strokeWidth="2"/></g></svg>);
@@ -2242,104 +3479,217 @@ export const SvgGhostBoss = () => (
 
 // ==========================================
 // 7. 商業施設 (Commercial)
+// 共通ビルダー ShopBase + 店舗ごとのグリフで統一クオリティ
 // ==========================================
+
+/**
+ * 小型商業建築の共通ビルダー
+ * 敷地パッド・2トーンの壁・大きなショーウィンドウ・ガラスドア・
+ * 縞ひさし・屋上看板（グリフ付き）・植木をワンセットで描画する
+ */
+const ShopBase = ({ wall = '#fff7ed', base, roof = '#e7e5e4', awn1 = '#ef4444', awn2 = '#f8fafc', sign = '#ffffff', signEdge, h = 24, glyph = null, pad = '#e7e5e4', wide = false }) => {
+  const wallD = darken(wall, 28);
+  const baseC = base || darken(wall, 60);
+  const roofD = darken(roof, 35);
+  const signB = signEdge || awn1;
+  const X1 = wide ? 8 : 16, X2 = wide ? 92 : 84; // 建物の幅
+  const [gx, gy] = isoPt(50, 42, h + 15.5); // 看板グリフの中心
+  return (
+    <g>
+      <IsoShadow rx={wide ? 46 : 40} />
+      {/* 敷地パッド */}
+      <polygon points={`${iso3(4, 4, 0)} ${iso3(96, 4, 0)} ${iso3(96, 96, 0)} ${iso3(4, 96, 0)}`} fill={pad} stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      {/* 本体 */}
+      <IsoCube x={X1} y={16} w={X2 - X1} d={68} h={h} top={roof} left={wall} right={wallD} sw={1} />
+      {/* 幅木（ベーストリム） */}
+      <FaceSW x1={X1} x2={X2} y={84} z1={0} z2={3.5} fill={baseC} sw={0.8} />
+      <FaceSE x={X2} y1={16} y2={84} z1={0} z2={3.5} fill={darken(baseC, 20)} sw={0.8} />
+      {/* ショーウィンドウ（正面） */}
+      <FaceSW x1={X1 + 6} x2={52} y={84.2} z1={5} z2={h - 7} fill="#1e293b" sw={1} />
+      <FaceSW x1={X1 + 7.5} x2={50.5} y={84.4} z1={6} z2={h - 8} fill="url(#grad-glass)" sw={0.5} />
+      <line x1={isoPt((X1 + 58) / 2, 84.4, 6)[0]} y1={isoPt((X1 + 58) / 2, 84.4, 6)[1]} x2={isoPt((X1 + 58) / 2, 84.4, h - 8)[0]} y2={isoPt((X1 + 58) / 2, 84.4, h - 8)[1]} stroke="#1e293b" strokeWidth="0.7" />
+      {/* ガラスドア */}
+      <FaceSW x1={60} x2={X2 - 8} y={84.2} z1={0} z2={h - 7} fill="#1e293b" sw={1} />
+      <FaceSW x1={61.5} x2={X2 - 9.5} y={84.4} z1={1} z2={h - 8} fill="#bae6fd" sw={0.5} />
+      <line x1={isoPt((60 + X2 - 8) / 2, 84.4, 1)[0]} y1={isoPt((60 + X2 - 8) / 2, 84.4, 1)[1]} x2={isoPt((60 + X2 - 8) / 2, 84.4, h - 8)[0]} y2={isoPt((60 + X2 - 8) / 2, 84.4, h - 8)[1]} stroke="#1e293b" strokeWidth="0.9" />
+      {/* 側面の窓 */}
+      <WinSE x={X2 + 0.2} y1={28} y2={44} z1={8} z2={h - 7} />
+      <WinSE x={X2 + 0.2} y1={52} y2={68} z1={8} z2={h - 7} />
+      {/* 縞ひさし */}
+      <AwningSW x1={X1 + 4} x2={X2 - 4} y={84} z={h - 4.5} c1={awn1} c2={awn2} />
+      {/* 屋上パラペット */}
+      <IsoCube x={X1 - 2} y={14} w={X2 - X1 + 4} d={72} z={h} h={3} top={roof} left={lighten(roof, 8)} right={roofD} sw={0.9} />
+      {/* 屋上看板 */}
+      <FaceSW x1={30} x2={38} y={42} z1={h + 3} z2={h + 8} fill={darken(sign, 70)} sw={0.7} />
+      <FaceSW x1={62} x2={70} y={42} z1={h + 3} z2={h + 8} fill={darken(sign, 70)} sw={0.7} />
+      <FaceSW x1={24} x2={76} y={42} z1={h + 7} z2={h + 24} fill={signB} sw={1.1} />
+      <FaceSW x1={27} x2={73} y={42.2} z1={h + 9} z2={h + 22} fill={sign} sw={0.6} />
+      {glyph && <g transform={`translate(${gx.toFixed(1)}, ${gy.toFixed(1)})`}>{glyph}</g>}
+      {/* 入口横の植木 */}
+      <g transform={`translate(${isoPt(92, 91, 0)[0].toFixed(1)}, ${isoPt(92, 91, 0)[1].toFixed(1)})`}>
+        <polygon points="-3.5,0 3.5,0 2.5,-4.5 -2.5,-4.5" fill="#b45309" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        <circle cx="0" cy="-7.5" r="4.2" fill="#16a34a" stroke="#1e293b" strokeWidth="0.8" />
+        <circle cx="-1.4" cy="-8.8" r="1.8" fill="#4ade80" />
+      </g>
+    </g>
+  );
+};
+
 export const SvgCafe = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -18,-9 -18,-22 0,-13" fill="#92400e" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 18,-9 18,-22 0,-13" fill="#b45309" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-13 -20,-23 0,-33 20,-23" fill="#78350f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -13,-8.5 L -9,-6.5 L -9,-13.5 L -13,-15.5 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#ffedd5" base="#78350f" roof="#a16207" awn1="#b45309" awn2="#fef3c7" sign="#fff7ed" signEdge="#78350f"
+        glyph={<g>
+          <path d="M -4,-3 L -3.2,3 L 3.2,3 L 4,-3 Z" fill="#78350f" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <path d="M 4,-2 C 7,-2 7,1.5 3.6,1.2" fill="none" stroke="#78350f" strokeWidth="1.2" />
+          <path d="M -1.8,-5 Q -0.8,-6.5 -1.8,-8 M 1.2,-5 Q 2.2,-6.5 1.2,-8" fill="none" stroke="#a8a29e" strokeWidth="0.9" strokeLinecap="round" />
+        </g>} />
     </g>
   </svg>
 );
 
 export const SvgBakery = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -18,-9 -18,-24 0,-15" fill="#ffedd5" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 18,-9 18,-24 0,-15" fill="#fed7aa" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 -20,-25 0,-35 20,-25" fill="#ea580c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 5,-8.5 L 13,-12.5 L 13,-19 L 5,-15 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#fff7ed" base="#9a3412" roof="#ea580c" awn1="#ea580c" awn2="#ffedd5" sign="#fff7ed" signEdge="#9a3412"
+        glyph={<g>
+          <ellipse cx="0" cy="-2" rx="5.5" ry="3.2" fill="#f59e0b" stroke="#1e293b" strokeWidth="0.8" />
+          <path d="M -3,-3.6 L -2.2,-1 M -0.4,-4.2 L 0.4,-1.4 M 2.2,-3.6 L 3,-1" stroke="#92400e" strokeWidth="0.8" strokeLinecap="round" />
+        </g>} />
     </g>
   </svg>
 );
 
 export const SvgBurgerShop = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -20,-10 -20,-25 0,-15" fill="#fef08a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 20,-10 20,-25 0,-15" fill="#fde047" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 -22,-26 0,-37 22,-26" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#fef9c3" base="#a16207" roof="#dc2626" awn1="#dc2626" awn2="#fef08a" sign="#fef9c3" signEdge="#dc2626"
+        glyph={<g>
+          <path d="M -4.5,-3.5 C -4.5,-6.5 4.5,-6.5 4.5,-3.5 Z" fill="#f59e0b" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <rect x="-4.5" y="-3.2" width="9" height="1.6" rx="0.8" fill="#4ade80" stroke="#1e293b" strokeWidth="0.6" />
+          <rect x="-4.8" y="-1.4" width="9.6" height="2" rx="1" fill="#78350f" stroke="#1e293b" strokeWidth="0.7" />
+          <path d="M -4.5,0.8 L 4.5,0.8 C 4.5,3 -4.5,3 -4.5,0.8 Z" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        </g>} />
     </g>
   </svg>
 );
 
 export const SvgFamilyRestaurant = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -24,-12 -24,-28 0,-16" fill="#fef9c3" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 24,-12 24,-28 0,-16" fill="#fef08a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-16 -26,-29 0,-42 26,-29" fill="#f97316" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 7,-8.5 L 19,-14.5 L 19,-23 L 7,-17 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wide wall="#fef9c3" base="#b45309" roof="#f97316" awn1="#f97316" awn2="#fffbeb" sign="#fffbeb" signEdge="#ea580c"
+        glyph={<g>
+          <circle cx="1.5" cy="-1" r="4.4" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.8" />
+          <circle cx="1.5" cy="-1" r="2.2" fill="#fde68a" stroke="#e2e8f0" strokeWidth="0.5" />
+          <path d="M -5.5,-5.5 L -5.5,4 M -7,-5.5 L -7,-2.5 Q -7,-1 -5.5,-1 M -4,-5.5 L -4,-2.5 Q -4,-1 -5.5,-1" fill="none" stroke="#475569" strokeWidth="0.9" strokeLinecap="round" />
+        </g>} />
     </g>
   </svg>
 );
 
 export const SvgConvenienceStore = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -20,-10 -20,-24 0,-14" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 20,-10 20,-24 0,-14" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-14 -22,-25 0,-32 22,-25" fill="#0ea5e9" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M 5,-6.5 L 17,-12.5 L 17,-21 L 5,-15 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#f8fafc" base="#475569" roof="#e2e8f0" awn1="#0ea5e9" awn2="#f8fafc" sign="#f8fafc" signEdge="#0284c7" h={22}
+        glyph={<g>
+          <rect x="-7" y="-4.5" width="14" height="9" rx="1" fill="#0ea5e9" stroke="#1e293b" strokeWidth="0.8" />
+          <rect x="-7" y="-1.6" width="14" height="3.2" fill="#f8fafc" />
+          <rect x="-7" y="1.6" width="14" height="2.9" rx="0.6" fill="#22c55e" />
+          <text x="0" y="1" textAnchor="middle" fontSize="4.6" fontWeight="900" fill="#0c4a6e" fontFamily="sans-serif">24</text>
+        </g>} />
     </g>
   </svg>
 );
 
 export const SvgFlowerShop = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -16,-8 -16,-22 0,-14" fill="#fce7f3" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 16,-8 16,-22 0,-14" fill="#fbcfe8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-14 -18,-23 0,-32 18,-23" fill="#db2777" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#fdf2f8" base="#9d174d" roof="#f472b6" awn1="#db2777" awn2="#fce7f3" sign="#fdf2f8" signEdge="#db2777"
+        glyph={<g>
+          <path d="M 0,4 L 0,-1" stroke="#16a34a" strokeWidth="1" strokeLinecap="round" />
+          <path d="M 0,1 Q -3,0 -3.5,2.5 Q -1,3 0,1 Z" fill="#22c55e" stroke="#1e293b" strokeWidth="0.5" />
+          <path d="M -2.8,-3.5 Q -2.8,-6.5 0,-6.5 Q 2.8,-6.5 2.8,-3.5 L 2.8,-2 Q 1.4,-0.8 0,-2 Q -1.4,-0.8 -2.8,-2 Z" fill="#ec4899" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <line x1="0" y1="-6.5" x2="0" y2="-2" stroke="#be185d" strokeWidth="0.6" />
+        </g>} />
+      {/* 店先の花のディスプレイ */}
+      <g transform={`translate(${isoPt(10, 91, 0)[0].toFixed(1)}, ${isoPt(10, 91, 0)[1].toFixed(1)})`}>
+        <polygon points="-4,0 4,0 3,-4 -3,-4" fill="#92400e" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        <circle cx="-2" cy="-6" r="2" fill="#f472b6" stroke="#1e293b" strokeWidth="0.6" />
+        <circle cx="1.5" cy="-6.6" r="2" fill="#facc15" stroke="#1e293b" strokeWidth="0.6" />
+        <circle cx="0" cy="-4.6" r="1.6" fill="#38bdf8" stroke="#1e293b" strokeWidth="0.6" />
+      </g>
     </g>
   </svg>
 );
 
 export const SvgCinema = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -26,-13 -26,-32 0,-19" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 26,-13 26,-32 0,-19" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-19 -28,-33 0,-47 28,-33" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wide wall="#334155" base="#0f172a" roof="#1e293b" awn1="#dc2626" awn2="#fef3c7" sign="#0f172a" signEdge="#dc2626" h={30} pad="#475569"
+        glyph={<g>
+          {/* カチンコ */}
+          <rect x="-5.5" y="-2" width="11" height="6.5" rx="0.8" fill="#1e293b" stroke="#fef3c7" strokeWidth="0.7" />
+          <g transform="rotate(-15 -5.5 -2)">
+            <rect x="-5.5" y="-5" width="11" height="3" rx="0.8" fill="#1e293b" stroke="#fef3c7" strokeWidth="0.7" />
+            <path d="M -4.5,-5 L -2.5,-2 M -1,-5 L 1,-2 M 2.5,-5 L 4.5,-2" stroke="#fef3c7" strokeWidth="0.9" />
+          </g>
+          <circle cx="0" cy="1.4" r="1.4" fill="#fbbf24" />
+        </g>} />
+      {/* 電飾マーキー */}
+      {[30, 40, 50, 60, 70].map(x => (
+        <circle key={x} cx={isoPt(x, 84.6, 27)[0]} cy={isoPt(x, 84.6, 27)[1]} r="1" fill="#fde047" stroke="#1e293b" strokeWidth="0.4" />
+      ))}
     </g>
   </svg>
 );
 
 export const SvgHotel = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      {/* メインビル */}
-      <polygon points="0,0 -22,-11 -22,-45 0,-34" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 22,-11 22,-45 0,-34" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-34 -24,-46 0,-58 24,-46" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      {/* 窓（左面） */}
-      {[0, 1, 2, 3].map(i => (
-        <g key={`hl-${i}`} transform={`translate(-18, ${-16 - i * 7})`}>
-          <polygon points="0,0 4,2 4,-2 0,-4" fill="#fef08a" stroke="#000" strokeWidth="0.5" opacity="0.9" />
+    <g transform="translate(50, 100) scale(2.1)">
+      <IsoShadow rx={32} />
+      <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* タワー本体 */}
+      <IsoCube x={24} y={24} w={52} d={52} h={66} top="#64748b" left="#475569" right="#334155" sw={1.1} />
+      {/* 客室窓（南西面・暖色の明かり） */}
+      {[14, 26, 38, 50].map((z, r) => (
+        <g key={z}>
+          {[[28, 36], [40, 48], [52, 60], [64, 72]].map(([a, b], c) => (
+            <FaceSW key={c} x1={a} x2={b} y={76.2} z1={z} z2={z + 7} fill={(r + c) % 3 === 0 ? '#fef08a' : (r + c) % 3 === 1 ? '#fde047' : '#94a3b8'} sw={0.6} />
+          ))}
         </g>
       ))}
-      {/* 窓（右面） */}
-      {[0, 1, 2, 3].map(i => (
-        <g key={`hr-${i}`} transform={`translate(14, ${-14 - i * 7})`}>
-          <polygon points="0,0 4,-2 4,-6 0,-4" fill="#fef08a" stroke="#000" strokeWidth="0.5" opacity="0.9" />
+      {/* 客室窓（南東面） */}
+      {[14, 26, 38, 50].map((z, r) => (
+        <g key={z}>
+          {[[30, 40], [46, 56], [60, 70]].map(([a, b], c) => (
+            <FaceSE key={c} x={76.2} y1={a} y2={b} z1={z} z2={z + 7} fill={(r + c) % 2 === 0 ? '#fbbf24' : '#78716c'} sw={0.6} />
+          ))}
         </g>
       ))}
-      {/* 入口（キャノピー） */}
-      <polygon points="-6,0 6,-6 6,-3 -6,3" fill="#d97706" stroke="#000" strokeWidth="1" />
-      {/* "HOTEL"サイン */}
-      <polygon points="6,-18 18,-24 18,-20 6,-14" fill="#fbbf24" stroke="#000" strokeWidth="0.5" />
+      {/* エントランス＋赤い絨毯とキャノピー */}
+      <polygon points={`${iso3(42, 76, 0.2)} ${iso3(58, 76, 0.2)} ${iso3(58, 92, 0.2)} ${iso3(42, 92, 0.2)}`} fill="#dc2626" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      <FaceSW x1={42} x2={58} y={76.4} z1={0} z2={9.5} fill="#0f172a" sw={1} />
+      <FaceSW x1={44.5} x2={49.5} y={76.6} z1={0.8} z2={8.6} fill="#fde68a" sw={0.5} />
+      <FaceSW x1={50.5} x2={55.5} y={76.6} z1={0.8} z2={8.6} fill="#fcd34d" sw={0.5} />
+      <AwningSW x1={40} x2={60} y={76} z={11} c1="#b91c1c" c2="#fef3c7" depth={8} drop={2} stripes={5} />
+      {/* キャノピー支柱 */}
+      {[42, 58].map(x => (
+        <line key={x} x1={isoPt(x, 84, 0)[0]} y1={isoPt(x, 84, 0)[1]} x2={isoPt(x, 84, 8.5)[0]} y2={isoPt(x, 84, 8.5)[1]} stroke="#fbbf24" strokeWidth="1.4" strokeLinecap="round" />
+      ))}
+      {/* 縦型HOTELサイン */}
+      <FaceSW x1={22} x2={30} y={76.5} z1={20} z2={58} fill="#b91c1c" sw={1} />
+      {['H', 'O', 'T', 'E', 'L'].map((ch, i) => (
+        <text key={ch} x={isoPt(26, 76.7, 55 - i * 7.5)[0]} y={isoPt(26, 76.7, 55 - i * 7.5)[1]} textAnchor="middle" fontSize="6.5" fontWeight="900" fill="#fef9c3" fontFamily="sans-serif">{ch}</text>
+      ))}
+      {/* 屋上（パラペット＋ルーフバー） */}
+      <IsoCube x={22} y={22} w={56} d={56} z={66} h={3} top="#94a3b8" left="#cbd5e1" right="#64748b" sw={0.9} />
+      <IsoCube x={34} y={34} w={22} d={16} z={69} h={7} top="#e2e8f0" left="#f8fafc" right="#cbd5e1" sw={0.8} />
+      <FaceSW x1={36} x2={54} y={50.2} z1={71} z2={75} fill="#7dd3fc" sw={0.6} />
+      {/* 星型ネオン */}
+      <g transform={`translate(${isoPt(62, 44, 74)[0].toFixed(1)}, ${isoPt(62, 44, 74)[1].toFixed(1)})`}>
+        <path d="M 0,-4 L 1.2,-1.2 L 4,-1 L 1.8,0.8 L 2.4,3.6 L 0,2 L -2.4,3.6 L -1.8,0.8 L -4,-1 L -1.2,-1.2 Z"
+          fill="#fde047" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" filter="url(#glow-effect)" />
+      </g>
     </g>
   </svg>
 );
@@ -2407,21 +3757,51 @@ export const SvgFireStation = () => (
 
 export const SvgPoliceBox = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -12,-6 -12,-20 0,-14" fill="#1e3a8a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 12,-6 12,-20 0,-14" fill="#1d4ed8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-14 -14,-21 0,-28 14,-21" fill="#1e3a8a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="0" cy="-37" r="2" fill="#ef4444" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={32} />
+      {/* 敷地パッド */}
+      <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      {/* 本体 */}
+      <IsoCube x={22} y={22} w={56} d={56} h={26} top="#e2e8f0" left="#f8fafc" right="#e2e8f0" sw={1} />
+      {/* 青い帯 */}
+      <FaceSW x1={22} x2={78} y={78} z1={19} z2={24} fill="#1d4ed8" sw={0.9} />
+      <FaceSE x={78} y1={22} y2={78} z1={19} z2={24} fill="#1e3a8a" sw={0.9} />
+      {/* 入口（引き戸） */}
+      <FaceSW x1={32} x2={56} y={78.2} z1={0} z2={17} fill="#1e293b" sw={1} />
+      <FaceSW x1={33.5} x2={44} y={78.4} z1={1} z2={16} fill="#bae6fd" sw={0.6} />
+      <FaceSW x1={45} x2={54.5} y={78.4} z1={1} z2={16} fill="#7dd3fc" sw={0.6} />
+      {/* 窓（正面右・側面） */}
+      <WinSW x1={62} x2={74} y={78.2} z1={7} z2={17} />
+      <WinSE x={78.2} y1={32} y2={48} z1={7} z2={17} />
+      {/* 庇屋根 */}
+      <IsoCube x={18} y={18} w={64} d={64} z={26} h={4} top="#1d4ed8" left="#2563eb" right="#1e3a8a" sw={1} />
+      {/* 赤色灯 */}
+      <IsoCube x={46} y={46} w={8} d={8} z={30} h={3} top="#94a3b8" left="#cbd5e1" right="#64748b" sw={0.8} />
+      <g transform={`translate(${isoPt(50, 50, 36)[0].toFixed(1)}, ${isoPt(50, 50, 36)[1].toFixed(1)})`}>
+        <circle cx="0" cy="0" r="3.2" fill="#ef4444" stroke="#1e293b" strokeWidth="0.9" filter="url(#glow-effect)" />
+        <circle cx="-1" cy="-1" r="1" fill="#fecaca" />
+      </g>
+      {/* 「交番」の金色プレート */}
+      <FaceSW x1={60} x2={76} y={78.4} z1={20} z2={23.4} fill="#fbbf24" sw={0.6} />
     </g>
   </svg>
 );
 
 export const SvgPostOffice = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -20,-10 -20,-26 0,-16" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 20,-10 20,-26 0,-16" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-16 -22,-27 0,-38 22,-27" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <ShopBase wall="#f8fafc" base="#991b1b" roof="#e2e8f0" awn1="#ef4444" awn2="#f8fafc" sign="#f8fafc" signEdge="#dc2626"
+        glyph={<g>
+          {/* 〒マーク */}
+          <path d="M -5,-4 L 5,-4 M -5,-1 L 5,-1 M 0,-1 L 0,5" fill="none" stroke="#dc2626" strokeWidth="1.8" strokeLinecap="round" />
+        </g>} />
+      {/* 店先の郵便ポスト */}
+      <g transform={`translate(${isoPt(8, 90, 0)[0].toFixed(1)}, ${isoPt(8, 90, 0)[1].toFixed(1)})`}>
+        <polygon points="-3.5,0 3.5,0 3,-2 -3,-2" fill="#64748b" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        <rect x="-2.6" y="-11" width="5.2" height="9" rx="0.6" fill="#dc2626" stroke="#1e293b" strokeWidth="0.9" />
+        <path d="M -2.6,-11 A 2.6,2.2 0 0 1 2.6,-11" fill="#ef4444" stroke="#1e293b" strokeWidth="0.9" />
+        <rect x="-1.7" y="-9.6" width="3.4" height="1" fill="#1e293b" />
+      </g>
     </g>
   </svg>
 );
@@ -2456,11 +3836,45 @@ export const SvgStation = () => (
 
 export const SvgAirport = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,5 -38,-14 0,-33 38,-14" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-5 -30,-20 -30,-36 0,-21" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-5 30,-20 30,-36 0,-21" fill="#e2e8f0" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-21 -32,-37 0,-53 32,-37" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.1)">
+      <IsoShadow rx={46} />
+      {/* エプロン（駐機場） */}
+      <polygon points={`${iso3(0, 0, 0)} ${iso3(100, 0, 0)} ${iso3(100, 100, 0)} ${iso3(0, 100, 0)}`} fill="#94a3b8" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 滑走路帯 */}
+      <polygon points={`${iso3(0, 78, 0.1)} ${iso3(100, 78, 0.1)} ${iso3(100, 96, 0.1)} ${iso3(0, 96, 0.1)}`} fill="#334155" />
+      {[8, 24, 40, 56, 72, 88].map(x => (
+        <polygon key={x} points={`${iso3(x, 86, 0.2)} ${iso3(x + 8, 86, 0.2)} ${iso3(x + 8, 88, 0.2)} ${iso3(x, 88, 0.2)}`} fill="#fde047" />
+      ))}
+      {/* ターミナル本体 */}
+      <IsoCube x={10} y={8} w={70} d={42} h={20} top="#e2e8f0" left="#f8fafc" right="#cbd5e1" sw={1.1} />
+      {/* ガラスファサード（南西面） */}
+      <FaceSW x1={13} x2={77} y={50.2} z1={4} z2={17} fill="url(#grad-glass)" sw={0.8} />
+      {[25, 37, 49, 61].map(x => (
+        <line key={x} x1={isoPt(x, 50.3, 4)[0]} y1={isoPt(x, 50.3, 4)[1]} x2={isoPt(x, 50.3, 17)[0]} y2={isoPt(x, 50.3, 17)[1]} stroke="#475569" strokeWidth="0.7" />
+      ))}
+      {/* 曲面屋根 */}
+      <path d={`M ${iso3(8, 6, 20)} Q ${iso3(45, 6, 34)} ${iso3(82, 6, 20)} L ${iso3(82, 52, 20)} Q ${iso3(45, 52, 34)} ${iso3(8, 52, 20)} Z`}
+        fill="#0ea5e9" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d={`M ${iso3(82, 6, 20)} Q ${iso3(45, 6, 34)} ${iso3(8, 6, 20)} L ${iso3(8, 6, 18.5)} Q ${iso3(45, 6, 32.5)} ${iso3(82, 6, 18.5)} Z`}
+        fill="#0284c7" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 管制塔 */}
+      <g>
+        <IsoCube x={84} y={14} w={12} d={12} h={30} top="#cbd5e1" left="#f1f5f9" right="#cbd5e1" sw={1} />
+        <IsoCube x={81} y={11} w={18} d={18} z={30} h={8} top="#475569" left="#38bdf8" right="#0284c7" sw={1} />
+        <line x1={isoPt(90, 20, 38)[0]} y1={isoPt(90, 20, 38)[1]} x2={isoPt(90, 20, 48)[0]} y2={isoPt(90, 20, 48)[1]} stroke="#1e293b" strokeWidth="1.1" strokeLinecap="round" />
+        <circle cx={isoPt(90, 20, 49)[0]} cy={isoPt(90, 20, 49)[1]} r="1.4" fill="#ef4444" stroke="#1e293b" strokeWidth="0.6" />
+      </g>
+      {/* ボーディングブリッジ */}
+      <polygon points={`${iso3(30, 50, 8)} ${iso3(38, 50, 8)} ${iso3(38, 64, 6)} ${iso3(30, 64, 6)}`} fill="#e2e8f0" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      <polygon points={`${iso3(30, 64, 6)} ${iso3(38, 64, 6)} ${iso3(38, 64, 0)} ${iso3(30, 64, 0)}`} fill="#94a3b8" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+      {/* 駐機中の小型機 */}
+      <g transform={`translate(${isoPt(38, 68, 0)[0].toFixed(1)}, ${isoPt(38, 68, 0)[1].toFixed(1)}) rotate(18) scale(0.62)`}>
+        <polygon points="-2.5,-4 -21,6 -18,9 -1,2" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M 0,-22 C 4,-16 4.6,-7 4.6,2 L 4.2,9 C 4,12 -4,12 -4.2,9 L -4.6,2 C -4.6,-7 -4,-16 0,-22 Z" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+        <polygon points="2.5,-4 21,6 18,9 1,2" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <polygon points="-1.2,9 0,16.5 1.2,9" fill="#ef4444" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <path d="M -2.4,-15.5 C -1,-18.5 1,-18.5 2.4,-15.5 C 1,-16.6 -1,-16.6 -2.4,-15.5 Z" fill="#0ea5e9" stroke="#1e293b" strokeWidth="0.8" />
+      </g>
     </g>
   </svg>
 );
@@ -2471,43 +3885,156 @@ export const SvgAirport = () => (
 // ==========================================
 export const SvgOfficeBuilding = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -18,-9 -18,-42 0,-33" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 18,-9 18,-42 0,-33" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-33 -20,-43 0,-53 20,-43" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.1)">
+      <IsoShadow rx={34} />
+      {/* 敷地 */}
+      <polygon points={`${iso3(8, 8, 0)} ${iso3(92, 8, 0)} ${iso3(92, 92, 0)} ${iso3(8, 92, 0)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* タワー本体 */}
+      <IsoCube x={20} y={20} w={60} d={60} h={62} top="#94a3b8" left="#475569" right="#334155" sw={1.1} />
+      {/* ガラスカーテンウォール（南西面） */}
+      {[6, 16, 26, 36, 46].map(z => (
+        <FaceSW key={`w-${z}`} x1={24} x2={76} y={80.2} z1={z} z2={z + 7} fill={z % 20 === 6 ? '#7dd3fc' : '#38bdf8'} sw={0.6} />
+      ))}
+      {[30, 44, 58].map(x => (
+        <line key={`v-${x}`} x1={isoPt(x, 80.3, 6)[0]} y1={isoPt(x, 80.3, 6)[1]} x2={isoPt(x, 80.3, 53)[0]} y2={isoPt(x, 80.3, 53)[1]} stroke="#334155" strokeWidth="0.7" />
+      ))}
+      {/* ガラスカーテンウォール（南東面） */}
+      {[6, 16, 26, 36, 46].map(z => (
+        <FaceSE key={`e-${z}`} x={80.2} y1={24} y2={76} z1={z} z2={z + 7} fill="#0ea5e9" sw={0.6} />
+      ))}
+      {[38, 62].map(y => (
+        <line key={`ve-${y}`} x1={isoPt(80.3, y, 6)[0]} y1={isoPt(80.3, y, 6)[1]} x2={isoPt(80.3, y, 53)[0]} y2={isoPt(80.3, y, 53)[1]} stroke="#334155" strokeWidth="0.7" />
+      ))}
+      {/* エントランス */}
+      <FaceSW x1={38} x2={62} y={80.4} z1={0} z2={9} fill="#0f172a" sw={1} />
+      <FaceSW x1={41} x2={49} y={80.6} z1={0.8} z2={8} fill="#bae6fd" sw={0.5} />
+      <FaceSW x1={51} x2={59} y={80.6} z1={0.8} z2={8} fill="#7dd3fc" sw={0.5} />
+      <AwningSW x1={36} x2={64} y={80} z={10.5} c1="#475569" c2="#94a3b8" depth={7} drop={2} stripes={1} />
+      {/* パラペットと屋上設備 */}
+      <IsoCube x={18} y={18} w={64} d={64} z={62} h={3} top="#64748b" left="#94a3b8" right="#475569" sw={0.9} />
+      <IsoCube x={28} y={30} w={14} d={12} z={65} h={6} top="#e2e8f0" left="#cbd5e1" right="#94a3b8" sw={0.8} />
+      <IsoCube x={52} y={48} w={10} d={10} z={65} h={4} top="#e2e8f0" left="#cbd5e1" right="#94a3b8" sw={0.8} />
+      {/* アンテナ */}
+      <line x1={isoPt(66, 34, 65)[0]} y1={isoPt(66, 34, 65)[1]} x2={isoPt(66, 34, 82)[0]} y2={isoPt(66, 34, 82)[1]} stroke="#1e293b" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx={isoPt(66, 34, 83)[0]} cy={isoPt(66, 34, 83)[1]} r="1.4" fill="#ef4444" stroke="#1e293b" strokeWidth="0.6" />
     </g>
   </svg>
 );
 
 export const SvgTowerApartment = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,0 -14,-7 -14,-52 0,-45" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 14,-7 14,-52 0,-45" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-45 -16,-53 0,-61 16,-53" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="0" cy="-69" r="1.5" fill="#ef4444" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.1)">
+      <IsoShadow rx={32} />
+      <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* タワー本体 */}
+      <IsoCube x={26} y={26} w={48} d={48} h={74} top="#e7e5e4" left="#f5f5f4" right="#d6d3d1" sw={1.1} />
+      {/* バルコニー（南西面・各階の張り出し） */}
+      {[8, 20, 32, 44, 56].map(z => (
+        <g key={`b-${z}`}>
+          <FaceSW x1={29} x2={71} y={74.2} z1={z} z2={z + 6.5} fill="#93c5fd" sw={0.6} />
+          <line x1={isoPt(50, 74.3, z)[0]} y1={isoPt(50, 74.3, z)[1]} x2={isoPt(50, 74.3, z + 6.5)[0]} y2={isoPt(50, 74.3, z + 6.5)[1]} stroke="#78716c" strokeWidth="0.7" />
+          <polygon points={`${iso3(28, 74, z - 1.5)} ${iso3(72, 74, z - 1.5)} ${iso3(72, 79, z - 2.5)} ${iso3(28, 79, z - 2.5)}`} fill="#f5f5f4" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+          <polygon points={`${iso3(28, 79, z - 2.5)} ${iso3(72, 79, z - 2.5)} ${iso3(72, 79, z - 4)} ${iso3(28, 79, z - 4)}`} fill="#a8a29e" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        </g>
+      ))}
+      {/* 窓（南東面） */}
+      {[8, 20, 32, 44, 56].map(z => (
+        <g key={`e-${z}`}>
+          <FaceSE x={74.2} y1={32} y2={48} z1={z} z2={z + 6.5} fill="#bae6fd" sw={0.6} />
+          <FaceSE x={74.2} y1={54} y2={68} z1={z} z2={z + 6.5} fill="#7dd3fc" sw={0.6} />
+        </g>
+      ))}
+      {/* エントランス */}
+      <FaceSW x1={40} x2={60} y={74.4} z1={0} z2={6} fill="#1e293b" sw={0.9} />
+      <FaceSW x1={43} x2={57} y={74.6} z1={0.8} z2={5.2} fill="#bae6fd" sw={0.5} />
+      {/* 屋上 */}
+      <IsoCube x={24} y={24} w={52} d={52} z={74} h={3} top="#d6d3d1" left="#e7e5e4" right="#a8a29e" sw={0.9} />
+      <IsoCube x={40} y={40} w={20} d={20} z={77} h={5} top="#a8a29e" left="#d6d3d1" right="#78716c" sw={0.8} />
+      {/* 赤色航空灯 */}
+      <line x1={isoPt(50, 50, 82)[0]} y1={isoPt(50, 50, 82)[1]} x2={isoPt(50, 50, 92)[0]} y2={isoPt(50, 50, 92)[1]} stroke="#1e293b" strokeWidth="1.1" strokeLinecap="round" />
+      <circle cx={isoPt(50, 50, 93)[0]} cy={isoPt(50, 50, 93)[1]} r="1.6" fill="#ef4444" stroke="#1e293b" strokeWidth="0.6" filter="url(#glow-effect)" />
     </g>
   </svg>
 );
 
 export const SvgTvTower = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-12,0 -4,-15 0,-30 4,-15 12,0" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 -4,-15 0,-30" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 4,-15 0,-30" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-30 -6,-38 6,-38" fill="#f8fafc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="0" cy="-80" r="2" fill="#ef4444" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.1)">
+      <IsoShadow rx={30} ry={13} />
+      {/* 4本脚がカーブを描くラティス構造（東京タワー風） */}
+      <path d="M -22,-8 C -18,-26 -8,-38 -4,-52 L 4,-52 C 8,-38 18,-26 22,-8 L 14,-8 C 11,-22 5,-34 2,-46 L -2,-46 C -5,-34 -11,-22 -14,-8 Z"
+        fill="#f97316" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      {/* トラス（クロスブレース） */}
+      <g stroke="#7c2d12" strokeWidth="0.9" opacity="0.9">
+        <path d="M -20,-12 L 20,-12 M -17,-20 L 17,-20 M -14,-28 L 14,-28 M -11,-36 L 11,-36 M -8,-44 L 8,-44" fill="none" />
+        <path d="M -20,-12 L -13,-20 M -13,-12 L -20,-20 M 20,-12 L 13,-20 M 13,-12 L 20,-20" fill="none" />
+        <path d="M -16,-20 L -10,-28 M -10,-20 L -16,-28 M 16,-20 L 10,-28 M 10,-20 L 16,-28" fill="none" />
+        <path d="M -13,-28 L -8,-36 M -8,-28 L -13,-36 M 13,-28 L 8,-36 M 8,-28 L 13,-36" fill="none" />
+      </g>
+      {/* メイン展望台 */}
+      <g transform="translate(0, -52)">
+        <polygon points="-9,0 9,0 7.5,-6 -7.5,-6" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <rect x="-7" y="-4.8" width="14" height="2.4" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.6" />
+      </g>
+      {/* 上部タワー */}
+      <polygon points="-6,-58 6,-58 2,-78 -2,-78" fill="#fb923c" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M -5,-63 L 5,-63 M -4,-68 L 4,-68 M -3,-73 L 3,-73" stroke="#7c2d12" strokeWidth="0.8" />
+      {/* 特別展望台 */}
+      <polygon points="-4.5,-78 4.5,-78 3.5,-82 -3.5,-82" fill="#f8fafc" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* アンテナ */}
+      <line x1="0" y1="-82" x2="0" y2="-96" stroke="#1e293b" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="0" y1="-86" x2="0" y2="-96" stroke="#f8fafc" strokeWidth="0.6" />
+      <circle cx="0" cy="-97" r="1.8" fill="#ef4444" stroke="#1e293b" strokeWidth="0.7" filter="url(#glow-effect)" />
+      {/* 基部の建物 */}
+      <IsoCube x={34} y={34} w={32} d={32} h={7} top="#e2e8f0" left="#f8fafc" right="#cbd5e1" sw={0.9} />
     </g>
   </svg>
 );
 
 export const SvgStadium = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <ellipse cx="0" cy="-8" rx="38" ry="19" fill="#cbd5e1" stroke="#000" strokeWidth="2" />
-      <ellipse cx="0" cy="-10" rx="32" ry="16" fill="#4ade80" stroke="#000" strokeWidth="2" />
-      <path d="M -38,-8 C -38,-22 -20,-30 0,-30 C 20,-30 38,-22 38,-8" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" />
+    <g transform="translate(50, 78) scale(2.1)">
+      <ellipse cx="0" cy="8" rx="42" ry="20" fill="#020617" opacity="0.16" />
+      {/* 外壁（下段） */}
+      <path d="M -40,0 A 40,19 0 0 0 40,0 L 40,-8 A 40,19 0 0 1 -40,-8 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.3" />
+      {/* 外壁の柱 */}
+      {[-36, -26, -14, 0, 14, 26, 36].map(x => {
+        const yy = Math.sqrt(Math.max(0, 1 - (x * x) / 1600)) * 19;
+        return <line key={x} x1={x} y1={yy - 8} x2={x} y2={yy} stroke="#475569" strokeWidth="1.1" />;
+      })}
+      {/* スタンド上段（外周リング） */}
+      <path d="M -40,-8 A 40,19 0 0 1 40,-8 A 40,19 0 0 1 -40,-8 Z" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.3" />
+      {/* 観客席（段差リング） */}
+      <ellipse cx="0" cy="-8" rx="40" ry="19" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.3" />
+      <ellipse cx="0" cy="-9.5" rx="34" ry="16" fill="#3b82f6" stroke="#1e293b" strokeWidth="1" />
+      <ellipse cx="0" cy="-11" rx="29" ry="13.5" fill="#60a5fa" stroke="#1e293b" strokeWidth="0.9" />
+      {/* 観客のドット */}
+      {[[-30, -12], [-20, -19], [0, -22.5], [20, -19], [30, -12], [-26, -3], [26, -3], [10, -21.5], [-10, -21.5]].map(([px, py], i) => (
+        <circle key={i} cx={px} cy={py} r="0.9" fill={['#fef08a', '#fca5a5', '#f8fafc'][i % 3]} opacity="0.95" />
+      ))}
+      {/* フィールド */}
+      <ellipse cx="0" cy="-12.5" rx="24" ry="10.5" fill="#4ade80" stroke="#1e293b" strokeWidth="1.1" />
+      <ellipse cx="0" cy="-12.5" rx="23" ry="9.7" fill="none" stroke="#f8fafc" strokeWidth="0.8" opacity="0.9" />
+      <line x1="0" y1="-22" x2="0" y2="-3" stroke="#f8fafc" strokeWidth="0.8" opacity="0.9" />
+      <ellipse cx="0" cy="-12.5" rx="6" ry="2.6" fill="none" stroke="#f8fafc" strokeWidth="0.8" opacity="0.9" />
+      {/* 照明塔 */}
+      {[[-38, -22], [38, -22]].map(([px, py], i) => (
+        <g key={i} transform={`translate(${px}, ${py})`}>
+          <line x1="0" y1="14" x2="0" y2="-8" stroke="#334155" strokeWidth="1.6" strokeLinecap="round" />
+          <rect x="-4.5" y="-14" width="9" height="6" rx="1" fill="#1e293b" stroke="#0f172a" strokeWidth="0.8" />
+          {[-2.8, 0, 2.8].map(lx => <circle key={lx} cx={lx} cy="-12.4" r="1" fill="#fef08a" />)}
+          {[-2.8, 0, 2.8].map(lx => <circle key={`b-${lx}`} cx={lx} cy="-9.8" r="1" fill="#fde047" />)}
+        </g>
+      ))}
+      {/* 電光掲示板 */}
+      <g transform="translate(0, -29)">
+        <rect x="-9" y="-6" width="18" height="7" rx="1" fill="#0f172a" stroke="#1e293b" strokeWidth="1" />
+        <rect x="-7.4" y="-4.6" width="14.8" height="4.2" fill="#166534" />
+        <circle cx="-4" cy="-2.5" r="0.8" fill="#4ade80" />
+        <circle cx="0" cy="-2.5" r="0.8" fill="#facc15" />
+        <circle cx="4" cy="-2.5" r="0.8" fill="#4ade80" />
+        <line x1="0" y1="1" x2="0" y2="6" stroke="#334155" strokeWidth="1.4" />
+      </g>
     </g>
   </svg>
 );
@@ -2720,7 +4247,7 @@ export const SvgPark = ({ seed = 0 }) => {
 
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-      <g transform="translate(50, 95) scale(1.05)">
+      <g transform="translate(50, 68) scale(1.5)">
         {/* === 地面 === */}
         <polygon points={groundPts} fill="#4ade80" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
         <polygon points={innerPts} fill="#86efac" stroke="none" />
@@ -2769,12 +4296,37 @@ export const SvgPark = ({ seed = 0 }) => {
 
 export const SvgPlayground = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,2 -22,-9 0,-20 22,-9" fill="#fde68a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-8, -12)">
-        <polygon points="0,0 -5,-2.5 -5,-14 0,-11.5" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 5,-2.5 5,-14 0,-11.5" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M 0,-16.5 Q -8,-10 -12,-4" stroke="#000" strokeWidth="2" fill="none" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={38} />
+      {/* 砂地パッド */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#fde68a" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <circle cx={isoPt(30, 74, 0)[0]} cy={isoPt(30, 74, 0)[1]} r="1" fill="#f59e0b" />
+      <circle cx={isoPt(70, 82, 0)[0]} cy={isoPt(70, 82, 0)[1]} r="1.2" fill="#f59e0b" />
+      {/* すべり台 */}
+      <g transform={`translate(${isoPt(30, 34, 0)[0].toFixed(1)}, ${isoPt(30, 34, 0)[1].toFixed(1)})`}>
+        {/* やぐら */}
+        <line x1="-6" y1="0" x2="-6" y2="-16" stroke="#475569" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="0" y1="3" x2="0" y2="-13" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" />
+        {/* はしご */}
+        <line x1="-6" y1="-4" x2="0" y2="-1" stroke="#64748b" strokeWidth="1.1" />
+        <line x1="-6" y1="-8" x2="0" y2="-5" stroke="#64748b" strokeWidth="1.1" />
+        <line x1="-6" y1="-12" x2="0" y2="-9" stroke="#64748b" strokeWidth="1.1" />
+        {/* プラットフォーム＋屋根 */}
+        <polygon points="-8,-16 0,-13 6,-16 -2,-19" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <polygon points="-9,-24 -1,-21 7,-24.5 -1,-27.5" fill="#ef4444" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <polygon points="-9,-24 -1,-21 -1,-19.4 -9,-22.4" fill="#b91c1c" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {/* 滑走面 */}
+        <polygon points="1,-14 6,-16 20,-2 15,0.5" fill="#fbbf24" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+        <polygon points="1,-14 15,0.5 15,2.5 1,-12" fill="#d97706" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      </g>
+      {/* ブランコ */}
+      <g transform={`translate(${isoPt(66, 70, 0)[0].toFixed(1)}, ${isoPt(66, 70, 0)[1].toFixed(1)})`}>
+        <path d="M -10,2 L -8,-16 M -6,3.5 L -8,-16" fill="none" stroke="#0ea5e9" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M 10,-3 L 8,-20 M 14,-1.5 L 8,-20" fill="none" stroke="#0ea5e9" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="-8" y1="-16" x2="8" y2="-20" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" />
+        <line x1="-3" y1="-17.2" x2="-3.5" y2="-6" stroke="#334155" strokeWidth="0.8" />
+        <line x1="0.5" y1="-18" x2="0" y2="-6.8" stroke="#334155" strokeWidth="0.8" />
+        <rect x="-5" y="-6.4" width="6.5" height="1.8" rx="0.7" fill="#dc2626" stroke="#1e293b" strokeWidth="0.8" />
       </g>
     </g>
   </svg>
@@ -2782,35 +4334,132 @@ export const SvgPlayground = () => (
 
 export const SvgPool = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,2 -26,-11 0,-24 26,-11" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-2 -20,-12 0,-22 20,-12" fill="#7dd3fc" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={42} />
+      {/* デッキ */}
+      <IsoCube x={4} y={4} w={92} d={92} h={4} top="#e2e8f0" left="#cbd5e1" right="#94a3b8" sw={1} />
+      {/* プール縁 */}
+      <polygon points={`${iso3(16, 16, 4.1)} ${iso3(84, 16, 4.1)} ${iso3(84, 84, 4.1)} ${iso3(16, 84, 4.1)}`} fill="#f8fafc" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* 水面（少し下げて内壁を見せる） */}
+      <polygon points={`${iso3(19, 19, 4.1)} ${iso3(81, 19, 4.1)} ${iso3(81, 19, 1.8)} ${iso3(19, 19, 1.8)}`.replace(/ /g, ' ')} fill="none" />
+      <polygon points={`${iso3(19, 81, 1.8)} ${iso3(19, 19, 1.8)} ${iso3(19, 19, 4.1)} ${iso3(19, 81, 4.1)}`} fill="#bae6fd" stroke="#0369a1" strokeWidth="0.6" />
+      <polygon points={`${iso3(19, 19, 1.8)} ${iso3(81, 19, 1.8)} ${iso3(81, 19, 4.1)} ${iso3(19, 19, 4.1)}`} fill="#e0f2fe" stroke="#0369a1" strokeWidth="0.6" />
+      <polygon points={`${iso3(19, 19, 1.8)} ${iso3(81, 19, 1.8)} ${iso3(81, 81, 1.8)} ${iso3(19, 81, 1.8)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="0.8" strokeLinejoin="round" />
+      {/* コースロープ */}
+      <line x1={isoPt(19, 40, 1.9)[0]} y1={isoPt(19, 40, 1.9)[1]} x2={isoPt(81, 40, 1.9)[0]} y2={isoPt(81, 40, 1.9)[1]} stroke="#f8fafc" strokeWidth="1" strokeDasharray="3,2" opacity="0.9" />
+      <line x1={isoPt(19, 60, 1.9)[0]} y1={isoPt(19, 60, 1.9)[1]} x2={isoPt(81, 60, 1.9)[0]} y2={isoPt(81, 60, 1.9)[1]} stroke="#f8fafc" strokeWidth="1" strokeDasharray="3,2" opacity="0.9" />
+      {/* 波のきらめき */}
+      {[[32, 30], [55, 50], [40, 68], [68, 72]].map(([wx, wy], i) => (
+        <path key={i} d={`M ${isoPt(wx, wy, 1.9)[0]},${isoPt(wx, wy, 1.9)[1]} q 3.5,-1.4 7,0`} fill="none" stroke="#e0f2fe" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+      ))}
+      {/* はしご */}
+      <g transform={`translate(${isoPt(84, 30, 4.1)[0].toFixed(1)}, ${isoPt(84, 30, 4.1)[1].toFixed(1)})`}>
+        <path d="M 0,-4 L 0,4 M 3.4,-2.5 L 3.4,5.5" fill="none" stroke="#94a3b8" strokeWidth="1.3" strokeLinecap="round" />
+        <line x1="0" y1="-1.5" x2="3.4" y2="0" stroke="#94a3b8" strokeWidth="1" />
+        <line x1="0" y1="1.5" x2="3.4" y2="3" stroke="#94a3b8" strokeWidth="1" />
+      </g>
+      {/* ビーチボール */}
+      <g transform={`translate(${isoPt(60, 88, 5)[0].toFixed(1)}, ${isoPt(60, 88, 5)[1].toFixed(1)})`}>
+        <circle cx="0" cy="-2.6" r="3.4" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.9" />
+        <path d="M 0,-6 C 2.6,-5 2.6,-0.2 0,0.8 M 0,-6 C -2.6,-5 -2.6,-0.2 0,0.8" fill="none" stroke="#ef4444" strokeWidth="0.9" />
+      </g>
     </g>
   </svg>
 );
 
-export const SvgFerrisWheel = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-10,0 0,-40 -2,-40" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="10,0 0,-40 2,-40" fill="#cbd5e1" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="0" cy="-40" r="18" fill="none" stroke="#000" strokeWidth="2" />
-      <circle cx="0" cy="-40" r="3" fill="#64748b" stroke="#000" strokeWidth="1.5" />
-    </g>
-  </svg>
-);
+export const SvgFerrisWheel = () => {
+  const R = 26; const CX = 0; const CY = -58;
+  const cabinColors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#facc15'];
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 100) scale(2.1)">
+        <IsoShadow rx={30} ry={13} />
+        {/* 支柱（A型フレーム前後） */}
+        <polygon points={`${CX - 14},-6 ${CX - 2},${CY + 4} ${CX + 2},${CY + 4} ${CX - 9},-6`} fill="#64748b" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <polygon points={`${CX + 14},-6 ${CX + 2},${CY + 4} ${CX - 2},${CY + 4} ${CX + 9},-6`} fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <polygon points={`${CX - 16},-4 ${CX + 16},-4 ${CX + 13},-9 ${CX - 13},-9`} fill="#475569" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" transform="translate(0, 3)" />
+        {/* リム（二重） */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#1e293b" strokeWidth="3.6" />
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f59e0b" strokeWidth="1.8" />
+        <circle cx={CX} cy={CY} r={R - 4.6} fill="none" stroke="#fbbf24" strokeWidth="1" opacity="0.8" />
+        {/* スポーク */}
+        {[0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5].map(a => {
+          const rad = a * Math.PI / 180;
+          return <line key={a} x1={CX - R * Math.cos(rad)} y1={CY - R * Math.sin(rad)} x2={CX + R * Math.cos(rad)} y2={CY + R * Math.sin(rad)} stroke="#94a3b8" strokeWidth="1" />;
+        })}
+        {/* ハブ */}
+        <circle cx={CX} cy={CY} r="4.6" fill="#475569" stroke="#1e293b" strokeWidth="1.2" />
+        <circle cx={CX} cy={CY} r="2" fill="#e2e8f0" stroke="#1e293b" strokeWidth="0.7" />
+        {/* ゴンドラ（8基） */}
+        {cabinColors.map((c, i) => {
+          const a = (i * 45 + 22.5) * Math.PI / 180;
+          const gx = CX + R * Math.cos(a);
+          const gy = CY + R * Math.sin(a);
+          return (
+            <g key={i} transform={`translate(${gx.toFixed(1)}, ${gy.toFixed(1)})`}>
+              <line x1="0" y1="0" x2="0" y2="3" stroke="#1e293b" strokeWidth="0.9" />
+              <path d="M -3.4,3 L 3.4,3 L 2.6,9 Q 0,10.4 -2.6,9 Z" fill={c} stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+              <rect x="-2" y="4.2" width="4" height="2.2" rx="0.8" fill="#e0f2fe" stroke="#1e293b" strokeWidth="0.5" />
+            </g>
+          );
+        })}
+        {/* 乗り場 */}
+        <IsoCube x={40} y={58} w={22} d={18} h={7} top="#f8fafc" left="#e2e8f0" right="#cbd5e1" sw={0.9} />
+      </g>
+    </svg>
+  );
+};
 
 export const SvgAmusementPark = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="0,5 -38,-14 0,-33 38,-14" fill="#86efac" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <g transform="translate(-18, -18)">
-        <circle cx="0" cy="-30" r="12" fill="none" stroke="#000" strokeWidth="2" />
-        <circle cx="0" cy="-30" r="2" fill="#64748b" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow rx={44} />
+      {/* 敷地 */}
+      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <polygon points={`${iso3(40, 40, 0.1)} ${iso3(60, 40, 0.1)} ${iso3(60, 98, 0.1)} ${iso3(40, 98, 0.1)}`} fill="#fde68a" opacity="0.8" />
+      {/* ミニ観覧車（左奥） */}
+      <g transform={`translate(${isoPt(28, 28, 0)[0].toFixed(1)}, ${isoPt(28, 28, 0)[1].toFixed(1)})`}>
+        <polygon points="-6,0 -0.8,-20 0.8,-20 -3,0" fill="#64748b" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="6,0 0.8,-20 -0.8,-20 3,0" fill="#94a3b8" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <circle cx="0" cy="-20" r="11" fill="none" stroke="#1e293b" strokeWidth="2.2" />
+        <circle cx="0" cy="-20" r="11" fill="none" stroke="#38bdf8" strokeWidth="1" />
+        {[0, 45, 90, 135].map(a => {
+          const rad = a * Math.PI / 180;
+          return <line key={a} x1={-11 * Math.cos(rad)} y1={-20 - 11 * Math.sin(rad)} x2={11 * Math.cos(rad)} y2={-20 + 11 * Math.sin(rad)} stroke="#94a3b8" strokeWidth="0.8" />;
+        })}
+        <circle cx="0" cy="-20" r="2.2" fill="#475569" stroke="#1e293b" strokeWidth="0.8" />
+        {[0, 90, 180, 270].map((a, i) => {
+          const rad = (a + 45) * Math.PI / 180;
+          return <circle key={a} cx={11 * Math.cos(rad)} cy={-20 + 11 * Math.sin(rad) + 1.6} r="1.9"
+            fill={['#ef4444', '#facc15', '#3b82f6', '#22c55e'][i]} stroke="#1e293b" strokeWidth="0.7" />;
+        })}
       </g>
-      <g transform="translate(15, -10)">
-        <polygon points="0,-4 -14,-11 0,-18 14,-11" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,0 -14,-7 -14,-11 0,-4" fill="#fde047" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* メリーゴーラウンド（右手前） */}
+      <g transform={`translate(${isoPt(72, 62, 0)[0].toFixed(1)}, ${isoPt(72, 62, 0)[1].toFixed(1)})`}>
+        <ellipse cx="0" cy="0" rx="13" ry="6" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.1" />
+        <ellipse cx="0" cy="-1.6" rx="13" ry="6" fill="#fda4af" stroke="#1e293b" strokeWidth="1.1" />
+        {[-9, -3, 3, 9].map((px, i) => (
+          <line key={i} x1={px} y1={-3 + Math.abs(px) * 0.16} x2={px} y2={-12} stroke="#fbbf24" strokeWidth="1" />
+        ))}
+        {/* テント屋根 */}
+        <path d="M -14,-11 Q 0,-15.5 14,-11 L 0,-24 Z" fill="#ef4444" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M -7,-12.8 L 0,-24 L -0.5,-13.4 Z M 7,-12.8 L 0,-24 L 0.5,-13.4 Z" fill="#fef3c7" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
+        <circle cx="0" cy="-25" r="1.4" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.7" />
+        {/* 木馬 */}
+        <g transform="translate(-6, -5)"><path d="M -1.6,0 Q -2.4,-2.4 0,-2.6 Q 2.4,-2.8 2,-1 L 1.2,0.8 Z" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.7" /></g>
+        <g transform="translate(6, -6.6)"><path d="M -1.6,0 Q -2.4,-2.4 0,-2.6 Q 2.4,-2.8 2,-1 L 1.2,0.8 Z" fill="#a78bfa" stroke="#1e293b" strokeWidth="0.7" /></g>
+      </g>
+      {/* 入場ゲート（手前） */}
+      <g>
+        <IsoCube x={38} y={88} w={5} d={7} h={13} top="#fca5a5" left="#ef4444" right="#b91c1c" sw={0.9} />
+        <IsoCube x={57} y={88} w={5} d={7} h={13} top="#fca5a5" left="#ef4444" right="#b91c1c" sw={0.9} />
+        <polygon points={`${iso3(34, 95, 13)} ${iso3(66, 95, 13)} ${iso3(66, 95, 19)} ${iso3(34, 95, 19)}`} fill="#fbbf24" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        <circle cx={isoPt(42, 95, 16)[0]} cy={isoPt(42, 95, 16)[1]} r="1.2" fill="#ef4444" />
+        <circle cx={isoPt(50, 95, 16)[0]} cy={isoPt(50, 95, 16)[1]} r="1.2" fill="#3b82f6" />
+        <circle cx={isoPt(58, 95, 16)[0]} cy={isoPt(58, 95, 16)[1]} r="1.2" fill="#22c55e" />
+        {/* 旗 */}
+        <line x1={isoPt(40.5, 91.5, 13)[0]} y1={isoPt(40.5, 91.5, 13)[1] - 6} x2={isoPt(40.5, 91.5, 13)[0]} y2={isoPt(40.5, 91.5, 13)[1] - 13} stroke="#1e293b" strokeWidth="0.8" />
+        <polygon points={`${isoPt(40.5, 91.5, 13)[0]},${isoPt(40.5, 91.5, 13)[1] - 13} ${isoPt(40.5, 91.5, 13)[0] + 6},${isoPt(40.5, 91.5, 13)[1] - 11.4} ${isoPt(40.5, 91.5, 13)[0]},${isoPt(40.5, 91.5, 13)[1] - 9.8}`} fill="#ef4444" stroke="#1e293b" strokeWidth="0.7" strokeLinejoin="round" />
       </g>
     </g>
   </svg>
@@ -2818,135 +4467,392 @@ export const SvgAmusementPark = () => (
 
 // ==========================================
 // 11. 乗り物 (Vehicles)
+// アイソメトリックの車体＋タイヤ＋窓で統一クオリティ
 // ==========================================
-export const SvgCar = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-12,2 -8,-2 8,-10 12,-6 12,2 -12,8" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-12,2 -8,-2 8,-10 12,-6" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M -7,-2 L -3,-4 L 3,-7 L 7,-9 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+
+/** アイソメトリックのタイヤ（南西面に見える車輪） */
+const WheelSW = ({ x, y, r = 4.5 }) => {
+  const [px, py] = isoPt(x, y, 0);
+  return (
+    <g transform={`translate(${px.toFixed(1)}, ${py.toFixed(1)}) rotate(26.57)`}>
+      <ellipse cx="0" cy={-r} rx={r * 0.62} ry={r} fill="#1e293b" stroke="#0f172a" strokeWidth="1" />
+      <ellipse cx="0" cy={-r} rx={r * 0.3} ry={r * 0.48} fill="#94a3b8" stroke="#1e293b" strokeWidth="0.6" />
     </g>
-  </svg>
-);
+  );
+};
+
+export const SvgCar = ({ seed = 0 }) => {
+  const bodies = [
+    { l: '#ef4444', r: '#b91c1c', t: '#f87171' },
+    { l: '#3b82f6', r: '#1d4ed8', t: '#60a5fa' },
+    { l: '#facc15', r: '#ca8a04', t: '#fde047' },
+  ];
+  const c = bodies[(seed || 0) % bodies.length];
+  return (
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+      <g transform="translate(50, 100) scale(2.15)">
+        <IsoShadow cy={-21} rx={26} ry={11} o={0.2} />
+        {/* 奥のタイヤ */}
+        <WheelSW x={34} y={44} r={4} />
+        <WheelSW x={62} y={44} r={4} />
+        {/* 車体（下段） */}
+        <IsoCube x={24} y={40} z={3} w={52} d={22} h={8} top={c.t} left={c.l} right={c.r} sw={1} />
+        {/* キャビン */}
+        <IsoCube x={34} y={41.5} z={11} w={30} d={19} h={9} top={c.t} left={c.l} right={c.r} sw={1} />
+        {/* 窓（サイド2枚 + 後部） */}
+        <FaceSW x1={36.5} x2={47} y={60.5} z1={12.5} z2={18.5} fill="#bae6fd" sw={0.8} />
+        <FaceSW x1={50} x2={61} y={60.5} z1={12.5} z2={18.5} fill="#7dd3fc" sw={0.8} />
+        <FaceSE x={64.2} y1={44.5} y2={57.5} z1={12.5} z2={18.5} fill="#bae6fd" sw={0.8} />
+        {/* ヘッドライト・テールランプ */}
+        <FaceSE x={76.2} y1={43} y2={47} z1={6} z2={9} fill="#fef08a" sw={0.7} />
+        <FaceSE x={76.2} y1={55} y2={59} z1={6} z2={9} fill="#fde047" sw={0.7} />
+        <FaceSW x1={25.5} x2={29} y={62.2} z1={6} z2={9} fill="#f87171" sw={0.7} />
+        {/* バンパー */}
+        <FaceSE x={76.4} y1={42} y2={60} z1={3} z2={5} fill="#cbd5e1" sw={0.7} />
+        {/* 手前のタイヤ */}
+        <WheelSW x={34} y={63} r={4.5} />
+        <WheelSW x={62} y={63} r={4.5} />
+      </g>
+    </svg>
+  );
+};
 
 export const SvgBus = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-16,4 -14,-4 14,-18 16,-10 16,4 -16,10" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-16,4 -14,-4 14,-18 16,-10" fill="#22c55e" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M -9,-6 L 1,-11 L 5,-13 L -13,-4 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow cy={-21} rx={32} ry={12} o={0.2} />
+      <WheelSW x={26} y={42} r={4.5} />
+      <WheelSW x={70} y={42} r={4.5} />
+      {/* 車体 */}
+      <IsoCube x={12} y={38} z={3} w={76} d={24} h={19} top="#4ade80" left="#22c55e" right="#15803d" sw={1.1} />
+      {/* 白い帯 */}
+      <FaceSW x1={12} x2={88} y={62.2} z1={12} z2={15} fill="#f8fafc" sw={0.7} />
+      {/* サイド窓列 */}
+      {[15, 29, 43, 57].map(x => (
+        <FaceSW key={x} x1={x} x2={x + 11} y={62.3} z1={14.5} z2={20} fill="#bae6fd" sw={0.8} />
+      ))}
+      {/* 乗降ドア */}
+      <FaceSW x1={71} x2={84} y={62.3} z1={4} z2={20} fill="#0f172a" sw={0.9} />
+      <FaceSW x1={72.5} x2={77} y={62.5} z1={5} z2={19} fill="#7dd3fc" sw={0.5} />
+      <FaceSW x1={78.5} x2={82.5} y={62.5} z1={5} z2={19} fill="#7dd3fc" sw={0.5} />
+      {/* フロントガラス・ライト */}
+      <FaceSE x={88.2} y1={41} y2={59} z1={13} z2={20.5} fill="#bae6fd" sw={0.9} />
+      <FaceSE x={88.2} y1={40} y2={44} z1={6} z2={9} fill="#fef08a" sw={0.7} />
+      <FaceSE x={88.2} y1={56} y2={60} z1={6} z2={9} fill="#fef08a" sw={0.7} />
+      {/* 行き先表示 */}
+      <FaceSE x={88.3} y1={45} y2={55} z1={21.5} z2={24.5} fill="#1e293b" sw={0.7} />
+      <WheelSW x={26} y={64} r={5} />
+      <WheelSW x={70} y={64} r={5} />
     </g>
   </svg>
 );
 
 export const SvgBicycle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <circle cx="-8" cy="2" r="3.5" fill="none" stroke="#000" strokeWidth="1.5" />
-      <circle cx="8" cy="-2" r="3.5" fill="none" stroke="#000" strokeWidth="1.5" />
-      <path d="M -8,2 L 0,-6 L 8,-2" fill="none" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+    <g transform="translate(50, 78) scale(2.3)">
+      <ellipse cx="0" cy="10" rx="18" ry="5" fill="#020617" opacity="0.18" />
+      {/* 車輪 */}
+      {[-10.5, 10.5].map(cx => (
+        <g key={cx}>
+          <circle cx={cx} cy="1" r="9" fill="none" stroke="#1e293b" strokeWidth="2.4" />
+          <circle cx={cx} cy="1" r="6.8" fill="none" stroke="#94a3b8" strokeWidth="0.9" />
+          {[0, 45, 90, 135].map(a => (
+            <line key={a} x1={cx - 6.6 * Math.cos(a * Math.PI / 180)} y1={1 - 6.6 * Math.sin(a * Math.PI / 180)}
+              x2={cx + 6.6 * Math.cos(a * Math.PI / 180)} y2={1 + 6.6 * Math.sin(a * Math.PI / 180)}
+              stroke="#94a3b8" strokeWidth="0.7" />
+          ))}
+          <circle cx={cx} cy="1" r="1.3" fill="#475569" stroke="#1e293b" strokeWidth="0.6" />
+        </g>
+      ))}
+      {/* フレーム */}
+      <path d="M -10.5,1 L -3,-9 L 8,-9 M -3,-9 L 2,1 L 10.5,1 L 8,-9 L 9.5,-12 M -10.5,1 L -3.5,-12 M 2,1 L -10.5,1"
+        fill="none" stroke="#3b82f6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* サドル・ハンドル */}
+      <path d="M -6.5,-13 L -0.5,-13" stroke="#1e293b" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M 9.5,-12 Q 12.5,-13.5 13,-11" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+      {/* ペダル・チェーン */}
+      <circle cx="2" cy="1" r="2.6" fill="none" stroke="#475569" strokeWidth="1" />
+      <line x1="2" y1="1" x2="5.5" y2="4" stroke="#1e293b" strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="4.5" y="3.4" width="3" height="1.4" rx="0.5" fill="#1e293b" />
+      {/* 前かご */}
+      <path d="M 10,-10.5 L 15,-10.5 L 14.4,-6.5 L 10.6,-6.5 Z" fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
     </g>
   </svg>
 );
 
 export const SvgShipVehicle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <path d="M -18,2 C -15,-2 -5,-8 10,-6 C 18,-4 20,0 18,4 C 10,6 -10,6 -18,2 Z" fill="#b45309" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -10,-18 L 20,-6" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 水面パッド */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
+      {[[20, 70], [55, 82], [75, 30], [30, 30]].map(([wx, wy], i) => (
+        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+      ))}
+      {/* 船体（側面カーブ付き） */}
+      <g transform={`translate(${isoPt(50, 52, 0)[0]}, ${isoPt(50, 52, 0)[1]})`}>
+        {/* 船体外側 */}
+        <path d="M -26,-6 C -27,-1 -23,3 -16,4 L 14,9 C 22,10 27,6 28,0 L 29,-4 L 22,-6 Z"
+          fill="#b45309" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" transform="translate(0,-8)" />
+        {/* 船縁（内側デッキ） */}
+        <path d="M -24,-13 L 27,-11.5 C 25,-9 18,-7.5 8,-7.5 L -14,-10 C -20,-10.8 -23,-11.8 -24,-13 Z"
+          fill="#f59e0b" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        {/* 操舵室 */}
+        <g transform="translate(9, -16)">
+          <rect x="-6" y="-8" width="12" height="9" rx="1" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.1" />
+          <rect x="-4" y="-6.4" width="8" height="3.6" rx="0.6" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.7" />
+          <rect x="-7.5" y="-9.6" width="15" height="2" rx="1" fill="#0ea5e9" stroke="#1e293b" strokeWidth="0.8" />
+        </g>
+        {/* マスト＋旗 */}
+        <line x1="-12" y1="-11" x2="-12" y2="-30" stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+        <polygon points="-12,-30 -4,-27.5 -12,-25" fill="#ef4444" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
+        {/* 浮き輪 */}
+        <circle cx="-19" cy="-9" r="2.6" fill="#f8fafc" stroke="#ef4444" strokeWidth="1.4" />
+      </g>
     </g>
   </svg>
 );
 
 export const SvgAirplane = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,-15 -25,0 -25,-5 0,-20" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,-15 25,0 25,-5 0,-20" fill="#cbd5e1" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="0,-20 -6,-12 0,5 6,-12" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      {/* 駐機場パッド */}
+      <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#94a3b8" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      <polygon points={`${iso3(46, 10, 0.1)} ${iso3(54, 10, 0.1)} ${iso3(54, 90, 0.1)} ${iso3(46, 90, 0.1)}`} fill="#fbbf24" opacity="0.7" />
+      {/* 機体（斜め上から見たスタイル） */}
+      <g transform="translate(0, -24) rotate(-24) scale(1.05)">
+        <ellipse cx="0" cy="14" rx="9" ry="3.5" fill="#020617" opacity="0.15" />
+        {/* 主翼（後ろ側） */}
+        <polygon points="-2.5,-4 -21,6 -18,9 -1,2" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        {/* 胴体 */}
+        <path d="M 0,-24 C 4,-18 4.6,-8 4.6,2 L 4.2,10 C 4,13 -4,13 -4.2,10 L -4.6,2 C -4.6,-8 -4,-18 0,-24 Z"
+          fill="#f8fafc" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+        {/* コックピット窓 */}
+        <path d="M -2.6,-17 C -1,-20.5 1,-20.5 2.6,-17 C 1,-18.2 -1,-18.2 -2.6,-17 Z" fill="#0ea5e9" stroke="#1e293b" strokeWidth="0.8" />
+        {/* 客室窓 */}
+        {[-12, -8, -4, 0, 4].map(y => <circle key={y} cx="0" cy={y} r="1" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.4" />)}
+        {/* 主翼（手前側）＋エンジン */}
+        <polygon points="2.5,-4 21,6 18,9 1,2" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+        <ellipse cx="10.5" cy="4.6" rx="2" ry="3" fill="#64748b" stroke="#1e293b" strokeWidth="0.8" />
+        <ellipse cx="-10.5" cy="4.6" rx="2" ry="3" fill="#475569" stroke="#1e293b" strokeWidth="0.8" />
+        {/* 尾翼 */}
+        <polygon points="-1.5,9 -8,15.5 -6.4,17 0,12" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="1.5,9 8,15.5 6.4,17 0,12" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points="-1.2,10 0,17.5 1.2,10" fill="#ef4444" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      </g>
     </g>
   </svg>
 );
 
 export const SvgFireTruck = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.0)">
-      <polygon points="-16,4 -14,-4 14,-18 16,-10 16,4 -16,10" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-16,4 -14,-4 14,-18 16,-10" fill="#ef4444" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M -10,2 L 10,-8 L 12,-20 L 14,-22" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+    <g transform="translate(50, 100) scale(2.15)">
+      <IsoShadow cy={-21} rx={32} ry={12} o={0.2} />
+      <WheelSW x={26} y={42} r={4.5} />
+      <WheelSW x={70} y={42} r={4.5} />
+      {/* 荷台（後部） */}
+      <IsoCube x={12} y={38} z={3} w={50} d={24} h={16} top="#f87171" left="#ef4444" right="#b91c1c" sw={1.1} />
+      {/* キャブ（前部） */}
+      <IsoCube x={62} y={38} z={3} w={26} d={24} h={19} top="#f87171" left="#ef4444" right="#b91c1c" sw={1.1} />
+      {/* 白帯・器具箱 */}
+      <FaceSW x1={12} x2={62} y={62.2} z1={5} z2={8} fill="#f8fafc" sw={0.7} />
+      <FaceSW x1={16} x2={30} y={62.3} z1={9} z2={16} fill="#cbd5e1" sw={0.8} />
+      <FaceSW x1={33} x2={47} y={62.3} z1={9} z2={16} fill="#cbd5e1" sw={0.8} />
+      {/* キャブ窓・ライト */}
+      <FaceSW x1={65} x2={76} y={62.3} z1={13} z2={20} fill="#bae6fd" sw={0.8} />
+      <FaceSE x={88.2} y1={41} y2={59} z1={13} z2={20.5} fill="#7dd3fc" sw={0.9} />
+      <FaceSE x={88.2} y1={40} y2={44} z1={6} z2={9} fill="#fef08a" sw={0.7} />
+      <FaceSE x={88.2} y1={56} y2={60} z1={6} z2={9} fill="#fef08a" sw={0.7} />
+      {/* 赤色灯 */}
+      <g transform={`translate(${isoPt(75, 50, 23)[0].toFixed(1)}, ${isoPt(75, 50, 23)[1].toFixed(1)})`}>
+        <rect x="-3" y="-2.6" width="6" height="2.8" rx="1" fill="#dc2626" stroke="#1e293b" strokeWidth="0.7" filter="url(#glow-effect)" />
+      </g>
+      {/* はしご（銀色・荷台の上） */}
+      <g>
+        <polygon points={`${iso3(14, 46, 20)} ${iso3(58, 46, 24)} ${iso3(58, 49, 24)} ${iso3(14, 49, 20)}`} fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        <polygon points={`${iso3(14, 54, 20)} ${iso3(58, 54, 24)} ${iso3(58, 57, 24)} ${iso3(14, 57, 20)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+        {[20, 28, 36, 44, 52].map(x => (
+          <line key={x} x1={isoPt(x, 49, 20 + (x - 14) / 11)[0]} y1={isoPt(x, 49, 20 + (x - 14) / 11)[1]}
+            x2={isoPt(x, 54, 20 + (x - 14) / 11)[0]} y2={isoPt(x, 54, 20 + (x - 14) / 11)[1]}
+            stroke="#94a3b8" strokeWidth="1.2" />
+        ))}
+      </g>
+      <WheelSW x={26} y={64} r={5} />
+      <WheelSW x={70} y={64} r={5} />
     </g>
   </svg>
 );
 
 // ==========================================
 // 12. ストリートファニチャー (Street Furniture)
+// 小物は正面寄りの2.5Dで大きく描き、太い輪郭線で統一
 // ==========================================
 export const SvgBench = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-10,0 10,-6 10,-4 -10,2" fill="#d97706" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-10,-2 10,-8 10,-6 -10,0" fill="#f59e0b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 82) scale(2.6)">
+      <ellipse cx="0" cy="8" rx="17" ry="5" fill="#020617" opacity="0.18" />
+      {/* 脚（鋳鉄風） */}
+      <path d="M -11,7 L -11,-4 M -11,1 Q -13.5,1 -13.5,4 L -13.5,7" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+      <path d="M 11,7 L 11,-4 M 11,1 Q 13.5,1 13.5,4 L 13.5,7" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+      {/* 座面（板3枚） */}
+      <rect x="-15" y="-4" width="30" height="2.4" rx="1.2" fill="#d97706" stroke="#1e293b" strokeWidth="1.1" />
+      <rect x="-15" y="-1" width="30" height="2.4" rx="1.2" fill="#b45309" stroke="#1e293b" strokeWidth="1.1" />
+      {/* 背もたれ（板2枚） */}
+      <rect x="-15" y="-12.5" width="30" height="2.4" rx="1.2" fill="#f59e0b" stroke="#1e293b" strokeWidth="1.1" />
+      <rect x="-15" y="-9" width="30" height="2.4" rx="1.2" fill="#d97706" stroke="#1e293b" strokeWidth="1.1" />
+      {/* 背もたれ支柱 */}
+      <line x1="-11" y1="-4" x2="-11" y2="-13" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+      <line x1="11" y1="-4" x2="11" y2="-13" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgMailbox = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -4,-2 -4,-14 0,-12" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 4,-2 4,-14 0,-12" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-12 -4,-14 0,-16 4,-14" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 85) scale(2.6)">
+      <ellipse cx="0" cy="7" rx="10" ry="3.5" fill="#020617" opacity="0.2" />
+      {/* 台座 */}
+      <path d="M -6,7 L -5,3.5 L 5,3.5 L 6,7 Z" fill="#64748b" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* 円筒の本体 */}
+      <rect x="-5.5" y="-16" width="11" height="19.5" rx="1" fill="#ef4444" stroke="#1e293b" strokeWidth="1.4" />
+      <path d="M -5.5,-16 A 5.5,4.5 0 0 1 5.5,-16" fill="#f87171" stroke="#1e293b" strokeWidth="1.4" />
+      {/* 帽子（キャップ） */}
+      <path d="M -7,-15.5 L 7,-15.5 L 6,-18 L -6,-18 Z" fill="#dc2626" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* 投函口 */}
+      <rect x="-4" y="-13.5" width="8" height="2" rx="0.8" fill="#1e293b" />
+      {/* 〒マークと取出口 */}
+      <path d="M -2.6,-8.5 L 2.6,-8.5 M -2.6,-6.7 L 2.6,-6.7 M 0,-6.7 L 0,-3.4" fill="none" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" />
+      <rect x="-3.6" y="-1.6" width="7.2" height="3.6" rx="0.6" fill="#b91c1c" stroke="#1e293b" strokeWidth="0.9" />
     </g>
   </svg>
 );
 
 export const SvgPhoneBooth = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -6,-3 -6,-18 0,-15" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 6,-3 6,-18 0,-15" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-15 -6,-18 0,-21 6,-18" fill="#ef4444" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -2,-5 L -4,-6 L -4,-14 L -2,-13 Z" fill="#93c5fd" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 88) scale(2.5)">
+      <ellipse cx="0" cy="6" rx="12" ry="4" fill="#020617" opacity="0.2" />
+      {/* ボックス本体（2.5D） */}
+      <polygon points="-8,5 -8,-24 2,-28 2,1" fill="#166534" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      <polygon points="2,1 2,-28 9,-25 9,4" fill="#14532d" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      {/* ガラスパネル（正面ドア） */}
+      <polygon points="-6.4,2.6 -6.4,-21 0.4,-24 0.4,-0.4" fill="url(#grad-glass)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      <line x1="-3" y1="1.2" x2="-3" y2="-22.4" stroke="#14532d" strokeWidth="1" />
+      {/* ガラスパネル（側面） */}
+      <polygon points="3.6,-1 3.6,-24.5 7.4,-22.8 7.4,0.8" fill="#7dd3fc" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" opacity="0.9" />
+      {/* 屋根 */}
+      <polygon points="-10,-23 2,-27.8 11,-24 -1,-19.4" fill="#22c55e" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
+      <polygon points="-10,-23 -1,-19.4 -1,-17.6 -10,-21.2" fill="#15803d" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      <polygon points="-1,-19.4 11,-24 11,-22.2 -1,-17.6" fill="#166534" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* 中の電話機 */}
+      <rect x="-5.6" y="-14" width="3.6" height="5" rx="0.6" fill="#334155" stroke="#1e293b" strokeWidth="0.7" />
+      <path d="M -5.2,-14.4 Q -3.8,-16 -2.4,-14.4" fill="none" stroke="#1e293b" strokeWidth="1.1" strokeLinecap="round" />
+      {/* 電話サイン */}
+      <rect x="-6.2" y="-27.6" width="5" height="2.6" rx="0.5" fill="#fef08a" stroke="#1e293b" strokeWidth="0.7" transform="skewY(-21)" />
     </g>
   </svg>
 );
 
 export const SvgStreetLight = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-1,-3 1,-4 1,-30 -1,-29" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="2" cy="-28" r="3" fill="#fef08a" stroke="#000" strokeWidth="1.5" />
+    <g transform="translate(50, 92) scale(2.5)">
+      <ellipse cx="0" cy="3.5" rx="8" ry="3" fill="#020617" opacity="0.18" />
+      {/* 台座 */}
+      <path d="M -3.5,3 L -2.2,-0.5 L 2.2,-0.5 L 3.5,3 Z" fill="#475569" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
+      {/* ポール（上部でカーブ） */}
+      <path d="M 0,-0.5 L 0,-30 Q 0,-36 6,-36 L 10,-36" fill="none" stroke="#334155" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M 0,-0.5 L 0,-30 Q 0,-35 5.5,-35.2" fill="none" stroke="#64748b" strokeWidth="1" strokeLinecap="round" />
+      {/* ランプヘッド */}
+      <path d="M 7,-36.8 L 13,-36.8 L 14.4,-33.4 L 5.6,-33.4 Z" fill="#1e293b" stroke="#0f172a" strokeWidth="1" strokeLinejoin="round" />
+      <ellipse cx="10" cy="-33" rx="3.6" ry="1.6" fill="#fef08a" stroke="#1e293b" strokeWidth="0.9" filter="url(#glow-effect)" />
+      {/* 光のこぼれ */}
+      <path d="M 6.5,-32 L 3.5,-24 M 13.5,-32 L 16.5,-24" stroke="#fde047" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+      {/* 小さな装飾バナー */}
+      <rect x="-4.6" y="-26" width="4.6" height="9" rx="0.8" fill="#22c55e" stroke="#1e293b" strokeWidth="0.9" />
+      <circle cx="-2.3" cy="-21.5" r="1.5" fill="#fef9c3" />
     </g>
   </svg>
 );
 
 export const SvgBusStop = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-1,0 1,-1 1,-22 -1,-21" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="-8,-18 8,-24 8,-16 -8,-10" fill="#3b82f6" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 88) scale(2.5)">
+      <ellipse cx="0" cy="5" rx="12" ry="4" fill="#020617" opacity="0.18" />
+      {/* 台座とポール */}
+      <ellipse cx="-4" cy="3.4" rx="4.4" ry="1.8" fill="#64748b" stroke="#1e293b" strokeWidth="1" />
+      <line x1="-4" y1="3" x2="-4" y2="-27" stroke="#334155" strokeWidth="2.4" strokeLinecap="round" />
+      {/* 標識（丸板） */}
+      <circle cx="-4" cy="-30" r="7.5" fill="#3b82f6" stroke="#1e293b" strokeWidth="1.4" />
+      <circle cx="-4" cy="-30" r="5.8" fill="none" stroke="#f8fafc" strokeWidth="1" />
+      {/* バスのピクトグラム */}
+      <g transform="translate(-4, -30)">
+        <rect x="-3.6" y="-2.6" width="7.2" height="4.4" rx="0.8" fill="#f8fafc" />
+        <rect x="-2.8" y="-1.8" width="2.2" height="1.6" fill="#3b82f6" />
+        <rect x="0.6" y="-1.8" width="2.2" height="1.6" fill="#3b82f6" />
+        <circle cx="-2" cy="2.2" r="0.9" fill="#f8fafc" />
+        <circle cx="2" cy="2.2" r="0.9" fill="#f8fafc" />
+      </g>
+      {/* 時刻表ボックス */}
+      <rect x="-2.8" y="-18" width="7" height="9" rx="0.8" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.1" />
+      <line x1="-1.2" y1="-15.6" x2="2.6" y2="-15.6" stroke="#94a3b8" strokeWidth="0.8" />
+      <line x1="-1.2" y1="-13.6" x2="2.6" y2="-13.6" stroke="#94a3b8" strokeWidth="0.8" />
+      <line x1="-1.2" y1="-11.6" x2="1.4" y2="-11.6" stroke="#94a3b8" strokeWidth="0.8" />
+      {/* 小さなベンチ */}
+      <rect x="2" y="-3.5" width="10" height="2" rx="1" fill="#d97706" stroke="#1e293b" strokeWidth="0.9" />
+      <line x1="3.6" y1="-1.5" x2="3.6" y2="2.5" stroke="#1e293b" strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="10.4" y1="-1.5" x2="10.4" y2="2.5" stroke="#1e293b" strokeWidth="1.3" strokeLinecap="round" />
     </g>
   </svg>
 );
 
 export const SvgVendingMachine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -8,-4 -8,-18 0,-14" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 8,-4 8,-18 0,-14" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-14 -8,-18 0,-22 8,-18" fill="#1e293b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <rect x="-6" y="-12" width="4" height="6" fill="#ef4444" stroke="#000" strokeWidth="1" />
-      <rect x="2" y="-12" width="4" height="6" fill="#3b82f6" stroke="#000" strokeWidth="1" />
+    <g transform="translate(50, 86) scale(2.5)">
+      <ellipse cx="0" cy="6" rx="11" ry="4" fill="#020617" opacity="0.2" />
+      {/* 本体（2.5D） */}
+      <polygon points="-8,5 -8,-22 3,-26 3,1" fill="#dc2626" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      <polygon points="3,1 3,-26 9,-23.5 9,3.5" fill="#991b1b" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      <polygon points="-8,-22 3,-26 9,-23.5 -2,-19.5" fill="#f87171" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* 光る商品ディスプレイ */}
+      <polygon points="-6.6,-11.5 1.6,-14.5 1.6,-23 -6.6,-20 " fill="#fef9c3" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      {/* 缶（2段） */}
+      {[0, 1].map(row => (
+        [0, 1, 2].map(col => (
+          <rect key={`${row}-${col}`} x={-6 + col * 2.7} y={-19.2 + row * 3.6 - col * 1.0} width="2" height="2.8" rx="0.4"
+            fill={['#3b82f6', '#22c55e', '#f59e0b'][col]} stroke="#1e293b" strokeWidth="0.5" />
+        ))
+      ))}
+      {/* サンプル表示の仕切り */}
+      <line x1="-6.6" y1="-16" x2="1.6" y2="-19" stroke="#94a3b8" strokeWidth="0.6" />
+      {/* コイン投入口・ボタン */}
+      <rect x="-6.6" y="-9.5" width="3" height="1.4" rx="0.4" fill="#fbbf24" stroke="#1e293b" strokeWidth="0.6" transform="skewY(-20)" />
+      <circle cx="0.4" cy="-9.6" r="0.8" fill="#fef08a" stroke="#1e293b" strokeWidth="0.5" />
+      {/* 取出口 */}
+      <polygon points="-6.4,0.8 1,-1.9 1,-4.9 -6.4,-2.2" fill="#450a0a" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
+      <polygon points="-5.6,-0.1 0.2,-2.2 0.2,-3.9 -5.6,-1.8" fill="#7f1d1d" />
     </g>
   </svg>
 );
 
 export const SvgTrashCan = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="0,0 -5,-2.5 -5,-10 0,-7.5" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,0 5,-2.5 5,-10 0,-7.5" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-7.5 -5,-10 0,-12.5 5,-10" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+    <g transform="translate(50, 84) scale(2.5)">
+      <ellipse cx="0" cy="5" rx="9.5" ry="3.5" fill="#020617" opacity="0.2" />
+      {/* 本体（円筒） */}
+      <path d="M -7,-13 L -6,3 A 6,2.6 0 0 0 6,3 L 7,-13 Z" fill="#64748b" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
+      {/* 縦のリブ */}
+      <line x1="-3.5" y1="-12.4" x2="-3" y2="4.6" stroke="#475569" strokeWidth="1" />
+      <line x1="0" y1="-12.2" x2="0" y2="5.4" stroke="#475569" strokeWidth="1" />
+      <line x1="3.5" y1="-12.4" x2="3" y2="4.6" stroke="#475569" strokeWidth="1" />
+      {/* 帯 */}
+      <path d="M -6.6,-7 Q 0,-4.6 6.6,-7" fill="none" stroke="#334155" strokeWidth="1.4" />
+      {/* フタ */}
+      <ellipse cx="0" cy="-13" rx="7.6" ry="3.2" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.3" />
+      <ellipse cx="0" cy="-14" rx="7.6" ry="3.2" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.3" />
+      {/* 投入口（スイングドア） */}
+      <path d="M -3,-17.6 Q 0,-19.8 3,-17.6 L 3,-13.4 Q 0,-15 -3,-13.4 Z" fill="#475569" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
+      {/* リサイクルマーク */}
+      <g transform="translate(0, -3)" stroke="#4ade80" strokeWidth="1" fill="none" strokeLinecap="round">
+        <path d="M -1.8,1.4 L 0,-1.6 L 1.8,1.4 Z" strokeLinejoin="round" />
+      </g>
     </g>
   </svg>
 );

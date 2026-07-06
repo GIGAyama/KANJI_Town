@@ -43,9 +43,14 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
   const handleAnswer = useCallback((isKnown) => {
     if (!kanji || !revealed) return;
     if (!isKnown) {
-      let newStats = { ...stats };
-      const cur = migrateCard(newStats.kanjiStats[kanji.id]);
-      newStats.kanjiStats[kanji.id] = { ...cur, ...calculateNextReview(cur, 'again'), status: 'learning', mistakes: (cur.mistakes || 0) + 1 };
+      const cur = migrateCard(stats.kanjiStats[kanji.id]);
+      const newStats = {
+        ...stats,
+        kanjiStats: {
+          ...stats.kanjiStats,
+          [kanji.id]: { ...cur, ...calculateNextReview(cur, 'again'), status: 'learning', mistakes: (cur.mistakes || 0) + 1 },
+        },
+      };
       setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('stamp_bad');
     } else {
       earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 2, coins: earnedRef.current.coins + 1 };

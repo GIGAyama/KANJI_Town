@@ -11,7 +11,7 @@ import MobileBottomNav from './components/ui/MobileBottomNav';
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
 import { audioCtrl } from './systems/audio';
-import { checkLevelUp } from './utils/level-system';
+import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
 
 // Data
@@ -72,6 +72,26 @@ const LazyFallback = () => (
     </div>
   </div>
 );
+
+// テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
+const THEME_VARS = {
+  default: `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`,
+  dark: `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`,
+  sakura: `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`,
+  ocean: `--bg: #f0f9ff; --primary: #0284c7; --secondary: #38bdf8; --accent: #7dd3fc; --text: #0c4a6e; --panel: #ffffff;`,
+  sunset: `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`,
+  gold: `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`,
+};
+
+const GlobalStyle = ({ themeName }) => {
+  const tv = THEME_VARS[themeName] || THEME_VARS.default;
+  return (
+    <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; }`}</style>
+  );
+};
+
+/** 設定の音量レベルID → 実音量値 */
+const VOLUME_VALUES = { off: 0, low: 0.3, mid: 0.6, high: 1.0 };
 
 /** セッションデータの初期値を生成する */
 function createInitialSessionData(overrides = {}) {
@@ -193,6 +213,11 @@ export default function App() {
   // 初回ロード時
   useEffect(() => {
     refreshDailyData(stats, true);
+    // 保存済みの音量設定を適用
+    const savedLevel = stats.settings?.volumeLevel;
+    if (savedLevel && VOLUME_VALUES[savedLevel] !== undefined) {
+      audioCtrl.volume = VOLUME_VALUES[savedLevel];
+    }
   }, []);
 
   // 日付変更の監視（開きっぱなし対策）
@@ -254,15 +279,19 @@ export default function App() {
   const handleClaimMission = (mission) => {
     const updated = dailyMissions.map(m => m.id === mission.id ? { ...m, claimed: true } : m);
     setDailyMissions(updated);
-    const newStats = { 
-      ...stats, 
-      coins: (stats.coins || 0) + mission.reward, 
-      totalExp: (stats.totalExp || 0) + (mission.rewardExp || 0),
-      dailyMissions: updated 
+    // rewardExpでレベルアップした場合も報酬（コイン・アイテム・探索半径）を確実に付与する
+    const { stats: granted, levelUpData } = grantExpWithLevelRewards(stats, mission.rewardExp || 0);
+    const newStats = {
+      ...granted,
+      coins: (granted.coins || 0) + mission.reward,
+      dailyMissions: updated
     };
     setStats(newStats);
     StorageAPI.saveStats(newStats);
     audioCtrl.playSE('coin');
+    if (levelUpData.isLevelUp) {
+      setTimeout(() => audioCtrl.playSE('level_up', 0.5), 400);
+    }
   };
 
   // ヒント消去
@@ -559,24 +588,12 @@ export default function App() {
     });
   };
 
-  const GlobalStyle = () => {
-    const { themeName: autoTheme } = levelInfo;
-    const themeOverride = stats.settings?.themeOverride || 'auto';
-    const themeName = themeOverride === 'auto' ? autoTheme : themeOverride;
-    let tv = `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`;
-    if (themeName === 'dark') tv = `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`;
-    if (themeName === 'sakura') tv = `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`;
-    if (themeName === 'ocean') tv = `--bg: #f0f9ff; --primary: #0284c7; --secondary: #38bdf8; --accent: #7dd3fc; --text: #0c4a6e; --panel: #ffffff;`;
-    if (themeName === 'sunset') tv = `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`;
-    if (themeName === 'gold') tv = `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`;
-    return (
-      <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; }`}</style>
-    );
-  };
+  const themeOverride = stats.settings?.themeOverride || 'auto';
+  const activeThemeName = themeOverride === 'auto' ? levelInfo.themeName : themeOverride;
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
-      <GlobalStyle />
+      <GlobalStyle themeName={activeThemeName} />
 
       {/* ストレージ保存失敗バナー（オフラインバナーより上に表示） */}
       <StorageErrorBanner />
