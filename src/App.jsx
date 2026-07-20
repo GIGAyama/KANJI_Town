@@ -9,8 +9,8 @@ import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
-import { calculateNextReview, migrateCard } from './systems/srs';
-import { buildLearningPlan } from './systems/learning-plan';
+import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
+import { buildLearningPlan, buildWeakKanjiPlan } from './systems/learning-plan';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
@@ -369,6 +369,25 @@ export default function App() {
     setView('flashcard');
   };
 
+  const startWeakSession = () => {
+    audioCtrl.init();
+    const { queue } = buildWeakKanjiPlan({
+      kanjiData: KANJI_DATA,
+      kanjiStats: stats.kanjiStats,
+    });
+    if (queue.length === 0) return;
+
+    const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
+    setSessionData(createInitialSessionData({
+      queue,
+      oldExp: stats.totalExp,
+      expMultiplier,
+      isDrill: true,
+      isWeakPractice: true,
+    }));
+    setView('session');
+  };
+
   const startSurvival = () => {
     audioCtrl.init();
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
@@ -398,7 +417,27 @@ export default function App() {
   const handleUpdateStat = (kanjiObj, evalType) => {
     const id = kanjiObj.id;
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    if (sessionData.isDrill) { setSessionData(d => ({ ...d, earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL), reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1) })); return evalType !== 'again'; }
+    if (sessionData.isDrill) {
+      setStats(s => {
+        const latest = migrateCard(s.kanjiStats?.[id]);
+        return {
+          ...s,
+          kanjiStats: {
+            ...s.kanjiStats,
+            [id]: {
+              ...latest,
+              ...recordPracticeAttempt(latest, evalType),
+            },
+          },
+        };
+      });
+      setSessionData(d => ({
+        ...d,
+        earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL),
+        reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1),
+      }));
+      return evalType !== 'again';
+    }
 
     const next = calculateNextReview(cur, evalType);
     const wasNew = cur.status === 'new';
@@ -446,7 +485,16 @@ export default function App() {
 
     setStats(s => ({
       ...s,
-      kanjiStats: { ...s.kanjiStats, [id]: { ...cur, ...next, status: newStatus, mistakes: evalType === 'again' ? (cur.mistakes || 0) + 1 : (cur.mistakes || 0) } },
+      kanjiStats: {
+        ...s.kanjiStats,
+        [id]: {
+          ...cur,
+          ...next,
+          status: newStatus,
+          mistakes: evalType === 'again' ? (cur.mistakes || 0) + 1 : (cur.mistakes || 0),
+          ...recordPracticeAttempt(cur, evalType),
+        },
+      },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
     }));
     setSessionData(d => ({
@@ -667,7 +715,7 @@ export default function App() {
                 });
               }} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
-          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} /></ErrorBoundary></PageWrapper>}
+          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
           {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} startDrillTest={startDrillTest} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}

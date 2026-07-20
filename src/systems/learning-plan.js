@@ -1,5 +1,7 @@
 export const DAILY_GOAL_OPTIONS = [5, 10, 20];
 export const DEFAULT_DAILY_GOAL = 10;
+export const DEFAULT_WEAK_SESSION_LIMIT = 5;
+export const WEAK_PRACTICE_SUCCESS_TARGET = 3;
 
 const asLimit = (value) => Math.max(0, Math.floor(Number(value) || 0));
 
@@ -27,6 +29,52 @@ export function getDailyLearningProgress(stats, today) {
     remaining,
     percent: Math.min(100, Math.round((reviewed / goal) * 100)),
     isComplete: reviewed >= goal,
+  };
+}
+
+/**
+ * 過去につまずいた漢字から、短い集中練習用のキューを作る。
+ * 復習期限、ラプス、ミス、連続正解数、容易度の順で優先する。
+ * 3回連続で正解した漢字は一度キューから外し、成功体験を可視化する。
+ */
+export function buildWeakKanjiPlan({
+  kanjiData,
+  kanjiStats = {},
+  limit = DEFAULT_WEAK_SESSION_LIMIT,
+  now = Date.now(),
+}) {
+  const safeLimit = asLimit(limit);
+  const candidates = kanjiData
+    .filter((kanji) => {
+      const stat = kanjiStats[kanji.id];
+      if (!stat || stat.status === 'new') return false;
+
+      const hasDifficultySignal = (stat.mistakes || 0) > 0
+        || (stat.lapses || 0) > 0
+        || (stat.ease ?? 2.5) < 2.5;
+      return hasDifficultySignal
+        && (stat.practiceStreak || 0) < WEAK_PRACTICE_SUCCESS_TARGET;
+    })
+    .sort((a, b) => {
+      const aStat = kanjiStats[a.id] || {};
+      const bStat = kanjiStats[b.id] || {};
+      const aDue = (aStat.nextReview || 0) <= now ? 1 : 0;
+      const bDue = (bStat.nextReview || 0) <= now ? 1 : 0;
+
+      return (bDue - aDue)
+        || ((bStat.lapses || 0) - (aStat.lapses || 0))
+        || ((bStat.mistakes || 0) - (aStat.mistakes || 0))
+        || ((aStat.practiceStreak || 0) - (bStat.practiceStreak || 0))
+        || ((aStat.ease ?? 2.5) - (bStat.ease ?? 2.5))
+        || ((aStat.nextReview || 0) - (bStat.nextReview || 0))
+        || String(a.id).localeCompare(String(b.id));
+    });
+
+  const queue = candidates.slice(0, safeLimit);
+  return {
+    queue,
+    availableCount: candidates.length,
+    dueCount: candidates.filter((kanji) => (kanjiStats[kanji.id]?.nextReview || 0) <= now).length,
   };
 }
 

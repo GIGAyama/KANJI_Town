@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildLearningPlan,
+  buildWeakKanjiPlan,
   getDailyGoal,
   getDailyLearningProgress,
+  WEAK_PRACTICE_SUCCESS_TARGET,
 } from '../src/systems/learning-plan.js';
 import { calculateLearningViewport } from '../src/utils/learning-viewport.js';
 
@@ -38,6 +40,24 @@ test('学習目標は安全な既定値と当日進捗を返す', () => {
     getDailyLearningProgress({ settings: { dailyGoal: 5 }, daily: { '2026-07-21': { reviewed: 7 } } }, '2026-07-21'),
     { goal: 5, reviewed: 7, remaining: 0, percent: 100, isComplete: true },
   );
+});
+
+test('苦手特訓は期限内のつまずきを優先し、3回連続正解した漢字を外す', () => {
+  const plan = buildWeakKanjiPlan({
+    kanjiData,
+    kanjiStats: {
+      a: { status: 'review', nextReview: 100, mistakes: 5, lapses: 0, practiceStreak: 0 },
+      b: { status: 'learning', nextReview: 50, mistakes: 1, lapses: 2, practiceStreak: 1 },
+      c: { status: 'review', nextReview: 0, mistakes: 10, lapses: 3, practiceStreak: WEAK_PRACTICE_SUCCESS_TARGET },
+      d: { status: 'review', nextReview: 500, mistakes: 20, lapses: 4, practiceStreak: 0 },
+    },
+    now: 200,
+    limit: 5,
+  });
+
+  assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['b', 'a', 'd']);
+  assert.equal(plan.availableCount, 3);
+  assert.equal(plan.dueCount, 2);
 });
 
 test('タブレット縦持ちは積層、横持ちは広い学習面を使う', () => {
