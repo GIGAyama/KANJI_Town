@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock } from 'lucide-react';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
-import { buildWeakKanjiPlan, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
+import { buildWeakKanjiPlan, getReviewForecast, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
 
 const StatsView = ({ setView, stats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
@@ -21,6 +21,17 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   }));
 
   const maxExp = Math.max(...dailyData.map(d => d.exp), 1);
+  const reviewForecast = useMemo(
+    () => getReviewForecast(stats.kanjiStats),
+    [stats.kanjiStats],
+  );
+  const forecastData = reviewForecast.days.map((day, index) => ({
+    ...day,
+    label: index === 0 ? '今日' : index === 1 ? '明日' : `${day.date.getMonth() + 1}/${day.date.getDate()}`,
+  }));
+  const nextReviewLabel = reviewForecast.nextReviewAt
+    ? `${new Date(reviewForecast.nextReviewAt).getMonth() + 1}月${new Date(reviewForecast.nextReviewAt).getDate()}日`
+    : null;
 
   // 復習期限・つまずき・連続正解数を加味した苦手漢字 top5
   const weakKanji = useMemo(() => {
@@ -97,6 +108,41 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
                 title={`${day.label}: ${day.exp} EXP・${day.reviewed}字`}
               />
               <div className={`text-[9px] font-bold truncate w-full text-center ${day.goalComplete ? 'text-emerald-600' : 'text-[var(--text)] opacity-50'}`}>{day.goalComplete ? '✓' : ''}{day.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 間隔反復の復習予報 */}
+      <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><CalendarClock size={17} className="text-sky-500" /> 7{F("日間","にちかん")}の{F("復習","ふくしゅう")}{F("予報","よほう")}</div>
+          <div className="rounded-full bg-sky-50 border-2 border-sky-200 px-2.5 py-1 text-xs font-black text-sky-700">{reviewForecast.weekCount}{F("字","じ")}</div>
+        </div>
+        <div className={`mb-3 text-[11px] font-bold ${reviewForecast.overdueCount > 0 ? 'text-rose-600' : 'text-[var(--text)] opacity-55'}`}>
+          {reviewForecast.overdueCount > 0
+            ? `${reviewForecast.overdueCount}字が復習を待っています`
+            : reviewForecast.todayCount > 0
+              ? `きょうは ${reviewForecast.todayCount}字の復習予定です`
+              : reviewForecast.tomorrowCount > 0
+                ? `あしたは ${reviewForecast.tomorrowCount}字の復習予定です`
+                : nextReviewLabel
+                  ? `次の復習は ${nextReviewLabel} です`
+                  : '学習した漢字が増えると、ここに予定が表示されます'}
+        </div>
+        <div className="flex items-end gap-2 h-28" role="list" aria-label={`7日間の復習予定、合計${reviewForecast.weekCount}字`}>
+          {forecastData.map((day, index) => (
+            <div key={day.key} role="listitem" aria-label={`${day.label}、復習${day.count}字`} className="flex-1 flex h-full flex-col items-center justify-end gap-1">
+              <div className={`text-[10px] font-black ${day.count > 0 ? 'text-sky-700' : 'text-[var(--text)] opacity-35'}`}>{day.count}</div>
+              <div className="flex h-16 w-full items-end">
+                <div
+                  className={`w-full rounded-t-lg transition-all ${index === 0 && reviewForecast.overdueCount > 0 ? 'bg-rose-400' : 'bg-sky-400'}`}
+                  style={{ height: `${Math.max((day.count / reviewForecast.maxCount) * 64, day.count > 0 ? 8 : 2)}px`, opacity: day.count > 0 ? 1 : 0.25 }}
+                  title={`${day.label}: ${day.count}字`}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className={`w-full truncate text-center text-[9px] font-bold ${index < 2 ? 'text-[var(--text)]' : 'text-[var(--text)] opacity-50'}`}>{day.label}</div>
             </div>
           ))}
         </div>
