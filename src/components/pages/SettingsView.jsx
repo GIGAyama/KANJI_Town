@@ -5,6 +5,7 @@ import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
+import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -68,6 +69,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const autoPlay = settings.autoPlay !== false;
   const showFurigana = settings.showFurigana !== false;
   const sessionSize = settings.sessionSize || 'normal';
+  const dailyGoal = getDailyGoal(settings);
 
   const updateSettings = (patch) => {
     const newSettings = { ...settings, ...patch };
@@ -254,6 +256,22 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                   <button key={s.id} onClick={() => { audioCtrl.playSE('click'); updateSettings({ sessionSize: s.id }); }} className={`flex-1 py-2 rounded-xl border-[3px] transition-all text-center ${isActive ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/20'}`}>
                     <div className="text-xs font-black text-[var(--text)]">{s.label}</div>
                     <div className="text-[9px] text-[var(--text)] opacity-50">{s.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-bold text-[var(--text)] mb-1">1{F("日","にち")}の{F("学習","がくしゅう")}{F("目標","もくひょう")}</div>
+            <div className="text-[10px] text-[var(--text)] opacity-50 mb-2">ホームに{F("表示","ひょうじ")}する、むりなく{F("続","つづ")}けるためのめやす</div>
+            <div className="grid grid-cols-3 gap-2">
+              {DAILY_GOAL_OPTIONS.map((goal) => {
+                const isActive = dailyGoal === goal;
+                return (
+                  <button key={goal} onClick={() => { audioCtrl.playSE('click'); updateSettings({ dailyGoal: goal }); }} className={`py-2.5 rounded-xl border-[3px] transition-all text-center ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/20'}`}>
+                    <div className="text-base font-black text-[var(--text)]">{goal}<span className="text-[10px] ml-0.5">字</span></div>
+                    <div className="text-[9px] text-[var(--text)] opacity-50">{goal === 5 ? 'ゆったり' : goal === 10 ? 'おすすめ' : 'しっかり'}</div>
                   </button>
                 );
               })}

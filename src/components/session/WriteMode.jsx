@@ -9,7 +9,7 @@ import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { STROKE_THRESHOLDS } from '../../constants/strokeConfig';
 
-const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonSidebar, onRecordPerfect }) => {
+const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
   const [currentStroke, setCurrentStroke] = useState(0); const [isDrawing, setIsDrawing] = useState(false);
   const [count, setCount] = useState(0); const [statusMsg, setStatusMsg] = useState("１かくめ をかこう！");
@@ -142,7 +142,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
     </div>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
 };
 
 export default WriteMode;

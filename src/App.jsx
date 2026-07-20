@@ -10,6 +10,7 @@ import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard } from './systems/srs';
+import { buildLearningPlan } from './systems/learning-plan';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
@@ -193,7 +194,7 @@ export default function App() {
           updated.dailyMissionsDate = today;
         }
         if (willCollect && updated.lastCollectionDate !== today) {
-          updated = StorageAPI.updateDaily(updated, 0, { reviewedCount: 0, perfectCount: 0 });
+          updated = StorageAPI.collectDailyTownResources(updated, today);
           if (updated.lastCollectionResult) {
             const sat = updated.satisfaction || 0;
             setResidentCollectionResult({
@@ -304,25 +305,16 @@ export default function App() {
   };
 
   const startSession = (selectedGrade) => {
-    audioCtrl.init(); const now = Date.now();
+    audioCtrl.init();
     const sessionSize = stats.settings?.sessionSize || 'normal';
     const limits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
-    const reviewLimit = limits.review;
-    const newLimit = limits.new;
-    const reviewTargets = KANJI_DATA
-      .filter(k => {
-        const s = stats.kanjiStats?.[k.id];
-        return s && s.status !== 'new' && (s.nextReview || 0) <= now;
-      })
-      .sort((a, b) => (stats.kanjiStats?.[a.id]?.nextReview || 0) - (stats.kanjiStats?.[b.id]?.nextReview || 0))
-      .slice(0, reviewLimit);
-    const newTargets = KANJI_DATA
-      .filter(k => k.grade === selectedGrade && (!stats.kanjiStats?.[k.id] || stats.kanjiStats[k.id].status === 'new'))
-      .sort(() => Math.random() - 0.5)
-      .slice(0, newLimit);
+    const { queue } = buildLearningPlan({
+      kanjiData: KANJI_DATA,
+      kanjiStats: stats.kanjiStats,
+      selectedGrade,
+      limits,
+    });
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    const queue = reviewTargets.length > 0 ? reviewTargets : newTargets;
-    if (queue.length === 0) { const fallback = KANJI_DATA.find(k => k.grade === selectedGrade); if (fallback) queue.push(fallback); }
     if (queue.length > 0) {
       setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
       setView('session');
@@ -407,7 +399,7 @@ export default function App() {
   const handleUpdateStat = (kanjiObj, evalType) => {
     const id = kanjiObj.id;
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    if (sessionData.isDrill) { setSessionData(d => ({ ...d, earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL), reviewedCount: (d.reviewedCount || 0) + 1 })); return evalType !== 'again'; }
+    if (sessionData.isDrill) { setSessionData(d => ({ ...d, earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL), reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1) })); return evalType !== 'again'; }
 
     const next = calculateNextReview(cur, evalType);
     const wasNew = cur.status === 'new';
@@ -461,7 +453,7 @@ export default function App() {
     setSessionData(d => ({
       ...d,
       earnedExp: d.earnedExp + exp,
-      reviewedCount: (d.reviewedCount || 0) + 1,
+      reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1),
       newKanjiCount: (d.newKanjiCount || 0) + (wasNew ? 1 : 0),
       masteredCount: (d.masteredCount || 0) + (isMastering && cur.status !== 'mastered' ? 1 : 0),
       unlockedItems: unlockedItem ? [...d.unlockedItems, unlockedItem] : d.unlockedItems,
