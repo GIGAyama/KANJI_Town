@@ -10,7 +10,7 @@ import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
-import { buildLearningPlan, buildWeakKanjiPlan } from './systems/learning-plan';
+import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
@@ -308,7 +308,9 @@ export default function App() {
   const startSession = (selectedGrade) => {
     audioCtrl.init();
     const sessionSize = stats.settings?.sessionSize || 'normal';
-    const limits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
+    const baseLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
+    const dailyProgress = getDailyLearningProgress(stats, getTodayString());
+    const limits = getGoalAwareSessionLimits(baseLimits, dailyProgress);
     const { queue } = buildLearningPlan({
       kanjiData: KANJI_DATA,
       kanjiStats: stats.kanjiStats,
@@ -737,7 +739,7 @@ export default function App() {
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} stats={stats} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} startDrillSession={startDrillSession} setView={setView} setSessionData={setSessionData} createInitialSessionData={createInitialSessionData} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
+          {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
         </Suspense>
       </main>
