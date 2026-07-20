@@ -1,6 +1,6 @@
 // マイ漢字タウン Service Worker
 // 戦略キャッシュでGIGAスクール端末のオフライン環境に完全対応
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 const CACHE_STATIC = `kanji-town-static-v${CACHE_VERSION}`;
 const CACHE_KANJIVG = `kanji-town-kanjivg-v${CACHE_VERSION}`;
 const CACHE_FONTS = `kanji-town-fonts-v${CACHE_VERSION}`;
