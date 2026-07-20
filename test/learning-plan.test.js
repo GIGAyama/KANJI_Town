@@ -5,6 +5,7 @@ import {
   buildWeakKanjiPlan,
   getDailyGoal,
   getDailyLearningProgress,
+  getWeeklyLearningSummary,
   WEAK_PRACTICE_SUCCESS_TARGET,
 } from '../src/systems/learning-plan.js';
 import { calculateLearningViewport } from '../src/utils/learning-viewport.js';
@@ -40,6 +41,35 @@ test('学習目標は安全な既定値と当日進捗を返す', () => {
     getDailyLearningProgress({ settings: { dailyGoal: 5 }, daily: { '2026-07-21': { reviewed: 7 } } }, '2026-07-21'),
     { goal: 5, reviewed: 7, remaining: 0, percent: 100, isComplete: true },
   );
+});
+
+test('週次サマリーは目標達成日と記録済み回答の正答率を集計する', () => {
+  const summary = getWeeklyLearningSummary({
+    settings: { dailyGoal: 5 },
+    daily: {
+      '2026-07-15': { exp: 40, reviewed: 5, attempts: 6, correct: 5 },
+      '2026-07-16': { exp: 20, reviewed: 3, attempts: 5, correct: 3 },
+      '2026-07-21': { exp: 0, reviewed: 0, attempts: 2, correct: 0 },
+    },
+  }, new Date(2026, 6, 21, 12));
+
+  assert.equal(summary.studiedDays, 3);
+  assert.equal(summary.goalDays, 1);
+  assert.equal(summary.reviewed, 8);
+  assert.equal(summary.attempts, 13);
+  assert.equal(summary.correct, 8);
+  assert.equal(summary.accuracy, 62);
+  assert.equal(summary.consistencyPercent, 14);
+});
+
+test('挑戦数のない旧日次データから正答率を推測しない', () => {
+  const summary = getWeeklyLearningSummary({
+    settings: { dailyGoal: 5 },
+    daily: { '2026-07-21': { exp: 30, reviewed: 5 } },
+  }, new Date(2026, 6, 21, 12));
+
+  assert.equal(summary.goalDays, 1);
+  assert.equal(summary.accuracy, null);
 });
 
 test('苦手特訓は期限内のつまずきを優先し、3回連続正解した漢字を外す', () => {

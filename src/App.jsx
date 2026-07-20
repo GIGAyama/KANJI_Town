@@ -103,6 +103,8 @@ function createInitialSessionData(overrides = {}) {
     perfectCount: 0,
     easyCount: 0,
     reviewedCount: 0,
+    attemptCount: 0,
+    correctCount: 0,
     newKanjiCount: 0,
     unlockedItems: [],
     rareDrop: null,
@@ -435,6 +437,8 @@ export default function App() {
         ...d,
         earnedExp: d.earnedExp + (evalType === 'again' ? 0 : EXP.DRILL),
         reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1),
+        attemptCount: (d.attemptCount || 0) + 1,
+        correctCount: (d.correctCount || 0) + (evalType === 'again' ? 0 : 1),
       }));
       return evalType !== 'again';
     }
@@ -501,6 +505,8 @@ export default function App() {
       ...d,
       earnedExp: d.earnedExp + exp,
       reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1),
+      attemptCount: (d.attemptCount || 0) + 1,
+      correctCount: (d.correctCount || 0) + (evalType === 'again' ? 0 : 1),
       newKanjiCount: (d.newKanjiCount || 0) + (wasNew ? 1 : 0),
       masteredCount: (d.masteredCount || 0) + (isMastering && cur.status !== 'mastered' ? 1 : 0),
       unlockedItems: unlockedItem ? [...d.unlockedItems, unlockedItem] : d.unlockedItems,
@@ -554,6 +560,10 @@ export default function App() {
       earnedExp: totalExp, 
       rareDrop, 
       perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0),
+      reviewedCount: sessionData.reviewedCount + (additionalResults.reviewedCount || 0),
+      attemptCount: sessionData.attemptCount + (additionalResults.attemptCount || 0),
+      correctCount: sessionData.correctCount
+        + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0),
       unlockedItems: unlockedItemsThisSession,
       levelUpData // ResultViewに渡すレベルアップ情報
     };

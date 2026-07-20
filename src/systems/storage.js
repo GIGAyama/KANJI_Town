@@ -575,15 +575,19 @@ const StorageAPI = {
     const today = getTodayString();
     const reviewedCount = sessionData.reviewedCount || 0;
     const perfectCount = sessionData.perfectCount || 0;
-    const hasLearningActivity = exp > 0 || reviewedCount > 0;
+    const attemptCount = Math.max(0, Number(sessionData.attemptCount) || 0);
+    const correctCount = Math.min(attemptCount, Math.max(0, Number(sessionData.correctCount) || 0));
+    const hasLearningActivity = exp > 0 || reviewedCount > 0 || attemptCount > 0;
 
     if (hasLearningActivity) {
       if (!stats.daily) stats.daily = {};
-      if (!stats.daily[today]) stats.daily[today] = { exp: 0, reviewed: 0, perfects: 0 };
+      if (!stats.daily[today]) stats.daily[today] = { exp: 0, reviewed: 0, perfects: 0, attempts: 0, correct: 0 };
 
       stats.daily[today].exp += exp;
       stats.daily[today].reviewed = (stats.daily[today].reviewed || 0) + reviewedCount;
       stats.daily[today].perfects = (stats.daily[today].perfects || 0) + perfectCount;
+      stats.daily[today].attempts = (stats.daily[today].attempts || 0) + attemptCount;
+      stats.daily[today].correct = (stats.daily[today].correct || 0) + correctCount;
       stats.totalExp += exp;
       stats.perfectCountTotal = (stats.perfectCountTotal || 0) + perfectCount;
     }
