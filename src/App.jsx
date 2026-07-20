@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -11,6 +11,7 @@ import MobileBottomNav from './components/ui/MobileBottomNav';
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
 import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
+import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
@@ -95,8 +96,9 @@ const VOLUME_VALUES = { off: 0, low: 0.3, mid: 0.6, high: 1.0 };
 
 /** セッションデータの初期値を生成する */
 function createInitialSessionData(overrides = {}) {
-  return {
+  const data = {
     queue: [],
+    remainingQueue: null,
     earnedExp: 0,
     oldExp: 0,
     expMultiplier: 1,
@@ -106,12 +108,18 @@ function createInitialSessionData(overrides = {}) {
     attemptCount: 0,
     correctCount: 0,
     newKanjiCount: 0,
+    masteredCount: 0,
     unlockedItems: [],
     rareDrop: null,
     isDrill: false,
     isTest: false,
+    isWeakPractice: false,
     newVillager: null,
     ...overrides,
+  };
+  return {
+    ...data,
+    remainingQueue: Array.isArray(data.remainingQueue) ? data.remainingQueue : data.queue,
   };
 }
 
@@ -128,10 +136,25 @@ export default function App() {
     return null;
   }, []);
 
-  const [view, setView] = useState(connectParam ? 'peerClient' : 'home');
+  const [initialAppState] = useState(() => {
+    const loadedStats = StorageAPI.getStats();
+    const savedCheckpoint = StorageAPI.getActiveSession();
+    const restoredSession = restoreSessionCheckpoint(savedCheckpoint, KANJI_DATA);
+    if (savedCheckpoint && !restoredSession) StorageAPI.clearActiveSession();
+    return { loadedStats, restoredSession };
+  });
+
+  const [view, setView] = useState(connectParam ? 'peerClient' : initialAppState.restoredSession ? 'session' : 'home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
-  const [stats, setStats] = useState(StorageAPI.getStats());
-  const [sessionData, setSessionData] = useState(createInitialSessionData);
+  const [stats, setStats] = useState(initialAppState.loadedStats);
+  const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
+  const sessionDataRef = useRef(sessionData);
+  const setSessionData = useCallback((update) => {
+    const next = typeof update === 'function' ? update(sessionDataRef.current) : update;
+    sessionDataRef.current = next;
+    setSessionDataState(next);
+  }, []);
+  const [isResumedSession, setIsResumedSession] = useState(Boolean(initialAppState.restoredSession));
   const [hostDrill, setHostDrill] = useState(null);
 
   // Phase 5: チュートリアル
@@ -153,6 +176,15 @@ export default function App() {
   usePrefetchKanji(isOnline, stats.targetGrade, KANJI_DATA);
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
+
+  // コア学習中は回答記録と残りキューを同じタイミングで端末へ保存する。
+  useEffect(() => {
+    if (view !== 'session' || !sessionData.remainingQueue?.length) return;
+    const checkpoint = createSessionCheckpoint(sessionData);
+    if (!checkpoint) return;
+    StorageAPI.saveStatsImmediate(stats);
+    StorageAPI.saveActiveSession(checkpoint);
+  }, [view, stats, sessionData]);
 
   // ログインボーナス＆デイリーミッション初期化関数
   // 関数型 setStats を使い、stale な currentStats を上書きしないようにする
@@ -305,6 +337,23 @@ export default function App() {
     StorageAPI.saveStats(newStats);
   };
 
+  const beginSession = useCallback((nextView, overrides) => {
+    StorageAPI.clearActiveSession();
+    setIsResumedSession(false);
+    setSessionData(createInitialSessionData(overrides));
+    setView(nextView);
+  }, [setSessionData]);
+
+  const handleSessionProgress = useCallback((remainingQueue) => {
+    setSessionData((current) => ({ ...current, remainingQueue }));
+  }, [setSessionData]);
+
+  const abandonLearningSession = useCallback(() => {
+    StorageAPI.clearActiveSession();
+    setIsResumedSession(false);
+    setView('home');
+  }, []);
+
   const startSession = (selectedGrade) => {
     audioCtrl.init();
     const sessionSize = stats.settings?.sessionSize || 'normal';
@@ -319,8 +368,7 @@ export default function App() {
     });
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
-      setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
-      setView('session');
+      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier });
     }
   };
 
@@ -329,8 +377,7 @@ export default function App() {
     const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
-      setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier, isDrill: true }));
-      setView('session');
+      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier, isDrill: true });
     }
   };
 
@@ -351,16 +398,14 @@ export default function App() {
     candidates.sort(() => Math.random() - 0.5);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (candidates.length > 0) {
-      setSessionData(createInitialSessionData({ queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true }));
-      setView('drillTest');
+      beginSession('drillTest', { queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true });
     }
   };
 
   const startSingleSession = (kanji) => {
     audioCtrl.init();
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData(createInitialSessionData({ queue: [kanji], oldExp: stats.totalExp, expMultiplier }));
-    setView('session');
+    beginSession('session', { queue: [kanji], oldExp: stats.totalExp, expMultiplier });
   };
 
   const startFlashcard = () => {
@@ -369,8 +414,7 @@ export default function App() {
     if (learned.length === 0) return;
     const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
-    setView('flashcard');
+    beginSession('flashcard', { queue, oldExp: stats.totalExp, expMultiplier });
   };
 
   const startWeakSession = () => {
@@ -382,14 +426,13 @@ export default function App() {
     if (queue.length === 0) return;
 
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData(createInitialSessionData({
+    beginSession('session', {
       queue,
       oldExp: stats.totalExp,
       expMultiplier,
       isDrill: true,
       isWeakPractice: true,
-    }));
-    setView('session');
+    });
   };
 
   const startSurvival = () => {
@@ -398,8 +441,7 @@ export default function App() {
     if (learned.length === 0) return;
     const queue = [...learned].sort(() => Math.random() - 0.5);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
-    setView('survival');
+    beginSession('survival', { queue, oldExp: stats.totalExp, expMultiplier });
   };
 
   const startBossBattle = () => {
@@ -414,8 +456,7 @@ export default function App() {
       queue.push(queue[Math.floor(Math.random() * queue.length)]);
     }
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    setSessionData(createInitialSessionData({ queue, oldExp: stats.totalExp, expMultiplier }));
-    setView('boss');
+    beginSession('boss', { queue, oldExp: stats.totalExp, expMultiplier });
   };
 
   const handleUpdateStat = (kanjiObj, evalType) => {
@@ -527,7 +568,9 @@ export default function App() {
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    const totalExp = sessionData.earnedExp + (additionalResults.exp || 0);
+    // setSessionData はrefも同期更新するため、最後の回答直後でも最新集計を確定できる。
+    const activeSession = sessionDataRef.current;
+    const totalExp = activeSession.earnedExp + (additionalResults.exp || 0);
     const coinBonus = Math.floor(totalExp / ECONOMY.EXP_TO_COIN_DIVISOR) + (additionalResults.coins || 0);
     const rareChance = RARE_DROP.BASE_CHANCE + (stats.streak * RARE_DROP.STREAK_BONUS);
     let rareDrop = additionalResults.rareDrop || null;
@@ -536,12 +579,12 @@ export default function App() {
     }
     
     // レベルアップ判定と報酬計算
-    const oldExp = sessionData.oldExp;
+    const oldExp = activeSession.oldExp;
     const newExp = oldExp + totalExp;
     const levelUpData = checkLevelUp(oldExp, newExp);
     
     let earnedCoins = coinBonus;
-    const unlockedItemsThisSession = [...sessionData.unlockedItems];
+    const unlockedItemsThisSession = [...activeSession.unlockedItems];
     let addedRadius = 0;
 
     if (levelUpData.isLevelUp) {
@@ -558,13 +601,13 @@ export default function App() {
     }
 
     const finalSessionData = { 
-      ...sessionData, 
+      ...activeSession,
       earnedExp: totalExp, 
       rareDrop, 
-      perfectCount: sessionData.perfectCount + (additionalResults.perfectCount || 0),
-      reviewedCount: sessionData.reviewedCount + (additionalResults.reviewedCount || 0),
-      attemptCount: sessionData.attemptCount + (additionalResults.attemptCount || 0),
-      correctCount: sessionData.correctCount
+      perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),
+      reviewedCount: activeSession.reviewedCount + (additionalResults.reviewedCount || 0),
+      attemptCount: activeSession.attemptCount + (additionalResults.attemptCount || 0),
+      correctCount: activeSession.correctCount
         + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0),
       unlockedItems: unlockedItemsThisSession,
       levelUpData // ResultViewに渡すレベルアップ情報
@@ -583,7 +626,7 @@ export default function App() {
       // learningフェーズの漢字がセッション直後にお化けとして出ないよう、
       // nextReviewに猶予を持たせる
       const minNextReview = Date.now() + SESSION.GRACE_PERIOD;
-      sessionData.queue.forEach(k => {
+      activeSession.queue.forEach(k => {
         const ks = newStats.kanjiStats?.[k.id];
         if (ks && !ks.graduated && ks.status !== 'new' && ks.nextReview < minNextReview) {
           ks.nextReview = minNextReview;
@@ -596,10 +639,10 @@ export default function App() {
 
     // デイリーミッション進捗更新
     setDailyMissions(prev => {
-      const reviewCount = sessionData.reviewedCount + (additionalResults.reviewedCount || 0);
-      const perfectCount = sessionData.perfectCount + (additionalResults.perfectCount || 0);
-      const newKanjiCount = (sessionData.newKanjiCount || 0) + (additionalResults.newKanjiCount || 0);
-      const masteredCount = (sessionData.masteredCount || 0) + (additionalResults.masteredCount || 0);
+      const reviewCount = activeSession.reviewedCount + (additionalResults.reviewedCount || 0);
+      const perfectCount = activeSession.perfectCount + (additionalResults.perfectCount || 0);
+      const newKanjiCount = (activeSession.newKanjiCount || 0) + (additionalResults.newKanjiCount || 0);
+      const masteredCount = (activeSession.masteredCount || 0) + (additionalResults.masteredCount || 0);
       let updated = updateMissionProgress(prev, 'session', 1);
       updated = updateMissionProgress(updated, 'review', reviewCount);
       updated = updateMissionProgress(updated, 'perfect', perfectCount);
@@ -612,6 +655,8 @@ export default function App() {
       return updated;
     });
 
+    StorageAPI.clearActiveSession();
+    setIsResumedSession(false);
     setView('result');
   };
 
@@ -734,7 +779,7 @@ export default function App() {
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={() => setView('home')}><SessionView queue={sessionData.queue} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}><SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}

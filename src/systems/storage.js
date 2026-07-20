@@ -36,6 +36,7 @@ function logStorageError(context, error) {
 
 // ── ストレージキー定数 ──
 const STORAGE_KEY = 'kanji_town_v7';
+const ACTIVE_SESSION_KEY = 'kanji_town_active_session_v1';
 const LEGACY_KEYS = ['kanji_mega_builder_final_v6', 'kanji_mega_builder_final_v5'];
 
 // ── TOWN_ITEMSのルックアップマップ（O(1)検索用） ──
@@ -177,7 +178,7 @@ const StorageAPI = {
    */
   _purgeUnrelatedKeys: () => {
     try {
-      const KEEP = new Set([STORAGE_KEY, ...LEGACY_KEYS, 'kanji_town_resident_mode']);
+      const KEEP = new Set([STORAGE_KEY, ACTIVE_SESSION_KEY, ...LEGACY_KEYS, 'kanji_town_resident_mode']);
       const removable = [];
       for (let i = 0; i < window.localStorage.length; i++) {
         const k = window.localStorage.key(i);
@@ -256,6 +257,30 @@ const StorageAPI = {
       _saveDebounceTimer = null;
     }
     StorageAPI.safeSet(STORAGE_KEY, stats);
+  },
+
+  /** 学習途中の小さなチェックポイントを即時保存する。 */
+  saveActiveSession: (checkpoint) => {
+    try {
+      window.localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(checkpoint));
+      return true;
+    } catch (error) {
+      logStorageError('saveActiveSession', error);
+      _notifySaveError('active-session');
+      return false;
+    }
+  },
+
+  /** 保存済みの学習チェックポイントを取得する。 */
+  getActiveSession: () => StorageAPI.safeGet(ACTIVE_SESSION_KEY, null),
+
+  /** 完了・破棄された学習チェックポイントを削除する。 */
+  clearActiveSession: () => {
+    try {
+      window.localStorage.removeItem(ACTIVE_SESSION_KEY);
+    } catch (error) {
+      logStorageError('clearActiveSession', error);
+    }
   },
 
   GRID_SIZE: MAP.GRID_SIZE,

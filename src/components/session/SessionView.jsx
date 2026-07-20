@@ -12,12 +12,21 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
 
-const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRecordPerfect, onRecordEasy }) => {
+const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onProgress, onFinish, onRecordPerfect, onRecordEasy, isResumed = false }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
   const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
   const currentKanji = queue[0]; const isNew = !stats[currentKanji?.id] || stats[currentKanji?.id].status === 'new'; const MODES = useMemo(() => ['read', 'watch', 'write', 'test'], []);
   const [fetchError, setFetchError] = useState(null);
+  const [showResumeNotice, setShowResumeNotice] = useState(isResumed);
+  const sessionTotal = Math.max(Number(totalCount) || 0, initialQueue.length, 1);
+  const completedCount = Math.max(0, sessionTotal - queue.length);
+
+  useEffect(() => {
+    if (!showResumeNotice) return undefined;
+    const timer = setTimeout(() => setShowResumeNotice(false), 3200);
+    return () => clearTimeout(timer);
+  }, [showResumeNotice]);
 
   useEffect(() => {
     if (!currentKanji) return; setMode(isNew ? 'read' : 'test'); setReachedStep(isNew ? 0 : 3);
@@ -71,8 +80,17 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
     setTimeout(() => {
       setActiveStamp(null);
       const success = onUpdateStat(currentKanji, evalType);
-      if (success) { const nextQueue = queue.slice(1); if (nextQueue.length === 0) onFinish(); else setQueue(nextQueue); }
-      else { const nextQueue = [...queue.slice(1), currentKanji]; setQueue(nextQueue); setMode('watch'); }
+      if (success) {
+        const nextQueue = queue.slice(1);
+        onProgress?.(nextQueue);
+        if (nextQueue.length === 0) onFinish();
+        else setQueue(nextQueue);
+      } else {
+        const nextQueue = [...queue.slice(1), currentKanji];
+        onProgress?.(nextQueue);
+        setQueue(nextQueue);
+        setMode('watch');
+      }
     }, evalType === 'again' ? 1500 : 900); // again以外は短めに
   };
   if (!currentKanji) return null;
@@ -102,6 +120,19 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
 
   return (
     <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-4 xl:p-5 flex flex-col h-full overflow-hidden relative">
+      <AnimatePresence>
+        {showResumeNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -8, x: '-50%' }}
+            role="status"
+            className="absolute top-14 md:top-16 left-1/2 z-40 whitespace-nowrap rounded-full border-[3px] border-[var(--text)] bg-emerald-100 px-4 py-2 text-xs md:text-sm font-black text-emerald-800 shadow-[3px_3px_0_var(--text)]"
+          >
+            ✓ つづきから再開しました
+          </motion.div>
+        )}
+      </AnimatePresence>
       <StampEffect stamp={activeStamp} />
       <div className="flex justify-between items-center mb-1.5 md:mb-2 shrink-0 gap-2">
         <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
@@ -110,8 +141,8 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
           {isNew && <div className="text-[var(--panel)] font-bold text-xs md:text-sm bg-[var(--primary)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={15} /> {F("新出","しんしゅつ")}</div>}
         </div>
       </div>
-      <div className="h-2 shrink-0 rounded-full bg-[var(--bg)] border-2 border-[var(--text)] overflow-hidden mb-1.5 md:mb-2" aria-label={`学習の進み具合 ${Math.max(0, initialQueue.length - queue.length)} / ${initialQueue.length}`}>
-        <motion.div className="h-full bg-[var(--secondary)]" animate={{ width: `${Math.max(0, ((initialQueue.length - queue.length) / initialQueue.length) * 100)}%` }} />
+      <div className="h-2 shrink-0 rounded-full bg-[var(--bg)] border-2 border-[var(--text)] overflow-hidden mb-1.5 md:mb-2" role="progressbar" aria-label="学習の進み具合" aria-valuemin="0" aria-valuemax={sessionTotal} aria-valuenow={completedCount}>
+        <motion.div className="h-full bg-[var(--secondary)]" animate={{ width: `${(completedCount / sessionTotal) * 100}%` }} />
       </div>
       <div className="flex-1 min-h-0 w-full relative">
         {fetchError ? (
