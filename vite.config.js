@@ -11,12 +11,20 @@ export default defineConfig({
     // チャンク分割の最適化
     rollupOptions: {
       output: {
-        manualChunks: {
-          'kanji-data': ['./src/data/kanji-data.js'],
-          'recipes': ['./src/data/recipes.js'],
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-motion': ['framer-motion'],
+        manualChunks(id) {
+          const moduleId = id.replaceAll('\\', '/');
+
+          if (moduleId.includes('/src/data/kanji-data.js')) return 'kanji-data';
+          if (moduleId.includes('/src/data/recipes.js')) return 'recipes';
+          if (
+            moduleId.includes('/node_modules/react/')
+            || moduleId.includes('/node_modules/react-dom/')
+            || moduleId.includes('/node_modules/scheduler/')
+          ) return 'vendor-react';
+          if (moduleId.includes('/node_modules/framer-motion/')) return 'vendor-motion';
+
           // peerjs / qrcode / jsQR は CDN からロードするため依存に含めない
+          return undefined;
         },
       },
     },

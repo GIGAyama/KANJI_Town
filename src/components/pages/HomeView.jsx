@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock, Sparkles, Target, CheckCircle2 } from 'lucide-react';
 import { MotionButton } from '../ui';
-import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { MATERIALS } from '../../data/materials';
@@ -14,6 +13,21 @@ import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/resid
 import { getDailyLearningProgress } from '../../systems/learning-plan';
 import { getTodayString } from '../../utils/date-utils';
 import { SESSION } from '../../constants/gameConfig';
+
+const DraggableTownMap = lazy(() => import('../town/DraggableTownMap'));
+
+const TownMapFallback = () => (
+  <div
+    className="h-full min-h-[160px] w-full flex items-center justify-center bg-gradient-to-b from-sky-100 to-emerald-100"
+    role="status"
+    aria-label="まちを読み込み中"
+  >
+    <div className="flex items-center gap-2 rounded-full border-2 border-[var(--text)] bg-[var(--panel)]/90 px-4 py-2 text-xs font-black text-[var(--text)] shadow-sm">
+      <span className="h-3 w-3 animate-pulse rounded-full bg-[var(--secondary)]" aria-hidden="true" />
+      まちを準備しています...
+    </div>
+  </div>
+);
 
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
   const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
@@ -122,7 +136,9 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
       role={isTownEditorUnlocked ? "button" : undefined}
       aria-label={isTownEditorUnlocked ? "まちづくりモードへ" : undefined}
     >
-      <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+      <Suspense fallback={<TownMapFallback />}>
+        <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+      </Suspense>
       {isTownEditorUnlocked && (
         <div className="absolute bottom-2 right-2 bg-[var(--panel)]/90 backdrop-blur-sm border-[2px] border-[var(--text)] rounded-xl px-2.5 md:px-3 py-1 md:py-1.5 flex items-center gap-1.5 z-10 pointer-events-none shadow-sm">
           <Map size={14} className="text-[var(--accent)]" />
