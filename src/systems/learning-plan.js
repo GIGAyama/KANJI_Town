@@ -1,3 +1,5 @@
+import { formatDate } from '../utils/date-utils.js';
+
 export const DAILY_GOAL_OPTIONS = [5, 10, 20];
 export const DEFAULT_DAILY_GOAL = 10;
 export const DEFAULT_WEAK_SESSION_LIMIT = 5;
@@ -29,6 +31,59 @@ export function getDailyLearningProgress(stats, today) {
     remaining,
     percent: Math.min(100, Math.round((reviewed / goal) * 100)),
     isComplete: reviewed >= goal,
+  };
+}
+
+/**
+ * 指定日までの7日間を、現在の1日目標と学習実績から集計する。
+ * 旧データに挑戦数がない場合は正答率へ含めず、推測値を表示しない。
+ */
+export function getWeeklyLearningSummary(stats, endDate = new Date()) {
+  const parsedEnd = new Date(endDate);
+  const end = Number.isNaN(parsedEnd.getTime()) ? new Date() : parsedEnd;
+  end.setHours(12, 0, 0, 0);
+
+  const goal = getDailyGoal(stats?.settings);
+  const days = [];
+
+  for (let offset = 6; offset >= 0; offset--) {
+    const date = new Date(end);
+    date.setDate(end.getDate() - offset);
+    const key = formatDate(date);
+    const record = stats?.daily?.[key] || {};
+    const exp = Math.max(0, Number(record.exp) || 0);
+    const reviewed = Math.max(0, Number(record.reviewed) || 0);
+    const attempts = Math.max(0, Number(record.attempts) || 0);
+    const correct = Math.min(attempts, Math.max(0, Number(record.correct) || 0));
+
+    days.push({
+      key,
+      date,
+      exp,
+      reviewed,
+      attempts,
+      correct,
+      studied: exp > 0 || reviewed > 0 || attempts > 0,
+      goalComplete: reviewed >= goal,
+    });
+  }
+
+  const totals = days.reduce((summary, day) => ({
+    studiedDays: summary.studiedDays + (day.studied ? 1 : 0),
+    goalDays: summary.goalDays + (day.goalComplete ? 1 : 0),
+    reviewed: summary.reviewed + day.reviewed,
+    attempts: summary.attempts + day.attempts,
+    correct: summary.correct + day.correct,
+  }), { studiedDays: 0, goalDays: 0, reviewed: 0, attempts: 0, correct: 0 });
+
+  return {
+    ...totals,
+    goal,
+    days,
+    consistencyPercent: Math.round((totals.goalDays / days.length) * 100),
+    accuracy: totals.attempts > 0
+      ? Math.round((totals.correct / totals.attempts) * 100)
+      : null,
   };
 }
 

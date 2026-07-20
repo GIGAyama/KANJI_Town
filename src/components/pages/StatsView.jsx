@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target } from 'lucide-react';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
-import { formatDate } from '../../utils/date-utils';
-import { buildWeakKanjiPlan, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
+import { buildWeakKanjiPlan, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
 
 const StatsView = ({ setView, stats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
@@ -12,17 +11,14 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   const notYet = kanjiList.filter(k => !k.stat || k.stat?.status === 'new').length;
   const totalKanji = KANJI_DATA.length;
 
-  // 直近7日の学習データ
-  const dailyData = useMemo(() => {
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = formatDate(d);
-      const label = i === 0 ? '今日' : i === 1 ? '昨日' : `${d.getDate()}日`;
-      days.push({ label, exp: stats.daily?.[key]?.exp || 0, reviewed: stats.daily?.[key]?.reviewed || 0 });
-    }
-    return days;
-  }, [stats.daily]);
+  const weeklySummary = useMemo(
+    () => getWeeklyLearningSummary(stats),
+    [stats.daily, stats.settings],
+  );
+  const dailyData = weeklySummary.days.map((day, index) => ({
+    ...day,
+    label: index === 6 ? '今日' : index === 5 ? '昨日' : `${day.date.getDate()}日`,
+  }));
 
   const maxExp = Math.max(...dailyData.map(d => d.exp), 1);
 
@@ -64,7 +60,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
         </div>
       </div>
 
-      {/* 連続学習ストリーク */}
+      {/* 学習習慣サマリー */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">🔥</div>
@@ -76,16 +72,31 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
           <div className="text-3xl font-black text-amber-500">{(stats.totalExp || 0).toLocaleString()}</div>
           <div className="text-xs font-bold text-[var(--text)] opacity-60">{F("累計","るいけい")}EXP</div>
         </div>
+        <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
+          <div className="text-3xl mb-1">🎯</div>
+          <div className="text-3xl font-black text-emerald-500">{weeklySummary.goalDays}<span className="text-base text-[var(--text)] opacity-40"> / 7</span></div>
+          <div className="text-xs font-bold text-[var(--text)] opacity-60">{F("今週","こんしゅう")}の{F("目標","もくひょう")}{F("達成","たっせい")}</div>
+        </div>
+        <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
+          <div className="text-3xl mb-1">✍️</div>
+          <div className="text-3xl font-black text-sky-500">{weeklySummary.accuracy === null ? '—' : `${weeklySummary.accuracy}%`}</div>
+          <div className="text-xs font-bold text-[var(--text)] opacity-60">7{F("日","にち")}の{F("正答率","せいとうりつ")}</div>
+        </div>
       </div>
 
       {/* 7日間の学習グラフ */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
-        <div className="text-sm font-black text-[var(--text)] mb-3 flex items-center gap-2"><TrendingUp size={16} className="text-[var(--secondary)]" /> {F("直近","ちょっきん")}7{F("日","にち")}の{F("学習","がくしゅう")}EXP</div>
+        <div className="text-sm font-black text-[var(--text)] mb-1 flex items-center gap-2"><TrendingUp size={16} className="text-[var(--secondary)]" /> {F("直近","ちょっきん")}7{F("日","にち")}の{F("学習","がくしゅう")}EXP</div>
+        <div className="mb-3 text-[10px] font-bold text-[var(--text)] opacity-50">緑のバーは1日{weeklySummary.goal}{F("字","じ")}の{F("目標","もくひょう")}クリア</div>
         <div className="flex items-end gap-2 h-24">
           {dailyData.map((day, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full rounded-t-lg bg-[var(--secondary)] opacity-80 transition-all" style={{ height: `${Math.max((day.exp / maxExp) * 80, day.exp > 0 ? 8 : 2)}px` }} />
-              <div className="text-[9px] font-bold text-[var(--text)] opacity-50 truncate w-full text-center">{day.label}</div>
+              <div
+                className={`w-full rounded-t-lg transition-all ${day.goalComplete ? 'bg-emerald-400' : 'bg-[var(--secondary)] opacity-80'}`}
+                style={{ height: `${Math.max((day.exp / maxExp) * 80, day.exp > 0 ? 8 : 2)}px` }}
+                title={`${day.label}: ${day.exp} EXP・${day.reviewed}字`}
+              />
+              <div className={`text-[9px] font-bold truncate w-full text-center ${day.goalComplete ? 'text-emerald-600' : 'text-[var(--text)] opacity-50'}`}>{day.goalComplete ? '✓' : ''}{day.label}</div>
             </div>
           ))}
         </div>

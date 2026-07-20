@@ -4,14 +4,14 @@ import { Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, FormatKun } from '../ui/FormatKun';
-import { migrateCard, calculateNextReview } from '../../systems/srs';
+import { migrateCard, calculateNextReview, recordPracticeAttempt } from '../../systems/srs';
 import { StorageAPI } from '../../systems/storage';
 
 const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
   const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
+  const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0, reviewedCount: 0, attemptCount: 0, correctCount: 0 });
   const [displayEarned, setDisplayEarned] = useState({ exp: 0, coins: 0 });
   const isDoneRef = useRef(false);
   const touchStartX = useRef(0);
@@ -42,24 +42,44 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
 
   const handleAnswer = useCallback((isKnown) => {
     if (!kanji || !revealed) return;
-    if (!isKnown) {
-      const cur = migrateCard(stats.kanjiStats[kanji.id]);
+    const evaluation = isKnown ? 'good' : 'again';
+    earnedRef.current = {
+      ...earnedRef.current,
+      exp: earnedRef.current.exp + (isKnown ? 2 : 0),
+      coins: earnedRef.current.coins + (isKnown ? 1 : 0),
+      reviewedCount: earnedRef.current.reviewedCount + (isKnown ? 1 : 0),
+      attemptCount: earnedRef.current.attemptCount + 1,
+      correctCount: earnedRef.current.correctCount + (isKnown ? 1 : 0),
+    };
+
+    setStats(currentStats => {
+      const cur = migrateCard(currentStats.kanjiStats?.[kanji.id]);
+      const card = isKnown
+        ? { ...cur, ...recordPracticeAttempt(cur, evaluation) }
+        : {
+          ...cur,
+          ...calculateNextReview(cur, evaluation),
+          status: 'learning',
+          mistakes: (cur.mistakes || 0) + 1,
+          ...recordPracticeAttempt(cur, evaluation),
+        };
       const newStats = {
-        ...stats,
-        kanjiStats: {
-          ...stats.kanjiStats,
-          [kanji.id]: { ...cur, ...calculateNextReview(cur, 'again'), status: 'learning', mistakes: (cur.mistakes || 0) + 1 },
-        },
+        ...currentStats,
+        kanjiStats: { ...currentStats.kanjiStats, [kanji.id]: card },
       };
-      setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('stamp_bad');
-    } else {
-      earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 2, coins: earnedRef.current.coins + 1 };
+      StorageAPI.saveStats(newStats);
+      return newStats;
+    });
+
+    if (isKnown) {
       setDisplayEarned({ ...earnedRef.current });
       audioCtrl.playSE('stamp_good');
+    } else {
+      audioCtrl.playSE('stamp_bad');
     }
     setRevealed(false);
     setIdx(prev => prev + 1);
-  }, [kanji, revealed, stats, setStats]);
+  }, [kanji, revealed, setStats]);
 
   // スワイプ操作（読み表示後のみ）
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
