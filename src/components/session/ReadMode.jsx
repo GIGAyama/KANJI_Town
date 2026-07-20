@@ -6,9 +6,9 @@ import ModeLayout from '../ui/ModeLayout';
 import { FormatKun, RubyText, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
-const ReadMode = ({ kanji, onNext, commonSidebar }) => {
+const ReadMode = ({ kanji, onNext, commonSidebar, isStacked }) => {
   const [exampleIdx, setExampleIdx] = useState(Math.floor(Math.random() * kanji.examples.length));
-  const main = (<div className="text-[12rem] md:text-[18rem] lg:text-[22rem] leading-none font-black text-[var(--text)] drop-shadow-md select-none" style={{ fontFamily: "'Klee One', serif" }}>{kanji.char}</div>);
+  const main = (<div className="text-[clamp(10rem,30vmin,22rem)] leading-none font-black text-[var(--text)] drop-shadow-md select-none" style={{ fontFamily: "'Klee One', serif" }}>{kanji.char}</div>);
   const handleNextExample = () => { setExampleIdx((prev) => (prev + 1) % kanji.examples.length); audioCtrl.playSE('click'); };
 
   const info = (
@@ -38,7 +38,7 @@ const ReadMode = ({ kanji, onNext, commonSidebar }) => {
     <MotionButton variant="primary" onClick={onNext} className="w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">{F("書","か")}き{F("順","じゅん")}をみる <ChevronRight size={28} /></MotionButton>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
 };
 
 export default ReadMode;

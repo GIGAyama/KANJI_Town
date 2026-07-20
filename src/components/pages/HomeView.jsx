@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock, Sparkles } from 'lucide-react';
+import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock, Sparkles, Target, CheckCircle2 } from 'lucide-react';
 import { MotionButton } from '../ui';
 import DraggableTownMap from '../town/DraggableTownMap';
 import DailyMissionsPanel from '../tutorial/DailyMissionsPanel';
@@ -11,6 +11,9 @@ import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/sto
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
+import { getDailyLearningProgress } from '../../systems/learning-plan';
+import { getTodayString } from '../../utils/date-utils';
+import { SESSION } from '../../constants/gameConfig';
 
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
   const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
@@ -23,6 +26,15 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
     return s && s.status !== 'new' && (s.nextReview || 0) <= now;
   }).length;
   const isReviewNeeded = reviewTargetsCount > 0;
+  const dailyProgress = getDailyLearningProgress(stats, getTodayString());
+  const sessionSize = stats.settings?.sessionSize || 'normal';
+  const sessionLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
+  const newTargetsCount = KANJI_DATA.filter(k => {
+    const s = stats.kanjiStats?.[k.id];
+    return k.grade === selectedGrade && (!s || s.status === 'new');
+  }).length;
+  const plannedReviewCount = Math.min(reviewTargetsCount, sessionLimits.review);
+  const plannedNewCount = Math.min(newTargetsCount, sessionLimits.new);
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;
   const isSpecialTrainingUnlocked = learnedCount > 0;
@@ -77,6 +89,31 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
     </div>
   );
 
+  /** 毎日の学習習慣を一目で把握できる進捗カード */
+  const DailyGoalCard = () => (
+    <div className={`bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-2.5 md:p-3 shadow-[2px_2px_0_var(--text)] shrink-0 ${dailyProgress.isComplete ? 'ring-2 ring-emerald-300' : ''}`}>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-8 h-8 rounded-xl border-2 border-[var(--text)] flex items-center justify-center shrink-0 ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--accent)]'}`}>
+            {dailyProgress.isComplete ? <CheckCircle2 size={18} /> : <Target size={18} />}
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs md:text-sm font-black text-[var(--text)] truncate">{dailyProgress.isComplete ? 'きょうの目標クリア！' : 'きょうの学習目標'}</div>
+            <div className="text-[10px] font-bold text-[var(--text)] opacity-55">🔥 {stats.streak || 0}日れんぞく</div>
+          </div>
+        </div>
+        <div className="font-black text-[var(--text)] shrink-0"><span className="text-lg text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs opacity-50"> / {dailyProgress.goal}字</span></div>
+      </div>
+      <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
+        <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
+      </div>
+      <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60">
+        <span>{dailyProgress.isComplete ? 'よくがんばりました！' : `あと ${dailyProgress.remaining}字でクリア`}</span>
+        <span>{reviewTargetsCount > 0 ? `復習 ${reviewTargetsCount}字` : '復習は完了'}</span>
+      </div>
+    </div>
+  );
+
   /** タウンマップ */
   const TownMap = ({ className = '' }) => (
     <div
@@ -109,7 +146,11 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         ))}
       </div>
       <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-base md:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
-        {isReviewNeeded ? <><ShieldAlert size={20} /> おばけを たいじする！</> : <><PenTool size={20} /> {selectedGrade}{F("年生","ねんせい")}の{F("漢字","かんじ")}を{F("覚","おぼ")}える！</>}
+        {isReviewNeeded
+          ? <><ShieldAlert size={20} /> {F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</>
+          : plannedNewCount > 0
+            ? <><PenTool size={20} /> {F("新出","しんしゅつ")}{F("漢字","かんじ")}{plannedNewCount}{F("文字","もじ")}を{F("覚","おぼ")}える！</>
+            : <><PenTool size={20} /> {selectedGrade}{F("年生","ねんせい")}の{F("漢字","かんじ")}を{F("練習","れんしゅう")}！</>}
       </MotionButton>
     </div>
   );
@@ -175,9 +216,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         {/* ステータスバー */}
         <StatusBar />
         <ExpBar />
+        <DailyGoalCard />
 
         {/* タウンマップ（コンパクト） */}
-        <TownMap className="h-[35vh] min-h-[180px] shrink-0" />
+        <TownMap className="h-[30vh] min-h-[160px] shrink-0" />
 
         {/* コントロール（スクロール可能） */}
         <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pb-2">
@@ -209,6 +251,8 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
 
       {/* === RIGHT: Controls === */}
       <div className="w-[340px] shrink-0 flex flex-col gap-2 h-full overflow-y-auto no-scrollbar">
+        <DailyGoalCard />
+
         {/* Daily missions */}
         {dailyMissions && dailyMissions.length > 0 && (
           <div className="shrink-0">

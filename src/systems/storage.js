@@ -201,6 +201,7 @@ const StorageAPI = {
     totalExp: stats.totalExp || 0,
     streak: stats.streak || 0,
     lastDate: stats.lastDate || '',
+    lastNeglectAppliedDate: stats.lastNeglectAppliedDate || '',
     coins: stats.coins || 0,
     targetGrade: stats.targetGrade || 1,
     townMap: stats.townMap || {},
@@ -335,6 +336,7 @@ const StorageAPI = {
         totalExp: 0,
         streak: 0,
         lastDate: '',
+        lastNeglectAppliedDate: '',
         coins: ECONOMY.INITIAL_COINS,
         targetGrade: 1,
         townMap: map,
@@ -365,6 +367,7 @@ const StorageAPI = {
       exploredRadius: MAP.INITIAL_EXPLORE_RADIUS,
       materials: {},
       lastCollectionDate: '',
+      lastNeglectAppliedDate: '',
     };
     for (const [field, defaultVal] of Object.entries(defaults)) {
       if (!stats[field]) stats[field] = defaultVal;
@@ -454,12 +457,13 @@ const StorageAPI = {
     stats.coins = Math.max(0, stats.coins);
 
     // ── サボり検出：街が廃れる仕組み ──
-    StorageAPI._applyNeglectPenalties(stats);
+    const neglectApplied = StorageAPI._applyNeglectPenalties(stats);
 
     // ── 実績の進捗を起動時に一括更新（新規追加分も反映） ──
     if (!stats.achievements) stats.achievements = {};
     StorageAPI._updateAchievements(stats);
 
+    if (neglectApplied) StorageAPI.saveStatsImmediate(stats);
     return stats;
   },
 
@@ -469,18 +473,31 @@ const StorageAPI = {
    */
   _applyNeglectPenalties: (stats) => {
     const todayStr = getTodayString();
-    if (!stats.lastDate || stats.lastDate === todayStr) return;
+    if (!stats.lastDate || stats.lastDate === todayStr) return false;
+    if (stats.lastNeglectAppliedDate === todayStr) return false;
 
-    const last = new Date(stats.lastDate);
-    if (isNaN(last.getTime())) return;
+    const last = new Date(`${stats.lastDate}T00:00:00`);
+    const today = new Date(`${todayStr}T00:00:00`);
+    if (isNaN(last.getTime()) || isNaN(today.getTime())) return false;
 
-    const diffDays = Math.floor((new Date() - last) / 86400000);
+    const diffDays = Math.max(0, Math.floor((today - last) / 86400000));
+    let previouslyAppliedDays = 0;
+    if (stats.lastNeglectAppliedDate) {
+      const previous = new Date(`${stats.lastNeglectAppliedDate}T00:00:00`);
+      if (!isNaN(previous.getTime())) {
+        previouslyAppliedDays = Math.max(0, Math.min(diffDays, Math.floor((previous - last) / 86400000)));
+      }
+    }
 
     // 雑草の発生
     if (diffDays >= NEGLECT.WEED_DAYS) {
       const clearedKeys = Object.keys(stats.townMap).filter(k => stats.townMap[k] === 't_cleared');
+      const newlyElapsedPenaltyDays = Math.max(
+        0,
+        diffDays - Math.max(previouslyAppliedDays, NEGLECT.WEED_DAYS - 1),
+      );
       const weedCount = Math.min(
-        diffDays * NEGLECT.WEEDS_PER_DAY,
+        newlyElapsedPenaltyDays * NEGLECT.WEEDS_PER_DAY,
         Math.floor(clearedKeys.length * NEGLECT.WEED_MAX_RATIO)
       );
       // Fisher-Yates シャッフル（偏りのないランダム選択）
@@ -495,27 +512,56 @@ const StorageAPI = {
     }
 
     // 住民の離脱
-    if (diffDays >= NEGLECT.LEAVE_DAYS && stats.population > 0) {
+    if (previouslyAppliedDays < NEGLECT.LEAVE_DAYS && diffDays >= NEGLECT.LEAVE_DAYS && stats.population > 0) {
       const leave = Math.max(1, Math.floor(stats.population * NEGLECT.LEAVE_RATIO));
       stats.population = Math.max(0, stats.population - leave);
       stats.villagers = stats.villagers.slice(leave);
     }
 
     // 建物の荒廃
-    if (diffDays >= NEGLECT.DECAY_DAYS && stats.population > 0) {
+    if (previouslyAppliedDays < NEGLECT.DECAY_DAYS && diffDays >= NEGLECT.DECAY_DAYS && stats.population > 0) {
       const buildingKeys = Object.keys(stats.townMap).filter(k => {
         const item = findTownItem(stats.townMap[k]);
         return item && (item.type === 'building' || item.type === 'special');
       });
       const decayCount = Math.min(NEGLECT.DECAY_MAX_BUILDINGS, buildingKeys.length);
+      const shuffledBuildings = [...buildingKeys];
+      for (let i = shuffledBuildings.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledBuildings[i], shuffledBuildings[j]] = [shuffledBuildings[j], shuffledBuildings[i]];
+      }
       for (let i = 0; i < decayCount; i++) {
-        const k = buildingKeys[Math.floor(Math.random() * buildingKeys.length)];
+        const k = shuffledBuildings[i];
         if (k) {
           stats.townItems[stats.townMap[k]] = (stats.townItems[stats.townMap[k]] || 0) + 1;
           stats.townMap[k] = 't_roughland';
         }
       }
     }
+
+    // 同じ日にgetStatsが複数回呼ばれてもペナルティを重複適用しない。
+    stats.lastNeglectAppliedDate = todayStr;
+    return true;
+  },
+
+  /**
+   * 住民の1日1回の収集だけを実行する。
+   * 学習記録・ストリークは更新しないため、アプリを開くだけで学習日にならない。
+   */
+  collectDailyTownResources: (stats, today = getTodayString()) => {
+    if (stats.lastCollectionDate === today || (stats.villagers || []).length === 0) return stats;
+
+    const { materials: collected, coins: collectedCoins } = collectDailyResources(stats);
+    if (!stats.materials) stats.materials = {};
+    Object.entries(collected).forEach(([matId, amount]) => {
+      stats.materials[matId] = (stats.materials[matId] || 0) + amount;
+    });
+    const maintenanceCost = calculateMaintenanceCost(stats);
+    stats.coins = Math.max(0, (stats.coins || 0) + collectedCoins - maintenanceCost);
+    stats.lastCollectionDate = today;
+    stats.lastCollectionResult = { materials: collected, coins: collectedCoins, maintenanceCost };
+    stats.satisfaction = calculateSatisfaction(stats);
+    return stats;
   },
 
   /**
@@ -527,14 +573,20 @@ const StorageAPI = {
    */
   updateDaily: (stats, exp, sessionData) => {
     const today = getTodayString();
-    if (!stats.daily) stats.daily = {};
-    if (!stats.daily[today]) stats.daily[today] = { exp: 0, reviewed: 0, perfects: 0 };
+    const reviewedCount = sessionData.reviewedCount || 0;
+    const perfectCount = sessionData.perfectCount || 0;
+    const hasLearningActivity = exp > 0 || reviewedCount > 0;
 
-    stats.daily[today].exp += exp;
-    stats.daily[today].reviewed = (stats.daily[today].reviewed || 0) + (sessionData.reviewedCount || 0);
-    stats.daily[today].perfects = (stats.daily[today].perfects || 0) + (sessionData.perfectCount || 0);
-    stats.totalExp += exp;
-    stats.perfectCountTotal = (stats.perfectCountTotal || 0) + (sessionData.perfectCount || 0);
+    if (hasLearningActivity) {
+      if (!stats.daily) stats.daily = {};
+      if (!stats.daily[today]) stats.daily[today] = { exp: 0, reviewed: 0, perfects: 0 };
+
+      stats.daily[today].exp += exp;
+      stats.daily[today].reviewed = (stats.daily[today].reviewed || 0) + reviewedCount;
+      stats.daily[today].perfects = (stats.daily[today].perfects || 0) + perfectCount;
+      stats.totalExp += exp;
+      stats.perfectCountTotal = (stats.perfectCountTotal || 0) + perfectCount;
+    }
 
     // 学習による雑草除去
     if (exp > 0) {
@@ -546,7 +598,7 @@ const StorageAPI = {
     }
 
     // ストリーク更新
-    if (stats.lastDate !== today) {
+    if (hasLearningActivity && stats.lastDate !== today) {
       if (stats.lastDate) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -556,21 +608,11 @@ const StorageAPI = {
         stats.streak = 1;
       }
       stats.lastDate = today;
+      stats.lastNeglectAppliedDate = today;
     }
 
     // ── 住民の自動素材収集（1日1回）──
-    if (stats.lastCollectionDate !== today && (stats.villagers || []).length > 0) {
-      const { materials: collected, coins: collectedCoins } = collectDailyResources(stats);
-      if (!stats.materials) stats.materials = {};
-      Object.entries(collected).forEach(([matId, amount]) => {
-        stats.materials[matId] = (stats.materials[matId] || 0) + amount;
-      });
-      const maintenanceCost = calculateMaintenanceCost(stats);
-      const netCoins = collectedCoins - maintenanceCost;
-      stats.coins = Math.max(0, (stats.coins || 0) + netCoins);
-      stats.lastCollectionDate = today;
-      stats.lastCollectionResult = { materials: collected, coins: collectedCoins, maintenanceCost };
-    }
+    StorageAPI.collectDailyTownResources(stats, today);
 
     // 満足度更新
     stats.satisfaction = calculateSatisfaction(stats);

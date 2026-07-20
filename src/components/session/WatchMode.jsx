@@ -4,7 +4,7 @@ import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
 import { F } from '../ui/FormatKun';
 
-const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSidebar }) => {
+const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSidebar, isStacked }) => {
   const [key, setKey] = useState(0);
   const main = isLoading ? <div className="animate-pulse font-bold text-2xl text-[var(--text)] opacity-50">ロード中...</div> : (
     <div className="relative border-[4px] border-[var(--text)] rounded-[20px] bg-[var(--panel)] transition-all duration-200 shrink-0 shadow-[8px_8px_0_var(--text)]" style={{ width: canvasSize, maxWidth: '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
@@ -36,7 +36,7 @@ const WatchMode = ({ paths, strokeData, isLoading, onNext, canvasSize, commonSid
     </div>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
 };
 
 export default WatchMode;

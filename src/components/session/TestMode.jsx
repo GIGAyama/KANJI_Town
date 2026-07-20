@@ -32,7 +32,7 @@ const EVAL_BUTTONS = [
   { key: 'again', variant: 'danger', label: '忘れた💦', hint: 'もう一度', shadow: 'shadow-[0_4px_0_#334155]' },
 ];
 
-const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) => {
+const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar, isStacked }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -243,7 +243,7 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar }) 
     </div>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} />;
+  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
 };
 
 export default TestMode;

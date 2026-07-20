@@ -10,16 +10,11 @@ import TestMode from './TestMode';
 import { Analyzer } from '../../systems/analyzer';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
+import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRecordPerfect, onRecordEasy }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
-  // モバイルでは画面幅の 80% を使う（最小 300px・最大 360px）。デスクトップは 400px 固定。
-  const [canvasSize] = useState(() => {
-    if (typeof window === 'undefined') return 400;
-    const w = window.innerWidth;
-    if (w >= 768) return 400;
-    return Math.max(300, Math.min(360, Math.floor(w * 0.8)));
-  });
+  const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
   const currentKanji = queue[0]; const isNew = !stats[currentKanji?.id] || stats[currentKanji?.id].status === 'new'; const MODES = useMemo(() => ['read', 'watch', 'write', 'test'], []);
   const [fetchError, setFetchError] = useState(null);
@@ -84,7 +79,7 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
 
   const commonSidebarTop = (
     <div className="flex flex-col gap-2 md:gap-3 shrink-0 mb-1 md:mb-4">
-      <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 md:gap-2">
+      <div className={`grid ${isStacked ? 'grid-cols-4' : 'grid-cols-2'} gap-1.5 md:gap-2`}>
         {[{ id: 'read', icon: <Volume2 size={18} />, label: <>{F("音","おん")}{F("読","どく")}</> }, { id: 'watch', icon: <PlayCircle size={18} />, label: <>{F("書","か")}き{F("順","じゅん")}</> }, { id: 'write', icon: <Pencil size={18} />, label: "なぞる" }, { id: 'test', icon: <CheckCircle2 size={18} />, label: "テスト" }].map((t, idx) => {
           const isDisabled = isNew && idx > reachedStep;
           return (
@@ -106,14 +101,17 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
   );
 
   return (
-    <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-5 flex flex-col h-full overflow-hidden relative">
+    <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-4 xl:p-5 flex flex-col h-full overflow-hidden relative">
       <StampEffect stamp={activeStamp} />
-      <div className="flex justify-between items-center mb-3 shrink-0">
-        <div className="text-[var(--text)] font-bold text-sm bg-[var(--bg)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-2">のこり <span className="text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
+      <div className="flex justify-between items-center mb-1.5 md:mb-2 shrink-0 gap-2">
+        <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
         <div className="flex gap-2">
-          {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-sm bg-[var(--accent)] px-4 py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
-          {isNew && <div className="text-[var(--panel)] font-bold text-sm bg-[var(--primary)] px-4 py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={16} /> {F("新出","しんしゅつ")}</div>}
+          {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-[var(--accent)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
+          {isNew && <div className="text-[var(--panel)] font-bold text-xs md:text-sm bg-[var(--primary)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={15} /> {F("新出","しんしゅつ")}</div>}
         </div>
+      </div>
+      <div className="h-2 shrink-0 rounded-full bg-[var(--bg)] border-2 border-[var(--text)] overflow-hidden mb-1.5 md:mb-2" aria-label={`学習の進み具合 ${Math.max(0, initialQueue.length - queue.length)} / ${initialQueue.length}`}>
+        <motion.div className="h-full bg-[var(--secondary)]" animate={{ width: `${Math.max(0, ((initialQueue.length - queue.length) / initialQueue.length) * 100)}%` }} />
       </div>
       <div className="flex-1 min-h-0 w-full relative">
         {fetchError ? (
@@ -142,10 +140,10 @@ const SessionView = ({ queue: initialQueue, stats, onUpdateStat, onFinish, onRec
           </div>
         ) : (
           <>
-            {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => setMode('watch')} commonSidebar={commonSidebarTop} />}
-            {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => setMode('write')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
-            {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} />}
-            {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} />}
+            {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => setMode('watch')} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => setMode('write')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
           </>
         )}
       </div>
