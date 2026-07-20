@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, AlertCircle, ArrowLeft } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target } from 'lucide-react';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { formatDate } from '../../utils/date-utils';
+import { buildWeakKanjiPlan, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
 
-const StatsView = ({ setView, stats }) => {
+const StatsView = ({ setView, stats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
   const mastered = kanjiList.filter(k => k.stat?.status === 'mastered').length;
   const learning = kanjiList.filter(k => k.stat?.status === 'learning' || k.stat?.status === 'review').length;
@@ -25,11 +26,14 @@ const StatsView = ({ setView, stats }) => {
 
   const maxExp = Math.max(...dailyData.map(d => d.exp), 1);
 
-  // 苦手な漢字 top5
-  const weakKanji = kanjiList
-    .filter(k => k.stat && (k.stat.mistakes || 0) > 0)
-    .sort((a, b) => (b.stat.mistakes || 0) - (a.stat.mistakes || 0))
-    .slice(0, 5);
+  // 復習期限・つまずき・連続正解数を加味した苦手漢字 top5
+  const weakKanji = useMemo(() => {
+    const { queue } = buildWeakKanjiPlan({
+      kanjiData: KANJI_DATA,
+      kanjiStats: stats.kanjiStats,
+    });
+    return queue.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
+  }, [stats.kanjiStats]);
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -90,16 +94,31 @@ const StatsView = ({ setView, stats }) => {
       {/* 苦手な漢字 */}
       {weakKanji.length > 0 && (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
-          <div className="text-sm font-black text-[var(--text)] mb-3 flex items-center gap-2"><AlertCircle size={16} className="text-rose-500" /> {F("苦手","にがて")}な{F("漢字","かんじ")} TOP5</div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><AlertCircle size={16} className="text-rose-500" /> {F("苦手","にがて")}な{F("漢字","かんじ")} TOP5</div>
+            <button
+              type="button"
+              onClick={startWeakSession}
+              className="min-h-[44px] rounded-xl border-[2px] border-[var(--text)] bg-rose-400 px-3 py-2 text-xs font-black text-white shadow-[0_2px_0_var(--text)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-rose-300"
+              aria-label={`苦手な漢字${weakKanji.length}字の集中練習を始める`}
+            >
+              <span className="flex items-center gap-1.5"><Target size={16} aria-hidden="true" /> にがて{F("特訓","とっくん")} {weakKanji.length}{F("字","じ")}</span>
+            </button>
+          </div>
           <div className="flex flex-col gap-2">
-            {weakKanji.map((k, i) => (
+            {weakKanji.map((k) => (
               <div key={k.id} className="flex items-center gap-3 bg-[var(--bg)] rounded-xl px-3 py-2">
                 <span className="text-2xl font-black" style={{ fontFamily: "'Klee One', serif" }}>{k.char}</span>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-[var(--text)]">{k.on[0] || k.kun[0] || ''}</div>
-                  <div className="text-xs text-rose-500 font-bold">ミス {k.stat.mistakes}{F("回","かい")}</div>
+                  <div className="text-xs text-rose-500 font-bold">
+                    ミス {k.stat.mistakes || 0}{F("回","かい")}
+                    {(k.stat.lapses || 0) > 0 && `・つまずき ${k.stat.lapses}回`}
+                  </div>
                 </div>
-                <div className="text-lg">{'😅'.repeat(Math.min(i + 1, 3))}</div>
+                <div className="shrink-0 rounded-lg bg-[var(--panel)] px-2 py-1 text-[10px] font-black text-[var(--text)] opacity-70" aria-label={`連続正解${k.stat.practiceStreak || 0}回、目標${WEAK_PRACTICE_SUCCESS_TARGET}回`}>
+                  できた {k.stat.practiceStreak || 0}/{WEAK_PRACTICE_SUCCESS_TARGET}
+                </div>
               </div>
             ))}
           </div>

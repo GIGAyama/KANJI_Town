@@ -43,6 +43,9 @@ const INTERVAL_MODIFIER = 1.0;
  * @property {number} [lapses] - ラプス（卒業後に再度失敗した回数）
  * @property {string} [status] - 'new'|'learning'|'review'|'mastered'
  * @property {number} [mistakes] - 総ミス回数
+ * @property {number} [practiceStreak] - 通常学習・特訓を通した連続正解数
+ * @property {number} [practiceAttempts] - 練習した総回数
+ * @property {number} [lastPracticedAt] - 最後に練習した時刻(Unix ms)
  */
 
 /**
@@ -210,6 +213,18 @@ function sanitizeNextReview(card) {
 }
 
 /**
+ * 通常学習と特訓で共通の練習進捗を記録する。
+ * 「もう一度」で連続正解をリセットし、それ以外は1つ進める。
+ */
+export function recordPracticeAttempt(card, evaluation, now = Date.now()) {
+  return {
+    practiceStreak: evaluation === 'again' ? 0 : (card?.practiceStreak || 0) + 1,
+    practiceAttempts: (card?.practiceAttempts || 0) + 1,
+    lastPracticedAt: now,
+  };
+}
+
+/**
  * 古いカードデータを現在のスキーマに移行する
  * @param {object|null} card
  * @returns {CardState}
@@ -225,15 +240,28 @@ export const migrateCard = (card) => {
       status: 'new',
       mistakes: 0,
       lapses: 0,
+      practiceStreak: 0,
+      practiceAttempts: 0,
+      lastPracticedAt: 0,
     };
   }
   // easeフィールドがあれば移行済み
-  if (card.ease !== undefined) return sanitizeNextReview(card);
+  if (card.ease !== undefined) {
+    return sanitizeNextReview({
+      practiceStreak: 0,
+      practiceAttempts: 0,
+      lastPracticedAt: 0,
+      ...card,
+    });
+  }
   return sanitizeNextReview({
     ...card,
     ease: DEFAULT_EASE,
     graduated: (card.interval || 0) >= GRADUATING_INTERVAL,
     stepIdx: 0,
     lapses: 0,
+    practiceStreak: 0,
+    practiceAttempts: 0,
+    lastPracticedAt: 0,
   });
 };
