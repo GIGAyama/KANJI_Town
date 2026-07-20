@@ -10,7 +10,7 @@ import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/sto
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
-import { buildLearningPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from '../../systems/learning-plan';
+import { buildLearningPlan, getDailyLearningProgress, getGoalAwareSessionLimits, getReviewForecast } from '../../systems/learning-plan';
 import { getTodayString } from '../../utils/date-utils';
 import { SESSION } from '../../constants/gameConfig';
 
@@ -51,6 +51,22 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const plannedNewCount = learningPlan.newCount;
   const plannedTotalCount = plannedReviewCount + plannedNewCount;
   const isReviewNeeded = reviewTargetsCount > 0;
+  const reviewForecast = useMemo(
+    () => getReviewForecast(stats.kanjiStats),
+    [stats.kanjiStats],
+  );
+  const nextForecastDay = reviewForecast.days.slice(2).find((day) => day.count > 0);
+  const nextReviewHint = reviewTargetsCount > 0
+    ? `復習 ${reviewTargetsCount}字`
+    : reviewForecast.todayCount > 0
+      ? `きょう後で ${reviewForecast.todayCount}字`
+      : reviewForecast.tomorrowCount > 0
+        ? `あした 復習${reviewForecast.tomorrowCount}字`
+        : nextForecastDay
+          ? `${nextForecastDay.date.getMonth() + 1}/${nextForecastDay.date.getDate()} 復習${nextForecastDay.count}字`
+          : reviewForecast.nextReviewAt
+            ? `次は ${new Date(reviewForecast.nextReviewAt).getMonth() + 1}/${new Date(reviewForecast.nextReviewAt).getDate()}`
+            : '復習は完了';
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;
   const isSpecialTrainingUnlocked = learnedCount > 0;
@@ -125,7 +141,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
       </div>
       <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60">
         <span>{dailyProgress.isComplete ? 'よくがんばりました！' : `あと ${dailyProgress.remaining}字でクリア`}</span>
-        <span>{reviewTargetsCount > 0 ? `復習 ${reviewTargetsCount}字` : '復習は完了'}</span>
+        <span>{nextReviewHint}</span>
       </div>
     </div>
   );

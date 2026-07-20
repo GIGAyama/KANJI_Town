@@ -106,6 +106,57 @@ export function getWeeklyLearningSummary(stats, endDate = new Date()) {
 }
 
 /**
+ * 間隔反復の次回日時をローカル日付へまとめ、今日からの復習量を予報する。
+ * 期限超過分は今日へ含め、学習前のカードや不正な日時は集計しない。
+ */
+export function getReviewForecast(kanjiStats = {}, now = new Date(), dayCount = 7) {
+  const parsedNow = new Date(now);
+  const current = Number.isNaN(parsedNow.getTime()) ? new Date() : parsedNow;
+  const currentTime = current.getTime();
+  const safeDayCount = Math.min(31, Math.max(1, Math.floor(Number(dayCount) || 7)));
+  const firstDay = new Date(current);
+  firstDay.setHours(0, 0, 0, 0);
+
+  const days = Array.from({ length: safeDayCount }, (_, index) => {
+    const date = new Date(firstDay);
+    date.setDate(firstDay.getDate() + index);
+    date.setHours(12, 0, 0, 0);
+    return { key: formatDate(date), date, count: 0 };
+  });
+  const dayIndex = new Map(days.map((day, index) => [day.key, index]));
+  let overdueCount = 0;
+  let nextReviewAt = null;
+
+  Object.values(kanjiStats || {}).forEach((stat) => {
+    if (!stat || stat.status === 'new') return;
+    const dueAt = Number(stat.nextReview);
+    if (!Number.isFinite(dueAt)) return;
+    const dueDate = new Date(dueAt);
+    if (Number.isNaN(dueDate.getTime())) return;
+
+    if (dueAt <= currentTime) overdueCount += 1;
+    if (dueAt > currentTime && (nextReviewAt === null || dueAt < nextReviewAt)) {
+      nextReviewAt = dueAt;
+    }
+
+    const dueKey = formatDate(dueDate);
+    const index = dueKey < days[0].key ? 0 : dayIndex.get(dueKey);
+    if (index !== undefined) days[index].count += 1;
+  });
+
+  const weekCount = days.reduce((total, day) => total + day.count, 0);
+  return {
+    days,
+    overdueCount,
+    todayCount: days[0]?.count || 0,
+    tomorrowCount: days[1]?.count || 0,
+    weekCount,
+    maxCount: Math.max(...days.map((day) => day.count), 1),
+    nextReviewAt,
+  };
+}
+
+/**
  * 過去につまずいた漢字から、短い集中練習用のキューを作る。
  * 復習期限、ラプス、ミス、連続正解数、容易度の順で優先する。
  * 3回連続で正解した漢字は一度キューから外し、成功体験を可視化する。

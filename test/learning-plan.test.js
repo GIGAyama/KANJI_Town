@@ -6,6 +6,7 @@ import {
   getDailyGoal,
   getDailyLearningProgress,
   getGoalAwareSessionLimits,
+  getReviewForecast,
   getWeeklyLearningSummary,
   WEAK_PRACTICE_SUCCESS_TARGET,
 } from '../src/systems/learning-plan.js';
@@ -104,6 +105,25 @@ test('挑戦数のない旧日次データから正答率を推測しない', ()
 
   assert.equal(summary.goalDays, 1);
   assert.equal(summary.accuracy, null);
+});
+
+test('復習予報は期限超過を今日へまとめ、学習前カードを除外する', () => {
+  const now = new Date(2026, 6, 21, 12, 0, 0);
+  const forecast = getReviewForecast({
+    overdue: { status: 'review', nextReview: new Date(2026, 6, 20, 9).getTime() },
+    laterToday: { status: 'learning', nextReview: new Date(2026, 6, 21, 18).getTime() },
+    tomorrow: { status: 'mastered', nextReview: new Date(2026, 6, 22, 8).getTime() },
+    newCard: { status: 'new', nextReview: new Date(2026, 6, 21, 10).getTime() },
+    beyondForecast: { status: 'review', nextReview: new Date(2026, 6, 30, 8).getTime() },
+    invalid: { status: 'review', nextReview: 'not-a-date' },
+  }, now);
+
+  assert.equal(forecast.overdueCount, 1);
+  assert.equal(forecast.todayCount, 2);
+  assert.equal(forecast.tomorrowCount, 1);
+  assert.equal(forecast.weekCount, 3);
+  assert.equal(forecast.days.length, 7);
+  assert.equal(forecast.nextReviewAt, new Date(2026, 6, 21, 18).getTime());
 });
 
 test('苦手特訓は期限内のつまずきを優先し、3回連続正解した漢字を外す', () => {
