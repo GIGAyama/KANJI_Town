@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility } from 'lucide-react';
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
+import { getMotionPreference } from '../../utils/motion-preference';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -24,6 +25,12 @@ const VOLUME_LEVELS = [
   { id: 'low', label: '小', value: 0.3 },
   { id: 'mid', label: '中', value: 0.6 },
   { id: 'high', label: '大', value: 1.0 },
+];
+
+const MOTION_OPTIONS = [
+  { id: 'system', label: 'じどう', desc: '端末設定に合わせる' },
+  { id: 'full', label: '標準', desc: '演出を楽しむ' },
+  { id: 'reduced', label: '少なめ', desc: '動きをおさえる' },
 ];
 
 // 確認ダイアログ
@@ -70,6 +77,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const showFurigana = settings.showFurigana !== false;
   const sessionSize = settings.sessionSize || 'normal';
   const dailyGoal = getDailyGoal(settings);
+  const motionPreference = getMotionPreference(settings);
 
   const updateSettings = (patch) => {
     const newSettings = { ...settings, ...patch };
@@ -87,6 +95,11 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const handleThemeChange = (id) => {
     audioCtrl.playSE('click');
     updateSettings({ themeOverride: id });
+  };
+
+  const handleMotionChange = (id) => {
+    audioCtrl.playSE('click');
+    updateSettings({ motionPreference: id });
   };
 
   // 音量変更
@@ -203,6 +216,33 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
               </button>
             );
           })}
+        </div>
+      </Section>
+
+      {/* 動き・端末負荷の設定 */}
+      <Section icon={Accessibility} title="画面のうごき">
+        <div className="grid grid-cols-3 gap-2">
+          {MOTION_OPTIONS.map((option) => {
+            const isActive = motionPreference === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => handleMotionChange(option.id)}
+                className={`min-h-[72px] rounded-xl border-[3px] p-2 text-center transition-all ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/20 hover:border-[var(--text)]/50'}`}
+              >
+                <div className="flex items-center justify-center gap-1 text-xs font-black text-[var(--text)]">
+                  {option.label}
+                  {isActive && <Check size={13} className="text-[var(--secondary)]" aria-hidden="true" />}
+                </div>
+                <div className="mt-1 text-[9px] font-bold leading-tight text-[var(--text)] opacity-50">{option.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="rounded-xl bg-[var(--bg)] px-3 py-2 text-[10px] font-bold leading-relaxed text-[var(--text)] opacity-60">
+          「{F("少","すく")}なめ」はアニメーション・{F("天気","てんき")}・{F("紙吹雪","かみふぶき")}をおさえ、電池も長もちしやすくします。
         </div>
       </Section>
 
