@@ -35,6 +35,24 @@ export function getDailyLearningProgress(stats, today) {
 }
 
 /**
+ * 1日の残り目標に合わせて、次の通常セッションを短く区切る。
+ * 目標達成後は設定済みのセッション量へ戻し、自由に学習を続けられる。
+ */
+export function getGoalAwareSessionLimits(limits, dailyProgress) {
+  const review = asLimit(limits?.review);
+  const newLimit = asLimit(limits?.new);
+  const configuredTotal = review + newLimit;
+  const remaining = asLimit(dailyProgress?.remaining);
+  const shouldCapToGoal = !dailyProgress?.isComplete && remaining > 0;
+
+  return {
+    review,
+    new: newLimit,
+    total: shouldCapToGoal ? Math.min(configuredTotal, remaining) : configuredTotal,
+  };
+}
+
+/**
  * 指定日までの7日間を、現在の1日目標と学習実績から集計する。
  * 旧データに挑戦数がない場合は正答率へ含めず、推測値を表示しない。
  */
@@ -147,6 +165,9 @@ export function buildLearningPlan({
 }) {
   const reviewLimit = asLimit(limits?.review);
   const newLimit = asLimit(limits?.new);
+  const totalLimit = limits?.total === undefined
+    ? reviewLimit + newLimit
+    : asLimit(limits.total);
 
   const dueReviews = kanjiData
     .filter((kanji) => {
@@ -165,8 +186,9 @@ export function buildLearningPlan({
     return kanji.grade === selectedGrade && (!stat || stat.status === 'new');
   });
 
-  const reviewTargets = dueReviews.slice(0, reviewLimit);
-  const newTargets = shuffle(newCandidates, random).slice(0, newLimit);
+  const reviewTargets = dueReviews.slice(0, Math.min(reviewLimit, totalLimit));
+  const remainingSlots = Math.max(0, totalLimit - reviewTargets.length);
+  const newTargets = shuffle(newCandidates, random).slice(0, Math.min(newLimit, remainingSlots));
   const queue = [...reviewTargets, ...newTargets];
 
   if (queue.length === 0) {

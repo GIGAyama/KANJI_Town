@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Hammer, Lock, Sparkles, Target, CheckCircle2 } from 'lucide-react';
 import { MotionButton } from '../ui';
@@ -10,7 +10,7 @@ import { StorageAPI, calculateProsperity, getLevelInfo } from '../../systems/sto
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/residents';
-import { getDailyLearningProgress } from '../../systems/learning-plan';
+import { buildLearningPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from '../../systems/learning-plan';
 import { getTodayString } from '../../utils/date-utils';
 import { SESSION } from '../../constants/gameConfig';
 
@@ -32,23 +32,25 @@ const TownMapFallback = () => (
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
   const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
   const { level, title, badge, progress, remainingExp, targetReward, isMaxLevel } = currentLevelInfo;
-  const now = Date.now();
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
   const handleGradeChange = (g) => { setSelectedGrade(g); let newStats = { ...stats, targetGrade: g }; setStats(newStats); StorageAPI.saveStats(newStats); };
-  const reviewTargetsCount = KANJI_DATA.filter(k => {
-    const s = stats.kanjiStats?.[k.id];
-    return s && s.status !== 'new' && (s.nextReview || 0) <= now;
-  }).length;
-  const isReviewNeeded = reviewTargetsCount > 0;
   const dailyProgress = getDailyLearningProgress(stats, getTodayString());
   const sessionSize = stats.settings?.sessionSize || 'normal';
-  const sessionLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
-  const newTargetsCount = KANJI_DATA.filter(k => {
-    const s = stats.kanjiStats?.[k.id];
-    return k.grade === selectedGrade && (!s || s.status === 'new');
-  }).length;
-  const plannedReviewCount = Math.min(reviewTargetsCount, sessionLimits.review);
-  const plannedNewCount = Math.min(newTargetsCount, sessionLimits.new);
+  const baseSessionLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
+  const sessionLimits = getGoalAwareSessionLimits(baseSessionLimits, dailyProgress);
+  const learningPlan = useMemo(() => buildLearningPlan({
+    kanjiData: KANJI_DATA,
+    kanjiStats: stats.kanjiStats,
+    selectedGrade,
+    limits: sessionLimits,
+    now: Date.now(),
+    random: () => 0.5,
+  }), [stats.kanjiStats, selectedGrade, sessionLimits.review, sessionLimits.new, sessionLimits.total]);
+  const reviewTargetsCount = learningPlan.dueCount;
+  const plannedReviewCount = learningPlan.reviewCount;
+  const plannedNewCount = learningPlan.newCount;
+  const plannedTotalCount = plannedReviewCount + plannedNewCount;
+  const isReviewNeeded = reviewTargetsCount > 0;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;
   const isSpecialTrainingUnlocked = learnedCount > 0;
@@ -161,8 +163,10 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           <button key={g} onClick={() => { audioCtrl.playSE('click'); handleGradeChange(g); }} className={`flex-1 py-1.5 md:py-2 font-black text-sm md:text-base rounded-xl border-[2px] transition-all ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
         ))}
       </div>
-      <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-base md:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
-        {isReviewNeeded
+      <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-sm sm:text-base md:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
+        {!dailyProgress.isComplete && plannedTotalCount > 0
+          ? <><Target size={20} /> きょうの{plannedTotalCount}{F("字","じ")}：{F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</>
+          : isReviewNeeded
           ? <><ShieldAlert size={20} /> {F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</>
           : plannedNewCount > 0
             ? <><PenTool size={20} /> {F("新出","しんしゅつ")}{F("漢字","かんじ")}{plannedNewCount}{F("文字","もじ")}を{F("覚","おぼ")}える！</>

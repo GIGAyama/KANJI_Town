@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Sparkles, Coins, Map, ChevronRight } from 'lucide-react';
+import { Gift, Sparkles, Coins, Map, ChevronRight, Target, CheckCircle2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import AnimatedCounter from '../ui/AnimatedCounter';
 import Confetti from '../ui/Confetti';
@@ -12,16 +12,19 @@ import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { getOccupation } from '../../data/residents';
 import { getLevelInfoFromExp } from '../../utils/level-system';
+import { getDailyLearningProgress } from '../../systems/learning-plan';
+import { getTodayString } from '../../utils/date-utils';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
 
-const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
+const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContinueLearning }) => {
   const { earnedExp, perfectCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager || levelUpData?.isLevelUp);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
   const [gachaPhase, setGachaPhase] = useState('idle');
   const coinBonus = Math.floor(earnedExp / 4);
+  const dailyProgress = getDailyLearningProgress(stats, getTodayString());
 
   const oldLevelInfo = getLevelInfoFromExp(oldExp);
   const newLevelInfo = getLevelInfoFromExp(oldExp + earnedExp);
@@ -121,6 +124,30 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
             {F("次","つぎ")}の報酬まで あと {newLevelInfo.remainingExp} EXP
           </div>
         )}
+      </motion.div>
+
+      {/* 今日の目標：結果を次の学習行動につなげる */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className={`bg-[var(--panel)] border-[4px] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] ${dailyProgress.isComplete ? 'border-emerald-400' : 'border-[var(--text)]'}`}
+      >
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-10 h-10 rounded-xl border-[3px] border-[var(--text)] flex items-center justify-center shrink-0 ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--accent)]'}`}>
+              {dailyProgress.isComplete ? <CheckCircle2 size={22} /> : <Target size={22} />}
+            </div>
+            <div className="min-w-0">
+              <div className="font-black text-[var(--text)]">{dailyProgress.isComplete ? 'きょうの目標クリア！' : `あと ${dailyProgress.remaining}字で目標クリア`}</div>
+              <div className="text-xs font-bold text-[var(--text)] opacity-55">学習した漢字は毎日の記録にのこります</div>
+            </div>
+          </div>
+          <div className="font-black text-[var(--text)] shrink-0"><span className="text-xl text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs opacity-50"> / {dailyProgress.goal}字</span></div>
+        </div>
+        <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
+          <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
+        </div>
       </motion.div>
 
       {/* ストーリーナレーション */}
@@ -234,7 +261,12 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats }) => {
 
       {/* ボタン */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="flex flex-col gap-3">
-        <MotionButton variant="primary" onClick={() => setView('home')} className="w-full py-6 text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">まちに もどる 🏠</MotionButton>
+        {!dailyProgress.isComplete && onContinueLearning && (
+          <MotionButton variant="primary" onClick={onContinueLearning} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">
+            <Target size={24} /> あと{dailyProgress.remaining}字 学習をつづける
+          </MotionButton>
+        )}
+        <MotionButton variant={dailyProgress.isComplete ? "primary" : "secondary"} onClick={() => setView('home')} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_5px_0_var(--text)]">まちに もどる 🏠</MotionButton>
         <MotionButton variant="secondary" onClick={() => setView('townEditor')} className="w-full py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)]">
           <Map size={20} /> まちをつくる
         </MotionButton>

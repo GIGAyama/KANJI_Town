@@ -5,6 +5,7 @@ import {
   buildWeakKanjiPlan,
   getDailyGoal,
   getDailyLearningProgress,
+  getGoalAwareSessionLimits,
   getWeeklyLearningSummary,
   WEAK_PRACTICE_SUCCESS_TARGET,
 } from '../src/systems/learning-plan.js';
@@ -40,6 +41,39 @@ test('学習目標は安全な既定値と当日進捗を返す', () => {
   assert.deepEqual(
     getDailyLearningProgress({ settings: { dailyGoal: 5 }, daily: { '2026-07-21': { reviewed: 7 } } }, '2026-07-21'),
     { goal: 5, reviewed: 7, remaining: 0, percent: 100, isComplete: true },
+  );
+});
+
+test('通常セッションは今日の残り目標を超えず、復習を優先して短く区切る', () => {
+  const limits = getGoalAwareSessionLimits(
+    { review: 20, new: 5 },
+    { remaining: 3, isComplete: false },
+  );
+  const plan = buildLearningPlan({
+    kanjiData,
+    kanjiStats: {
+      a: { status: 'review', nextReview: 100 },
+      b: { status: 'learning', nextReview: 50 },
+    },
+    selectedGrade: 1,
+    limits,
+    now: 200,
+    random: () => 0.5,
+  });
+
+  assert.equal(limits.total, 3);
+  assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['b', 'a', 'c']);
+  assert.equal(plan.reviewCount, 2);
+  assert.equal(plan.newCount, 1);
+});
+
+test('今日の目標達成後は設定済みのセッション量へ戻す', () => {
+  assert.deepEqual(
+    getGoalAwareSessionLimits(
+      { review: 20, new: 5 },
+      { remaining: 0, isComplete: true },
+    ),
+    { review: 20, new: 5, total: 25 },
   );
 });
 
