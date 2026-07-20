@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -24,6 +24,7 @@ import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
+import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer } from './components/ui';
@@ -84,10 +85,13 @@ const THEME_VARS = {
   gold: `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`,
 };
 
-const GlobalStyle = ({ themeName }) => {
+const GlobalStyle = ({ themeName, reducedMotion }) => {
   const tv = THEME_VARS[themeName] || THEME_VARS.default;
+  const reducedMotionStyle = reducedMotion
+    ? `body { transition: none; } [data-reduced-motion="true"] *, [data-reduced-motion="true"] *::before, [data-reduced-motion="true"] *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }`
+    : '';
   return (
-    <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; }`}</style>
+    <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; } ${reducedMotionStyle}`}</style>
   );
 };
 
@@ -171,6 +175,30 @@ export default function App() {
   const [seenHints, setSeenHints] = useState(stats.seenHints || []);
   const isOnline = useOnlineStatus();
   const isMobile = useIsMobile();
+  const [systemPrefersReducedMotion, setSystemPrefersReducedMotion] = useState(() => (
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  ));
+  const motionPreference = getMotionPreference(stats.settings);
+  const isReducedMotion = shouldReduceMotion(motionPreference, systemPrefersReducedMotion);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleChange = (event) => setSystemPrefersReducedMotion(event.matches);
+    handleChange(mediaQuery);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+    if (typeof mediaQuery.addListener === 'function') {
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+
+    return undefined;
+  }, []);
 
   // オンライン時に対象学年の漢字筆順データを事前キャッシュ（オフライン学習対応）
   usePrefetchKanji(isOnline, stats.targetGrade, KANJI_DATA);
@@ -688,8 +716,9 @@ export default function App() {
   const activeThemeName = themeOverride === 'auto' ? levelInfo.themeName : themeOverride;
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
-      <GlobalStyle themeName={activeThemeName} />
+    <MotionConfig reducedMotion={isReducedMotion ? 'always' : 'never'}>
+      <div data-reduced-motion={isReducedMotion ? 'true' : 'false'} className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
+      <GlobalStyle themeName={activeThemeName} reducedMotion={isReducedMotion} />
 
       {/* ストレージ保存失敗バナー（オフラインバナーより上に表示） */}
       <StorageErrorBanner />
@@ -798,6 +827,7 @@ export default function App() {
         />
       )}
       <Footer />
-    </div>
+      </div>
+    </MotionConfig>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { useReducedMotionConfig } from 'framer-motion';
 
 /**
  * HTML5 Canvasを利用した軽量・高性能パーティクルコンポーネント
@@ -6,9 +7,10 @@ import React, { useRef, useEffect } from 'react';
  */
 const WeatherOverlay = ({ weather = 'clear' }) => {
   const canvasRef = useRef(null);
+  const shouldReduceMotion = useReducedMotionConfig();
 
   useEffect(() => {
-    if (weather === 'clear') return;
+    if (weather === 'clear' || shouldReduceMotion) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -110,9 +112,9 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [weather]);
+  }, [weather, shouldReduceMotion]);
 
-  if (weather === 'clear') return null;
+  if (weather === 'clear' || shouldReduceMotion) return null;
 
   return (
     <canvas

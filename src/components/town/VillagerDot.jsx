@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotionConfig } from 'framer-motion';
 import { getOccupation } from '../../data/residents';
 
 const TILE_W = 64;
@@ -31,6 +31,7 @@ const CULTIVATABLE_TERRAIN = new Set([
 const distance = (x1, y1, x2, y2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 
 const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
+  const shouldReduceMotion = useReducedMotionConfig();
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用
   const [gridPos, setGridPos] = useState({ x: villager.x, y: villager.y });
@@ -61,6 +62,8 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
   const Avatar = getAvatarComponent(villager.occupation);
 
   useEffect(() => {
+    if (shouldReduceMotion) return undefined;
+
     let lastTime = performance.now();
 
     const loop = (time) => {
@@ -177,16 +180,16 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
 
     frameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frameRef.current);
-  }, [mapData, villager.id.length]);
+  }, [mapData, shouldReduceMotion, villager.id.length]);
 
   // CSS描画用位置計算
   const baseIsoX = toIsoX(gridPos.x, gridPos.y);
   const baseIsoY = toIsoY(gridPos.x, gridPos.y);
 
   // 移動中のボビング（上下の揺れ）
-  const bobbing = aiState === 'MOVING' ? Math.sin(Date.now() / 100) * 3 : 0;
+  const bobbing = !shouldReduceMotion && aiState === 'MOVING' ? Math.sin(Date.now() / 100) * 3 : 0;
   // インタラクト中のジャンプ
-  const jumping = (aiState === 'INTERACTING' && emotion === 'heart') ? Math.abs(Math.sin(Date.now() / 200)) * -6 : 0;
+  const jumping = (!shouldReduceMotion && aiState === 'INTERACTING' && emotion === 'heart') ? Math.abs(Math.sin(Date.now() / 200)) * -6 : 0;
 
   // VillagerDotの幅・高さ（transform:translate(-50%,-100%)の代わりに手動オフセット）
   const vW = 40;
