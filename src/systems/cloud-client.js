@@ -50,7 +50,7 @@ function throwIfError(error, fallbackMessage) {
   throw cloudError;
 }
 
-const SAVE_COLUMNS = 'payload,payload_hash,revision,schema_version,updated_at';
+const SAVE_COLUMNS = 'payload,payload_hash,revision,schema_version,report_payload,updated_at';
 
 export async function fetchCloudSave(client, userId) {
   const { data, error } = await client
@@ -62,7 +62,7 @@ export async function fetchCloudSave(client, userId) {
   return data || null;
 }
 
-export async function createCloudSave(client, userId, payload, payloadHash) {
+export async function createCloudSave(client, userId, payload, payloadHash, reportPayload = {}) {
   const { data, error } = await client
     .from(CLOUD_TABLE)
     .insert({
@@ -71,6 +71,7 @@ export async function createCloudSave(client, userId, payload, payloadHash) {
       payload_hash: payloadHash,
       revision: 1,
       schema_version: CLOUD_SAVE_VERSION,
+      report_payload: reportPayload,
     })
     .select(SAVE_COLUMNS)
     .single();
@@ -79,7 +80,7 @@ export async function createCloudSave(client, userId, payload, payloadHash) {
 }
 
 /** revision一致時だけ更新する楽観ロック。data=nullは他端末との競合を表す。 */
-export async function updateCloudSave(client, userId, expectedRevision, payload, payloadHash) {
+export async function updateCloudSave(client, userId, expectedRevision, payload, payloadHash, reportPayload = {}) {
   const { data, error } = await client
     .from(CLOUD_TABLE)
     .update({
@@ -87,6 +88,7 @@ export async function updateCloudSave(client, userId, expectedRevision, payload,
       payload_hash: payloadHash,
       revision: expectedRevision + 1,
       schema_version: CLOUD_SAVE_VERSION,
+      report_payload: reportPayload,
     })
     .eq('user_id', userId)
     .eq('revision', expectedRevision)
@@ -94,6 +96,66 @@ export async function updateCloudSave(client, userId, expectedRevision, payload,
     .maybeSingle();
   throwIfError(error, 'クラウドデータを更新できませんでした');
   return data || null;
+}
+
+const LINK_COLUMNS = 'id,learner_id,viewer_id,learner_label,viewer_label,viewer_role,created_at';
+
+export async function listLearningLinks(client) {
+  const { data, error } = await client
+    .from('kanji_town_learning_links')
+    .select(LINK_COLUMNS)
+    .order('created_at', { ascending: false });
+  throwIfError(error, '見守り共有を読み込めませんでした');
+  return data || [];
+}
+
+export async function createLearningShareInvite(client, { tokenHash, learnerLabel, viewerRole }) {
+  const { data, error } = await client
+    .rpc('create_kanji_town_share_invite', {
+      p_token_hash: tokenHash,
+      p_learner_label: learnerLabel,
+      p_viewer_role: viewerRole,
+    })
+    .single();
+  throwIfError(error, '招待コードを作成できませんでした');
+  return data;
+}
+
+export async function claimLearningShareInvite(client, tokenHash, viewerLabel) {
+  const { data, error } = await client.rpc('claim_kanji_town_share_invite', {
+    p_token_hash: tokenHash,
+    p_viewer_label: viewerLabel,
+  });
+  throwIfError(error, '招待コードを確認できませんでした');
+  return data;
+}
+
+export async function deleteLearningShareInvite(client, inviteId) {
+  const { data, error } = await client
+    .from('kanji_town_share_invites')
+    .delete()
+    .eq('id', inviteId)
+    .select('id')
+    .maybeSingle();
+  throwIfError(error, '招待コードを取り消せませんでした');
+  return Boolean(data);
+}
+
+export async function fetchLinkedLearningReports(client) {
+  const { data, error } = await client.rpc('get_kanji_town_linked_reports');
+  throwIfError(error, '見守りレポートを読み込めませんでした');
+  return data || [];
+}
+
+export async function deleteLearningLink(client, linkId) {
+  const { data, error } = await client
+    .from('kanji_town_learning_links')
+    .delete()
+    .eq('id', linkId)
+    .select('id')
+    .maybeSingle();
+  throwIfError(error, '見守り共有を解除できませんでした');
+  return Boolean(data);
 }
 
 export function getAuthRedirectUrl() {

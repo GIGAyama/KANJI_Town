@@ -17,6 +17,11 @@ import {
   summarizeCloudData,
 } from '../systems/cloud-sync';
 import { StorageAPI } from '../systems/storage';
+import {
+  attachReportSource,
+  buildLearningReport,
+  isLearningReportCurrent,
+} from '../systems/learning-report';
 
 const META_KEY_PREFIX = 'kanji_town_cloud_meta_v1:';
 const LOCAL_OWNER_KEY = 'kanji_town_cloud_owner_v1';
@@ -170,6 +175,7 @@ export function useCloudSync({ stats, setStats }) {
         const localStats = statsRef.current;
         const payload = prepareCloudPayload(localStats);
         const localHash = await hashCloudPayload(payload);
+        const reportPayload = attachReportSource(buildLearningReport(localStats), localHash);
         const remote = await fetchCloudSave(client, activeUser.id);
         // ログアウトや別アカウントへの切替後に、古いリクエスト結果を反映しない。
         if (userRef.current?.id !== activeUser.id) return null;
@@ -187,7 +193,7 @@ export function useCloudSync({ stats, setStats }) {
 
         if (decision.action === 'create_remote') {
           try {
-            const created = await createCloudSave(client, activeUser.id, payload, localHash);
+            const created = await createCloudSave(client, activeUser.id, payload, localHash, reportPayload);
             if (userRef.current?.id !== activeUser.id) return null;
             rememberRemote(activeUser.id, created);
           } catch (error) {
@@ -197,7 +203,7 @@ export function useCloudSync({ stats, setStats }) {
             showConflict(latest, localStats);
           }
         } else if (decision.action === 'push_local') {
-          const updated = await updateCloudSave(client, activeUser.id, remote.revision, payload, localHash);
+          const updated = await updateCloudSave(client, activeUser.id, remote.revision, payload, localHash, reportPayload);
           if (userRef.current?.id !== activeUser.id) return null;
           if (!updated) {
             const latest = await fetchCloudSave(client, activeUser.id);
@@ -210,6 +216,22 @@ export function useCloudSync({ stats, setStats }) {
           applyRemote(activeUser.id, remote);
         } else if (decision.action === 'conflict') {
           showConflict(remote, localStats, decision.reason);
+        } else if (!isLearningReportCurrent(remote.report_payload, remote.payload_hash)) {
+          const updated = await updateCloudSave(
+            client,
+            activeUser.id,
+            remote.revision,
+            payload,
+            localHash,
+            reportPayload,
+          );
+          if (userRef.current?.id !== activeUser.id) return null;
+          if (updated) rememberRemote(activeUser.id, updated);
+          else {
+            const latest = await fetchCloudSave(client, activeUser.id);
+            if (userRef.current?.id !== activeUser.id) return null;
+            showConflict(latest, localStats);
+          }
         } else {
           rememberRemote(activeUser.id, remote);
         }
@@ -385,7 +407,8 @@ export function useCloudSync({ stats, setStats }) {
         const localStats = statsRef.current;
         const payload = prepareCloudPayload(localStats);
         const hash = await hashCloudPayload(payload);
-        const created = await createCloudSave(client, activeUser.id, payload, hash);
+        const report = attachReportSource(buildLearningReport(localStats), hash);
+        const created = await createCloudSave(client, activeUser.id, payload, hash, report);
         if (userRef.current?.id !== activeUser.id) return;
         rememberRemote(activeUser.id, created);
         patchState({ notice: 'この端末の学習データを新しいアカウントへ保存しました。' });
@@ -400,7 +423,8 @@ export function useCloudSync({ stats, setStats }) {
       const localStats = statsRef.current;
       const payload = prepareCloudPayload(localStats);
       const hash = await hashCloudPayload(payload);
-      const updated = await updateCloudSave(client, activeUser.id, latest.revision, payload, hash);
+      const report = attachReportSource(buildLearningReport(localStats), hash);
+      const updated = await updateCloudSave(client, activeUser.id, latest.revision, payload, hash, report);
       if (userRef.current?.id !== activeUser.id) return;
       if (!updated) {
         const newest = await fetchCloudSave(client, activeUser.id);
