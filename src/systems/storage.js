@@ -252,13 +252,14 @@ const StorageAPI = {
   /**
    * 即時保存（セッション終了時など、データロスを防ぐ場面で使用）
    * @param {object} stats
+   * @returns {boolean} 保存成功
    */
   saveStatsImmediate: (stats) => {
     if (_saveDebounceTimer) {
       clearTimeout(_saveDebounceTimer);
       _saveDebounceTimer = null;
     }
-    StorageAPI.safeSet(STORAGE_KEY, stats);
+    return StorageAPI.safeSet(STORAGE_KEY, stats);
   },
 
   /** 学習途中の小さなチェックポイントを即時保存する。 */
