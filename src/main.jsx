@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { installGlobalDiagnostics, recordAppError, recordDiagnosticEvent } from './systems/diagnostics';
+
+// 画面外で発生した例外も、個人情報を除去した端末内診断へ記録する。
+installGlobalDiagnostics();
 
 // ── URLクリーンアップ: 不正なサブパス（/KANJI_Town/undefined等）をルートに戻す ──
 const BASE_PATH = '/KANJI_Town/';
@@ -23,8 +27,20 @@ window.addEventListener('vite:preloadError', (event) => {
   const lastReload = sessionStorage.getItem('kanji_town_chunk_reload');
   const now = Date.now();
   if (lastReload && now - Number(lastReload) < 10000) {
+    recordDiagnosticEvent({
+      severity: 'error',
+      source: 'release',
+      code: 'chunk-reload-loop',
+      message: 'Latest application chunk could not be loaded after retry.',
+    });
     return; // 10秒以内の再リロードを防止
   }
+  recordDiagnosticEvent({
+    severity: 'warning',
+    source: 'release',
+    code: 'chunk-reload',
+    message: 'Application update required a chunk reload.',
+  });
   sessionStorage.setItem('kanji_town_chunk_reload', String(now));
   event.preventDefault();
   window.location.reload();
@@ -53,6 +69,7 @@ if ('serviceWorker' in navigator) {
       }, 6 * 60 * 60 * 1000);
 
     } catch (e) {
+      recordAppError(e, { source: 'service-worker', code: 'registration-failed' });
       if (import.meta.env.DEV) {
         console.warn('[SW] 登録失敗:', e);
       }

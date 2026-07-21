@@ -1,4 +1,5 @@
 import React from 'react';
+import { recordAppError } from '../../systems/diagnostics';
 
 /**
  * エラーバウンダリ（商用グレード）
@@ -20,30 +21,17 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    // 構造化されたエラーログ（文字数制限つき、localStorage 容量を圧迫しないように）
-    const trunc = (s, max) => (s && s.length > max) ? s.slice(0, max) + '…' : (s || '');
-    const errorReport = {
-      id: this.state.errorId,
-      message: trunc(error.message, 200),
-      stack: trunc(error.stack?.split('\n').slice(0, 3).join('\n'), 500),
-      componentStack: trunc(info.componentStack?.split('\n').slice(0, 3).join('\n'), 300),
-      timestamp: new Date().toISOString(),
-    };
+    const errorReport = recordAppError(error, {
+      source: 'react',
+      code: 'component-error',
+      detail: info.componentStack,
+    });
+    this.setState({ errorId: errorReport.id });
 
     if (import.meta.env.DEV) {
       console.error('[ErrorBoundary]', { ...errorReport, fullStack: error.stack, fullCompStack: info.componentStack });
     } else {
       console.error('[ErrorBoundary]', errorReport.id, errorReport.message);
-    }
-
-    // エラーログをlocalStorageに保存（開発者によるデバッグ用、最大3件）
-    try {
-      const logs = JSON.parse(localStorage.getItem('kanji_town_errors') || '[]');
-      logs.push(errorReport);
-      while (logs.length > 3) logs.shift();
-      localStorage.setItem('kanji_town_errors', JSON.stringify(logs));
-    } catch {
-      // ストレージ書き込み失敗は無視（QuotaExceededなど）
     }
   }
 

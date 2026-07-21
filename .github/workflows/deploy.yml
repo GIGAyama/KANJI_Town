@@ -25,6 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -42,9 +43,51 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-deployment:
+    if: github.event_name == 'push'
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify deployed application and release
+        env:
+          DEPLOY_URL: ${{ needs.deploy.outputs.page_url }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          const baseUrl = process.env.DEPLOY_URL;
+          const expectedSha = process.env.EXPECTED_SHA;
+          let lastError = 'deployment was not reachable';
+
+          for (let attempt = 1; attempt <= 12; attempt += 1) {
+            try {
+              const cacheBust = `verify=${Date.now()}`;
+              const [pageResponse, releaseResponse] = await Promise.all([
+                fetch(`${baseUrl}?${cacheBust}`, { cache: 'no-store' }),
+                fetch(new URL(`release.json?${cacheBust}`, baseUrl), { cache: 'no-store' }),
+              ]);
+              const [page, release] = await Promise.all([
+                pageResponse.text(),
+                releaseResponse.json(),
+              ]);
+              if (!pageResponse.ok || !page.includes('id="root"')) throw new Error('application shell is unavailable');
+              if (!releaseResponse.ok || release.commit !== expectedSha) throw new Error(`stale release: ${release.commit || 'unknown'}`);
+              console.log(`Deployment verified: ${release.version} (${release.commit.slice(0, 8)})`);
+              process.exit(0);
+            } catch (error) {
+              lastError = error.message;
+              if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+          }
+          console.error(`Deployment verification failed: ${lastError}`);
+          process.exit(1);
+          NODE
