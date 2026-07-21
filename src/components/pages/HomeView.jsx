@@ -13,6 +13,7 @@ import { calculateSatisfaction, getSatisfactionLabel } from '../../systems/resid
 import { buildLearningPlan, getDailyLearningProgress, getGoalAwareSessionLimits, getReviewForecast } from '../../systems/learning-plan';
 import { getTodayString } from '../../utils/date-utils';
 import { SESSION } from '../../constants/gameConfig';
+import { getHabitStatus } from '../../systems/habit';
 
 const DraggableTownMap = lazy(() => import('../town/DraggableTownMap'));
 
@@ -34,7 +35,9 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const { level, title, badge, progress, remainingExp, targetReward, isMaxLevel } = currentLevelInfo;
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
   const handleGradeChange = (g) => { setSelectedGrade(g); let newStats = { ...stats, targetGrade: g }; setStats(newStats); StorageAPI.saveStats(newStats); };
-  const dailyProgress = getDailyLearningProgress(stats, getTodayString());
+  const today = getTodayString();
+  const dailyProgress = getDailyLearningProgress(stats, today);
+  const habitStatus = getHabitStatus(stats, today);
   const sessionSize = stats.settings?.sessionSize || 'normal';
   const baseSessionLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
   const sessionLimits = getGoalAwareSessionLimits(baseSessionLimits, dailyProgress);
@@ -131,7 +134,13 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           </div>
           <div className="min-w-0">
             <div className="text-xs md:text-sm font-black text-[var(--text)] truncate">{dailyProgress.isComplete ? 'きょうの目標クリア！' : 'きょうの学習目標'}</div>
-            <div className="text-[10px] font-bold text-[var(--text)] opacity-55">🔥 {stats.streak || 0}日れんぞく</div>
+            <div className="text-[10px] font-bold text-[var(--text)] opacity-55">
+              🔥 {stats.streak || 0}日 ・ 🛡️ {habitStatus.canProtectToday
+                ? 'きょう自動で守ります'
+                : habitStatus.restPassAvailable
+                  ? 'おやすみパスあり'
+                  : `あと${habitStatus.rechargeRemaining}日でパス`}
+            </div>
           </div>
         </div>
         <div className="font-black text-[var(--text)] shrink-0"><span className="text-lg text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs opacity-50"> / {dailyProgress.goal}字</span></div>
@@ -140,7 +149,11 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
       </div>
       <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60">
-        <span>{dailyProgress.isComplete ? 'よくがんばりました！' : `あと ${dailyProgress.remaining}字でクリア`}</span>
+        <span>{habitStatus.canProtectToday
+          ? 'きょう学ぶと連続記録を守れます'
+          : dailyProgress.isComplete
+            ? 'よくがんばりました！'
+            : `あと ${dailyProgress.remaining}字でクリア`}</span>
         <span>{nextReviewHint}</span>
       </div>
     </div>
