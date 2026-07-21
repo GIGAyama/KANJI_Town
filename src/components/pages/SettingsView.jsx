@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud, HeartHandshake } from 'lucide-react';
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
@@ -8,6 +8,7 @@ import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
 import AccountSyncPanel from '../settings/AccountSyncPanel';
+import LearningSharePanel from '../settings/LearningSharePanel';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -325,6 +326,11 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       {/* アカウント・クラウド同期 */}
       <Section icon={Cloud} title="アカウント・クラウド同期">
         <AccountSyncPanel cloudSync={cloudSync} />
+      </Section>
+
+      {/* 教師・保護者向け見守り共有 */}
+      <Section icon={HeartHandshake} title="学習の見守り共有">
+        <LearningSharePanel cloudSync={cloudSync} />
       </Section>
 
       {/* データ管理 */}
