@@ -25,6 +25,7 @@ import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
+import { recordSkillEvidence } from './systems/mastery';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer } from './components/ui';
@@ -487,19 +488,42 @@ export default function App() {
     beginSession('boss', { queue, oldExp: stats.totalExp, expMultiplier });
   };
 
-  const handleUpdateStat = (kanjiObj, evalType) => {
+  const handleRecordSkillEvidence = useCallback((kanjiObj, updates) => {
+    if (!kanjiObj?.id || !Array.isArray(updates) || updates.length === 0) return;
+    setStats(s => {
+      const latest = migrateCard(s.kanjiStats?.[kanjiObj.id]);
+      return {
+        ...s,
+        kanjiStats: {
+          ...s.kanjiStats,
+          [kanjiObj.id]: {
+            ...latest,
+            skillMastery: recordSkillEvidence(latest, updates),
+          },
+        },
+      };
+    });
+  }, []);
+
+  const handleUpdateStat = (kanjiObj, evalType, { skills = [] } = {}) => {
     const id = kanjiObj.id;
     const cur = migrateCard(stats.kanjiStats?.[id]);
+    const curWithMastery = skills.length > 0
+      ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
+      : cur;
     if (sessionData.isDrill) {
       setStats(s => {
         const latest = migrateCard(s.kanjiStats?.[id]);
+        const latestWithMastery = skills.length > 0
+          ? { ...latest, skillMastery: recordSkillEvidence(latest, skills.map(skill => ({ skill, evidence: evalType }))) }
+          : latest;
         return {
           ...s,
           kanjiStats: {
             ...s.kanjiStats,
             [id]: {
-              ...latest,
-              ...recordPracticeAttempt(latest, evalType),
+              ...latestWithMastery,
+              ...recordPracticeAttempt(latestWithMastery, evalType),
             },
           },
         };
@@ -514,8 +538,8 @@ export default function App() {
       return evalType !== 'again';
     }
 
-    const next = calculateNextReview(cur, evalType);
-    const wasNew = cur.status === 'new';
+    const next = calculateNextReview(curWithMastery, evalType);
+    const wasNew = curWithMastery.status === 'new';
     const isMastering = next.graduated && next.interval >= 7 * 24 * 60 * 60 * 1000;
     const newStatus = isMastering ? 'mastered' : next.graduated ? 'review' : 'learning';
     let exp = 0; let unlockedItem = null; let newVillager = null;
@@ -563,11 +587,11 @@ export default function App() {
       kanjiStats: {
         ...s.kanjiStats,
         [id]: {
-          ...cur,
+          ...curWithMastery,
           ...next,
           status: newStatus,
-          mistakes: evalType === 'again' ? (cur.mistakes || 0) + 1 : (cur.mistakes || 0),
-          ...recordPracticeAttempt(cur, evalType),
+          mistakes: evalType === 'again' ? (curWithMastery.mistakes || 0) + 1 : (curWithMastery.mistakes || 0),
+          ...recordPracticeAttempt(curWithMastery, evalType),
         },
       },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
@@ -808,7 +832,7 @@ export default function App() {
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}><SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}><SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}

@@ -10,6 +10,7 @@ import { RefreshCw, Swords, Shield } from 'lucide-react';
 
 const PLAYER_MAX_HP = 3;
 const BOSS_MAX_HP = 10;
+const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
 // --- ボスバトル専用キャンバス ---
 const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled }) => {
@@ -261,7 +262,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
       doBossAttack(2, 'タイムアウト！ボスの強攻撃！');
       // 復習リスト入り
       addToFailedKanji(kanji);
-      onUpdateStat(kanji, 'again');
+      onUpdateStat(kanji, 'again', WRITING_SKILLS);
     }, 800);
   };
 
@@ -281,14 +282,14 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, '画数ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again');
+        onUpdateStat(kanji, 'again', WRITING_SKILLS);
       } else if (!result.crossMatch) {
         // 交差ミス → 一撃アウト（0点）、ボス強攻撃2ダメージ
         setBattleMessage('せんの交わりがちがう！一撃アウト！');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, '交差ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again');
+        onUpdateStat(kanji, 'again', WRITING_SKILLS);
       } else if (result.total >= 80) {
         // 会心の一撃
         setBattleMessage('会心の一撃！');
@@ -300,7 +301,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
           coins: earnedRef.current.coins + 8,
           perfectCount: earnedRef.current.perfectCount + 1,
         };
-        onUpdateStat(kanji, 'easy');
+        onUpdateStat(kanji, 'easy', WRITING_SKILLS);
       } else if (result.total >= 60) {
         // ダメージ！
         setBattleMessage('ダメージを与えた！');
@@ -311,20 +312,20 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
           exp: earnedRef.current.exp + 15,
           coins: earnedRef.current.coins + 5,
         };
-        onUpdateStat(kanji, 'good');
+        onUpdateStat(kanji, 'good', WRITING_SKILLS);
       } else if (result.total >= 50) {
         // ダメージ通らない + ボス反撃1ダメージ
         setBattleMessage('おしい…ダメージが通らない！');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(1, 'ボスの反撃！');
-        onUpdateStat(kanji, 'hard');
+        onUpdateStat(kanji, 'hard', WRITING_SKILLS);
       } else {
         // 50点未満 → ボス強攻撃2ダメージ + 復習リスト入り
         setBattleMessage('うまく書けなかった…');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, 'ボスの強攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again');
+        onUpdateStat(kanji, 'again', WRITING_SKILLS);
       }
     }, 600);
   };
