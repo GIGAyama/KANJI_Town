@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud } from 'lucide-react';
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
+import AccountSyncPanel from '../settings/AccountSyncPanel';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -65,7 +66,7 @@ const Section = ({ icon: Icon, title, children }) => (
   </div>
 );
 
-const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo }) => {
+const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo, cloudSync }) => {
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
@@ -169,6 +170,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
         window.localStorage.removeItem('kanji_town_v7');
         window.localStorage.removeItem('kanji_mega_builder_final_v6');
         window.localStorage.removeItem('kanji_mega_builder_final_v5');
+        window.localStorage.removeItem('kanji_town_cloud_owner_v1');
         setStats(StorageAPI.getStats());
         setConfirm(null);
         showToast('データをリセットしました');
@@ -318,6 +320,11 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
             </div>
           </div>
         </div>
+      </Section>
+
+      {/* アカウント・クラウド同期 */}
+      <Section icon={Cloud} title="アカウント・クラウド同期">
+        <AccountSyncPanel cloudSync={cloudSync} />
       </Section>
 
       {/* データ管理 */}

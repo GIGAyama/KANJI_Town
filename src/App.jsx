@@ -4,6 +4,7 @@ import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useIsMobile } from './hooks/useIsMobile';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
+import { useCloudSync } from './hooks/useCloudSync';
 import OfflineBanner from './components/ui/OfflineBanner';
 import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import MobileBottomNav from './components/ui/MobileBottomNav';
@@ -152,6 +153,10 @@ export default function App() {
   const [view, setView] = useState(connectParam ? 'peerClient' : initialAppState.restoredSession ? 'session' : 'home');
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
+  const cloudSync = useCloudSync({ stats, setStats });
+  useEffect(() => {
+    if (cloudSync.needsPasswordReset) setView('settings');
+  }, [cloudSync.needsPasswordReset]);
   const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
   const sessionDataRef = useRef(sessionData);
   const setSessionData = useCallback((update) => {
@@ -826,7 +831,7 @@ export default function App() {
               }} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
-          {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
+          {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} cloudSync={cloudSync} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} startDrillTest={startDrillTest} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
