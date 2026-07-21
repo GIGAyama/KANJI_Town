@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotionConfig } from 'framer-motion';
-import { getOccupation } from '../../data/residents';
+import { subscribeTownAnimation } from '../../systems/town-animation';
 
 const TILE_W = 64;
 const TILE_H = 32;
@@ -30,7 +30,7 @@ const CULTIVATABLE_TERRAIN = new Set([
 // 距離計算ヘルパー
 const distance = (x1, y1, x2, y2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 
-const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
+const VillagerDot = React.memo(({ villager, mapData = {} }) => {
   const shouldReduceMotion = useReducedMotionConfig();
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用
@@ -45,7 +45,7 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
     y: (Math.random() - 0.5) * 8
   }).current;
   
-  // 状態管理やアニメーションフレーム用のRef
+  // 状態管理用のRef
   const stateRef = useRef({
     currentState: 'IDLE',
     gridX: villager.x,
@@ -57,18 +57,13 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
     baseSpeed: 0.02 + (villager.id.length % 3) * 0.005, // 個体別の歩行速度
   });
 
-  const frameRef = useRef(null);
-  const occ = getOccupation(villager.occupation);
   const Avatar = getAvatarComponent(villager.occupation);
 
   useEffect(() => {
     if (shouldReduceMotion) return undefined;
+    let emotionTimerId = null;
 
-    let lastTime = performance.now();
-
-    const loop = (time) => {
-      const dt = Math.min((time - lastTime) / 1000, 0.1); // デルタタイム（最大0.1秒）
-      lastTime = time;
+    const unsubscribe = subscribeTownAnimation((_time, dt) => {
       const s = stateRef.current;
 
       s.timer -= dt;
@@ -105,7 +100,8 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
             // 行動決定のリアクション
             if(Math.random() > 0.7) {
               setEmotion('exclamation');
-              setTimeout(() => setEmotion(null), 1500);
+              if (emotionTimerId) clearTimeout(emotionTimerId);
+              emotionTimerId = setTimeout(() => setEmotion(null), 1500);
             }
           } else {
             // ランダムに少しだけ散歩
@@ -175,11 +171,12 @@ const VillagerDot = React.memo(({ villager, mapData = {}, tileW, tileH }) => {
         }
       }
 
-      frameRef.current = requestAnimationFrame(loop);
-    };
+    });
 
-    frameRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frameRef.current);
+    return () => {
+      unsubscribe();
+      if (emotionTimerId) clearTimeout(emotionTimerId);
+    };
   }, [mapData, shouldReduceMotion, villager.id.length]);
 
   // CSS描画用位置計算

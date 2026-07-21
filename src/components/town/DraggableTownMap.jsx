@@ -5,6 +5,7 @@ import { TOWN_ITEMS } from '../../data/town-items';
 import VillagerDot from './VillagerDot';
 import WeatherOverlay from './WeatherOverlay';
 import { audioCtrl } from '../../systems/audio';
+import { isVillagerInViewRange } from '../../systems/town-animation';
 
 // ── アイソメトリック定数 ──
 const TILE_W = 64;
@@ -279,6 +280,11 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       endY: Math.min(GRID_SIZE - 1, Math.max(...ys) + margin),
     };
   }, [offset.x, offset.y, containerSize.w, containerSize.h, zoom]);
+
+  const renderedVillagers = useMemo(
+    () => visibleVillagers.filter((villager) => isVillagerInViewRange(villager, viewRange)),
+    [visibleVillagers, viewRange],
+  );
 
   // ── メガ建築アンカー ──
   const megaAnchors = useMemo(() => {
@@ -630,13 +636,11 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       }}>
         {cells}
         {/* 住民（セルと同じtransformコンテナ内でz-indexによる深度制御） */}
-        {visibleVillagers.map(v => (
+        {renderedVillagers.map(v => (
           <VillagerDot
             key={v.id}
             villager={v}
             mapData={safeMapData}
-            tileW={TILE_W}
-            tileH={TILE_H}
           />
         ))}
         {/* ホバーハイライト */}
