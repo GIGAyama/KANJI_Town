@@ -9,7 +9,7 @@ import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { STROKE_THRESHOLDS } from '../../constants/strokeConfig';
 
-const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
+const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
   const [currentStroke, setCurrentStroke] = useState(0); const [isDrawing, setIsDrawing] = useState(false);
   const [count, setCount] = useState(0); const [statusMsg, setStatusMsg] = useState("１かくめ をかこう！");
@@ -85,7 +85,9 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, canvasSize, commonS
       const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
-        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; }
+        let skillEvidence = 'guided';
+        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; skillEvidence = 'easy'; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; skillEvidence = 'good'; }
+        onPracticeComplete?.(skillEvidence);
         addFloatingText(canvasSize / 2, canvasSize / 2, `${evalText}`, color, 1.5); distSum.current = 0; setStatusMsg("✨ よくできました！"); audioCtrl.playSE('success'); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2500);
       } else { addFloatingText(lastPos.current.x, lastPos.current.y, "✨", "var(--accent)", 1); setStatusMsg(`${nextStroke + 1}かくめ をかこう！`); audioCtrl.playSE('click'); }
     } else { clearCanvas(writeRef); setStatusMsg("さいごまで なぞってね💦"); audioCtrl.playSE('stamp_bad'); }

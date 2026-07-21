@@ -10,6 +10,7 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 const WAVE_SIZE = 10;
 const INITIAL_TIME = 45;
 const MAX_TIME = 60;
+const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
 // gradeStrokes の 0-100 スコアをサバイバルのランクに変換
 function scoreToRank(result) {
@@ -442,7 +443,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
         perfectCount: earnedRef.current.perfectCount + 1,
       };
       audioCtrl.playSE('stamp_perfect');
-      onUpdateStat(kanji, 'easy');
+      onUpdateStat(kanji, 'easy', WRITING_SKILLS);
     } else if (rank === 'ok') {
       setOkCount(c => c + 1);
       earnedRef.current = {
@@ -451,11 +452,11 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
         coins: earnedRef.current.coins + 2,
       };
       audioCtrl.playSE('stamp_good');
-      onUpdateStat(kanji, 'good');
+      onUpdateStat(kanji, 'good', WRITING_SKILLS);
     } else {
       setMissCount(c => c + 1);
       audioCtrl.playSE('stamp_bad');
-      onUpdateStat(kanji, 'again');
+      onUpdateStat(kanji, 'again', WRITING_SKILLS);
       // ミスフラッシュ
       setMissFlash(true);
       setTimeout(() => setMissFlash(false), 400);

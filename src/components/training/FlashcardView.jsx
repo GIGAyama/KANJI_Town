@@ -6,6 +6,7 @@ import { audioCtrl } from '../../systems/audio';
 import { F, FormatKun } from '../ui/FormatKun';
 import { migrateCard, calculateNextReview, recordPracticeAttempt } from '../../systems/srs';
 import { StorageAPI } from '../../systems/storage';
+import { recordSkillEvidence } from '../../systems/mastery';
 
 const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
   const [idx, setIdx] = useState(0);
@@ -54,10 +55,15 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
 
     setStats(currentStats => {
       const cur = migrateCard(currentStats.kanjiStats?.[kanji.id]);
+      const skillMastery = recordSkillEvidence(cur, [
+        { skill: 'reading', evidence: evaluation },
+        { skill: 'meaning', evidence: 'exposed' },
+      ]);
       const card = isKnown
-        ? { ...cur, ...recordPracticeAttempt(cur, evaluation) }
+        ? { ...cur, skillMastery, ...recordPracticeAttempt(cur, evaluation) }
         : {
           ...cur,
+          skillMastery,
           ...calculateNextReview(cur, evaluation),
           status: 'learning',
           mistakes: (cur.mistakes || 0) + 1,

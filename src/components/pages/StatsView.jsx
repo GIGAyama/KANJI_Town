@@ -3,6 +3,14 @@ import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock } 
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { buildWeakKanjiPlan, getReviewForecast, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
+import { getSkillMasterySummary, MASTERY_SKILLS, MASTERY_SKILL_DEFINITIONS } from '../../systems/mastery';
+
+const SKILL_COLORS = {
+  reading: { bar: 'bg-sky-400', text: 'text-sky-700', panel: 'bg-sky-50 border-sky-200' },
+  meaning: { bar: 'bg-amber-400', text: 'text-amber-700', panel: 'bg-amber-50 border-amber-200' },
+  writing: { bar: 'bg-rose-400', text: 'text-rose-700', panel: 'bg-rose-50 border-rose-200' },
+  stroke: { bar: 'bg-violet-400', text: 'text-violet-700', panel: 'bg-violet-50 border-violet-200' },
+};
 
 const StatsView = ({ setView, stats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
@@ -10,6 +18,10 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   const learning = kanjiList.filter(k => k.stat?.status === 'learning' || k.stat?.status === 'review').length;
   const notYet = kanjiList.filter(k => !k.stat || k.stat?.status === 'new').length;
   const totalKanji = KANJI_DATA.length;
+  const masterySummary = useMemo(
+    () => getSkillMasterySummary(stats.kanjiStats),
+    [stats.kanjiStats],
+  );
 
   const weeklySummary = useMemo(
     () => getWeeklyLearningSummary(stats),
@@ -68,6 +80,34 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
               <div className="text-xs font-bold text-[var(--text)] opacity-60">{s.label}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 4技能の習熟度 */}
+      <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
+        <div className="mb-1 text-center text-sm font-black text-[var(--text)]">漢字を身につける「4つの力」</div>
+        <div className="mb-3 text-center text-[10px] font-bold text-[var(--text)] opacity-50">
+          {masterySummary.learnedCount > 0
+            ? `${masterySummary.learnedCount}字の回答と練習記録から自動計算`
+            : '漢字を学習すると、力の伸びがここに表示されます'}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="list" aria-label="読み、意味、書字、筆順の習熟度">
+          {MASTERY_SKILLS.map((skill) => {
+            const definition = MASTERY_SKILL_DEFINITIONS[skill];
+            const colors = SKILL_COLORS[skill];
+            const score = masterySummary.scores[skill];
+            return (
+              <div key={skill} role="listitem" aria-label={`${definition.label} ${score}点`} className={`${colors.panel} rounded-xl border-2 p-2.5`}>
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <span className="text-xs font-black text-[var(--text)]"><span aria-hidden="true">{definition.icon}</span> {definition.label}</span>
+                  <span className={`text-lg font-black ${colors.text}`}>{score}<span className="text-[9px] opacity-60"> / 100</span></span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full border border-[var(--text)] bg-white/80" aria-hidden="true">
+                  <div className={`h-full rounded-full transition-all ${colors.bar}`} style={{ width: `${score}%` }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

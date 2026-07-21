@@ -9,6 +9,8 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { TEST } from '../../constants/gameConfig';
 import { getSatisfactionMultiplier, calculateSatisfaction } from '../../systems/residents';
 
+const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
+
 // --- テスト専用キャンバス ---
 const TestCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
   const inkRef = useRef(null);
@@ -250,7 +252,7 @@ const DrillTestView = ({ queue, stats, onUpdateStat, onFinish, startDrillSession
     const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch && result.crossMatch !== false;
 
     // EXP累積のためonUpdateStatを呼ぶ
-    onUpdateStat(kanji, passed ? 'good' : 'again');
+    onUpdateStat(kanji, passed ? 'good' : 'again', WRITING_SKILLS);
 
     const answer = {
       kanji,

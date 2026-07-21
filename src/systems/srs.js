@@ -2,6 +2,7 @@
 // SM-2+ 間隔反復アルゴリズム
 // 学習フェーズ → 卒業 → レビューフェーズの3段階
 // ==========================================
+import { normalizeSkillMastery } from './mastery.js';
 
 /** 学習ステップ間隔(ms): 1分 → 10分 */
 export const LEARNING_STEPS = [1 * 60 * 1000, 10 * 60 * 1000];
@@ -231,7 +232,7 @@ export function recordPracticeAttempt(card, evaluation, now = Date.now()) {
  */
 export const migrateCard = (card) => {
   if (!card) {
-    return {
+    const migrated = {
       graduated: false,
       stepIdx: 0,
       interval: LEARNING_STEPS[0],
@@ -244,17 +245,19 @@ export const migrateCard = (card) => {
       practiceAttempts: 0,
       lastPracticedAt: 0,
     };
+    return { ...migrated, skillMastery: normalizeSkillMastery(null, migrated) };
   }
   // easeフィールドがあれば移行済み
   if (card.ease !== undefined) {
-    return sanitizeNextReview({
+    const migrated = sanitizeNextReview({
       practiceStreak: 0,
       practiceAttempts: 0,
       lastPracticedAt: 0,
       ...card,
     });
+    return { ...migrated, skillMastery: normalizeSkillMastery(card.skillMastery, migrated) };
   }
-  return sanitizeNextReview({
+  const migrated = sanitizeNextReview({
     ...card,
     ease: DEFAULT_EASE,
     graduated: (card.interval || 0) >= GRADUATING_INTERVAL,
@@ -264,4 +267,5 @@ export const migrateCard = (card) => {
     practiceAttempts: 0,
     lastPracticedAt: 0,
   });
+  return { ...migrated, skillMastery: normalizeSkillMastery(card.skillMastery, migrated) };
 };
