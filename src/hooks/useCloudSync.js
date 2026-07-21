@@ -22,6 +22,7 @@ import {
   buildLearningReport,
   isLearningReportCurrent,
 } from '../systems/learning-report';
+import { recordDiagnosticEvent } from '../systems/diagnostics';
 
 const META_KEY_PREFIX = 'kanji_town_cloud_meta_v1:';
 const LOCAL_OWNER_KEY = 'kanji_town_cloud_owner_v1';
@@ -71,6 +72,15 @@ function friendlyError(error) {
   if (message.includes('fetch') || message.includes('network')) return '通信できませんでした。接続後に自動で再試行します。';
   if (code === '23505') return '別の端末で同期が始まりました。もう一度お試しください。';
   return 'クラウド同期を完了できませんでした。端末のデータは安全に残っています。';
+}
+
+function recordCloudError(operation, error) {
+  recordDiagnosticEvent({
+    severity: 'error',
+    source: 'cloud-sync',
+    code: `${operation}-${String(error?.code || error?.name || 'unknown')}`,
+    message: friendlyError(error),
+  });
 }
 
 const initialState = (configured) => ({
@@ -237,6 +247,7 @@ export function useCloudSync({ stats, setStats }) {
         }
         return decision.action;
       } catch (error) {
+        recordCloudError('sync', error);
         patchState({ status: 'error', error: friendlyError(error) });
         return null;
       }
@@ -289,6 +300,7 @@ export function useCloudSync({ stats, setStats }) {
       });
       if (session?.user) setTimeout(() => performSync(session.user), 0);
     }).catch((error) => {
+      recordCloudError('initialize', error);
       if (active) patchState({ status: 'error', error: friendlyError(error) });
     });
 
@@ -329,6 +341,7 @@ export function useCloudSync({ stats, setStats }) {
       const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
     } catch (error) {
+      recordCloudError('sign-in', error);
       patchState({ status: 'signed_out', error: friendlyError(error) });
       throw error;
     }
@@ -348,6 +361,7 @@ export function useCloudSync({ stats, setStats }) {
         patchState({ status: 'signed_out', notice: '確認メールを送りました。リンクを開いて登録を完了してください。' });
       }
     } catch (error) {
+      recordCloudError('sign-up', error);
       patchState({ status: 'signed_out', error: friendlyError(error) });
       throw error;
     }
@@ -363,6 +377,7 @@ export function useCloudSync({ stats, setStats }) {
       conflictRemoteRef.current = null;
       patchState({ ...initialState(true), status: 'signed_out' });
     } catch (error) {
+      recordCloudError('sign-out', error);
       patchState({ error: friendlyError(error) });
     }
   }, [patchState]);
@@ -374,6 +389,7 @@ export function useCloudSync({ stats, setStats }) {
       if (error) throw error;
       patchState({ notice: 'パスワード再設定メールを送りました。', error: null });
     } catch (error) {
+      recordCloudError('password-reset', error);
       patchState({ error: friendlyError(error) });
       throw error;
     }
@@ -386,6 +402,7 @@ export function useCloudSync({ stats, setStats }) {
       if (error) throw error;
       patchState({ needsPasswordReset: false, notice: 'パスワードを更新しました。', error: null });
     } catch (error) {
+      recordCloudError('password-update', error);
       patchState({ error: friendlyError(error) });
       throw error;
     }
@@ -435,6 +452,7 @@ export function useCloudSync({ stats, setStats }) {
       rememberRemote(activeUser.id, updated);
       patchState({ notice: 'この端末の学習データをクラウドへ保存しました。' });
     } catch (error) {
+      recordCloudError('resolve-conflict', error);
       patchState({ status: 'error', error: friendlyError(error) });
     }
   }, [applyRemote, patchState, performSync, rememberRemote, showConflict]);

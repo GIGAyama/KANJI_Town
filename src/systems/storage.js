@@ -12,6 +12,7 @@ import { getTodayString, formatDate } from '../utils/date-utils.js';
 import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
 import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
 import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
+import { recordDiagnosticEvent } from './diagnostics.js';
 
 // ── 内部エラーログ（直近20件を保持、デバッグ用） ──
 const _errorLog = [];
@@ -30,6 +31,12 @@ function logStorageError(context, error) {
   };
   _errorLog.push(entry);
   if (_errorLog.length > MAX_ERROR_LOG) _errorLog.shift();
+  recordDiagnosticEvent({
+    severity: 'error',
+    source: 'storage',
+    code: context,
+    message: entry.message,
+  });
   if (import.meta.env.DEV) {
     console.warn(`[StorageAPI] ${context}:`, error);
   }
@@ -186,7 +193,11 @@ const StorageAPI = {
         if (!k) continue;
         // 自アプリのエラーログ・旧キャッシュのみ削除する
         // （GitHub Pagesではオリジンを他アプリと共有するため、無関係なキーには触れない）
-        if (!KEEP.has(k) && (k.startsWith('kanji_town_errors') || k.startsWith('kanji_vg_cache'))) {
+        if (!KEEP.has(k) && (
+          k.startsWith('kanji_town_errors')
+          || k === 'kanji_town_diagnostics_v1'
+          || k.startsWith('kanji_vg_cache')
+        )) {
           removable.push(k);
         }
       }

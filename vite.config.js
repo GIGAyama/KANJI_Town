@@ -1,10 +1,34 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { readFileSync } from 'node:fs';
+
+const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+const buildCommit = process.env.GITHUB_SHA || 'local';
+const builtAt = new Date().toISOString();
+
+const releaseMetadata = {
+  name: 'release-metadata',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'release.json',
+      source: JSON.stringify({
+        version: packageJson.version,
+        commit: buildCommit,
+        builtAt,
+      }, null, 2),
+    });
+  },
+};
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), releaseMetadata],
   base: '/KANJI_Town/',
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __BUILD_COMMIT__: JSON.stringify(buildCommit),
+  },
   build: {
     // ソースマップ（本番デバッグ用、hidden = ユーザーには見えない）
     sourcemap: 'hidden',

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud, HeartHandshake } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud, HeartHandshake, Activity } from 'lucide-react';
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
@@ -9,6 +9,8 @@ import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
 import AccountSyncPanel from '../settings/AccountSyncPanel';
 import LearningSharePanel from '../settings/LearningSharePanel';
+import SystemStatusPanel from '../settings/SystemStatusPanel';
+import { APP_VERSION, BUILD_COMMIT } from '../../systems/diagnostics';
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
@@ -365,9 +367,14 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
         </div>
       </Section>
 
+      {/* 運用診断・サポート */}
+      <Section icon={Activity} title="アプリの状態とサポート">
+        <SystemStatusPanel cloudSync={cloudSync} />
+      </Section>
+
       {/* バージョン情報 */}
       <div className="text-center text-[10px] text-[var(--text)] opacity-30 pb-4">
-        マイ漢字タウン v0.1.0 | Phase 6
+        マイ漢字タウン v{APP_VERSION} · {BUILD_COMMIT.slice(0, 8)}
       </div>
 
       {/* 確認ダイアログ */}
