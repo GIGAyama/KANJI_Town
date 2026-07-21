@@ -11,6 +11,7 @@ import { migrateVillagers, collectDailyResources, calculateSatisfaction, calcula
 import { getTodayString, formatDate } from '../utils/date-utils.js';
 import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
 import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
+import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
 
 // ── 内部エラーログ（直近20件を保持、デバッグ用） ──
 const _errorLog = [];
@@ -222,6 +223,7 @@ const StorageAPI = {
     tutorialCompleted: stats.tutorialCompleted,
     settings: stats.settings,
     seenHints: stats.seenHints || [],
+    ...normalizeHabitState(stats),
   }),
 
   /**
@@ -362,6 +364,10 @@ const StorageAPI = {
         streak: 0,
         lastDate: '',
         lastNeglectAppliedDate: '',
+        restPassAvailable: true,
+        restPassRechargeProgress: 0,
+        lastRestPassDate: '',
+        lastHabitEvent: null,
         coins: ECONOMY.INITIAL_COINS,
         targetGrade: 1,
         townMap: map,
@@ -398,6 +404,7 @@ const StorageAPI = {
       if (!stats[field]) stats[field] = defaultVal;
     }
     if (stats.coins === undefined) stats.coins = 0;
+    Object.assign(stats, normalizeHabitState(stats));
 
     // ── 20×20 → 50×50 マイグレーション ──
     if (!stats.mapSize || stats.mapSize < MAP.GRID_SIZE) {
@@ -500,6 +507,8 @@ const StorageAPI = {
     const todayStr = getTodayString();
     if (!stats.lastDate || stats.lastDate === todayStr) return false;
     if (stats.lastNeglectAppliedDate === todayStr) return false;
+    // 1日だけの休息はおやすみパスの対象。実際に学習した時点でパスを消費する。
+    if (canProtectRestDay(stats, todayStr)) return false;
 
     const last = new Date(`${stats.lastDate}T00:00:00`);
     const today = new Date(`${todayStr}T00:00:00`);
@@ -626,17 +635,9 @@ const StorageAPI = {
       }
     }
 
-    // ストリーク更新
+    // ストリーク更新（1日の休息はおやすみパスで自動保護）
     if (hasLearningActivity && stats.lastDate !== today) {
-      if (stats.lastDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = formatDate(yesterday);
-        stats.streak = stats.lastDate === yesterdayStr ? stats.streak + 1 : 1;
-      } else {
-        stats.streak = 1;
-      }
-      stats.lastDate = today;
+      Object.assign(stats, applyLearningDayHabit(stats, today));
       stats.lastNeglectAppliedDate = today;
     }
 

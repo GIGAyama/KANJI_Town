@@ -4,6 +4,8 @@ import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { buildWeakKanjiPlan, getReviewForecast, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
 import { getSkillMasterySummary, MASTERY_SKILLS, MASTERY_SKILL_DEFINITIONS } from '../../systems/mastery';
+import { getHabitStatus } from '../../systems/habit';
+import { getTodayString } from '../../utils/date-utils';
 
 const SKILL_COLORS = {
   reading: { bar: 'bg-sky-400', text: 'text-sky-700', panel: 'bg-sky-50 border-sky-200' },
@@ -22,6 +24,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
     () => getSkillMasterySummary(stats.kanjiStats),
     [stats.kanjiStats],
   );
+  const habitStatus = getHabitStatus(stats, getTodayString());
 
   const weeklySummary = useMemo(
     () => getWeeklyLearningSummary(stats),
@@ -117,6 +120,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
           <div className="text-3xl mb-1">🔥</div>
           <div className="text-3xl font-black text-[var(--primary)]">{stats.streak || 0}</div>
           <div className="text-xs font-bold text-[var(--text)] opacity-60">{F("連続","れんぞく")}{F("学習","がくしゅう")}{F("日数","にっすう")}</div>
+          <div className="mt-2 text-[10px] font-black text-sky-700">🛡️ {habitStatus.restPassAvailable ? 'おやすみパスあり' : `あと${habitStatus.rechargeRemaining}日でパス`}</div>
         </div>
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">⚡</div>

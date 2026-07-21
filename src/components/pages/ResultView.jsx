@@ -14,6 +14,7 @@ import { getOccupation } from '../../data/residents';
 import { getLevelInfoFromExp } from '../../utils/level-system';
 import { getDailyLearningProgress } from '../../systems/learning-plan';
 import { getTodayString } from '../../utils/date-utils';
+import { getHabitStatus } from '../../systems/habit';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
 
@@ -24,7 +25,9 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
   const [gachaResult, setGachaResult] = useState(null);
   const [gachaPhase, setGachaPhase] = useState('idle');
   const coinBonus = Math.floor(earnedExp / 4);
-  const dailyProgress = getDailyLearningProgress(stats, getTodayString());
+  const today = getTodayString();
+  const dailyProgress = getDailyLearningProgress(stats, today);
+  const habitStatus = getHabitStatus(stats, today);
 
   const oldLevelInfo = getLevelInfoFromExp(oldExp);
   const newLevelInfo = getLevelInfoFromExp(oldExp + earnedExp);
@@ -148,6 +151,13 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
           <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
         </div>
+        {habitStatus.event && (
+          <div className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-50 px-3 py-2 text-center text-xs font-black text-sky-700" role="status">
+            {habitStatus.event.type === 'rest_protected'
+              ? '🛡️ おやすみパスで、休んだ日も連続記録を守りました！'
+              : '🛡️ 5日間の学習で、おやすみパスがもどりました！'}
+          </div>
+        )}
       </motion.div>
 
       {/* ストーリーナレーション */}
