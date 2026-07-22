@@ -8,6 +8,8 @@ import { Analyzer } from '../../systems/analyzer';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { STROKE_THRESHOLDS } from '../../constants/strokeConfig';
+import { resolveThemeColor } from '../../utils/theme-colors';
+import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -35,7 +37,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   const drawInk = useCallback(() => {
     const iCtx = inkRef.current?.getContext('2d'); if (!iCtx || !paths.length) return;
     iCtx.clearRect(0, 0, canvasSize, canvasSize);
-    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = "var(--text)"; iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = "var(--text)"; iCtx.lineWidth = canvasSize * 0.08; userStrokes.forEach(stroke => { if (stroke.length === 0) return; iCtx.beginPath(); iCtx.moveTo(stroke[0].x, stroke[0].y); stroke.forEach(pt => iCtx.lineTo(pt.x, pt.y)); iCtx.stroke(); }); iCtx.restore(); }
+    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = canvasSize * 0.08; userStrokes.forEach(stroke => { if (stroke.length === 0) return; iCtx.beginPath(); iCtx.moveTo(stroke[0].x, stroke[0].y); stroke.forEach(pt => iCtx.lineTo(pt.x, pt.y)); iCtx.stroke(); }); iCtx.restore(); }
   }, [paths, currentStroke, count, userStrokes, canvasSize]);
 
   useEffect(() => { drawGuide(); drawInk(); }, [drawGuide, drawInk]);
@@ -56,7 +58,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     const { x, y } = getCoords(e); const target = strokeData[currentStrokeRef.current].s;
     if (Math.hypot(x / canvasSize - target.x, y / canvasSize - target.y) > STROKE_THRESHOLDS.START_POINT) { setStatusMsg("かきはじめが ちがうよ💦"); audioCtrl.playSE('stamp_bad'); return; }
     setStatusMsg(`${currentStrokeRef.current + 1}かくめ なぞり中...`); setIsDrawing(true); lastPos.current = { x, y }; currentPathRef.current = [{ x, y, time: Date.now() }];
-    const ctx = writeRef.current.getContext('2d'); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = canvasSize * 0.08; ctx.strokeStyle = "var(--secondary)"; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y); ctx.stroke();
+    const ctx = writeRef.current.getContext('2d'); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = canvasSize * 0.08; ctx.strokeStyle = resolveThemeColor('--secondary'); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y); ctx.stroke();
   };
   const handleMove = (e) => {
     e.preventDefault(); if (!isDrawingRef.current) return;
@@ -96,13 +98,11 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
   useEffect(() => {
     const canvas = writeRef.current; if (!canvas) return;
-    const onStart = (e) => handleStartRef.current(e);
-    const onMove = (e) => handleMoveRef.current(e);
-    const onEnd = (e) => handleEndRef.current(e);
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+    return attachDrawListeners(canvas, {
+      onStart: (e) => handleStartRef.current(e),
+      onMove: (e) => handleMoveRef.current(e),
+      onEnd: (e) => handleEndRef.current(e),
+    });
   }, []);
 
   const main = (
@@ -110,7 +110,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
       <Confetti active={showConfetti} />
       <AnimatePresence>{floatingTexts.map(ft => (<motion.div key={ft.id} initial={{ opacity: 1, y: ft.y, x: ft.x, scale: 0.5 * ft.scale }} animate={{ opacity: 0, y: ft.y - 40 * ft.scale, scale: 1.2 * ft.scale }} exit={{ opacity: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="absolute z-50 font-black pointer-events-none drop-shadow-md whitespace-nowrap -translate-x-1/2 -translate-y-1/2" style={{ color: ft.color, fontSize: '24px' }}>{ft.text}</motion.div>))}</AnimatePresence>
       <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" /><div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
-      <canvas ref={guideRef} className="absolute inset-0 z-0 pointer-events-none w-full h-full" /><canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" /><canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+      <canvas ref={guideRef} className="absolute inset-0 z-0 pointer-events-none w-full h-full" /><canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" /><canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
     </div>
   );
 

@@ -566,15 +566,17 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
       style={{ opacity: initialFitDone ? 1 : 0 }}>
       {/* --- 時間帯レイヤー（オーバーレイ） --- */}
-      <div 
-        className="absolute inset-0 z-20 pointer-events-none transition-colors duration-[3000ms]"
-        style={{
-          backgroundColor: timeOfDay === 'evening' ? 'rgba(234, 88, 12, 0.2)' : 
-                           timeOfDay === 'night'   ? 'rgba(15, 23, 42, 0.45)' : 
-                           'transparent',
-          mixBlendMode: timeOfDay === 'evening' ? 'overlay' : 'multiply'
-        }}
-      />
+      {/* 昼間は描画しない: 透明でもmix-blend-modeがあるとマップ全体の
+          オフスクリーン合成が常時走り、タブレットGPUの白飛びの一因になる */}
+      {timeOfDay !== 'day' && (
+        <div
+          className="absolute inset-0 z-20 pointer-events-none transition-colors duration-[3000ms]"
+          style={{
+            backgroundColor: timeOfDay === 'evening' ? 'rgba(234, 88, 12, 0.2)' : 'rgba(15, 23, 42, 0.45)',
+            mixBlendMode: timeOfDay === 'evening' ? 'overlay' : 'multiply'
+          }}
+        />
+      )}
       {/* --------------------------------- */}
 
       {/* 天候アイコン */}

@@ -6,6 +6,8 @@ import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
+import { resolveThemeColor } from '../../utils/theme-colors';
+import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
 const WAVE_SIZE = 10;
 const INITIAL_TIME = 45;
@@ -55,7 +57,7 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
     ctx.clearRect(0, 0, canvasSize, canvasSize);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'var(--text, #292f36)';
+    ctx.strokeStyle = resolveThemeColor('--text');
     ctx.lineWidth = canvasSize * 0.07;
     strokes.forEach(stroke => {
       if (stroke.length === 0) return;
@@ -89,7 +91,7 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = canvasSize * 0.07;
-    ctx.strokeStyle = 'var(--text, #292f36)';
+    ctx.strokeStyle = resolveThemeColor('--text');
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x, y);
@@ -123,13 +125,11 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
   handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
   useEffect(() => {
     const canvas = writeRef.current; if (!canvas) return;
-    const onStart = (e) => handleStartRef.current(e);
-    const onMove = (e) => handleMoveRef.current(e);
-    const onEnd = (e) => handleEndRef.current(e);
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+    return attachDrawListeners(canvas, {
+      onStart: (e) => handleStartRef.current(e),
+      onMove: (e) => handleMoveRef.current(e),
+      onEnd: (e) => handleEndRef.current(e),
+    });
   }, []);
 
   const handleClear = () => {
@@ -167,7 +167,7 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
-        <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+        <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
         {disabled && (
           <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center" />
         )}

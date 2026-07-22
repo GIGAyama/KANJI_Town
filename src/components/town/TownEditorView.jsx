@@ -396,6 +396,9 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[var(--bg)]">
+      {/* 注: この画面ではbackdrop-blur(backdrop-filter)を使わない。
+          巨大なマップ合成レイヤーと重なると一部AndroidタブレットのGPUで
+          画面全体が白飛びすることがある */}
       {/* === フルスクリーンマップ === */}
       <div className="absolute inset-0" style={{ bottom: 72 }}>
         <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
@@ -408,17 +411,17 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       {/* === ヘッダーバー（オーバーレイ） === */}
       <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-2 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <button onClick={() => setView('home')} aria-label="ホームに戻る" className="bg-[var(--panel)]/90 backdrop-blur text-[var(--text)] p-2.5 rounded-full border-[2px] border-[var(--text)] shadow-md hover:scale-105 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={20} /></button>
+          <button onClick={() => setView('home')} aria-label="ホームに戻る" className="bg-[var(--panel)] text-[var(--text)] p-2.5 rounded-full border-[2px] border-[var(--text)] shadow-md hover:scale-105 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={20} /></button>
         </div>
         <div className="flex items-center gap-2 pointer-events-auto">
-          <span className="flex items-center gap-1 bg-[var(--accent)]/90 backdrop-blur px-3 py-1.5 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-md"><Coins size={14} />{stats.coins}</span>
-          <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`bg-[var(--panel)]/90 backdrop-blur p-2 rounded-full border-[2px] border-[var(--text)] shadow-md min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:scale-105'}`}><Undo2 size={16} /></button>
-          <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_#065f46] backdrop-blur min-h-[40px]">保存</MotionButton>
+          <span className="flex items-center gap-1 bg-[var(--accent)] px-3 py-1.5 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-sm shadow-md"><Coins size={14} />{stats.coins}</span>
+          <button onClick={handleUndo} disabled={historyIdx <= 0} aria-label="元に戻す" className={`bg-[var(--panel)] p-2 rounded-full border-[2px] border-[var(--text)] shadow-md min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${historyIdx <= 0 ? 'opacity-30' : 'hover:scale-105'}`}><Undo2 size={16} /></button>
+          <MotionButton variant="success" onClick={handleSave} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-[0_2px_0_#065f46] min-h-[40px]">保存</MotionButton>
         </div>
       </div>
 
       {/* === 情報オーバーレイ === */}
-      <div className="absolute top-16 left-2 bg-[var(--panel)]/90 backdrop-blur border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
+      <div className="absolute top-16 left-2 bg-[var(--panel)]/95 border-[2px] border-[var(--text)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--text)] pointer-events-none z-40">
         {F("地形","ちけい")}タップで{F("開拓","かいたく")}　👥{stats.population || 0}{F("人","にん")}　{satLabel.emoji}{satisfaction}
       </div>
 
@@ -435,7 +438,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
             className="absolute z-40 left-1/2 -translate-x-1/2 pointer-events-none"
             style={{ bottom: 84 }}>
-            <div className="bg-[var(--panel)]/90 backdrop-blur border-[2px] border-[var(--text)] rounded-full px-4 py-1.5 shadow-md font-bold text-xs flex items-center gap-1.5 whitespace-nowrap text-[var(--text)] opacity-90">
+            <div className="bg-[var(--panel)]/95 border-[2px] border-[var(--text)] rounded-full px-4 py-1.5 shadow-md font-bold text-xs flex items-center gap-1.5 whitespace-nowrap text-[var(--text)] opacity-90">
               💡 アイテムをタップして{F("移動","いどう")}・{F("再配置","さいはいち")}
             </div>
           </motion.div>
@@ -448,7 +451,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
             className="absolute z-40 left-1/2 -translate-x-1/2"
             style={{ bottom: dockOpen ? 'calc(50% + 44px)' : 84 }}>
-            <div className="bg-[var(--panel)]/95 backdrop-blur border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
+            <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
               {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
@@ -511,7 +514,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
       {/* === ボトムドック（マイクラ風ホットバー） === */}
       <div className="absolute bottom-0 left-0 right-0 z-50 flex items-end justify-center pb-3 px-4 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-3 bg-[var(--panel)]/95 backdrop-blur border-[4px] border-[var(--text)] rounded-[20px] px-4 py-2 shadow-[4px_4px_0_var(--text)]">
+        <div className="pointer-events-auto flex items-center gap-3 bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] px-4 py-2 shadow-[4px_4px_0_var(--text)]">
           <button onClick={() => toggleDock('items')}
             className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all min-w-[64px] ${dockOpen === 'items' ? 'bg-[var(--accent)] scale-110 shadow-lg' : 'hover:bg-[var(--bg)] hover:scale-105'}`}>
             <Package size={24} className="text-[var(--text)]" />

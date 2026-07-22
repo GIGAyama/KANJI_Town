@@ -171,7 +171,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         <DraggableTownMap mapData={stats.townMap} isDanger={isReviewNeeded} isEditing={false} reviewCount={reviewTargetsCount} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
       </Suspense>
       {isTownEditorUnlocked && (
-        <div className="absolute bottom-2 right-2 bg-[var(--panel)]/90 backdrop-blur-sm border-[2px] border-[var(--text)] rounded-xl px-2.5 md:px-3 py-1 md:py-1.5 flex items-center gap-1.5 z-10 pointer-events-none shadow-sm">
+        <div className="absolute bottom-2 right-2 bg-[var(--panel)]/95 border-[2px] border-[var(--text)] rounded-xl px-2.5 md:px-3 py-1 md:py-1.5 flex items-center gap-1.5 z-10 pointer-events-none shadow-sm">
           <Map size={14} className="text-[var(--accent)]" />
           <span className="text-[10px] md:text-xs font-black text-[var(--text)]">タップでまちづくり</span>
         </div>
