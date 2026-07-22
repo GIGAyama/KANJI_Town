@@ -7,6 +7,7 @@ import { FormatKun, F } from '../ui/FormatKun';
 import { gradeStrokes } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
+import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
 const PLAYER_MAX_HP = 3;
 const BOSS_MAX_HP = 10;
@@ -114,13 +115,11 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
   handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
   useEffect(() => {
     const canvas = writeRef.current; if (!canvas) return;
-    const onStart = (e) => handleStartRef.current(e);
-    const onMove = (e) => handleMoveRef.current(e);
-    const onEnd = (e) => handleEndRef.current(e);
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+    return attachDrawListeners(canvas, {
+      onStart: (e) => handleStartRef.current(e),
+      onMove: (e) => handleMoveRef.current(e),
+      onEnd: (e) => handleEndRef.current(e),
+    });
   }, []);
 
   const handleClear = () => {
@@ -143,7 +142,7 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-slate-700 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-slate-700 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
-        <canvas ref={writeRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd} className="absolute inset-0 z-20 cursor-crosshair w-full h-full" />
+        <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
         {disabled && (
           <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center">
             <span className="text-white font-black text-lg">{F("判定中","はんていちゅう")}...</span>

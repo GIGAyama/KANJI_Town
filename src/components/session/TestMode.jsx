@@ -6,6 +6,8 @@ import ModeLayout from '../ui/ModeLayout';
 import { FormatKun, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { gradeStrokes } from '../../systems/strokeGrader';
+import { resolveThemeColor } from '../../utils/theme-colors';
+import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
 function scoreToRecommendation(result) {
   if (!result.strokeCountMatch || !result.crossMatch) return 'again';
@@ -66,7 +68,7 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar, is
     currentPathRef.current = [{ x, y, time: Date.now() }];
     const ctx = canvasRef.current.getContext('2d');
     ctx.beginPath(); ctx.moveTo(x, y);
-    ctx.strokeStyle = "var(--text)"; ctx.lineWidth = canvasSize * 0.06;
+    ctx.strokeStyle = resolveThemeColor('--text'); ctx.lineWidth = canvasSize * 0.06;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
   };
 
@@ -91,20 +93,18 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar, is
   startDrawRef.current = startDraw; drawRef.current = draw; stopDrawRef.current = stopDraw;
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const onStart = (e) => startDrawRef.current(e);
-    const onMove = (e) => drawRef.current(e);
-    const onEnd = (e) => stopDrawRef.current(e);
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    return () => { canvas.removeEventListener('touchstart', onStart); canvas.removeEventListener('touchmove', onMove); canvas.removeEventListener('touchend', onEnd); };
+    return attachDrawListeners(canvas, {
+      onStart: (e) => startDrawRef.current(e),
+      onMove: (e) => drawRef.current(e),
+      onEnd: (e) => stopDrawRef.current(e),
+    });
   }, []);
 
   const redrawStrokes = (strokes) => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvasSize, canvasSize);
-    ctx.strokeStyle = "var(--text)"; ctx.lineWidth = canvasSize * 0.06;
+    ctx.strokeStyle = resolveThemeColor('--text'); ctx.lineWidth = canvasSize * 0.06;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     strokes.forEach(stroke => {
       if (stroke.length < 2) return;
@@ -145,7 +145,7 @@ const TestMode = ({ kanji, strokeData, onEvaluate, canvasSize, commonSidebar, is
       <div className="relative border-[4px] border-[var(--text)] rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none transition-all duration-200 shadow-[4px_4px_0_var(--text)] md:shadow-[8px_8px_0_var(--text)] shrink-0" style={{ width: canvasSize, maxWidth: showAnswer ? 'calc(50% - 16px)' : '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
-        <canvas ref={canvasRef} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} className="absolute inset-0 z-10 cursor-crosshair w-full h-full" />
+        <canvas ref={canvasRef} className="absolute inset-0 z-10 cursor-crosshair w-full h-full touch-none" />
         <div className="absolute top-3 left-3 bg-[var(--text)] text-[var(--panel)] text-[10px] md:text-xs font-bold px-3 py-1 rounded-full opacity-50 pointer-events-none">かくところ</div>
         {!showAnswer && userStrokes.length > 0 && (
           <div className="absolute bottom-3 right-3 z-20 flex gap-1.5">

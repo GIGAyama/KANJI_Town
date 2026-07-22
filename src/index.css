@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* 端末の強制ダークモード（自動暗色化）を無効化。
+     暗色化されるとキャンバスの手書き線やSVGの書き順線が背景に沈んで見えなくなる */
+  color-scheme: only light;
   --bg: #fdfbf7;
   --primary: #ef4444;
   --secondary: #10b981;
