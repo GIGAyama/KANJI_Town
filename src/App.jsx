@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -66,16 +66,6 @@ import TutorialOverlay from './components/tutorial/TutorialOverlay';
 import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
 import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
 import FeatureHint from './components/tutorial/FeatureHint';
-
-// ローディングスピナー
-const LazyFallback = () => (
-  <div className="flex items-center justify-center h-full" role="status" aria-label="読み込み中">
-    <div className="text-center">
-      <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" aria-hidden="true" />
-      <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
-    </div>
-  </div>
-);
 
 // テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
 const THEME_VARS = {
@@ -804,7 +794,9 @@ export default function App() {
       )}
 
       <main className="flex-grow relative overflow-hidden p-0 md:p-4 min-h-0">
-        <Suspense fallback={<LazyFallback />}>
+        {/* Suspense境界はPageWrapper/FullScreenWrapper内部にある。
+            AnimatePresenceの外側でサスペンドを捕捉するとツリー全体が
+            非表示化されて遷移状態が壊れ、ホワイトアウトするため。 */}
         <AnimatePresence mode="wait">
           {view === 'home' && <PageWrapper key="home" wide><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} isMobile={isMobile} /></ErrorBoundary></PageWrapper>}
           {view === 'dictionary' && <PageWrapper key="dict" wide><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="dictionary" seenHints={seenHints} onDismiss={handleDismissHint} /><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
@@ -844,7 +836,6 @@ export default function App() {
           {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} stats={stats} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} startDrillSession={startDrillSession} setView={setView} setSessionData={setSessionData} createInitialSessionData={createInitialSessionData} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
-        </Suspense>
       </main>
       {/* モバイルボトムナビ（ホーム画面のみ表示） */}
       {isMobile && view === 'home' && (
