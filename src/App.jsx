@@ -3,6 +3,8 @@ import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useIsMobile } from './hooks/useIsMobile';
+import { useViewNavigation } from './hooks/useViewNavigation';
+import { EXIT_CONFIRM_WINDOW, isLearningView } from './systems/view-navigation';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import { useCloudSync } from './hooks/useCloudSync';
 import OfflineBanner from './components/ui/OfflineBanner';
@@ -29,7 +31,7 @@ import { getMotionPreference, shouldReduceMotion } from './utils/motion-preferen
 import { recordSkillEvidence } from './systems/mastery';
 
 // UI
-import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer } from './components/ui';
+import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
 import { F } from './components/ui/FormatKun';
 
 // Pages - HomeViewは常にロード、他はlazy
@@ -140,7 +142,18 @@ export default function App() {
     return { loadedStats, restoredSession };
   });
 
-  const [view, setView] = useState(connectParam ? 'peerClient' : initialAppState.restoredSession ? 'session' : 'home');
+  const initialView = connectParam ? 'peerClient' : initialAppState.restoredSession ? 'session' : 'home';
+  // 端末の「戻る」操作でアプリが終了しないよう、いつ横取りするかを保持する
+  const backInterceptorRef = useRef(null);
+  const [exitHintAt, setExitHintAt] = useState(0);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const handleBeforeBack = useCallback((currentView) => Boolean(backInterceptorRef.current?.(currentView)), []);
+  const handleExitBlocked = useCallback(() => setExitHintAt(Date.now()), []);
+  // 画面下のナビゲーションバーや端からのスワイプによる戻る操作を、アプリ内の1つ前の画面へ割り当てる
+  const { view, navigate: setView } = useViewNavigation(initialView, {
+    onBeforeBack: handleBeforeBack,
+    onExitBlocked: handleExitBlocked,
+  });
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
   const cloudSync = useCloudSync({ stats, setStats });
@@ -376,7 +389,40 @@ export default function App() {
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('home');
-  }, []);
+  }, [setView]);
+
+  // 戻る操作の横取り。オーバーレイ表示中と学習中は、画面を離れる前に受け止める
+  useEffect(() => {
+    backInterceptorRef.current = (currentView) => {
+      if (showTutorial || showLoginBonus) return true; // 進行が必要な案内中は戻る操作を無効化
+      if (showResidentCollection) {
+        setShowResidentCollection(false);
+        audioCtrl.playSE('click');
+        return true;
+      }
+      if (showLeaveConfirm) {
+        setShowLeaveConfirm(false);
+        return true;
+      }
+      if (isLearningView(currentView)) {
+        setShowLeaveConfirm(true); // 誤操作で学習が終わらないよう確認する
+        return true;
+      }
+      return false;
+    };
+  });
+
+  // 「もう1回でアプリを閉じます」の案内は一定時間で消す
+  useEffect(() => {
+    if (!exitHintAt) return undefined;
+    const timer = setTimeout(() => setExitHintAt(0), EXIT_CONFIRM_WINDOW);
+    return () => clearTimeout(timer);
+  }, [exitHintAt]);
+
+  const handleLeaveLearning = useCallback(() => {
+    setShowLeaveConfirm(false);
+    abandonLearningSession();
+  }, [abandonLearningSession]);
 
   const startSession = (selectedGrade) => {
     audioCtrl.init();
@@ -774,6 +820,21 @@ export default function App() {
             }}
           />
         )}
+      </AnimatePresence>
+
+      {/* 学習中の戻る操作の確認 */}
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <LeaveLearningDialog
+            onCancel={() => setShowLeaveConfirm(false)}
+            onLeave={handleLeaveLearning}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ホームでの戻る操作の案内（1回目ではアプリを閉じない） */}
+      <AnimatePresence>
+        {exitHintAt > 0 && <BackExitHint />}
       </AnimatePresence>
 
       {view !== 'session' && view !== 'townEditor' && view !== 'flashcard' && view !== 'survival' && view !== 'boss' && view !== 'drillTest' && (

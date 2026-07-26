@@ -9,3 +9,5 @@ export { R, FormatKun } from './FormatKun';
 export { default as OfflineBanner } from './OfflineBanner';
 export { default as StorageErrorBanner } from './StorageErrorBanner';
 export { default as MobileBottomNav } from './MobileBottomNav';
+export { default as BackExitHint } from './BackExitHint';
+export { default as LeaveLearningDialog } from './LeaveLearningDialog';
