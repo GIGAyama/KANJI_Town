@@ -25,6 +25,18 @@ const asMultiplier = (value) => {
   return Number.isFinite(number) ? Math.min(10, Math.max(0, number)) : 1;
 };
 
+/** study.v1 の unit（学習ログの単元情報）を検証して安全な形で残す。 */
+function sanitizeStudyUnit(unit) {
+  if (!unit || typeof unit.id !== 'string' || unit.id.length === 0) return null;
+  const grade = Number(unit.grade);
+  return {
+    id: unit.id,
+    title: typeof unit.title === 'string' ? unit.title : '',
+    ...(Number.isInteger(grade) && grade >= 1 && grade <= 6 ? { grade } : {}),
+    ...(typeof unit.preset === 'boolean' ? { preset: unit.preset } : {}),
+  };
+}
+
 function getQueueIds(queue) {
   if (!Array.isArray(queue)) return [];
   return queue
@@ -59,6 +71,7 @@ export function createSessionCheckpoint(sessionData, now = Date.now()) {
     savedAt: Number(now),
     queueIds,
     remainingQueueIds,
+    studyUnit: sanitizeStudyUnit(sessionData?.studyUnit),
     metrics: {
       ...metrics,
       expMultiplier: asMultiplier(sessionData?.expMultiplier),
@@ -112,6 +125,7 @@ export function restoreSessionCheckpoint(checkpoint, kanjiData, now = Date.now()
   return {
     queue,
     remainingQueue,
+    studyUnit: sanitizeStudyUnit(checkpoint.studyUnit),
     ...metrics,
     expMultiplier: asMultiplier(savedMetrics.expMultiplier),
     unlockedItems: Array.isArray(savedMetrics.unlockedItems)

@@ -7,6 +7,7 @@ import { F, FormatKun } from '../ui/FormatKun';
 import { migrateCard, calculateNextReview, recordPracticeAttempt } from '../../systems/srs';
 import { StorageAPI } from '../../systems/storage';
 import { recordSkillEvidence } from '../../systems/mastery';
+import { recordStudyAttempt } from '../../systems/studySession';
 
 const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
   const [idx, setIdx] = useState(0);
@@ -44,6 +45,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
   const handleAnswer = useCallback((isKnown) => {
     if (!kanji || !revealed) return;
     const evaluation = isKnown ? 'good' : 'again';
+    recordStudyAttempt(kanji.id, { ok: isKnown, skill: 'reading' });
     earnedRef.current = {
       ...earnedRef.current,
       exp: earnedRef.current.exp + (isKnown ? 2 : 0),

@@ -6,7 +6,6 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { useViewNavigation } from './hooks/useViewNavigation';
 import { EXIT_CONFIRM_WINDOW, isLearningView } from './systems/view-navigation';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
-import { useCloudSync } from './hooks/useCloudSync';
 import OfflineBanner from './components/ui/OfflineBanner';
 import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import MobileBottomNav from './components/ui/MobileBottomNav';
@@ -15,6 +14,7 @@ import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
 import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
+import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
 import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
@@ -156,10 +156,6 @@ export default function App() {
   });
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
-  const cloudSync = useCloudSync({ stats, setStats });
-  useEffect(() => {
-    if (cloudSync.needsPasswordReset) setView('settings');
-  }, [cloudSync.needsPasswordReset]);
   const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
   const sessionDataRef = useRef(sessionData);
   const setSessionData = useCallback((update) => {
@@ -213,6 +209,15 @@ export default function App() {
   usePrefetchKanji(isOnline, stats.targetGrade, KANJI_DATA);
 
   const levelInfo = useMemo(() => getLevelInfo(stats.totalExp, stats.townMap), [stats.totalExp, stats.townMap]);
+
+  // 学習画面に入っている間だけ study.v1 の学習ログを組み立てる（§5.2）。
+  // handleFinishSession が完走を宣言（markStudySessionCompleted）しない限り、
+  // 画面を離れた時点で中断（aborted）として確定する。
+  useEffect(() => {
+    if (!isLearningView(view)) return undefined;
+    beginStudySession(buildStudyMeta(view, sessionDataRef.current));
+    return () => finishStudySession();
+  }, [view]);
 
   // コア学習中は回答記録と残りキューを同じタイミングで端末へ保存する。
   useEffect(() => {
@@ -438,7 +443,12 @@ export default function App() {
     });
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
-      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier });
+      beginSession('session', {
+        queue,
+        oldExp: stats.totalExp,
+        expMultiplier,
+        studyUnit: { id: `g${selectedGrade}-daily`, title: `${selectedGrade}年の漢字れんしゅう`, grade: selectedGrade, preset: true },
+      });
     }
   };
 
@@ -447,7 +457,7 @@ export default function App() {
     const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
-      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier, isDrill: true });
+      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier, isDrill: true, studyUnit: buildDrillStudyUnit(drill) });
     }
   };
 
@@ -468,14 +478,19 @@ export default function App() {
     candidates.sort(() => Math.random() - 0.5);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (candidates.length > 0) {
-      beginSession('drillTest', { queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true });
+      beginSession('drillTest', { queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true, studyUnit: buildDrillStudyUnit(drill) });
     }
   };
 
   const startSingleSession = (kanji) => {
     audioCtrl.init();
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
-    beginSession('session', { queue: [kanji], oldExp: stats.totalExp, expMultiplier });
+    beginSession('session', {
+      queue: [kanji],
+      oldExp: stats.totalExp,
+      expMultiplier,
+      studyUnit: { id: `g${kanji.grade || 1}-single`, title: `「${kanji.char}」のれんしゅう`, grade: kanji.grade || 1, preset: true },
+    });
   };
 
   const startFlashcard = () => {
@@ -548,6 +563,7 @@ export default function App() {
 
   const handleUpdateStat = (kanjiObj, evalType, { skills = [] } = {}) => {
     const id = kanjiObj.id;
+    recordStudyAttempt(id, { ok: evalType !== 'again', skill: skills[0] });
     const cur = migrateCard(stats.kanjiStats?.[id]);
     const curWithMastery = skills.length > 0
       ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
@@ -661,6 +677,8 @@ export default function App() {
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
+    // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
+    markStudySessionCompleted();
     // setSessionData はrefも同期更新するため、最後の回答直後でも最新集計を確定できる。
     const activeSession = sessionDataRef.current;
     const totalExp = activeSession.earnedExp + (additionalResults.exp || 0);
@@ -884,7 +902,7 @@ export default function App() {
               }} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
-          {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} cloudSync={cloudSync} /></ErrorBoundary></PageWrapper>}
+          {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} startDrillTest={startDrillTest} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
