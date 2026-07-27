@@ -1,10 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  attachReportSource,
-  buildLearningReport,
-  isLearningReportCurrent,
-} from '../src/systems/learning-report.js';
+import { buildLearningReport } from '../src/systems/learning-report.js';
 
 test('見守りレポートは学習支援に必要な要約だけを含む', () => {
   const report = buildLearningReport({
@@ -48,11 +44,4 @@ test('不正値を安全な既定値へ正規化する', () => {
   assert.equal(report.progress.totalExp, 0);
   assert.equal(report.progress.sessions, 0);
   assert.equal(report.habit.lastLearningDate, null);
-});
-
-test('レポートが同じ学習データから生成されたか判定する', () => {
-  const report = attachReportSource(buildLearningReport({}, new Date('2026-07-21T00:00:00Z')), 'payload-hash');
-  assert.equal(isLearningReportCurrent(report, 'payload-hash'), true);
-  assert.equal(isLearningReportCurrent(report, 'new-hash'), false);
-  assert.equal(isLearningReportCurrent(null, 'payload-hash'), false);
 });

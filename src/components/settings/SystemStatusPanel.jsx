@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   CheckCircle2,
-  Cloud,
   Download,
   HardDrive,
   LoaderCircle,
@@ -40,16 +39,8 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024).toFixed(1)} KB 使用中`;
 };
 
-const formatSyncStatus = (cloud) => {
-  if (!cloud.configured) return { value: '端末保存のみ', tone: 'neutral' };
-  if (!cloud.signedIn) return { value: 'ログインしていません', tone: 'neutral' };
-  if (cloud.status === 'error' || cloud.status === 'conflict') return { value: '確認が必要です', tone: 'warning' };
-  if (cloud.status === 'synced') return { value: '同期済み', tone: 'good' };
-  return { value: '同期を確認中', tone: 'neutral' };
-};
-
-export default function SystemStatusPanel({ cloudSync }) {
-  const [runtime, setRuntime] = useState(() => getRuntimeSnapshot({ cloudSync }));
+export default function SystemStatusPanel() {
+  const [runtime, setRuntime] = useState(() => getRuntimeSnapshot());
   const [deployment, setDeployment] = useState({ status: 'checking', release: null });
   const [events, setEvents] = useState(() => getDiagnosticEvents());
   const [notice, setNotice] = useState(null);
@@ -57,17 +48,16 @@ export default function SystemStatusPanel({ cloudSync }) {
 
   const refresh = useCallback(async () => {
     setChecking(true);
-    setRuntime(getRuntimeSnapshot({ cloudSync }));
+    setRuntime(getRuntimeSnapshot());
     setEvents(getDiagnosticEvents());
     setDeployment(await fetchDeploymentMetadata());
     setChecking(false);
-  }, [cloudSync]);
+  }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  const cloudStatus = useMemo(() => formatSyncStatus(runtime.cloud), [runtime.cloud]);
   const deploymentStatus = deployment.status === 'current'
     ? { value: '最新版です', tone: 'good' }
     : deployment.status === 'update-available'
@@ -96,7 +86,7 @@ export default function SystemStatusPanel({ cloudSync }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <StatusCard
           icon={HardDrive}
           label="端末保存"
@@ -109,7 +99,6 @@ export default function SystemStatusPanel({ cloudSync }) {
           value={runtime.online ? 'オンライン' : 'オフライン学習中'}
           tone={runtime.online ? 'good' : 'neutral'}
         />
-        <StatusCard icon={Cloud} label="クラウド" value={cloudStatus.value} tone={cloudStatus.tone} />
         <StatusCard icon={CheckCircle2} label="アプリ配信" value={deploymentStatus.value} tone={deploymentStatus.tone} />
       </div>
 

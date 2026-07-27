@@ -6,6 +6,7 @@ const MAX_DETAIL_LENGTH = 600;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]{10,})?\b/g;
+// 旧クラウド同期（廃止済み）時代のキーが端末に残った診断ログへ混入した場合に備えて維持する
 const SUPABASE_KEY_PATTERN = /\bsb_(?:publishable|secret)_[A-Za-z0-9_-]+\b/gi;
 const SENSITIVE_QUERY_PATTERN = /([?&#](?:access_token|refresh_token|token|code|email|password|key|apikey)=)[^&#\s]+/gi;
 const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9._~-]+/gi;
@@ -167,7 +168,6 @@ export function getRuntimeSnapshot(options = {}) {
   const navigatorValue = options.navigatorValue ?? globalThis.navigator;
   const storage = options.storage === undefined ? getDefaultStorage() : options.storage;
   const matchMedia = options.matchMedia ?? globalThis.matchMedia;
-  const cloudSync = options.cloudSync || {};
   const serviceWorker = navigatorValue?.serviceWorker;
   let standalone = false;
   try {
@@ -181,12 +181,6 @@ export function getRuntimeSnapshot(options = {}) {
     serviceWorker: {
       supported: Boolean(serviceWorker),
       active: Boolean(serviceWorker?.controller),
-    },
-    cloud: {
-      configured: Boolean(cloudSync.isConfigured),
-      signedIn: Boolean(cloudSync.user),
-      status: normalizeCode(cloudSync.status, 'unavailable'),
-      lastSyncedAt: cloudSync.lastSyncedAt || null,
     },
   };
 }
@@ -219,7 +213,7 @@ export async function fetchDeploymentMetadata(options = {}) {
 
 export function createSupportReport(options = {}) {
   const generatedAt = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
-  const runtime = options.runtime || getRuntimeSnapshot({ cloudSync: options.cloudSync });
+  const runtime = options.runtime || getRuntimeSnapshot();
   const release = options.deployment?.release;
   return {
     reportVersion: 1,
@@ -244,12 +238,6 @@ export function createSupportReport(options = {}) {
       serviceWorker: {
         supported: Boolean(runtime.serviceWorker?.supported),
         active: Boolean(runtime.serviceWorker?.active),
-      },
-      cloud: {
-        configured: Boolean(runtime.cloud?.configured),
-        signedIn: Boolean(runtime.cloud?.signedIn),
-        status: normalizeCode(runtime.cloud?.status, 'unavailable'),
-        lastSyncedAt: sanitizeDiagnosticText(runtime.cloud?.lastSyncedAt, 32) || null,
       },
     },
     diagnostics: (options.diagnostics || getDiagnosticEvents())

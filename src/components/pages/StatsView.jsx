@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock, NotebookPen } from 'lucide-react';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
+import { loadStudyRecords, summarizeRecentStudy } from '../../systems/studyStats';
+import { STUDY_APP_ID } from '../../systems/studySession';
 import { buildWeakKanjiPlan, getReviewForecast, getWeeklyLearningSummary, WEAK_PRACTICE_SUCCESS_TARGET } from '../../systems/learning-plan';
 import { getSkillMasterySummary, MASTERY_SKILLS, MASTERY_SKILL_DEFINITIONS } from '../../systems/mastery';
 import { getHabitStatus } from '../../systems/habit';
@@ -47,6 +49,12 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   const nextReviewLabel = reviewForecast.nextReviewAt
     ? `${new Date(reviewForecast.nextReviewAt).getMonth() + 1}月${new Date(reviewForecast.nextReviewAt).getDate()}日`
     : null;
+
+  // study.v1 学習ログから直近のとりくみを表示（読み出し専用）
+  const recentStudy = useMemo(
+    () => summarizeRecentStudy(loadStudyRecords(STUDY_APP_ID), 5),
+    [],
+  );
 
   // 復習期限・つまずき・連続正解数を加味した苦手漢字 top5
   const weakKanji = useMemo(() => {
@@ -156,6 +164,32 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
           ))}
         </div>
       </div>
+
+      {/* 直近のとりくみ（study.v1 学習ログ） */}
+      {recentStudy.length > 0 && (
+        <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
+          <div className="text-sm font-black text-[var(--text)] mb-3 flex items-center gap-2"><NotebookPen size={16} className="text-emerald-500" /> さいきんのとりくみ</div>
+          <div className="flex flex-col gap-2">
+            {recentStudy.map((rec) => (
+              <div key={rec.id} className="flex items-center gap-3 bg-[var(--bg)] rounded-xl px-3 py-2">
+                <div className="shrink-0 rounded-lg bg-[var(--panel)] px-2 py-1 text-[10px] font-black text-[var(--text)] opacity-70 min-w-[64px] text-center">
+                  {rec.startedAt ? `${rec.startedAt.getMonth() + 1}/${rec.startedAt.getDate()}` : '—'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-[var(--text)] truncate">{rec.modeLabel}{rec.unitTitle ? `・${rec.unitTitle}` : ''}</div>
+                  <div className="text-[10px] font-bold text-[var(--text)] opacity-50">
+                    やく{rec.minutes}{F("分","ふん")}{rec.aborted ? '・とちゅうまで' : ''}
+                  </div>
+                </div>
+                <div className="shrink-0 text-sm font-black text-emerald-600" aria-label={`${rec.attempted}問中、いちどで正解${rec.firstTryCorrect}問`}>
+                  {rec.firstTryCorrect}<span className="text-[10px] text-[var(--text)] opacity-50"> / {rec.attempted}{F("問","もん")}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-[10px] font-bold text-[var(--text)] opacity-45">「いちどで正解できた数」をかぞえています</div>
+        </div>
+      )}
 
       {/* 間隔反復の復習予報 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">

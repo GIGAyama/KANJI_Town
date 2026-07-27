@@ -56,7 +56,6 @@ test('サポートレポートに学習データやアカウント識別情報�
     storage,
     navigatorValue: { onLine: true, serviceWorker: { controller: {} } },
     matchMedia: () => ({ matches: true }),
-    cloudSync: { isConfigured: true, user: { id: 'secret-user', email: 'private@example.com' }, status: 'synced' },
   });
   const report = createSupportReport({
     runtime: { ...runtime, user: { email: 'private@example.com' }, learningData: { secret: true } },
@@ -69,9 +68,7 @@ test('サポートレポートに学習データやアカウント識別情報�
   });
   const serialized = JSON.stringify(report);
   assert.equal(report.runtime.storage.available, true);
-  assert.equal(report.runtime.cloud.signedIn, true);
   assert.equal(serialized.includes('private@example.com'), false);
-  assert.equal(serialized.includes('secret-user'), false);
   assert.equal(serialized.includes('kanjiStats'), false);
   assert.equal(report.runtime.learningData, undefined);
   assert.equal(serialized.includes('access_token=secret'), false);

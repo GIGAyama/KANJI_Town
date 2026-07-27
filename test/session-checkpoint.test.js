@@ -38,6 +38,26 @@ test('学習途中の残りキューと獲得記録をIDベースで復元する
   assert.equal(restored.expMultiplier, 1.15);
 });
 
+test('学習ログの単元情報（studyUnit）を検証して復元する', () => {
+  const now = Date.UTC(2026, 6, 21, 12);
+  const checkpoint = createSessionCheckpoint({
+    queue: kanjiData,
+    remainingQueue: [kanjiData[1]],
+    studyUnit: { id: 'custom-abc123', title: 'わたしのドリル', preset: false },
+  }, now);
+
+  const restored = restoreSessionCheckpoint(checkpoint, kanjiData, now + 60_000);
+  assert.deepEqual(restored.studyUnit, { id: 'custom-abc123', title: 'わたしのドリル', preset: false });
+
+  // 不正な studyUnit は null に落として復元自体は成功させる
+  const broken = createSessionCheckpoint({
+    queue: kanjiData,
+    remainingQueue: [kanjiData[1]],
+    studyUnit: { title: 'idなし' },
+  }, now);
+  assert.equal(restoreSessionCheckpoint(broken, kanjiData, now).studyUnit, null);
+});
+
 test('期限切れまたは未知の漢字を含むチェックポイントは復元しない', () => {
   const now = Date.UTC(2026, 6, 21, 12);
   const checkpoint = createSessionCheckpoint({

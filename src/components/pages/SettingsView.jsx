@@ -1,14 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Cloud, HeartHandshake, Activity } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity } from 'lucide-react';
 import { MotionButton } from '../ui';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
-import AccountSyncPanel from '../settings/AccountSyncPanel';
-import LearningSharePanel from '../settings/LearningSharePanel';
 import SystemStatusPanel from '../settings/SystemStatusPanel';
 import { APP_VERSION, BUILD_COMMIT } from '../../systems/diagnostics';
 
@@ -69,7 +67,7 @@ const Section = ({ icon: Icon, title, children }) => (
   </div>
 );
 
-const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo, cloudSync }) => {
+const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo }) => {
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
@@ -325,16 +323,6 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
         </div>
       </Section>
 
-      {/* アカウント・クラウド同期 */}
-      <Section icon={Cloud} title="アカウント・クラウド同期">
-        <AccountSyncPanel cloudSync={cloudSync} />
-      </Section>
-
-      {/* 教師・保護者向け見守り共有 */}
-      <Section icon={HeartHandshake} title="学習の見守り共有">
-        <LearningSharePanel cloudSync={cloudSync} />
-      </Section>
-
       {/* データ管理 */}
       <Section icon={Database} title={<>データ{F("管理","かんり")}</>}>
         <div className="flex flex-col gap-2">
@@ -369,7 +357,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
 
       {/* 運用診断・サポート */}
       <Section icon={Activity} title="アプリの状態とサポート">
-        <SystemStatusPanel cloudSync={cloudSync} />
+        <SystemStatusPanel />
       </Section>
 
       {/* バージョン情報 */}

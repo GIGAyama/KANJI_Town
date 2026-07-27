@@ -13,8 +13,9 @@ const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const asCount = (value) => Math.max(0, Math.floor(Number(value) || 0));
 
 /**
- * 教師・保護者へ共有する、学習支援に必要な最小限の要約。
- * まち、メール、設定、ドリル、個々の回答履歴は意図的に含めない。
+ * 学習支援に必要な最小限の要約。study.v1 学習ログの ext（拡張層）の生成元として使う。
+ * まち、メール、設定、ドリルの中身は含めない。
+ * 設問ごとの記録は study.v1 の items（設問層）が担う（仕様 §8.4 の方針変更）。
  */
 export function buildLearningReport(stats = {}, now = new Date()) {
   const parsedNow = new Date(now);
@@ -57,16 +58,4 @@ export function buildLearningReport(stats = {}, now = new Date()) {
       weakKanjiIds: weak.queue.map((kanji) => kanji.id),
     },
   };
-}
-
-export function attachReportSource(report, payloadHash) {
-  return {
-    ...report,
-    sourceHash: typeof payloadHash === 'string' ? payloadHash : '',
-  };
-}
-
-export function isLearningReportCurrent(report, payloadHash) {
-  return report?.version === LEARNING_REPORT_VERSION
-    && report?.sourceHash === payloadHash;
 }
