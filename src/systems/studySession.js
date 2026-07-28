@@ -13,6 +13,7 @@ export const STUDY_APP_ID = 'kanji-town';
 const HIDDEN_ABORT_MS = 5 * 60 * 1000;
 const IDLE_STOP_MS = 60 * 1000;
 const TICK_MS = 1000;
+const STUDY_ITEMS_MAX = 200;         // 1レコードの設問数の上限。studyLog.js と同じ値（§2.10）
 
 let session = null;
 // タブ破棄（pagehide）で確定した後、bfcache 復帰時に残り分の新レコードを開始するための控え
@@ -171,6 +172,16 @@ function finalize(status, endMsOverride) {
   // 固定キューでは開始時（中断復帰後は残り分）の出題数を用いる。
   const count = s.meta.fixedCount === null ? attempted : Math.max(s.count, attempted);
 
+  // items は1レコード200件まで（studyLog.js が超過分を切り捨てる）。
+  // 集計側は正答率の分母を items から数えるため、summary は切り詰めたあとの
+  // items から算出し、`attempted === items.length` を必ず守る（§2.7）。
+  // 切り捨てが起きたときは、実際の解答実績を ext に残して失わないようにする。
+  // count は切り詰め前の attempted のままとする（出題数は実際に出した数）
+  const kept = items.slice(0, STUDY_ITEMS_MAX);
+  const truncated = items.length > kept.length
+    ? { attempted: items.length, firstTryCorrect: items.filter((it) => it.firstTry).length }
+    : null;
+
   saveStudyRecord({
     appId: STUDY_APP_ID,
     appVersion: APP_VERSION,
@@ -189,12 +200,12 @@ function finalize(status, endMsOverride) {
     status,
     summary: {
       count,
-      attempted,
-      firstTryCorrect: items.filter((it) => it.firstTry).length,
-      correct: items.filter((it) => it.ok).length,
+      attempted: kept.length,
+      firstTryCorrect: kept.filter((it) => it.firstTry).length,
+      correct: kept.filter((it) => it.ok).length,
     },
-    items,
-    ext: buildStudyExt(),
+    items: kept,
+    ext: { ...buildStudyExt(), ...(truncated ? { itemsTruncated: truncated } : {}) },
   });
 }
 
