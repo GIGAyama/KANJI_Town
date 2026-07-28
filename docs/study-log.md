@@ -1,6 +1,6 @@
 # 学習ログ（study.v1）の実装メモ — 漢字タウン
 
-本アプリの学習ログは「学習ログ共通スキーマ仕様書 `study.v1`」（版 1.3）に準拠する。
+本アプリの学習ログは「学習ログ共通スキーマ仕様書 `study.v1`」（版 1.5）に準拠する。
 仕様書が唯一の正であり、このメモは漢字タウン固有の割り当てだけを記録する。
 
 ## 基本方針
@@ -27,6 +27,19 @@
 - `items[].q`: 漢字ID（例 `k1_1`）。`skill` に `reading` / `writing` を付す
 - `ext`: `buildLearningReport()`（`src/systems/learning-report.js`）から生成。
   4技能スコア・SRS状況・弱点漢字ID・連続学習日数
+
+## `items` の切り詰め（§2.7）
+
+`items` は1レコード200件が上限で、`studyLog.js` が201件目以降を捨てる。
+サバイバル・ボスバトルは制限時間まで出題が続くため、学習済み漢字が多い児童では
+実際に200種類を超えうる。組み立て側で何もしないと `attempted > items.length` となり、
+`summary` から出す正答率と設問層から出す正答率が食い違ったまま蓄積される。
+
+`studySession.js` の `finalize()` で先に切り詰め、`summary` は切り詰め後の `items` から数える。
+
+- `summary.attempted` / `firstTryCorrect` / `correct` … 残した200件から算出（`attempted === items.length`）
+- `summary.count` … 切り詰め前の解答実績のまま（サバイバル・ボスは実際に出した数が出題数）
+- `ext.itemsTruncated` … 切り詰めが起きたときだけ `{ attempted, firstTryCorrect }` を付け、真の値を残す
 
 ## 中断の扱い（§5.4）
 

@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/check-bundle-budget.mjs && cp dist/index.html dist/404.html",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test --experimental-test-module-mocks"
   },
   "dependencies": {
     "framer-motion": "^12.36.0",
