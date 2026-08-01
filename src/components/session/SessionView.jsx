@@ -16,7 +16,7 @@ import { getRecommendedPracticeMode } from '../../systems/mastery';
 const MODE_LABELS = { read: '音読', watch: '書き順', write: 'なぞる', test: 'テスト' };
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
-const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, isResumed = false }) => {
+const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, isResumed = false }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
   const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
@@ -24,6 +24,9 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
   const currentKanji = queue[0]; const isNew = !stats[currentKanji?.id] || stats[currentKanji?.id].status === 'new'; const MODES = useMemo(() => ['read', 'watch', 'write', 'test'], []);
   const [fetchError, setFetchError] = useState(null);
   const [showResumeNotice, setShowResumeNotice] = useState(isResumed);
+  // 音読チャレンジ: クリア済み漢字ID(1漢字につきセッション中1回だけ)とセッション累計
+  const [voicedKanjiIds, setVoicedKanjiIds] = useState(() => new Set());
+  const [voicedCount, setVoicedCount] = useState(0);
   const sessionTotal = Math.max(Number(totalCount) || 0, initialQueue.length, 1);
   const completedCount = Math.max(0, sessionTotal - queue.length);
 
@@ -103,6 +106,15 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
     }, evalType === 'again' ? 1500 : 900); // again以外は短めに
   };
   const recordSkills = (updates) => onRecordSkillEvidence?.(currentKanji, updates);
+
+  const handleChallengeClear = () => {
+    if (!currentKanji || voicedKanjiIds.has(currentKanji.id)) return;
+    setVoicedKanjiIds((prev) => new Set(prev).add(currentKanji.id));
+    setVoicedCount((c) => c + 1);
+    recordSkills([{ skill: 'reading', evidence: 'voiced' }]);
+    onRecordVoiced?.();
+  };
+
   if (!currentKanji) return null;
 
   const commonSidebarTop = (
@@ -129,7 +141,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
   );
 
   return (
-    <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-4 xl:p-5 flex flex-col h-full overflow-hidden relative">
+    <div className="flex-1 bg-[var(--panel)] rounded-none md:rounded-[24px] shadow-none md:shadow-[6px_6px_0_var(--text)] border-0 md:border-[4px] border-[var(--text)] p-2 md:p-3 flex flex-col h-full overflow-hidden relative">
       <AnimatePresence>
         {showResumeNotice && (
           <motion.div
@@ -147,6 +159,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
       <div className="flex justify-between items-center mb-1.5 md:mb-2 shrink-0 gap-2">
         <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
         <div className="flex gap-2">
+          {voicedCount > 0 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-emerald-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-emerald-400 shadow-sm flex items-center gap-1">🎤 ×{voicedCount}</motion.div>}
           {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-[var(--accent)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
           {!isNew && focusMode !== 'test' && <div className="text-[var(--text)] font-black text-[10px] md:text-xs bg-sky-100 px-2.5 md:px-3 py-1.5 md:py-2 rounded-full border-[3px] border-sky-400 shadow-sm">おすすめ：{MODE_LABELS[focusMode]}から</div>}
           {isNew && <div className="text-[var(--panel)] font-bold text-xs md:text-sm bg-[var(--primary)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={15} /> {F("新出","しんしゅつ")}</div>}
@@ -182,7 +195,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
           </div>
         ) : (
           <>
-            {mode === 'read' && <ReadMode kanji={currentKanji} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'read' && <ReadMode kanji={currentKanji} settings={settings} challengeCleared={voicedKanjiIds.has(currentKanji.id)} onChallengeClear={handleChallengeClear} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => { recordSkills([{ skill: 'stroke', evidence: 'exposed' }]); setMode('write'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} onPracticeComplete={(evidence) => recordSkills([{ skill: 'writing', evidence }, { skill: 'stroke', evidence }])} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
             {mode === 'test' && <TestMode kanji={currentKanji} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}

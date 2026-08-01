@@ -19,7 +19,7 @@ import { getHabitStatus } from '../../systems/habit';
 import { gachaRoll, isRareItem } from '../../systems/gacha';
 
 const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContinueLearning }) => {
-  const { earnedExp, perfectCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
+  const { earnedExp, perfectCount, voicedCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager || levelUpData?.isLevelUp);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
@@ -192,12 +192,13 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         </motion.div>
       )}
 
-      {/* EXP・コイン・Perfect */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* EXP・コイン・Perfect・音読チャレンジ */}
+      <div className={(voicedCount || 0) > 0 ? 'grid grid-cols-4 gap-3' : 'grid grid-cols-3 gap-3'}>
         {[
           { label: <>{F("獲得","かくとく")}EXP</>, value: earnedExp, icon: '⚡', color: 'bg-amber-50 border-amber-300' },
           { label: 'まちコイン', value: coinBonus, icon: '🪙', color: 'bg-yellow-50 border-yellow-300', prefix: '+' },
           { label: 'Perfect', value: perfectCount, icon: '💮', color: 'bg-rose-50 border-rose-300' },
+          ...((voicedCount || 0) > 0 ? [{ label: <>{F("音読","おんどく")}チャレンジ</>, value: voicedCount, icon: '🎤', color: 'bg-emerald-50 border-emerald-300' }] : []),
         ].map((stat, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
             className={`${stat.color} rounded-2xl border-[3px] p-3 text-center shadow-sm`}>

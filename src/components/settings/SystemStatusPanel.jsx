@@ -4,6 +4,7 @@ import {
   Download,
   HardDrive,
   LoaderCircle,
+  Mic,
   RefreshCw,
   ShieldCheck,
   Trash2,
@@ -86,7 +87,7 @@ export default function SystemStatusPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatusCard
           icon={HardDrive}
           label="端末保存"
@@ -100,6 +101,12 @@ export default function SystemStatusPanel() {
           tone={runtime.online ? 'good' : 'neutral'}
         />
         <StatusCard icon={CheckCircle2} label="アプリ配信" value={deploymentStatus.value} tone={deploymentStatus.tone} />
+        <StatusCard
+          icon={Mic}
+          label="マイク"
+          value={runtime.microphone?.supported ? 'つかえます' : 'つかえません'}
+          tone={runtime.microphone?.supported ? 'good' : 'neutral'}
+        />
       </div>
 
       <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--bg)] px-3 py-2 text-[10px] font-bold text-[var(--text)]">

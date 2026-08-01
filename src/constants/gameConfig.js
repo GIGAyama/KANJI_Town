@@ -172,6 +172,28 @@ export const GRADING = {
   ],
 };
 
+/** 音読チャレンジ設定（マイクは音量解析のみ。録音・保存・送信はしない） */
+export const READING = {
+  /** 環境ノイズ計測時間(ms)。この間のRMS平均をノイズフロアとする */
+  CALIBRATION_MS: 500,
+  /** ノイズフロアに加えるRMSマージン（適応しきい値） */
+  NOISE_MARGIN: 0.015,
+  /** しきい値の下限（静かな部屋で敏感になりすぎない） */
+  THRESHOLD_MIN: 0.02,
+  /** しきい値の上限（騒がしい教室でも叫ばずに済む） */
+  THRESHOLD_MAX: 0.08,
+  /** これ未満の発声(ms)は無視する（咳・タップ音対策） */
+  MIN_BURST_MS: 250,
+  /** クリアに必要な累計発声時間(ms) */
+  TARGET_VOICED_MS: 1500,
+  /** RMSサンプリング間隔(ms) */
+  SAMPLE_INTERVAL_MS: 100,
+  /** 声が検出できないとき、やさしい促しを出すまでの時間(ms) */
+  GENTLE_PROMPT_AFTER_MS: 10000,
+  /** チャレンジクリアのボーナスEXP（満足度倍率を適用） */
+  CHALLENGE_BONUS_EXP: 10,
+};
+
 /** デバウンス設定(ms) */
 export const DEBOUNCE = {
   SAVE: 400,

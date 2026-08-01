@@ -92,3 +92,23 @@ test('配信メタデータが壊れている場合は安全にエラー扱い�
   });
   assert.deepEqual(offline, { status: 'unavailable', release: null });
 });
+
+test('マイク対応状況をランタイム情報とサポートレポートに含める', () => {
+  const storage = createMemoryStorage();
+  const withMic = getRuntimeSnapshot({
+    storage,
+    navigatorValue: { onLine: true, mediaDevices: { getUserMedia: () => {} } },
+    matchMedia: () => ({ matches: false }),
+  });
+  assert.equal(withMic.microphone.supported, true);
+
+  const withoutMic = getRuntimeSnapshot({
+    storage,
+    navigatorValue: { onLine: true },
+    matchMedia: () => ({ matches: false }),
+  });
+  assert.equal(withoutMic.microphone.supported, false);
+
+  const report = createSupportReport({ runtime: withMic, diagnostics: [], now: new Date('2026-07-21T00:00:00Z') });
+  assert.equal(report.runtime.microphone.supported, true);
+});

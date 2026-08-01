@@ -77,3 +77,21 @@ test('学習済み漢字の4技能平均と証拠数を集計する', () => {
   assert.equal(summary.learnedCount, 2);
   assert.equal(summary.evidenceCount, 1);
 });
+
+test('音読チャレンジの証拠は読み技能を押し上げるが成功には数えない', () => {
+  const first = recordSkillEvidence({ status: 'new' }, [{ skill: 'reading', evidence: 'voiced' }], 1);
+  assert.equal(first.reading.score, 15);
+  assert.equal(first.reading.attempts, 1);
+  assert.equal(first.reading.successes, 0);
+
+  // くり返しても上限75で頭打ち
+  let card = { status: 'new' };
+  for (let i = 0; i < 10; i++) {
+    card = { ...card, skillMastery: recordSkillEvidence(card, [{ skill: 'reading', evidence: 'voiced' }], i + 1) };
+  }
+  assert.equal(card.skillMastery.reading.score, 75);
+
+  // 上限を超えている既存スコアは下げない
+  const high = recordSkillEvidence({ status: 'mastered' }, [{ skill: 'reading', evidence: 'voiced' }], 1);
+  assert.equal(high.reading.score, 85);
+});

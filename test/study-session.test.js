@@ -22,7 +22,7 @@ mock.module(new URL('../src/systems/diagnostics.js', import.meta.url).href, {
   namedExports: { APP_VERSION: '0.2.0', recordDiagnosticEvent: () => {} },
 });
 
-const { buildStudyMeta, beginStudySession, recordStudyAttempt, markStudySessionCompleted, finishStudySession } =
+const { buildStudyMeta, beginStudySession, recordStudyAttempt, markStudySessionCompleted, finishStudySession, markStudyActivity } =
   await import('../src/systems/studySession.js');
 
 function installBrowserGlobals() {
@@ -89,4 +89,29 @@ test('200件以下のセッションには itemsTruncated を付けない', () =
   assert.equal(rec.summary.attempted, 200);
   assert.equal(rec.summary.count, 200);
   assert.equal('itemsTruncated' in rec.ext, false);
+});
+
+test('markStudyActivity はアイドル停止後の activeMs 加算を再開する', (t) => {
+  installBrowserGlobals();
+  t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: 0 });
+
+  beginStudySession(buildStudyMeta('survival', { queue: [] }));
+  recordStudyAttempt('k-0001', { ok: true, skill: 'reading' });
+
+  // 60秒でアイドル停止 → その後30秒は無操作(加算されない)
+  t.mock.timers.tick(61000);
+  t.mock.timers.tick(30000);
+
+  // 音読チャレンジの発声検出が活動として通知される
+  markStudyActivity();
+  t.mock.timers.tick(10000);
+
+  markStudySessionCompleted();
+  finishStudySession();
+
+  const rec = readRecord();
+  // 約60秒(アイドルまで) + 10秒(再開後)。タイマーの発火順序で±1秒ぶれる。
+  // 再開が働かなければ約61秒、無操作の30秒が混入すれば約101秒になる。
+  assert.ok(rec.activeMs >= 70000, `activeMs=${rec.activeMs} は再開後の10秒を含むはず`);
+  assert.ok(rec.activeMs <= 72000, `activeMs=${rec.activeMs} に無操作の30秒が混入している`);
 });
