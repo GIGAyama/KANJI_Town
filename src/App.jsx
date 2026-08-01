@@ -17,7 +17,7 @@ import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/ses
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
-import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST } from './constants/gameConfig';
+import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST, READING } from './constants/gameConfig';
 
 // Data
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
@@ -102,6 +102,7 @@ function createInitialSessionData(overrides = {}) {
     expMultiplier: 1,
     perfectCount: 0,
     easyCount: 0,
+    voicedCount: 0,
     reviewedCount: 0,
     attemptCount: 0,
     correctCount: 0,
@@ -675,6 +676,13 @@ export default function App() {
     }));
   }, []);
   const handleRecordEasy = useCallback(() => { setSessionData(d => ({ ...d, easyCount: d.easyCount + 1 })); }, []);
+  const handleRecordVoiced = useCallback(() => {
+    setSessionData(d => ({
+      ...d,
+      voicedCount: (d.voicedCount || 0) + 1,
+      earnedExp: d.earnedExp + Math.round(READING.CHALLENGE_BONUS_EXP * (d.expMultiplier || 1))
+    }));
+  }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
     // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
@@ -908,7 +916,7 @@ export default function App() {
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}><SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}

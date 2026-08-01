@@ -7,6 +7,7 @@ import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
+import { isReadingCheckEnabled } from '../../utils/reading-preference';
 import SystemStatusPanel from '../settings/SystemStatusPanel';
 import { APP_VERSION, BUILD_COMMIT } from '../../systems/diagnostics';
 
@@ -76,6 +77,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const themeOverride = settings.themeOverride || 'auto';
   const volumeLevel = settings.volumeLevel ?? (isMuted ? 'off' : 'high');
   const autoPlay = settings.autoPlay !== false;
+  const readingCheck = isReadingCheckEnabled(settings);
   const showFurigana = settings.showFurigana !== false;
   const sessionSize = settings.sessionSize || 'normal';
   const dailyGoal = getDailyGoal(settings);
@@ -279,10 +281,20 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-bold text-[var(--text)]">{F("自動","じどう")}{F("再生","さいせい")}</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">セッション{F("開始時","かいしじ")}に{F("音声","おんせい")}を{F("再生","さいせい")}</div>
+              <div className="text-[10px] text-[var(--text)] opacity-50">{F("音読","おんどく")}のとき お{F("手本","てほん")}の{F("音声","おんせい")}を{F("自動","じどう")}で{F("再生","さいせい")}</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ autoPlay: !autoPlay }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${autoPlay ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: autoPlay ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-bold text-[var(--text)]">{F("音読","おんどく")}チャレンジ</div>
+              <div className="text-[10px] text-[var(--text)] opacity-50">マイクで{F("声","こえ")}に{F("出","だ")}して よめたかチェック（ろくおん・そうしんは しない）</div>
+            </div>
+            <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ readingCheck: !readingCheck }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${readingCheck ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
+              <motion.div animate={{ x: readingCheck ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
             </button>
           </div>
 

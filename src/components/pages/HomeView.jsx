@@ -192,14 +192,14 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
           <button key={g} onClick={() => { audioCtrl.playSE('click'); handleGradeChange(g); }} className={`flex-1 py-1.5 md:py-2 font-black text-sm md:text-base rounded-xl border-[2px] transition-all ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
         ))}
       </div>
-      <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-sm sm:text-base md:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
+      <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-sm sm:text-base lg:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => startSession(selectedGrade)}>
         {!dailyProgress.isComplete && plannedTotalCount > 0
-          ? <><Target size={20} /> きょうの{plannedTotalCount}{F("字","じ")}：{F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</>
+          ? <><Target size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">きょうの{plannedTotalCount}{F("字","じ")}：{F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</span></>
           : isReviewNeeded
-          ? <><ShieldAlert size={20} /> {F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</>
+          ? <><ShieldAlert size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">{F("復習","ふくしゅう")}{plannedReviewCount}＋{F("新出","しんしゅつ")}{plannedNewCount}</span></>
           : plannedNewCount > 0
-            ? <><PenTool size={20} /> {F("新出","しんしゅつ")}{F("漢字","かんじ")}{plannedNewCount}{F("文字","もじ")}を{F("覚","おぼ")}える！</>
-            : <><PenTool size={20} /> {selectedGrade}{F("年生","ねんせい")}の{F("漢字","かんじ")}を{F("練習","れんしゅう")}！</>}
+            ? <><PenTool size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">{F("新出","しんしゅつ")}{F("漢字","かんじ")}{plannedNewCount}{F("文字","もじ")}を{F("覚","おぼ")}える！</span></>
+            : <><PenTool size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">{selectedGrade}{F("年生","ねんせい")}の{F("漢字","かんじ")}を{F("練習","れんしゅう")}！</span></>}
       </MotionButton>
     </div>
   );

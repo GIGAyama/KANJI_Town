@@ -276,6 +276,13 @@ function attach() {
   };
 }
 
+/** 音読チャレンジ中など、クリック以外の学習行動で activeMs の停止を防ぐ。 */
+export function markStudyActivity() {
+  if (!session) return;
+  tick(session);
+  session.idle = false;
+}
+
 /** 学習ビューへ入ったときに呼ぶ。前のセッションが残っていれば中断として確定する。 */
 export function beginStudySession(meta) {
   if (!meta || !meta.unit) return;

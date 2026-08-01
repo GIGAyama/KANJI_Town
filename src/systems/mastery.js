@@ -9,6 +9,9 @@ export const MASTERY_SKILL_DEFINITIONS = {
 
 const EVIDENCE_RULES = {
   exposed: { delta: 8, cap: 60, success: false },
+  // 音読チャレンジクリア。声に出して読んだ行動の証拠。
+  // 音量検出のため読みの正誤までは保証できず success には数えない。
+  voiced: { delta: 15, cap: 75, success: false },
   guided: { delta: 6, cap: 75, success: true },
   again: { delta: -18, success: false },
   hard: { delta: 2, success: true },

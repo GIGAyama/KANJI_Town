@@ -182,6 +182,9 @@ export function getRuntimeSnapshot(options = {}) {
       supported: Boolean(serviceWorker),
       active: Boolean(serviceWorker?.controller),
     },
+    microphone: {
+      supported: Boolean(navigatorValue?.mediaDevices?.getUserMedia),
+    },
   };
 }
 
@@ -238,6 +241,9 @@ export function createSupportReport(options = {}) {
       serviceWorker: {
         supported: Boolean(runtime.serviceWorker?.supported),
         active: Boolean(runtime.serviceWorker?.active),
+      },
+      microphone: {
+        supported: Boolean(runtime.microphone?.supported),
       },
     },
     diagnostics: (options.diagnostics || getDiagnosticEvents())

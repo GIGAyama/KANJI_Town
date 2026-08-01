@@ -10,6 +10,7 @@ import { TEST } from '../../constants/gameConfig';
 import { getSatisfactionMultiplier, calculateSatisfaction } from '../../systems/residents';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
@@ -155,8 +156,8 @@ const TestCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
       </div>
 
       <div className="relative border-[4px] border-amber-500 rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none shrink-0 shadow-[4px_4px_0_var(--text)]" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
-        <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
-        <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
         <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
         {disabled && <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center" />}
@@ -209,7 +210,8 @@ const DrillTestView = ({ queue, stats, onUpdateStat, onFinish, startDrillSession
   const [phase, setPhase] = useState('testing'); // 'testing' | 'results'
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
-  const [canvasSize] = useState(window.innerWidth < 768 ? 260 : 360);
+  // 画面回転にも追従する。サイズ変更時は TestCanvas 側で書きかけの画が消える(通常モードと同じ挙動)
+  const { canvasSize } = useLearningViewport('drillTest');
 
   // KanjiVGデータ
   const [strokeData, setStrokeData] = useState([]);
@@ -339,7 +341,7 @@ const DrillTestView = ({ queue, stats, onUpdateStat, onFinish, startDrillSession
               <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
             </div>
           ) : (
-            <div className="w-full max-w-4xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
+            <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
               {/* 左: お題パネル */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 order-first">
                 {/* 例文 */}
