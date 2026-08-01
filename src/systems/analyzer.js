@@ -1,7 +1,9 @@
 // ==========================================
-// ストローク解析（終筆判定・交差検出）
+// ストローク解析（終筆判定・交差検出・字形比較）
+// 入力はすべて 0-1 の正規化座標のポイント列を前提とする
 // ==========================================
-import { STROKE_ANALYSIS } from '../constants/gameConfig';
+import { STROKE_ANALYSIS } from '../constants/gameConfig.js';
+import { STROKE_THRESHOLDS } from '../constants/strokeConfig.js';
 
 /**
  * 2Dベクトルの大きさを計算する
@@ -39,14 +41,50 @@ function angleBetween(v1, v2) {
   return Math.acos(cosTheta) * (180 / Math.PI);
 }
 
+/**
+ * 各ポイントまでの累積弧長を返す
+ * @param {Array<{x: number, y: number}>} points
+ * @returns {number[]} points と同じ長さ。先頭は 0。
+ */
+function cumulativeLengths(points) {
+  const cum = [0];
+  for (let i = 1; i < points.length; i++) {
+    cum.push(cum[i - 1] + distance(points[i - 1], points[i]));
+  }
+  return cum;
+}
+
+/**
+ * 2つの線分の交点をパラメータで求める
+ * @param {{x: number, y: number}} p1 - 線分Aの始点
+ * @param {{x: number, y: number}} p2 - 線分Aの終点
+ * @param {{x: number, y: number}} p3 - 線分Bの始点
+ * @param {{x: number, y: number}} p4 - 線分Bの終点
+ * @returns {{t: number, u: number}|null} t,u は各線分上の位置(0-1)。交わらなければ null。
+ */
+function segmentIntersection(p1, p2, p3, p4) {
+  const d1x = p2.x - p1.x;
+  const d1y = p2.y - p1.y;
+  const d2x = p4.x - p3.x;
+  const d2y = p4.y - p3.y;
+  const denom = d1x * d2y - d1y * d2x;
+  if (Math.abs(denom) < 1e-12) return null; // 平行または退化
+  const ox = p3.x - p1.x;
+  const oy = p3.y - p1.y;
+  const t = (ox * d2y - oy * d2x) / denom;
+  const u = (ox * d1y - oy * d1x) / denom;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return { t, u };
+}
+
 export const Analyzer = {
   /**
    * ストロークの終筆タイプを解析する
    * とめ(tome): 筆を止めて終わる
    * はね(hane): 角度をつけて跳ねる
    * はらい(harai): 速度を保って払う
-   * @param {Array<{x: number, y: number, time: number}>} points - ストロークのポイント群
-   * @returns {{ type: string, code: string }}
+   * @param {Array<{x: number, y: number, time: number}>} points - 正規化座標＋時刻
+   * @returns {{ type: string, code: 'tome'|'hane'|'harai' }}
    */
   analyzeEnding: (points) => {
     if (!points || points.length < STROKE_ANALYSIS.MIN_POINTS) {
@@ -91,65 +129,142 @@ export const Analyzer = {
   },
 
   /**
-   * 2つの線分(p1-p2, p3-p4)が交差するかどうかを判定する
-   * アルゴリズム: 外積の符号による交差判定
-   * @param {{x: number, y: number}} p1
-   * @param {{x: number, y: number}} p2
-   * @param {{x: number, y: number}} p3
-   * @param {{x: number, y: number}} p4
-   * @returns {boolean}
+   * 2つのストロークの「突き抜けの深さ」を返す。
+   *
+   * 交差点から両ストロークの端までの距離のうち最小のものが「突き抜け量」。
+   * - 「土」のように画の端どうしが接するだけ → 端までの距離が 0 に近い → 深さ ≒ 0
+   * - 「牛」のように画が突き抜ける          → どちら側にも長さが残る → 深さが大きい
+   *
+   * 交差セグメント対の「数」で測るとペンのサンプリング密度（＝書く速さ）で
+   * 結果が変わってしまうが、この深さは密度に依存しない。
+   *
+   * @param {Array<{x: number, y: number}>} stroke1
+   * @param {Array<{x: number, y: number}>} stroke2
+   * @returns {number} 突き抜けの深さ（正規化座標。交差しなければ 0）
    */
-  isIntersecting: (p1, p2, p3, p4) => {
-    // 線分p1-p2から見たp3,p4の外積（異なる側にあれば交差の可能性）
-    const crossA = (p3.x - p4.x) * (p1.y - p3.y) + (p3.y - p4.y) * (p3.x - p1.x);
-    const crossB = (p3.x - p4.x) * (p2.y - p3.y) + (p3.y - p4.y) * (p3.x - p2.x);
-    // 線分p3-p4から見たp1,p2の外積
-    const crossC = (p1.x - p2.x) * (p3.y - p1.y) + (p1.y - p2.y) * (p1.x - p3.x);
-    const crossD = (p1.x - p2.x) * (p4.y - p1.y) + (p1.y - p2.y) * (p1.x - p4.x);
-    // 両方の組で異なる符号 → 交差
-    return crossC * crossD < 0 && crossA * crossB < 0;
+  crossingDepth: (stroke1, stroke2) => {
+    if (!stroke1 || !stroke2 || stroke1.length < 2 || stroke2.length < 2) return 0;
+    const cum1 = cumulativeLengths(stroke1);
+    const cum2 = cumulativeLengths(stroke2);
+    const len1 = cum1[cum1.length - 1];
+    const len2 = cum2[cum2.length - 1];
+    if (len1 === 0 || len2 === 0) return 0;
+
+    let deepest = 0;
+    for (let i = 0; i < stroke1.length - 1; i++) {
+      for (let j = 0; j < stroke2.length - 1; j++) {
+        const hit = segmentIntersection(stroke1[i], stroke1[i + 1], stroke2[j], stroke2[j + 1]);
+        if (!hit) continue;
+        const at1 = cum1[i] + hit.t * (cum1[i + 1] - cum1[i]);
+        const at2 = cum2[j] + hit.u * (cum2[j + 1] - cum2[j]);
+        const depth = Math.min(
+          Math.min(at1, len1 - at1),
+          Math.min(at2, len2 - at2),
+        );
+        if (depth > deepest) deepest = depth;
+      }
+    }
+    return deepest;
   },
 
   /**
-   * 2つのストロークが交差するかどうかをチェックする
+   * 2つのストロークが（接触ではなく）交差しているかを判定する
    * @param {Array<{x: number, y: number}>} stroke1
    * @param {Array<{x: number, y: number}>} stroke2
+   * @param {number} [minDepth] - 交差とみなす最小の突き抜け深さ
    * @returns {boolean}
    */
-  checkCross: (stroke1, stroke2) => {
-    if (!stroke1 || !stroke2 || stroke1.length < 2 || stroke2.length < 2) {
-      return false;
-    }
-    for (let i = 0; i < stroke1.length - 1; i++) {
-      for (let j = 0; j < stroke2.length - 1; j++) {
-        if (Analyzer.isIntersecting(stroke1[i], stroke1[i + 1], stroke2[j], stroke2[j + 1])) {
-          return true;
-        }
-      }
-    }
-    return false;
+  isCrossed: (stroke1, stroke2, minDepth = STROKE_THRESHOLDS.CROSS_DEPTH_NONE) => (
+    Analyzer.crossingDepth(stroke1, stroke2) > minDepth
+  ),
+
+  /**
+   * 突き抜け深さから交差の正しさ（0-1）を返す。
+   *
+   * CROSS_DEPTH_NONE〜CROSS_DEPTH_CLEAR の間はなだらかに変化させ、
+   * 「わずかにはみ出した」程度でいきなり不正解にしない。
+   *
+   * @param {boolean} expectedCrossed - 正解の字で交差しているか
+   * @param {number} actualDepth - ユーザーの突き抜け深さ
+   * @returns {number} 0-1
+   */
+  crossingScore: (expectedCrossed, actualDepth) => {
+    const { CROSS_DEPTH_NONE, CROSS_DEPTH_CLEAR } = STROKE_THRESHOLDS;
+    const ratio = Math.max(0, Math.min(1,
+      (actualDepth - CROSS_DEPTH_NONE) / (CROSS_DEPTH_CLEAR - CROSS_DEPTH_NONE),
+    ));
+    return expectedCrossed ? ratio : 1 - ratio;
   },
 
   /**
-   * 2つのストローク間の交差セグメント対の数を返す
-   * checkCross が真偽だけを返すのに対し、こちらは交差の「程度」を測定する。
-   * わずかなドット単位の接触（1-2対）と明確な突き抜け（多数対）を区別するために使う。
+   * 交差の状態を3値で判定する（画面表示用）
+   * @param {boolean} expectedCrossed
+   * @param {number} actualDepth
+   * @returns {'ok'|'extra'|'missing'} extra=突き抜けすぎ, missing=交わっていない
+   */
+  judgeCrossing: (expectedCrossed, actualDepth) => {
+    if (Analyzer.crossingScore(expectedCrossed, actualDepth) >= 0.5) return 'ok';
+    return expectedCrossed ? 'missing' : 'extra';
+  },
+
+  /**
+   * ストロークを弧長で等間隔にリサンプリングする
+   * ポイント数がペンの速さに左右されるため、比較の前に必ず揃える。
+   * @param {Array<{x: number, y: number}>} points
+   * @param {number} count - 出力する点数(2以上)
+   * @returns {Array<{x: number, y: number}>}
+   */
+  resample: (points, count) => {
+    const n = Math.max(2, Math.floor(count));
+    if (!points || points.length === 0) return [];
+    if (points.length === 1) {
+      return Array.from({ length: n }, () => ({ x: points[0].x, y: points[0].y }));
+    }
+    const cum = cumulativeLengths(points);
+    const total = cum[cum.length - 1];
+    if (total === 0) {
+      return Array.from({ length: n }, () => ({ x: points[0].x, y: points[0].y }));
+    }
+    const step = total / (n - 1);
+    const out = [];
+    let seg = 0;
+    for (let k = 0; k < n; k++) {
+      const target = Math.min(total, step * k);
+      while (seg < points.length - 2 && cum[seg + 1] < target) seg++;
+      const segLen = cum[seg + 1] - cum[seg];
+      const ratio = segLen > 0 ? (target - cum[seg]) / segLen : 0;
+      out.push({
+        x: points[seg].x + (points[seg + 1].x - points[seg].x) * ratio,
+        y: points[seg].y + (points[seg + 1].y - points[seg].y) * ratio,
+      });
+    }
+    return out;
+  },
+
+  /**
+   * 2つのストロークの字形のずれを返す。
+   *
+   * 等間隔リサンプリング後の対応点どうしの平均距離。
+   * reversed は片方を逆順にしたときの値で、これが forward より明らかに
+   * 小さければ「書く向きが逆」と判定できる。
+   *
    * @param {Array<{x: number, y: number}>} stroke1
    * @param {Array<{x: number, y: number}>} stroke2
-   * @returns {number} 交差しているセグメント対の数
+   * @param {number} [samples]
+   * @returns {{ forward: number, reversed: number }}
    */
-  countCrossings: (stroke1, stroke2) => {
-    if (!stroke1 || !stroke2 || stroke1.length < 2 || stroke2.length < 2) {
-      return 0;
+  shapeDistance: (stroke1, stroke2, samples = STROKE_THRESHOLDS.SHAPE_SAMPLES) => {
+    const a = Analyzer.resample(stroke1, samples);
+    const b = Analyzer.resample(stroke2, samples);
+    if (a.length === 0 || b.length === 0 || a.length !== b.length) {
+      return { forward: Infinity, reversed: Infinity };
     }
-    let count = 0;
-    for (let i = 0; i < stroke1.length - 1; i++) {
-      for (let j = 0; j < stroke2.length - 1; j++) {
-        if (Analyzer.isIntersecting(stroke1[i], stroke1[i + 1], stroke2[j], stroke2[j + 1])) {
-          count++;
-        }
-      }
+    let forward = 0;
+    let reversed = 0;
+    for (let i = 0; i < a.length; i++) {
+      forward += distance(a[i], b[i]);
+      reversed += distance(a[i], b[a.length - 1 - i]);
     }
-    return count;
+    return { forward: forward / a.length, reversed: reversed / a.length };
   },
 };

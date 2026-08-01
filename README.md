@@ -12,6 +12,12 @@ npm test        # node --test
 npm run build   # ビルド + バンドル予算チェック
 ```
 
+## 書字の正誤判定
+
+書き順・字形・とめはね・点画の交差の判定は `src/systems/strokeGrader.js` に集約し、
+テスト・ドリル・ボスバトル・サバイバルで同じ採点を共有する。
+配点と設計の根拠は `docs/stroke-grading.md` を参照。
+
 ## 学習ログ（study.v1）
 
 本アプリは「学習ログ共通スキーマ仕様書 `study.v1`」に準拠した学習ログを端末の

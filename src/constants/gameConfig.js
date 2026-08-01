@@ -140,14 +140,29 @@ export const STROKE_ANALYSIS = {
   VELOCITY_THRESHOLD: 0.0025,
 };
 
-/** 採点の重み設定 */
+/** 採点の重み設定（合計100点。評価できない項目があれば残りの項目へ按分する） */
 export const GRADING = {
   WEIGHTS: {
-    STROKE_COUNT: 0,
-    START_ACCURACY: 35,
-    END_ACCURACY: 35,
-    CROSS_ACCURACY: 30,
+    /** 字形：経路全体のなぞり具合 */
+    SHAPE: 30,
+    /** 書き順：どの画をどの順で書いたか */
+    ORDER: 25,
+    /** とめ・はね・はらい */
+    ENDING: 15,
+    /** 点画の交差の有無 */
+    CROSS: 10,
+    /** 始点の位置 */
+    START: 10,
+    /** 終点の位置 */
+    END: 10,
   },
+  /**
+   * 書き順に誤りがあるときの上限点。
+   * 「三」を下から書いても見た目は同じなので、字形・位置の項目は満点になる。
+   * 書き順を確実に身につけてもらうため、画数の誤りと同じく合格させない扱いにする
+   * （0点にはせず、どこがどう違ったかは点数と講評に残す）。
+   */
+  ORDER_FAIL_CAP: 69,
   /** 評価ラベルの閾値 */
   LABELS: [
     { min: 90, label: '💮 たいへんよくできました！', grade: 'excellent' },

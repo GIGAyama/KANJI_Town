@@ -11,6 +11,8 @@ import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
 function scoreToRecommendation(result) {
   if (!result.strokeCountMatch || !result.crossMatch) return 'again';
+  // 書き順が違うと見た目は同じでも身についていない。もう一度練習する扱いにする。
+  if (result.orderMatch === false) return result.total >= 30 ? 'hard' : 'again';
   if (result.total >= 80) return 'easy';
   if (result.total >= 55) return 'good';
   if (result.total >= 30) return 'hard';
@@ -21,6 +23,7 @@ function getScoreBanner(result) {
   if (!result) return null;
   if (!result.strokeCountMatch) return { text: 'かくすうが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
   if (!result.crossMatch) return { text: 'せんの まじわりが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
+  if (result.orderMatch === false) return { text: 'かきじゅんを たしかめよう💦', color: 'var(--accent)', textColor: 'var(--text)' };
   if (result.total >= 80) return { text: 'よく 書けているよ！✨', color: 'var(--secondary)', textColor: 'var(--panel)' };
   if (result.total >= 55) return { text: 'おしい！もうすこし！', color: 'var(--accent)', textColor: 'var(--text)' };
   if (result.total >= 30) return { text: 'むずかしかったね…', color: '#fbbf24', textColor: 'var(--text)' };

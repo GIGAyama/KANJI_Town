@@ -46,7 +46,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
         const { paths: p, strokeData: data } = await fetchKanjiVg(currentKanji.char, { signal: abortCtrl.signal });
         if (abortCtrl.signal.aborted) return;
         setPaths(p); setStrokeData(data);
-        const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
+        const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.isCrossed(data[i].points, data[j].points)));
         setCrossMatrix(cMatrix);
       } catch (e) {
         if (abortCtrl.signal.aborted || e?.name === 'AbortError') return;
@@ -169,7 +169,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, onUpdateStat, onR
                 fetchKanjiVg(currentKanji.char)
                   .then(({ paths: p, strokeData: data }) => {
                     setPaths(p); setStrokeData(data);
-                    const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.checkCross(data[i].points, data[j].points)));
+                    const cMatrix = data.map((_, i) => data.map((__, j) => i !== j && Analyzer.isCrossed(data[i].points, data[j].points)));
                     setCrossMatrix(cMatrix);
                   })
                   .catch(() => setFetchError('よみこみに しっぱいしました。\nもういちど ためしてね。'))
