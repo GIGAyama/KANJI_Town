@@ -46,16 +46,25 @@ const ReadMode = ({ kanji, onNext, commonSidebar, isStacked, settings = {}, chal
   }, [status]);
 
   // 漢字が変わったら例文を引き直し、設定ONならお手本を1回だけ自動再生する
+  const autoPlayTimerRef = useRef(null);
+  const cancelAutoPlay = () => {
+    if (autoPlayTimerRef.current) {
+      clearTimeout(autoPlayTimerRef.current);
+      autoPlayTimerRef.current = null;
+    }
+  };
   useEffect(() => {
     const idx = Math.floor(Math.random() * Math.max(kanji.examples.length, 1));
     setExampleIdx(idx);
     clearHandledRef.current = false;
-    let timer = null;
     if (isAutoPlayEnabled(settings) && !audioCtrl.muted && kanji.examples[idx]) {
-      timer = setTimeout(() => speakJa(toSpeechText(kanji.examples[idx]), { volume: audioCtrl.volume }), 400);
+      autoPlayTimerRef.current = setTimeout(() => {
+        autoPlayTimerRef.current = null;
+        speakJa(toSpeechText(kanji.examples[idx]), { volume: audioCtrl.volume });
+      }, 400);
     }
     return () => {
-      if (timer) clearTimeout(timer);
+      cancelAutoPlay();
       stopSpeaking();
     };
     // settings はレンダーごとに新しいオブジェクトになるため kanji.id だけを見る
@@ -63,7 +72,9 @@ const ReadMode = ({ kanji, onNext, commonSidebar, isStacked, settings = {}, chal
   }, [kanji.id]);
 
   const handleStartChallenge = () => {
-    stopSpeaking(); // お手本の音声をマイクが拾わないように止めてから開始
+    // お手本の音声(再生中+発火前のタイマー)をマイクが拾わないように止めてから開始
+    cancelAutoPlay();
+    stopSpeaking();
     audioCtrl.playSE('click');
     start();
   };
@@ -110,7 +121,7 @@ const ReadMode = ({ kanji, onNext, commonSidebar, isStacked, settings = {}, chal
               <motion.div className="h-full bg-[var(--secondary)]" animate={{ width: `${Math.round(progress * 100)}%` }} transition={{ duration: 0.15 }} />
             </div>
           </div>
-          <button onClick={() => stop()} className="text-[10px] font-bold text-[var(--text)] opacity-50 underline mx-auto hover:opacity-80">やめる</button>
+          <button onClick={() => stop()} className="text-xs font-bold text-[var(--text)] opacity-50 underline mx-auto hover:opacity-80 px-4 py-1.5">やめる</button>
         </>
       ) : (
         <>

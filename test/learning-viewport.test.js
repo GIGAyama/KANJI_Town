@@ -23,10 +23,20 @@ test('狭い画面(768px未満)は常に縦積みになる', () => {
   assert.equal(result.isStacked, true);
 });
 
-test('低い画面では控えめな高さ見積もりを使う', () => {
+test('低い画面でも同じ高さ見積もりで正方形を保つ', () => {
   const result = calculateLearningViewport(1024, 600);
   assert.equal(result.isStacked, false);
-  assert.equal(result.canvasSize, 488);
+  assert.equal(result.canvasSize, 380);
+  // 620px境界でキャンバスサイズが不連続に跳ねない
+  const below = calculateLearningViewport(1280, 619).canvasSize;
+  const above = calculateLearningViewport(1280, 620).canvasSize;
+  assert.ok(Math.abs(above - below) <= 2, `619→620で ${below}→${above} と不連続`);
+});
+
+test('縦積みはModeLayoutの枠内寸(616px)で頭打ちになる', () => {
+  const result = calculateLearningViewport(900, 2000);
+  assert.equal(result.isStacked, true);
+  assert.equal(result.canvasSize, 616);
 });
 
 test('キャンバスサイズは下限と上限640でクランプされる', () => {

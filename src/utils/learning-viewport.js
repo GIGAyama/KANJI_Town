@@ -20,19 +20,22 @@ export function calculateLearningViewport(width, height) {
 
   if (isStacked) {
     const availableWidth = safeWidth - 32;
-    // -24 はコンテナのパディング・枠線ぶん。ModeLayout の min(50dvh,640px) を超えない。
+    // -24 はコンテナのパディング・枠線ぶん。
     const availableHeight = safeHeight * (safeHeight < 620 ? 0.42 : 0.5) - 24;
+    // ModeLayout の縦積み枠は min(50dvh,640px) から内側パディング・枠線を引いた
+    // 約618pxが内寸の上限。超えると枠が潰れて非正方形になるため616で頭打ちにする。
     return {
       isStacked,
-      canvasSize: Math.round(clamp(Math.min(availableWidth, availableHeight), 220, CANVAS_MAX)),
+      canvasSize: Math.round(clamp(Math.min(availableWidth, availableHeight), 220, 616)),
     };
   }
 
   const sidebarWidth = safeWidth >= 1200 ? 360 : 300;
   const availableWidth = safeWidth - sidebarWidth - 96;
   // 220 = 外周パディング48 + セッション枠/余白48 + ヘッダー行48 + 進捗バー20 + メイン枠パディング56。
+  // これらは全て幅ブレークポイント基準で高さに依存しないため、低い画面でも同じ値を使う。
   // 過小評価するとキャンバス箱が maxHeight で潰れて非正方形になるため実測値を使う。
-  const availableHeight = safeHeight - (safeHeight < 620 ? 112 : 220);
+  const availableHeight = safeHeight - 220;
 
   return {
     isStacked,

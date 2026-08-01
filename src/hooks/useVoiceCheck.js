@@ -72,13 +72,16 @@ export function useVoiceCheck({ enabled = true, resetKey } = {}) {
       setStatus(err?.name === 'NotAllowedError' ? 'denied' : 'error');
       return;
     }
-    if (tokenRef.current !== token) {
+    // 許可待ちの間にタブが隠れた場合も起動しない(visibilitychangeはpipeline生成前には効かないため)
+    if (tokenRef.current !== token || document.hidden) {
       stream.getTracks().forEach((track) => track.stop());
+      if (tokenRef.current === token) setStatus('idle');
       return;
     }
+    let ctx = null;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx();
+      ctx = new AudioCtx();
       if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -118,6 +121,7 @@ export function useVoiceCheck({ enabled = true, resetKey } = {}) {
       pipelineRef.current = { stream, ctx, source, analyser, timer };
     } catch {
       stream.getTracks().forEach((track) => track.stop());
+      ctx?.close().catch(() => {});
       if (tokenRef.current === token) setStatus('error');
     }
   }, [enabled, teardown]);
