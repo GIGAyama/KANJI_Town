@@ -4,11 +4,14 @@
 // タイムアウト・リトライ・指数バックオフ対応
 // ==========================================
 import { idbGet, idbSet, idbGetAllKeys, migrateFromLocalStorage } from './idb-cache';
-import { KANJI_VG } from '../constants/gameConfig';
+import { KANJI_VG } from '../constants/gameConfig.js';
+import { endingTypeFromKvgType } from './strokeKind.js';
 
 const LEGACY_STORAGE_KEY = 'kanji_vg_cache';
+/** KanjiVG 独自属性の名前空間 */
+const KVG_NAMESPACE = 'http://kanjivg.tagaini.net';
 
-/** @type {Map<string, string[]>} メモリキャッシュ（セッション中は即返却） */
+/** @type {Map<string, Array<{d: string, type: string|null}>>} メモリキャッシュ（セッション中は即返却） */
 const memoryCache = new Map();
 
 // 起動時に localStorage → IndexedDB へ移行（非同期・失敗無視）
@@ -71,27 +74,53 @@ async function fetchWithRetry(url, maxRetries, timeout, externalSignal) {
 }
 
 /**
- * SVGテキストからpath要素のd属性文字列を抽出する
+ * SVGテキストから各画の d属性と kvg:type を抽出する
+ * kvg:type は終筆（とめ・はね・はらい）の正解を導くために使う。
  * @param {string} svgText - SVG文字列
- * @returns {string[]} path d属性の配列
+ * @returns {Array<{d: string, type: string|null}>}
  */
-function extractPathStrings(svgText) {
+function extractStrokes(svgText) {
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  return Array.from(doc.querySelectorAll('path')).map(p => p.getAttribute('d'));
+  return Array.from(doc.querySelectorAll('path'))
+    .map(p => ({
+      d: p.getAttribute('d'),
+      type: p.getAttribute('kvg:type') ?? p.getAttributeNS(KVG_NAMESPACE, 'type') ?? null,
+    }))
+    .filter(stroke => stroke.d);
 }
 
 /**
- * path文字列配列をstrokeData（正規化座標のポイント群）に変換する
- * @param {string[]} pathStrings
- * @returns {Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array<{x: number, y: number}>}>}
+ * キャッシュ済みデータを現在の形式へ揃える。
+ * 旧版は d属性の文字列配列だけを保存していたため、その形も受け付ける。
+ * @param {Array<string|{d: string, type: string|null}>} cached
+ * @returns {Array<{d: string, type: string|null}>}
  */
-function buildStrokeData(pathStrings) {
+function normalizeCachedStrokes(cached) {
+  if (!Array.isArray(cached)) return [];
+  return cached
+    .map(stroke => (typeof stroke === 'string'
+      ? { d: stroke, type: null }
+      : { d: stroke?.d, type: stroke?.type ?? null }))
+    .filter(stroke => stroke.d);
+}
+
+/** 旧形式（d属性のみ）のキャッシュか判定する */
+function isLegacyCache(cached) {
+  return Array.isArray(cached) && cached.some(stroke => typeof stroke === 'string');
+}
+
+/**
+ * 各画をstrokeData（正規化座標のポイント群）に変換する
+ * @param {Array<{d: string, type: string|null}>} strokes
+ * @returns {Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array<{x: number, y: number}>, endingType: string|null}>}
+ */
+function buildStrokeData(strokes) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   svg.appendChild(pathEl);
   document.body.appendChild(svg);
   try {
-    return pathStrings.map(d => {
+    return strokes.map(({ d, type }) => {
       pathEl.setAttribute('d', d);
       const len = pathEl.getTotalLength();
       const points = [];
@@ -106,6 +135,7 @@ function buildStrokeData(pathStrings) {
         s: { x: startPt.x / KANJI_VG.VIEWBOX_SIZE, y: startPt.y / KANJI_VG.VIEWBOX_SIZE },
         e: { x: endPt.x / KANJI_VG.VIEWBOX_SIZE, y: endPt.y / KANJI_VG.VIEWBOX_SIZE },
         points,
+        endingType: endingTypeFromKvgType(type),
       };
     });
   } finally {
@@ -136,32 +166,44 @@ export async function fetchKanjiVg(char, options = {}) {
   // 1. メモリキャッシュ
   if (memoryCache.has(hex)) {
     const cached = memoryCache.get(hex);
-    return { paths: cached, strokeData: buildStrokeData(cached) };
+    return { paths: cached.map(s => s.d), strokeData: buildStrokeData(cached) };
   }
 
   // 2. IndexedDB キャッシュ
   const idbCached = await idbGet(hex);
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  if (idbCached) {
-    memoryCache.set(hex, idbCached);
-    return { paths: idbCached, strokeData: buildStrokeData(idbCached) };
+  // 旧形式には筆画の種類（＝とめはねの正解）が無いので、可能なら取り直す。
+  // 取り直せなければ旧データをそのまま使い、終筆の採点だけを見送る。
+  const legacyStrokes = idbCached && isLegacyCache(idbCached) ? normalizeCachedStrokes(idbCached) : null;
+  if (idbCached && !legacyStrokes) {
+    const strokes = normalizeCachedStrokes(idbCached);
+    memoryCache.set(hex, strokes);
+    return { paths: strokes.map(s => s.d), strokeData: buildStrokeData(strokes) };
   }
 
   // 3. ネットワーク取得（リトライ付き）
-  const res = await fetchWithRetry(
-    `${KANJI_VG.CDN_URL}/${hex}.svg`,
-    KANJI_VG.MAX_RETRIES,
-    KANJI_VG.FETCH_TIMEOUT,
-    signal
-  );
-  const text = await res.text();
-  const pathStrings = extractPathStrings(text);
+  let strokes;
+  try {
+    const res = await fetchWithRetry(
+      `${KANJI_VG.CDN_URL}/${hex}.svg`,
+      KANJI_VG.MAX_RETRIES,
+      KANJI_VG.FETCH_TIMEOUT,
+      signal
+    );
+    strokes = extractStrokes(await res.text());
+  } catch (e) {
+    if (legacyStrokes && !signal?.aborted && e?.name !== 'AbortError') {
+      memoryCache.set(hex, legacyStrokes);
+      return { paths: legacyStrokes.map(s => s.d), strokeData: buildStrokeData(legacyStrokes) };
+    }
+    throw e;
+  }
 
   // キャッシュ保存（非同期・失敗無視）
-  memoryCache.set(hex, pathStrings);
-  idbSet(hex, pathStrings);
+  memoryCache.set(hex, strokes);
+  idbSet(hex, strokes);
 
-  return { paths: pathStrings, strokeData: buildStrokeData(pathStrings) };
+  return { paths: strokes.map(s => s.d), strokeData: buildStrokeData(strokes) };
 }
 
 /**
@@ -190,10 +232,9 @@ export async function prefetchKanjiVg(kanjiList) {
         KANJI_VG.FETCH_TIMEOUT
       );
       if (res.ok) {
-        const text = await res.text();
-        const pathStrings = extractPathStrings(text);
-        memoryCache.set(hex, pathStrings);
-        await idbSet(hex, pathStrings);
+        const strokes = extractStrokes(await res.text());
+        memoryCache.set(hex, strokes);
+        await idbSet(hex, strokes);
         cached++;
       }
     } catch {

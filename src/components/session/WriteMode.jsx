@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Pencil, ChevronRight, Undo2, Trash2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
@@ -7,7 +7,8 @@ import Confetti from '../ui/Confetti';
 import { Analyzer } from '../../systems/analyzer';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
-import { STROKE_THRESHOLDS } from '../../constants/strokeConfig';
+import { getGuideTolerances } from '../../constants/strokeConfig';
+import { describeEndingFeedback } from '../../systems/strokeKind';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 
@@ -18,6 +19,8 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   const [showConfetti, setShowConfetti] = useState(false); const [floatingTexts, setFloatingTexts] = useState([]);
   const [userStrokes, setUserStrokes] = useState([]); const [history, setHistory] = useState([]);
   const distSum = useRef(0); const currentPathRef = useRef([]); const strokeDists = useRef([]);
+  // 許容距離は画数に合わせて縮める（画数が多い字ほど1画あたりの間隔が狭いため）
+  const tolerances = useMemo(() => getGuideTolerances(paths.length), [paths.length]);
 
   const addFloatingText = (x, y, text, color = 'var(--primary)', scale = 1) => { const id = Date.now() + Math.random(); setFloatingTexts(prev => [...prev, { id, x, y, text, color, scale }]); setTimeout(() => { setFloatingTexts(prev => prev.filter(t => t.id !== id)); }, 1500); };
   const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { const c = ref.current; if (c) { c.width = canvasSize * 2; c.height = canvasSize * 2; c.style.width = '100%'; c.style.height = '100%'; const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(2, 2); ctx.clearRect(0, 0, canvasSize, canvasSize); } }); }, [canvasSize]);
@@ -56,7 +59,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     e.preventDefault(); audioCtrl.init(); if (currentStrokeRef.current >= paths.length) return;
     if (!strokeData[currentStrokeRef.current]) return;
     const { x, y } = getCoords(e); const target = strokeData[currentStrokeRef.current].s;
-    if (Math.hypot(x / canvasSize - target.x, y / canvasSize - target.y) > STROKE_THRESHOLDS.START_POINT) { setStatusMsg("かきはじめが ちがうよ💦"); audioCtrl.playSE('stamp_bad'); return; }
+    if (Math.hypot(x / canvasSize - target.x, y / canvasSize - target.y) > tolerances.start) { setStatusMsg("かきはじめが ちがうよ💦"); audioCtrl.playSE('stamp_bad'); return; }
     setStatusMsg(`${currentStrokeRef.current + 1}かくめ なぞり中...`); setIsDrawing(true); lastPos.current = { x, y }; currentPathRef.current = [{ x, y, time: Date.now() }];
     const ctx = writeRef.current.getContext('2d'); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = canvasSize * 0.08; ctx.strokeStyle = resolveThemeColor('--secondary'); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y); ctx.stroke();
   };
@@ -69,7 +72,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     if (e && e.type !== 'mouseleave') e.preventDefault(); if (!isDrawingRef.current) return; setIsDrawing(false);
     if (!strokeData[currentStrokeRef.current]) return;
     const target = strokeData[currentStrokeRef.current].e; const currentDist = Math.hypot(lastPos.current.x / canvasSize - target.x, lastPos.current.y / canvasSize - target.y);
-    if (currentDist < STROKE_THRESHOLDS.END_POINT) {
+    if (currentDist < tolerances.end) {
       let isError = false; let errMsg = "";
       if (count >= 2) {
         const normalizedPoints = currentPathRef.current.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize, time: p.time })); const ending = Analyzer.analyzeEnding(normalizedPoints);
@@ -77,11 +80,13 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
           const pastPoints = userStrokes[pastIdx];
           if (!pastPoints) continue;
           const pastNormalized = pastPoints.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize }));
-          const isUserCrossed = Analyzer.checkCross(pastNormalized, normalizedPoints);
           const isExpectedCrossed = crossMatrix[currentStrokeRef.current]?.[pastIdx] ?? false;
-          if (isUserCrossed !== isExpectedCrossed) { isError = true; errMsg = isUserCrossed ? "ちがう画を つきぬけているよ💦" : "ほかの画と まじわっていないよ💦"; break; }
+          const verdict = Analyzer.judgeCrossing(isExpectedCrossed, Analyzer.crossingDepth(pastNormalized, normalizedPoints));
+          if (verdict !== 'ok') { isError = true; errMsg = verdict === 'extra' ? "ちがう画を つきぬけているよ💦" : "ほかの画と まじわっていないよ💦"; break; }
         }
-        if (!isError) { addFloatingText(lastPos.current.x, lastPos.current.y - 30, ending.type === 'はね' ? "きれいなハネ！✨" : ending.type === 'はらい' ? "きれいなハライ！✨" : "しっかりトメたね！✨", "var(--primary)", 1.0); }
+        // 終筆は正解の筆画種と比べて助言する（正解が分からないときは褒めも直しもしない）。
+        // 字体の許容幅が広いため、ここでは書き直しは求めない。
+        if (!isError) { const fb = describeEndingFeedback(strokeData[currentStrokeRef.current]?.endingType ?? null, ending.code); addFloatingText(lastPos.current.x, lastPos.current.y - 30, fb.text, fb.ok ? "var(--primary)" : "var(--accent)", 1.0); }
       }
       if (isError) { clearCanvas(writeRef); setStatusMsg(errMsg); audioCtrl.playSE('stamp_bad'); return; }
       const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
