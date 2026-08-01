@@ -8,6 +8,7 @@ import { gradeStrokes } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const PLAYER_MAX_HP = 3;
 const BOSS_MAX_HP = 10;
@@ -139,8 +140,8 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
     <div className="flex flex-col items-center gap-3 w-full">
       <div className="relative border-[4px] border-rose-600 rounded-[20px] bg-slate-900 overflow-hidden touch-none shrink-0 shadow-[0_0_20px_rgba(225,29,72,0.3)]" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
         {/* 十字ガイド */}
-        <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-slate-700 -translate-x-1/2 pointer-events-none" />
-        <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-slate-700 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-slate-600 opacity-40 -translate-x-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-slate-600 opacity-40 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
         <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
         {disabled && (
@@ -171,7 +172,8 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
   const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
   const failedKanjiRef = useRef([]);
   const isDoneRef = useRef(false);
-  const [canvasSize] = useState(window.innerWidth < 768 ? 260 : 360);
+  // 画面回転にも追従する。サイズ変更時は BossBattleCanvas 側で書きかけの画が消える(通常モードと同じ挙動)
+  const { canvasSize } = useLearningViewport('boss');
 
   // ストロークデータ
   const [paths, setPaths] = useState([]);
@@ -543,7 +545,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         <div className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto no-scrollbar gap-2">
           {/* タイマーバー */}
           {phase === 'writing' && !isLoading && strokeData.length > 0 && (
-            <div className="w-full max-w-[400px] px-2">
+            <div className="w-full px-2" style={{ maxWidth: canvasSize }}>
               <div className="flex items-center gap-2 mb-1">
                 <div className="text-xs font-bold text-slate-400">のこり{F("時間","じかん")}</div>
                 <div className={`text-sm font-black ${timeRatio > 0.25 ? 'text-slate-300' : 'text-red-400 animate-pulse'}`}>{timeLeft}{F("秒","びょう")}</div>
@@ -589,7 +591,8 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="w-full max-w-[400px] bg-slate-800/90 border-2 border-slate-600 rounded-xl p-3 text-center"
+                    className="w-full bg-slate-800/90 border-2 border-slate-600 rounded-xl p-3 text-center"
+                    style={{ maxWidth: canvasSize }}
                   >
                     <div className={`text-3xl font-black mb-1 ${gradeResult.total >= 80 ? 'text-yellow-400' : gradeResult.total >= 60 ? 'text-emerald-400' : gradeResult.total >= 50 ? 'text-orange-400' : 'text-red-400'}`}>
                       {gradeResult.total}点

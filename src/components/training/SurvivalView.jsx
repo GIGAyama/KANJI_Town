@@ -8,6 +8,7 @@ import { gradeStrokes } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const WAVE_SIZE = 10;
 const INITIAL_TIME = 45;
@@ -164,8 +165,8 @@ const SurvivalCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
 
       {/* キャンバス */}
       <div className="relative border-[4px] border-amber-500 rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none shrink-0 shadow-[4px_4px_0_var(--text)]" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
-        <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
-        <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
         <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
         {disabled && (
@@ -310,7 +311,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const timeLeftRef = useRef(INITIAL_TIME);
   const timerRef = useRef(null);
   const isDoneRef = useRef(false);
-  const [canvasSize] = useState(window.innerWidth < 768 ? 260 : 360);
+  // 画面回転にも追従する。サイズ変更時は SurvivalCanvas 側で書きかけの画が消える(通常モードと同じ挙動)
+  const { canvasSize } = useLearningViewport('survival');
 
   // ウェーブ＆コンボ
   const [wave, setWave] = useState(1);
@@ -611,7 +613,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
             earned={earnedRef.current}
           />
         ) : (
-          <div className="w-full max-w-4xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
+          <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
             {/* 左: お題パネル（PCでは大きく表示） */}
             <div className="w-full lg:flex-1 flex flex-col gap-3 order-first">
               {/* お題: 例文 or 読み */}
@@ -664,24 +666,6 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                     +{combo >= 20 ? 2 : 1}{F("秒","びょう")}ボーナス
                   </div>
                 )}
-                <div className="flex justify-center gap-4 mt-3 pt-3 border-t-2 border-[var(--text)] opacity-80">
-                  <div className="text-center">
-                    <div className="text-[10px] font-bold text-amber-500">PERFECT</div>
-                    <div className="text-lg lg:text-xl font-black text-amber-500">{perfectCount}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-[10px] font-bold text-emerald-500">OK</div>
-                    <div className="text-lg lg:text-xl font-black text-emerald-500">{okCount}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-[10px] font-bold text-rose-500">MISS</div>
-                    <div className="text-lg lg:text-xl font-black text-rose-500">{missCount}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-[10px] font-bold text-[var(--text)] opacity-50">BEST</div>
-                    <div className="text-lg lg:text-xl font-black text-[var(--text)]">{bestCombo}</div>
-                  </div>
-                </div>
               </div>
             </div>
 
