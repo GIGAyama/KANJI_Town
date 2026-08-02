@@ -14,6 +14,7 @@ import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
 import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
+import { readSharedDrill } from './systems/drill-share';
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
@@ -62,6 +63,8 @@ const DrillTestView = lazy(() => import('./components/training/DrillTestView'));
 // Social
 const TeacherHostView = lazy(() => import('./components/social/TeacherHostView'));
 const StudentClientView = lazy(() => import('./components/social/StudentClientView'));
+const DrillShareView = lazy(() => import('./components/social/DrillShareView'));
+const DrillImportView = lazy(() => import('./components/social/DrillImportView'));
 
 // Tutorial & Phase 7
 import TutorialOverlay from './components/tutorial/TutorialOverlay';
@@ -123,17 +126,22 @@ function createInitialSessionData(overrides = {}) {
 }
 
 export default function App() {
-  // URLパラメータ ?connect=XXXX でQRコードからの接続をハンドル
-  const connectParam = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('connect');
-    if (id && /^\d{4}$/.test(id)) {
-      // パラメータを消してURLをクリーンにする
+  // 起動時のURLパラメータを1回だけ読む
+  //  ?connect=XXXX : QRコード／4桁IDからのP2P接続
+  //  ?drill=...    : リンクで配られたドリル（Google Classroomなどからの起動）
+  const launchParams = useMemo(() => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    const rawConnectId = params.get('connect');
+    const connectId = rawConnectId && /^\d{4}$/.test(rawConnectId) ? rawConnectId : null;
+    const shared = readSharedDrill(search);
+    if (connectId || shared.status !== 'none') {
+      // パラメータを消してURLをクリーンにする（再読み込みで同じ画面に戻らないように）
       window.history.replaceState({}, '', window.location.pathname);
-      return id;
     }
-    return null;
+    return { connectId, sharedDrillStatus: shared.status, sharedDrill: shared.drill };
   }, []);
+  const connectParam = launchParams.connectId;
 
   const [initialAppState] = useState(() => {
     const loadedStats = StorageAPI.getStats();
@@ -143,7 +151,11 @@ export default function App() {
     return { loadedStats, restoredSession };
   });
 
-  const initialView = connectParam ? 'peerClient' : initialAppState.restoredSession ? 'session' : 'home';
+  const initialView = connectParam
+    ? 'peerClient'
+    : launchParams.sharedDrillStatus !== 'none'
+      ? 'drillImport'
+      : initialAppState.restoredSession ? 'session' : 'home';
   // 端末の「戻る」操作でアプリが終了しないよう、いつ横取りするかを保持する
   const backInterceptorRef = useRef(null);
   const [exitHintAt, setExitHintAt] = useState(0);
@@ -915,6 +927,8 @@ export default function App() {
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
+          {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
+          {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
           {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}

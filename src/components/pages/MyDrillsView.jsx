@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck } from 'lucide-react';
+import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { StorageAPI } from '../../systems/storage';
@@ -52,7 +52,8 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillT
               <div className="flex flex-col gap-2 shrink-0">
                 <MotionButton variant="primary" onClick={() => startDrillSession(drill)} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#9f1239] min-h-[36px]"><PenTool size={14} /> {F("練習","れんしゅう")}</MotionButton>
                 <MotionButton variant="secondary" onClick={() => { audioCtrl.playSE('click'); setTestDrill(drill); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] min-h-[36px]"><ClipboardCheck size={14} /> テスト</MotionButton>
-                <MotionButton variant="accent" onClick={() => { setHostDrill(drill); setView('peerHost'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] min-h-[36px]"><Share2 size={14} /> {F("送","おく")}る</MotionButton>
+                <MotionButton variant="accent" onClick={() => { setHostDrill(drill); setView('drillShare'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] min-h-[36px]"><Link2 size={14} /> リンク</MotionButton>
+                <MotionButton variant="secondary" onClick={() => { setHostDrill(drill); setView('peerHost'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] min-h-[36px]"><Share2 size={14} /> {F("送","おく")}る</MotionButton>
                 <button onClick={() => setConfirmDelete(i)} aria-label="ドリルを削除" className="px-3 py-2 text-xs border-[2px] border-rose-300 text-rose-500 rounded-[16px] font-bold hover:bg-rose-50 transition-colors min-h-[36px] flex items-center gap-1"><Trash2 size={14} /> {F("削除","さくじょ")}</button>
               </div>
             </div>
