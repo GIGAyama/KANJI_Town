@@ -49,6 +49,7 @@ function emptyResult(details, flags = {}) {
     orderMatch: false,
     assignment: [],
     strokeFeedback: [],
+    breakdown: [],
     details,
   };
 }
@@ -312,10 +313,19 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   const scale = activeWeight > 0 ? 100 / activeWeight : 0;
 
   const scores = {};
+  // 内訳（結果画面で「なぜこの点数か」を示すため、満点と評価有無も添える）
+  const breakdown = [];
   let total = 0;
   for (const c of components) {
-    const points = c.ratio === null ? 0 : Math.round(clamp01(c.ratio) * c.weight * scale);
+    const evaluated = c.ratio !== null;
+    const points = evaluated ? Math.round(clamp01(c.ratio) * c.weight * scale) : 0;
     scores[c.key] = points;
+    breakdown.push({
+      key: c.key,
+      points,
+      max: evaluated ? Math.round(c.weight * scale) : 0,
+      evaluated,
+    });
     total += points;
   }
   total = Math.max(0, Math.min(100, total));
@@ -375,6 +385,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     orderMatch,
     assignment,
     strokeFeedback,
+    breakdown,
     details,
   };
 }
