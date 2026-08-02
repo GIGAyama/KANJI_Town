@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import KanjiGlyph from '../ui/KanjiGlyph';
 import { audioCtrl } from '../../systems/audio';
 import { F, FormatKun } from '../ui/FormatKun';
 import { migrateCard, calculateNextReview, recordPracticeAttempt } from '../../systems/srs';
@@ -146,10 +147,10 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
             animate={{ scale: 1, opacity: 1, x: 0 }}
             exit={{ scale: 1.1, opacity: 0, x: -30 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="text-[10rem] md:text-[14rem] font-black leading-none"
-            style={{ fontFamily: "'Klee One', serif" }}
+            className="w-[10rem] h-[10rem] md:w-[14rem] md:h-[14rem] max-w-full"
           >
-            {kanji.char}
+            {/* なぞり書きと同じ KanjiVG の字形にそろえる */}
+            <KanjiGlyph char={kanji.char} className="w-full h-full" />
           </motion.div>
         </AnimatePresence>
 

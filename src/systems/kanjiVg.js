@@ -144,7 +144,7 @@ function buildStrokeData(strokes) {
 }
 
 /**
- * 漢字のKanjiVGデータを取得する
+ * 漢字の画データ（d属性＋筆画種）を取得する
  *
  * キャッシュ戦略:
  * 1. メモリキャッシュ（即返却）
@@ -154,20 +154,17 @@ function buildStrokeData(strokes) {
  * @param {string} char - 漢字1文字
  * @param {object} [options]
  * @param {AbortSignal} [options.signal] - キャンセル用シグナル
- * @returns {Promise<{ paths: string[], strokeData: Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array}> }>}
+ * @returns {Promise<Array<{d: string, type: string|null}>>}
  * @throws {Error} 全リトライ失敗時 or AbortError
  */
-export async function fetchKanjiVg(char, options = {}) {
+async function loadStrokes(char, options = {}) {
   const { signal } = options;
   const hex = char.charCodeAt(0).toString(16).padStart(5, '0');
 
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
   // 1. メモリキャッシュ
-  if (memoryCache.has(hex)) {
-    const cached = memoryCache.get(hex);
-    return { paths: cached.map(s => s.d), strokeData: buildStrokeData(cached) };
-  }
+  if (memoryCache.has(hex)) return memoryCache.get(hex);
 
   // 2. IndexedDB キャッシュ
   const idbCached = await idbGet(hex);
@@ -178,7 +175,7 @@ export async function fetchKanjiVg(char, options = {}) {
   if (idbCached && !legacyStrokes) {
     const strokes = normalizeCachedStrokes(idbCached);
     memoryCache.set(hex, strokes);
-    return { paths: strokes.map(s => s.d), strokeData: buildStrokeData(strokes) };
+    return strokes;
   }
 
   // 3. ネットワーク取得（リトライ付き）
@@ -194,7 +191,7 @@ export async function fetchKanjiVg(char, options = {}) {
   } catch (e) {
     if (legacyStrokes && !signal?.aborted && e?.name !== 'AbortError') {
       memoryCache.set(hex, legacyStrokes);
-      return { paths: legacyStrokes.map(s => s.d), strokeData: buildStrokeData(legacyStrokes) };
+      return legacyStrokes;
     }
     throw e;
   }
@@ -203,7 +200,35 @@ export async function fetchKanjiVg(char, options = {}) {
   memoryCache.set(hex, strokes);
   idbSet(hex, strokes);
 
+  return strokes;
+}
+
+/**
+ * 漢字のKanjiVGデータ（描画用パス＋採点用の座標列）を取得する
+ *
+ * @param {string} char - 漢字1文字
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] - キャンセル用シグナル
+ * @returns {Promise<{ paths: string[], strokeData: Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array}> }>}
+ * @throws {Error} 全リトライ失敗時 or AbortError
+ */
+export async function fetchKanjiVg(char, options = {}) {
+  const strokes = await loadStrokes(char, options);
   return { paths: strokes.map(s => s.d), strokeData: buildStrokeData(strokes) };
+}
+
+/**
+ * 表示だけに使う画パスを取得する（採点用の座標列は組み立てない軽量版）
+ *
+ * @param {string} char - 漢字1文字
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] - キャンセル用シグナル
+ * @returns {Promise<string[]>} 各画の d 属性
+ * @throws {Error} 全リトライ失敗時 or AbortError
+ */
+export async function fetchKanjiVgPaths(char, options = {}) {
+  const strokes = await loadStrokes(char, options);
+  return strokes.map(s => s.d);
 }
 
 /**
