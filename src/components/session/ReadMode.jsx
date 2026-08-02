@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useReducedMotionConfig } from 'framer-motion';
 import { Volume2, ChevronRight, Mic } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
+import KanjiGlyph from '../ui/KanjiGlyph';
 import { FormatKun, RubyText, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { useVoiceCheck } from '../../hooks/useVoiceCheck';
@@ -10,7 +11,7 @@ import { isReadingCheckEnabled, isAutoPlayEnabled } from '../../utils/reading-pr
 import { getLocalJaVoice, onVoicesChanged, speakJa, stopSpeaking, toSpeechText, toKunSpeech } from '../../utils/tts';
 import { READING } from '../../constants/gameConfig';
 
-const ReadMode = ({ kanji, onNext, commonSidebar, isStacked, settings = {}, challengeCleared = false, onChallengeClear }) => {
+const ReadMode = ({ kanji, paths = [], isLoading = false, onNext, commonSidebar, canvasSize, isStacked, settings = {}, challengeCleared = false, onChallengeClear }) => {
   const [exampleIdx, setExampleIdx] = useState(() => Math.floor(Math.random() * kanji.examples.length));
   // キュー前進時は remount されず kanji だけ差し替わるため、範囲外アクセスを防ぐ
   const safeIdx = kanji.examples.length > 0 ? exampleIdx % kanji.examples.length : 0;
@@ -85,7 +86,12 @@ const ReadMode = ({ kanji, onNext, commonSidebar, isStacked, settings = {}, chal
     if (!micActive) audioCtrl.playSE('click');
   };
 
-  const main = (<div className="text-[clamp(10rem,30vmin,22rem)] leading-none font-black text-[var(--text)] drop-shadow-md select-none" style={{ fontFamily: "'Klee One', serif" }}>{kanji.char}</div>);
+  // なぞり書き・書き順と同じ KanjiVG の字形で見せる（モードごとに形が変わらないように）
+  const main = (
+    <div className="select-none shrink-0" style={{ width: canvasSize || 'clamp(10rem,30vmin,22rem)', maxWidth: '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
+      <KanjiGlyph char={kanji.char} paths={paths} loading={isLoading} className="w-full h-full drop-shadow-md" />
+    </div>
+  );
 
   const statusCopy = status === 'requesting'
     ? <>マイクの じゅんびちゅう…</>

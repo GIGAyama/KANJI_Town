@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, RefreshCw, CheckCircle, XCircle, RotateCcw, LogOut, X, Search, Pencil } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import KanjiGlyph from '../ui/KanjiGlyph';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes, getGradeLabel } from '../../systems/strokeGrader';
@@ -248,15 +249,8 @@ const ModelKanji = ({ paths, strokeStarts, char, size = 140 }) => (
   <div className="relative border-[3px] border-[var(--primary)] rounded-2xl bg-[var(--bg)] overflow-hidden shrink-0" style={{ width: size, height: size }}>
     <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-dashed border-[var(--primary)] opacity-20 -translate-x-1/2" />
     <div className="absolute top-1/2 left-0 w-full h-0 border-t-2 border-dashed border-[var(--primary)] opacity-20 -translate-y-1/2" />
-    {!paths?.length && (
-      <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full z-10">
-        <text x="50" y="53" dominantBaseline="middle" textAnchor="middle" fontSize="72" fontWeight="900" fill="var(--text)" fontFamily="'Klee One', serif">{char}</text>
-      </svg>
-    )}
+    <KanjiGlyph char={char} paths={paths ?? []} strokeWidth={5} className="absolute inset-0 w-full h-full z-10" />
     <svg viewBox="0 0 109 109" className="w-full h-full relative z-10">
-      {paths?.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="var(--text)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      ))}
       {strokeStarts?.map((s, i) => (
         <g key={`n${i}`}>
           <circle cx={s.x * 109} cy={s.y * 109} r="6" fill="var(--panel)" stroke="var(--primary)" strokeWidth="1.5" />

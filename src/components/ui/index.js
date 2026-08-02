@@ -11,3 +11,4 @@ export { default as StorageErrorBanner } from './StorageErrorBanner';
 export { default as MobileBottomNav } from './MobileBottomNav';
 export { default as BackExitHint } from './BackExitHint';
 export { default as LeaveLearningDialog } from './LeaveLearningDialog';
+export { default as KanjiGlyph } from './KanjiGlyph';
