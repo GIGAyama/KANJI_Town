@@ -11,8 +11,12 @@ export const LEARNING_VIEWS = Object.freeze(['session', 'flashcard', 'survival',
 /** ホームで戻る操作をしてから、次の戻る操作でアプリを閉じるまでの猶予(ms) */
 export const EXIT_CONFIRM_WINDOW = 2500;
 
-/** 一度離れたら戻っても意味が無い（＝履歴に残さない）画面 */
-export const REPLACE_ON_LEAVE_VIEWS = Object.freeze([...LEARNING_VIEWS, 'result']);
+/**
+ * 一度離れたら戻っても意味が無い（＝履歴に残さない）画面。
+ * drillImportはリンクで受け取ったドリルの確認画面。保存や練習を選んだあとに
+ * 戻ってくると同じドリルを二重に保存できてしまうため、離れたら履歴から外す。
+ */
+export const REPLACE_ON_LEAVE_VIEWS = Object.freeze([...LEARNING_VIEWS, 'result', 'drillImport']);
 
 export function isLearningView(view) {
   return LEARNING_VIEWS.includes(view);

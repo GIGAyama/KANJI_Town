@@ -57,6 +57,22 @@ test('終わった学習画面・リザルト画面は置き換えて戻る操�
   assert.deepEqual(back.stack, ['home']);
 });
 
+test('リンクで受け取ったドリルの確認画面は、離れたら履歴に残さない', () => {
+  // 共有リンクからの起動（ホームの上に確認画面が乗る）
+  const start = createViewStack('drillImport');
+  assert.deepEqual(start, ['home', 'drillImport']);
+
+  // 保存してマイドリルへ移ると、確認画面は履歴から外れる（二重保存の防止）
+  const toMyDrills = resolveViewChange(start, 'myDrills');
+  assert.equal(toMyDrills.type, 'replace');
+  assert.deepEqual(toMyDrills.stack, ['home', 'myDrills']);
+
+  // そのまま練習を始めた場合も同じ
+  const toSession = resolveViewChange(start, 'session');
+  assert.equal(toSession.type, 'replace');
+  assert.deepEqual(toSession.stack, ['home', 'session']);
+});
+
 test('ホームでの戻る操作はアプリ終了ではなく終了確認になる', () => {
   assert.equal(resolveBackNavigation(['home']).type, 'exit');
   assert.equal(resolveBackNavigation(['home', 'stats']).type, 'back');
