@@ -187,6 +187,45 @@ test('とめ・はねの正解が無いときは、その配点を他項目へ�
   assert.ok(!result.details.some(d => d.includes('とめ・はね')));
 });
 
+test('採点の内訳を返し、合計と満点が一致する（結果画面の説明に使う）', () => {
+  const result = gradeStrokes(sanUser(), SAN, CANVAS);
+  const keys = result.breakdown.map(b => b.key);
+  assert.deepEqual(keys, ['shape', 'order', 'ending', 'cross', 'start', 'end']);
+  // 「三」は交わる画が無いので交差は採点対象外。残りの項目で100点満点になる
+  assert.equal(result.breakdown.find(b => b.key === 'cross').evaluated, false);
+  const evaluatedMax = result.breakdown.filter(b => b.evaluated).reduce((sum, b) => sum + b.max, 0);
+  assert.ok(Math.abs(evaluatedMax - 100) <= 2, `按分後の満点はほぼ100: ${evaluatedMax}`);
+  assert.equal(result.breakdown.reduce((sum, b) => sum + b.points, 0), result.total);
+  // 項目ごとの点数は個別フィールドと一致する
+  const byKey = Object.fromEntries(result.breakdown.map(b => [b.key, b.points]));
+  assert.equal(byKey.shape, result.shape);
+  assert.equal(byKey.order, result.order);
+  assert.equal(byKey.start, result.startPoints);
+  assert.equal(byKey.end, result.endPoints);
+});
+
+test('評価できない項目は内訳でも「対象外」と分かり、満点は他項目へ按分される', () => {
+  const noEnding = SAN.map(s => ({ ...s, endingType: null }));
+  const result = gradeStrokes(sanUser(), noEnding, CANVAS);
+  const ending = result.breakdown.find(b => b.key === 'ending');
+  assert.equal(ending.evaluated, false);
+  assert.equal(ending.max, 0, '採点対象外なので満点も0にして表示から外せる');
+  const evaluatedMax = result.breakdown.filter(b => b.evaluated).reduce((sum, b) => sum + b.max, 0);
+  assert.ok(Math.abs(evaluatedMax - 100) <= 2, `残りの項目で100点満点になる: ${evaluatedMax}`);
+});
+
+test('画数が違うときの内訳は空になる（0点の理由は画数だけ）', () => {
+  const result = gradeStrokes(sanUser([0, 1]), SAN, CANVAS);
+  assert.deepEqual(result.breakdown, []);
+});
+
+test('書き順の誤りで上限に抑えられたときは、内訳の合計より合計点が低くなる', () => {
+  const result = gradeStrokes(sanUser([2, 1, 0]), SAN, CANVAS);
+  const sum = result.breakdown.reduce((s, b) => s + b.points, 0);
+  assert.equal(result.orderMatch, false);
+  assert.ok(result.total <= sum, `上限で抑えられる: 合計${result.total} <= 内訳${sum}`);
+});
+
 test('とめるべきところではねると、褒めずに直し方を伝える', () => {
   const strokes = sanUser();
   // 3画目の終わりで上へ跳ね上げる（速度を落とし、角度変化で「はね」と判定させる）

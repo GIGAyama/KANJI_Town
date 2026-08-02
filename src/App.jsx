@@ -791,6 +791,26 @@ export default function App() {
     setView('result');
   };
 
+  // テスト結果から、間違えた漢字だけの学習セッションへ移る。
+  // テストの成績を確定してから続けて始めるので、リザルト画面は挟まない。
+  const startMistakeReview = (kanjiList) => {
+    if (!Array.isArray(kanjiList) || kanjiList.length === 0) return;
+    const finishedSession = sessionDataRef.current;
+    const earnedExp = finishedSession.earnedExp || 0;
+    const studyUnit = finishedSession.studyUnit;
+    handleFinishSession();
+    const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
+    beginSession('session', {
+      queue: kanjiList,
+      // テストで得たEXPを反映した位置から、復習セッションの獲得量を数える
+      oldExp: (stats.totalExp || 0) + earnedExp,
+      expMultiplier,
+      // 出題元は同じマイドリルなので、学習ログの単元もテストから引き継ぐ
+      isDrill: true,
+      studyUnit,
+    });
+  };
+
   // ボスバトル敗北処理
   const handleBossDefeat = (defeatResults = {}) => {
     // 失敗した漢字を復習リストに追加（nextReviewを即時に設定）
@@ -934,7 +954,7 @@ export default function App() {
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} stats={stats} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} startDrillSession={startDrillSession} setView={setView} setSessionData={setSessionData} createInitialSessionData={createInitialSessionData} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onReviewMistakes={startMistakeReview} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
       </main>

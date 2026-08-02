@@ -89,6 +89,24 @@ KanjiVG の各 `<path>` は `kvg:type` に CJK Strokes ブロックの文字で�
 外接枠の中心のずれを `GLOBAL_SHIFT_MAX`（0.06）まで打ち消してから比較する。
 それを超えるずれは減点として残る。
 
+## 採点結果の返し方（結果画面での説明）
+
+`gradeStrokes` は合計点のほかに、児童へ理由を示すための材料も返す。
+
+| フィールド | 内容 |
+| --- | --- |
+| `breakdown` | 項目ごとの `{ key, points, max, evaluated }`。按分後の満点込みなので、画面側で配点を再計算しなくてよい |
+| `strokeFeedback` | 画ごとの `{ matched, inOrder, shape, reversed, ending }` |
+| `details` | 児童向けの講評文 |
+| `strokeCountMatch` / `orderMatch` / `crossMatch` | 合否を分ける3条件 |
+
+`evaluated: false` の項目（例：手本に筆画種が無く終筆を採点できない）は `max` も0にしてあり、
+「0点を取った」のか「採点対象外だった」のかを画面で区別できる。
+画数が違うときは採点そのものを行わないので `breakdown` は空配列になる。
+
+マイドリルのテスト結果画面（`DrillTestView`）は、この内訳と `strokeFeedback` を使って
+「どの画で」「どの観点で」点を落としたかを、書いた線の色分けと番号で示している。
+
 ## KanjiVG キャッシュの形式
 
 `kvg:type` を持たせるため、IndexedDB のキャッシュは `string[]`（d属性のみ）から
