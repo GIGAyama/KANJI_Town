@@ -2,3 +2,12 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# 秘密情報（誤コミット防止）
+.env
+.env.*
+!.env.example
+.clasp.json
+
+# P2 でアイコンを圧縮する前の原本（配布物には含めない）
+.assets-original/
