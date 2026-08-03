@@ -1,39 +1,104 @@
-// マイ漢字タウン Service Worker
-// 戦略キャッシュでGIGAスクール端末のオフライン環境に完全対応
-const CACHE_VERSION = 6;
-const CACHE_STATIC = `kanji-town-static-v${CACHE_VERSION}`;
-const CACHE_KANJIVG = `kanji-town-kanjivg-v${CACHE_VERSION}`;
-const CACHE_FONTS = `kanji-town-fonts-v${CACHE_VERSION}`;
-const CACHE_RUNTIME = `kanji-town-runtime-v${CACHE_VERSION}`;
-const ALL_CACHES = [CACHE_STATIC, CACHE_KANJIVG, CACHE_FONTS, CACHE_RUNTIME];
+/* マイ漢字タウン Service Worker
+ *
+ * 【最重要】activate では自アプリ以外のキャッシュを削除しない。
+ *   gigayama.github.io は数十個のアプリで同一オリジンを共有している。
+ *   caches.keys() を接頭辞で絞らずに消すと、このアプリを開いただけで
+ *   他のアプリがオフラインで起動しなくなる。
+ *   必ず CACHE_PREFIX で始まるものだけを掃除すること。
+ *
+ * 【禁止】Service Worker は localStorage を一切操作しない。
+ *   study.records.v1 を含む学習データには触れない。
+ */
+const CACHE_PREFIX = 'kanji-town-';
+// リリースごとに必ず上げる。package.json の version と一致させること
+// （不一致は scripts/check-project.mjs が検出して CI を落とす）。
+const APP_VERSION = '0.3.0';
+
+const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
+const CACHE_KANJIVG = `${CACHE_PREFIX}kanjivg-v1`;
+const CACHE_FONTS = `${CACHE_PREFIX}fonts-v1`;
+const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-v${APP_VERSION}`;
+const KEEP_CACHES = [CACHE_STATIC, CACHE_KANJIVG, CACHE_FONTS, CACHE_RUNTIME];
+
 const BASE = '/KANJI_Town/';
 
 // プリキャッシュ: アプリシェルの最低限
-const PRECACHE_URLS = [
-  BASE,
-  BASE + 'offline.html',
-];
+const PRECACHE_URLS = [BASE, BASE + 'offline.html'];
+
+/* index.html を読んで、そこに書かれているビルド成果物（JS/CSS）の URL を拾う。
+ *
+ * ファイル名にはビルドごとのハッシュが付くため、この sw.js に一覧を
+ * 書き並べておくことができない。実物の index.html から読み取ることで、
+ * リリースのたびに一覧を書き換える手間と、書き換え忘れを無くす。 */
+async function collectAppShellAssets() {
+  try {
+    const res = await fetch(new Request(BASE, { cache: 'reload' }));
+    if (!res.ok) return [];
+    const html = await res.text();
+    const urls = new Set();
+    const pattern = /(?:src|href)="([^"]+\.(?:js|css))"/g;
+    let m;
+    while ((m = pattern.exec(html)) !== null) {
+      // 外部CDNは対象外（オフラインでは届かないため precache しても意味がない）
+      if (/^https?:\/\//.test(m[1])) continue;
+      urls.add(new URL(m[1], self.location.origin + BASE).pathname);
+    }
+    return [...urls];
+  } catch {
+    return [];
+  }
+}
 
 // ── インストール ──
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_STATIC).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_STATIC);
+
+    // アプリシェル本体に加えて、最初の画面に必要な JS/CSS まで入れておく。
+    // これが無いと、初回に開いたあと圏外になった児童が真っ白な画面に
+    // なってしまう（Service Worker が動き出すのは初回の読み込みより後で、
+    // 初回に読まれたアセットはキャッシュに残らないため）。
+    const assets = await collectAppShellAssets();
+
+    // addAll は1本でも失敗すると全体が落ちる。校内Wi-Fiが不安定な場面で
+    // インストールごと失敗するのを避けるため、1件ずつ入れて失敗は握りつぶす。
+    await Promise.all([...PRECACHE_URLS, ...assets].map((url) =>
+      cache.add(new Request(url, { cache: 'reload' })).catch(() => {})
+    ));
+    // ここでは skipWaiting しない。学習中に予告なく画面が切り替わらないよう、
+    // 更新の適用は児童が「さいしんにする」を押したときだけ行う（message ハンドラ）。
+  })());
 });
 
-// ── アクティベート: 古いバージョンのキャッシュを削除してからクライアントを引き取る ──
+// ── アクティベート: 自アプリの古いキャッシュだけを削除してからクライアントを引き取る ──
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => !ALL_CACHES.includes(k))
-          .map((k) => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith(CACHE_PREFIX) && !KEEP_CACHES.includes(k))
+        .map((k) => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
 });
+
+// KanjiVG の書き順SVG・Webフォントは「一度取れたら中身が変わらない」ため
+// キャッシュ優先。ネットワークに出る回数を減らし、40人同時でも待たせない。
+const cacheFirst = (request, cacheName) =>
+  caches.match(request).then((cached) => {
+    if (cached) return cached;
+    return fetch(request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(cacheName).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    // キャッシュにも無く圏外でもある場合。ここで例外のまま投げると
+    // 「取得に失敗した理由が分からないエラー」がコンソールに並ぶため、
+    // 503 を返して呼び出し側で扱えるようにする。
+    }).catch(() => new Response('', { status: 503, statusText: 'offline' }));
+  });
 
 // ── フェッチ: リソース種別ごとの戦略キャッシュ ──
 self.addEventListener('fetch', (event) => {
@@ -43,38 +108,15 @@ self.addEventListener('fetch', (event) => {
   // POST, non-HTTP はスキップ
   if (request.method !== 'GET' || !url.startsWith('http')) return;
 
-  // ── KanjiVG CDN: Cache-first → Network ──
-  // 一度取得したSVGは変更されないためキャッシュ優先
+  // ── KanjiVG CDN ──
   if (url.includes('cdn.jsdelivr.net') && url.includes('kanjivg')) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_KANJIVG).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
-    );
+    event.respondWith(cacheFirst(request, CACHE_KANJIVG));
     return;
   }
 
-  // ── Google Fonts: Cache-first ──
+  // ── Google Fonts ──
   if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_FONTS).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
-    );
+    event.respondWith(cacheFirst(request, CACHE_FONTS));
     return;
   }
 
@@ -103,19 +145,8 @@ self.addEventListener('fetch', (event) => {
 
   // ── JS/CSS/画像 (ビルドアセット): Cache-first → Network ──
   // ハッシュ付きアセットは変わらないのでキャッシュ優先、なければネットワーク
-  if (url.includes('/assets/') || url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.png') || url.endsWith('.svg') || url.endsWith('.ico')) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
-    );
+  if (url.includes('/assets/') || url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.png') || url.endsWith('.svg') || url.endsWith('.ico') || url.endsWith('.woff2')) {
+    event.respondWith(cacheFirst(request, CACHE_RUNTIME));
     return;
   }
 
@@ -133,9 +164,12 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── SW更新通知 ──
+// ── 更新の適用 ──
+// 児童が「さいしんにする」を押したときだけ待機中の新版に切り替える。
+// 旧実装（文字列 'SKIP_WAITING'）からの移行中でも動くよう、両方の形を受ける。
 self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') {
+  const data = event.data;
+  if (data === 'SKIP_WAITING' || (data && data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
   }
 });

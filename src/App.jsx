@@ -8,6 +8,7 @@ import { EXIT_CONFIRM_WINDOW, isLearningView } from './systems/view-navigation';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import OfflineBanner from './components/ui/OfflineBanner';
 import StorageErrorBanner from './components/ui/StorageErrorBanner';
+import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
@@ -848,6 +849,9 @@ export default function App() {
 
       {/* オフラインバナー */}
       {!isOnline && <OfflineBanner />}
+
+      {/* 新しい版が用意できたときの案内（押したときだけ切り替わる） */}
+      <UpdateToast />
 
       {/* Phase 5: チュートリアルオーバーレイ */}
       <AnimatePresence>

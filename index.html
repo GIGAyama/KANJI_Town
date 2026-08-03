@@ -2,18 +2,43 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      インストールの合図を「いちばん先に」受け取る。
+      Chrome は条件が揃うと即座に beforeinstallprompt を出すため、
+      React やスタイルの読み込みより後に置くと合図を取りこぼし、
+      通信が遅い校内Wi-Fiで「ホームにいれる」ボタンが出なくなる。
+    -->
+    <script>
+      window.__deferredInstallPrompt = null;
+      addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__deferredInstallPrompt = e;
+        dispatchEvent(new Event('pwa-installable'));
+      });
+      addEventListener('appinstalled', function () {
+        window.__deferredInstallPrompt = null;
+        dispatchEvent(new Event('pwa-installed'));
+      });
+    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Android WebView / Mi Browser等の強制ダークモードによる自動反転で
          書き順・手書きの線が背景と同化して見えなくなるのを防ぐ -->
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ef4444" />
     <meta name="description" content="漢字を覚えて街をつくろう！小学生向け漢字学習アプリ" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="漢字タウン" />
     <link rel="manifest" href="/KANJI_Town/manifest.json" />
-    <link rel="apple-touch-icon" href="/KANJI_Town/icons/icon-192.png" />
+
     <link rel="icon" href="/KANJI_Town/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/KANJI_Town/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/KANJI_Town/icons/icon-512.png" />
+    <!-- iOS は maskable を解釈しないため、角丸なしの専用画像を渡す -->
+    <link rel="apple-touch-icon" href="/KANJI_Town/icons/apple-touch-icon.png" />
+
     <title>マイ漢字タウン</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

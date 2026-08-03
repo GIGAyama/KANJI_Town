@@ -11,6 +11,7 @@ import { getGuideTolerances } from '../../constants/strokeConfig';
 import { describeEndingFeedback } from '../../systems/strokeKind';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { fitSquareCanvas } from '../../utils/canvas-dpr';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -23,7 +24,9 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   const tolerances = useMemo(() => getGuideTolerances(paths.length), [paths.length]);
 
   const addFloatingText = (x, y, text, color = 'var(--primary)', scale = 1) => { const id = Date.now() + Math.random(); setFloatingTexts(prev => [...prev, { id, x, y, text, color, scale }]); setTimeout(() => { setFloatingTexts(prev => prev.filter(t => t.id !== id)); }, 1500); };
-  const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { const c = ref.current; if (c) { c.width = canvasSize * 2; c.height = canvasSize * 2; c.style.width = '100%'; c.style.height = '100%'; const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(2, 2); ctx.clearRect(0, 0, canvasSize, canvasSize); } }); }, [canvasSize]);
+  // 描画倍率は端末の devicePixelRatio に合わせる（上限2）。以前は一律2倍だったため、
+  // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
+  const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { fitSquareCanvas(ref.current, canvasSize); }); }, [canvasSize]);
 
   useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; initCanvases(); }, [paths, canvasSize, initCanvases]);
 

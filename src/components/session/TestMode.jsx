@@ -9,6 +9,7 @@ import { audioCtrl } from '../../systems/audio';
 import { gradeStrokes } from '../../systems/strokeGrader';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { fitSquareCanvas } from '../../utils/canvas-dpr';
 
 function scoreToRecommendation(result) {
   if (!result.strokeCountMatch || !result.crossMatch) return 'again';
@@ -49,9 +50,8 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
   const [recommendedEval, setRecommendedEval] = useState(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext('2d');
-    canvas.width = canvasSize * 2; canvas.height = canvasSize * 2; canvas.style.width = '100%'; canvas.style.height = '100%';
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(2, 2); ctx.clearRect(0, 0, canvasSize, canvasSize);
+    // 端末の devicePixelRatio に合わせて鮮明化（上限2）。座標は CSS px のまま。
+    fitSquareCanvas(canvasRef.current, canvasSize);
     setShowAnswer(false); setUserStrokes([]); setGradeResult(null); setRecommendedEval(null);
   }, [kanji, canvasSize]);
 

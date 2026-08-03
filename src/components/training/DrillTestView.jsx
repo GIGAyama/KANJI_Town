@@ -10,6 +10,7 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { TEST, GRADING } from '../../constants/gameConfig';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
@@ -39,17 +40,9 @@ const TestCanvas = ({ strokeData, canvasSize, onSubmit, disabled }) => {
 
   useEffect(() => {
     [inkRef, writeRef].forEach(ref => {
-      const c = ref.current;
-      if (c) {
-        c.width = canvasSize * 2;
-        c.height = canvasSize * 2;
-        c.style.width = '100%';
-        c.style.height = '100%';
-        const ctx = c.getContext('2d');
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(2, 2);
-        ctx.clearRect(0, 0, canvasSize, canvasSize);
-      }
+      // 端末の devicePixelRatio に合わせて鮮明化（上限2）。以前は一律2倍だったため、
+      // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
+      fitSquareCanvas(ref.current, canvasSize);
     });
     setUserStrokes([]);
   }, [strokeData, canvasSize]);
@@ -198,12 +191,10 @@ const StrokeReplay = ({ userStrokes, canvasSize, displaySize = 80, feedback = nu
   useEffect(() => {
     const c = canvasRef.current;
     if (!c || !userStrokes) return;
-    c.width = displaySize * 2;
-    c.height = displaySize * 2;
-    const ctx = c.getContext('2d');
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(2, 2);
-    ctx.clearRect(0, 0, displaySize, displaySize);
+    // 見直し用のサムネイル。小さいぶん、ぼやけると画の判別がつかなくなる。
+    // style は親のクラスで決めているので stretch しない。
+    const ctx = fitSquareCanvas(c, displaySize, { stretch: false });
+    if (!ctx) return;
     const scale = displaySize / canvasSize;
     const inkColor = resolveThemeColor('--text');
     ctx.lineCap = 'round';

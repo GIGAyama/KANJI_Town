@@ -10,6 +10,20 @@
   --accent: #fbbf24;
   --text: #292f36;
   --panel: #ffffff;
+
+  /* 画面幅に応じて伸び縮みする文字サイズ。
+     メディアクエリを何段も書かずに、320px のスマホから電子黒板まで面倒を見る。 */
+  --fs-body: clamp(15px, 1.6vw + 10px, 18px);
+  --fs-lead: clamp(18px, 2.2vw + 12px, 24px);
+  --fs-title: clamp(22px, 3.2vw + 14px, 40px);
+  /* お題の漢字など「主役」は思い切って大きく */
+  --fs-hero: clamp(40px, 9vw, 120px);
+
+  /* セーフエリア（ノッチ・ホームバー・丸角）。端末が対応していなければ0。 */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
 }
 
 html,
@@ -21,15 +35,50 @@ body,
   overflow: hidden;
 }
 
+html {
+  /* 端末の文字サイズ設定で勝手に拡大されると、狭い画面で枠から溢れる */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   font-family: 'Zen Maru Gothic', sans-serif;
   background-color: var(--bg);
   color: var(--text);
+  font-size: var(--fs-body);
   touch-action: manipulation;
   transition: background-color 0.3s ease;
   margin: 0;
   padding: 0;
   overscroll-behavior: none;
+  /* 押し込んだときの灰色の四角を消す（低学年ほど連打するため目立つ） */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 指の下限。低学年が押しそこねないよう、押せるものは 44px を確保する。 */
+button,
+a[role="button"],
+[role="button"] {
+  min-width: 44px;
+  min-height: 44px;
+}
+/* 文字の中に混ぜるボタン（ふりがなのリンクなど）は対象外 */
+button.inline-btn,
+a.inline-btn {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* キーボード操作の現在地をはっきり見せる */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 引っぱり更新の暴発を防ぐ（スクロール領域の端で親に伝播させない） */
+.scroll-area,
+.overflow-y-auto {
+  overscroll-behavior: contain;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -76,27 +125,95 @@ ruby.survival-blank rt {
 
 /* モバイルセーフエリア対応（ノッチ・ホームバー） */
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-b);
 }
 
-/* モバイルでフッターを非表示（ボトムナビ表示時にスペースを節約） */
+/* 横向きのノッチは画面幅に関係なく画面の左右を欠けさせる。
+   以前は 767px 以下だけに効かせていたため、横向きの iPad や
+   タッチ対応 Chromebook で端の文字が丸みに隠れていた。 */
+.safe-area-screen {
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
+}
+
 @media (max-width: 767px) {
   .safe-area-screen {
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: env(safe-area-inset-left, 0px);
+    padding-top: var(--safe-t);
+    padding-bottom: var(--safe-b);
   }
 
+  /* モバイルでフッターを非表示（ボトムナビ表示時にスペースを節約） */
   footer {
     display: none;
   }
 }
 
+/* ── 提示モード（電子黒板・一斉授業） ──
+   教員が「大きく表示」を押すと <body> に .presentation が付く。
+   教室のいちばん後ろの席から読めることが要件。 */
+.presentation {
+  font-size: 150%;
+}
+.presentation button,
+.presentation [role="button"] {
+  min-height: 64px;
+}
+/* 大画面では余白を活かして主役の漢字をさらに大きく */
+@media (min-width: 1600px) {
+  :root {
+    --fs-hero: clamp(64px, 8vw, 160px);
+  }
+}
+
+/* ── 動きの配慮 ──
+   framer-motion 側は useReducedMotionConfig で対応済みだが、
+   それを通らない素の CSS transition が残るためここで一括して止める。
+   紙吹雪などの演出は「せってい」からも個別に切れる。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ハイコントラストモードで背景色が無効化されても押せると分かるように */
+@media (forced-colors: active) {
+  button,
+  [role="button"] {
+    border: 2px solid ButtonText;
+  }
+}
+
 /* 印刷用スタイル（複数ページ対応） */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
   body {
     background-color: #fff;
+    /* 正誤の色分けは印刷でも意味を持つので、背景色を落とさせない */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  /* 表や札が2ページに割れないようにする */
+  table, tr, .card {
+    break-inside: avoid;
+  }
+
+  .page-break {
+    break-before: page;
+  }
+
+  /* 紙にURLを併記しない（児童が読めないうえ行が崩れる） */
+  a[href]::after {
+    content: "";
   }
 
   /* absolute配置を解除してスクロール内容を全て表示 */

@@ -3,6 +3,7 @@ import { Wifi, ArrowLeft, Copy, Check } from 'lucide-react';
 import { usePeerJSStatus } from '../../hooks/usePeerJS';
 import { useQRCode } from '../../hooks/useQRCode';
 import { F } from '../ui/FormatKun';
+import PresentationToggle from '../ui/PresentationToggle';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
 
@@ -112,6 +113,9 @@ const TeacherHostView = ({ setView, drill }) => {
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
           <Wifi size={22} /> ドリルを{F("送","おく")}る
         </h2>
+        {/* この画面は電子黒板に映して使う。後ろの席から4けたの数字とQRが
+            読めるよう、提示モードへ切り替えられるようにしておく。 */}
+        <PresentationToggle className="ml-auto" />
       </div>
 
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[4px_4px_0_var(--text)] flex flex-col items-center gap-4">
