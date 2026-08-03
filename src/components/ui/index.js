@@ -12,3 +12,6 @@ export { default as MobileBottomNav } from './MobileBottomNav';
 export { default as BackExitHint } from './BackExitHint';
 export { default as LeaveLearningDialog } from './LeaveLearningDialog';
 export { default as KanjiGlyph } from './KanjiGlyph';
+export { default as UpdateToast } from './UpdateToast';
+export { default as InstallAppPanel } from './InstallAppPanel';
+export { default as PresentationToggle } from './PresentationToggle';

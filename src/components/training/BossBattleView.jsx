@@ -8,6 +8,7 @@ import { gradeStrokes } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
+import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
 
 const PLAYER_MAX_HP = 3;
@@ -26,17 +27,9 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
   // キャンバス初期化
   useEffect(() => {
     [inkRef, writeRef].forEach(ref => {
-      const c = ref.current;
-      if (c) {
-        c.width = canvasSize * 2;
-        c.height = canvasSize * 2;
-        c.style.width = '100%';
-        c.style.height = '100%';
-        const ctx = c.getContext('2d');
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(2, 2);
-        ctx.clearRect(0, 0, canvasSize, canvasSize);
-      }
+      // 端末の devicePixelRatio に合わせて鮮明化（上限2）。以前は一律2倍だったため、
+      // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
+      fitSquareCanvas(ref.current, canvasSize);
     });
     setUserStrokes([]);
   }, [strokeData, canvasSize]);

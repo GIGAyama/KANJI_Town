@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity, Smartphone } from 'lucide-react';
 import { MotionButton } from '../ui';
+import InstallAppPanel from '../ui/InstallAppPanel';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
@@ -365,6 +366,11 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
             <Trash2 size={16} /> すべてのデータを{F("消","け")}す
           </button>
         </div>
+      </Section>
+
+      {/* ホーム画面へのインストール */}
+      <Section icon={Smartphone} title={<>ホーム{F("画面","がめん")}に{F("入","い")}れる</>}>
+        <InstallAppPanel />
       </Section>
 
       {/* 運用診断・サポート */}

@@ -3,14 +3,66 @@
 教育漢字1026字を「読み・意味・書字・筆順」の4技能で学ぶ、小学生向けの漢字学習アプリ。
 学習するほど自分の町が育つ。GIGA山 学習アプリ群の一員として `https://gigayama.github.io/KANJI_Town/` で公開している。
 
+先生向けの使いかたは [`MANUAL.md`](./MANUAL.md) にある（専門用語なし・「うまくいかないとき」付き）。
+
 ## 開発
 
 ```bash
 npm install
 npm run dev     # 開発サーバー
 npm test        # node --test
+npm run check   # 品質ゲート（GIGA Standard v4）
 npm run build   # ビルド + バンドル予算チェック
 ```
+
+## 📲 PWA
+
+ホーム画面に入れるとアプリとして起動し、オフラインでも使える。
+
+- `public/manifest.json` … `id` / `scope` / `start_url` はすべて `/KANJI_Town/`。
+  **この3つは絶対に変えない。** `gigayama.github.io` は数十個のアプリが同一オリジンを
+  共有しているため、`id` を省いたり変えたりすると別アプリと取り違えられ、
+  「開いたら違うアプリが立ち上がる」事故になる。
+- `public/sw.js` … キャッシュ名は必ず `CACHE_PREFIX`（`kanji-town-`）で始める。
+  **`activate` で接頭辞を確認せずにキャッシュを消してはいけない**（同一オリジンの
+  他アプリのオフライン起動を壊す）。Service Worker から `localStorage` に触れるのも禁止。
+- `APP_VERSION`（`public/sw.js`）は `package.json` の `version` と一致させる。
+  ずれていると `npm run check` が落ちる。**リリースのたびに両方上げる。**
+- 更新は無言で適用せず、`UpdateToast` で児童に確認してから切り替える
+  （学習の途中で画面が飛ばないようにするため）。実装は `src/systems/pwa.js`。
+- インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` 最上部で
+  受け取る。**ここより後ろに移すと、通信が遅い端末で取りこぼす。**
+
+## 🔐 セキュリティ設計
+
+サーバーを持たない構成のため、信頼境界は「端末の中」だけで完結する。
+
+- 学習の記録・ドリルはすべて端末の `localStorage` に保存し、外部送信しない。
+- ドリルの受け渡しはサーバーを経由しない。リンク配布はURLに内容を埋め込み
+  （`src/systems/drill-share.js`）、教室内配布は PeerJS の P2P 通信を使う。
+  **受け取ったドリルは外部入力として扱い、取り込み時に検証する。**
+- 音読チャレンジの音声は音量（RMS）に変換して判定に使うだけで、録音・保存・送信をしない。
+  クラウド音声認識（`SpeechRecognition`）は音声が外部へ出るため使用しない。
+- APIキー・スプレッドシートID・メールアドレスの直書きはない。
+  `.env` / `.clasp.json` は `.gitignore` 済み。
+- `localStorage.clear()` は使わない。`study.records.v1` はアプリ間共有キーであり、
+  リセット処理の対象に含めない。
+
+> **CSP は未導入。** 実行時に外部から読み込むものがあるため、
+> 許可リストを確定させたうえで別途投入する（下記「制限とクォータ」を参照）。
+
+## ⚠️ 制限とクォータ
+
+| 項目 | 制限 | 影響と対処 |
+|---|---|---|
+| 外部依存（書き順） | `cdn.jsdelivr.net` の KanjiVG | 校内フィルタで遮断されると手本が出ない。一度取得すればキャッシュされる |
+| 外部依存（P2P） | `cdn.jsdelivr.net` → `unpkg.com` の順に PeerJS を取得 | 両方遮断されると「4けたの数字で送る」が使えない。リンク配布は影響を受けない |
+| 外部依存（フォント） | Google Fonts | 遮断時は端末内のゴシックで代替表示される |
+| 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
+| localStorage | 端末ごと数MB | 上限に達すると `StorageErrorBanner` が出る。エクスポートして整理する |
+| iOS Safari (ITP) | 未使用7日で localStorage が消える | ホーム画面追加を推奨し、エクスポートを案内する（`MANUAL.md`） |
+| Chromebook | メモリ4GBでタブが破棄される | `pagehide` で記録を確定。キャンバスの描画倍率は上限2に固定 |
+| 初回JS | 220KiB（`scripts/check-bundle-budget.mjs`） | 超えるとビルドが落ちる |
 
 ## 書字の正誤判定
 

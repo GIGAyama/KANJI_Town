@@ -2,26 +2,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#ef4444" />
   <title>マイ漢字タウン - オフライン</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap');
+    /* このページが出るのは「ネットにつながっていないとき」なので、
+       Webフォントを取りに行っても届かない（以前は Google Fonts を @import して
+       いたため、圏外では必ず読み込みに失敗していた）。
+       端末に入っている丸ゴシック系を順に試し、無ければ標準のゴシックにする。 */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Zen Maru Gothic', sans-serif; background: #fdfbf7; color: #292f36; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body {
+      font-family: 'Zen Maru Gothic', 'Kosugi Maru', 'Hiragino Maru Gothic ProN',
+                   'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui, sans-serif;
+      background: #fdfbf7;
+      color: #292f36;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;   /* 古い端末向けフォールバック */
+      min-height: 100dvh;  /* 実際に使われる値（モバイルのアドレスバー分がはみ出さない） */
+      padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      padding-left: calc(20px + env(safe-area-inset-left, 0px));
+      padding-right: calc(20px + env(safe-area-inset-right, 0px));
+      -webkit-tap-highlight-color: transparent;
+    }
     .card { background: #fff; border: 4px solid #292f36; border-radius: 20px; padding: 40px 30px; text-align: center; max-width: 360px; box-shadow: 6px 6px 0 #292f36; }
     .emoji { font-size: 64px; margin-bottom: 16px; }
-    h1 { font-size: 22px; margin-bottom: 8px; }
-    p { font-size: 14px; opacity: 0.6; margin-bottom: 20px; line-height: 1.6; }
-    button { background: #ef4444; color: white; border: 3px solid #292f36; border-radius: 12px; padding: 12px 24px; font-family: inherit; font-weight: 900; font-size: 14px; cursor: pointer; box-shadow: 3px 3px 0 #292f36; }
+    h1 { font-size: clamp(20px, 5vw, 24px); margin-bottom: 8px; line-height: 1.5; }
+    p { font-size: clamp(13px, 3.5vw, 15px); opacity: 0.6; margin-bottom: 20px; line-height: 1.8; }
+    button {
+      background: #ef4444; color: #fff; border: 3px solid #292f36; border-radius: 12px;
+      min-height: 44px; padding: 12px 24px; font-family: inherit; font-weight: 900;
+      font-size: 15px; cursor: pointer; box-shadow: 3px 3px 0 #292f36;
+      touch-action: manipulation;
+    }
     button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #292f36; }
+    button:focus-visible { outline: 3px solid #292f36; outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+    /* ハイコントラストモードで背景色が無効化されても押せると分かるように */
+    @media (forced-colors: active) {
+      .card, button { border: 3px solid ButtonText; }
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="emoji">📡</div>
+    <div class="emoji" role="img" aria-label="アンテナ">📡</div>
     <h1>オフラインです</h1>
     <p>インターネットに接続できません。<br>接続を確認してもう一度やり直してください。</p>
-    <button onclick="location.reload()">もう一度ためす</button>
+    <button type="button" onclick="location.reload()">もう一度ためす</button>
   </div>
 </body>
 </html>

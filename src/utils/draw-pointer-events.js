@@ -23,7 +23,11 @@ export function attachDrawListeners(canvas, { onStart, onMove, onEnd }) {
     };
     const handleMove = (e) => {
       if (e.pointerId !== activePointerId) return;
-      onMove(e);
+      // 指やペンを速く動かすと、ブラウザーは1フレーム分の動きを1つのイベントに
+      // まとめてしまう。まとめられた元の点を取り出して全部つなぐことで、
+      // はらい・はねの線がカクカクにならないようにする。
+      const points = e.getCoalescedEvents?.() ?? [e];
+      for (const point of points) onMove(point);
     };
     const handleUp = (e) => {
       if (e.pointerId !== activePointerId) return;

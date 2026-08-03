@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useReducedMotionConfig } from 'framer-motion';
+import { fitCanvasToSize } from '../../utils/canvas-dpr';
 
 /**
  * HTML5 Canvasを利用した軽量・高性能パーティクルコンポーネント
@@ -13,17 +14,26 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
     if (weather === 'clear' || shouldReduceMotion) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    let ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    // キャンバスを画面サイズにフィット
+    // CSS上の大きさ。描画ピクセル数（canvas.width）は DPR倍されているため、
+    // 粒の座標計算にはこちらを使う。混ぜると高精細端末で粒が左上に寄る。
+    const size = { w: 0, h: 0 };
+
+    // キャンバスを親コンテナの大きさにフィットさせ、DPR補正をかける
     const resizeCanvas = () => {
-      // 親コンテナ（position: absolute/relative）に合わせる
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      size.w = parent.clientWidth;
+      size.h = parent.clientHeight;
+      const next = fitCanvasToSize(canvas, size.w, size.h);
+      if (next) ctx = next;
     };
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    // 画面回転・分割画面・電子黒板への出力切替にも追従させる
+    const observer = new ResizeObserver(resizeCanvas);
+    if (canvas.parentElement) observer.observe(canvas.parentElement);
 
     // パーティクルの定義
     let particles = [];
@@ -32,8 +42,8 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
       const count = weather === 'rain' ? 150 : weather === 'snow' ? 100 : weather === 'sakura' ? 60 : 0;
       for (let i = 0; i < count; i++) {
         particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
+          x: Math.random() * size.w,
+          y: Math.random() * size.h,
           radius: weather === 'snow' ? Math.random() * 2 + 1 : weather === 'sakura' ? Math.random() * 4 + 3 : Math.random() * 1 + 0.5,
           speedY: weather === 'rain' ? Math.random() * 15 + 10 : weather === 'snow' ? Math.random() * 1 + 0.5 : Math.random() * 1 + 0.5,
           speedX: weather === 'rain' ? Math.random() * 2 - 1 : weather === 'snow' ? Math.random() * 1 - 0.5 : Math.random() * 2 - 1,
@@ -61,7 +71,7 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
 
     // アニメーションループ
     const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, size.w, size.h);
 
       particles.forEach((p) => {
         // 移動
@@ -70,14 +80,14 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
         p.angle += p.spin;
 
         // 画面外に出たら上/横からリスポーン
-        if (p.y > canvas.height) {
+        if (p.y > size.h) {
           p.y = -10;
-          p.x = Math.random() * canvas.width;
+          p.x = Math.random() * size.w;
         }
-        if (p.x > canvas.width) {
+        if (p.x > size.w) {
           p.x = -10;
         } else if (p.x < -10) {
-          p.x = canvas.width;
+          p.x = size.w;
         }
 
         // 描画
@@ -109,7 +119,7 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
     render();
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      observer.disconnect();
       cancelAnimationFrame(animationFrameId);
     };
   }, [weather, shouldReduceMotion]);
@@ -119,7 +129,7 @@ const WeatherOverlay = ({ weather = 'clear' }) => {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none z-30 opacity-70"
+      className="absolute inset-0 w-full h-full pointer-events-none z-30 opacity-70"
       style={{ mixBlendMode: weather === 'rain' ? 'screen' : 'normal' }}
     />
   );
