@@ -134,7 +134,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <div className="bg-[var(--panel)] p-2 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-1 shrink-0">
           <span className="text-[10px] font-bold text-[var(--text)] px-1">これまでに{F("書","か")}いた{F("字","じ")}</span>
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {history.map((img, idx) => (<div key={idx} className="w-14 h-14 shrink-0 bg-[var(--bg)] border-2 border-[var(--text)] rounded-lg overflow-hidden relative flex items-center justify-center"><span className="absolute top-0.5 left-1 text-[8px] font-black text-[var(--text)] opacity-40">{idx + 1}</span><img src={img} className="w-full h-full object-contain p-1" alt={`try ${idx + 1}`} /></div>))}
+            {history.map((img, idx) => (<div key={idx} className="w-14 h-14 shrink-0 bg-[var(--bg)] border-2 border-[var(--text)] rounded-lg overflow-hidden relative flex items-center justify-center"><span className="absolute top-0.5 left-1 text-[8px] font-black text-[var(--text)] opacity-40">{idx + 1}</span><img src={img} width="56" height="56" decoding="async" className="w-full h-full object-contain p-1" alt={`${idx + 1}かいめに書いた字`} /></div>))}
           </div>
         </div>
       )}
