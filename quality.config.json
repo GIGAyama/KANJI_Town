@@ -1,0 +1,69 @@
+{
+  "$comment": "GIGA Standard v4 の品質ゲート設定。scripts/check-project.mjs が読む。",
+
+  "repoName": "KANJI_Town",
+  "basePath": "/KANJI_Town/",
+
+  "requiredFiles": [
+    "LICENSE",
+    ".gitignore",
+    ".github/dependabot.yml",
+    "README.md",
+    "MANUAL.md",
+    "index.html",
+    "public/manifest.json",
+    "public/sw.js",
+    "public/offline.html"
+  ],
+
+  "icons": {
+    "dir": "public/icons",
+    "required": [
+      "icon-192.png",
+      "icon-512.png",
+      "icon-maskable-192.png",
+      "icon-maskable-512.png",
+      "apple-touch-icon.png"
+    ]
+  },
+
+  "imageBudgetBytes": {
+    "public/favicon.png": 30720,
+    "public/icons/icon-512.png": 61440,
+    "public/icons/icon-maskable-512.png": 61440,
+    "default": 153600
+  },
+
+  "sourceLimits": {
+    "maxLines": 5000,
+    "maxBytes": 409600
+  },
+
+  "securityExceptions": [
+    {
+      "rule": "external-runtime-host",
+      "value": "cdn.jsdelivr.net",
+      "reason": "書き順データ(KanjiVG)と PeerJS の取得元。自己ホストすると成果物が数十MB増えるため、許可リストで明示して受け入れる。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "unpkg.com",
+      "reason": "PeerJS / qrcode / jsQR の予備の取得元。jsdelivr が校内フィルタで遮断された場合の代替。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "fonts.googleapis.com",
+      "reason": "本文フォント(Zen Maru Gothic / Klee One)。日本語サブセットを同梱すると数MB増え、豆腐の危険もあるため据え置く。遮断時は端末内フォントで代替される。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "fonts.gstatic.com",
+      "reason": "上記フォントの実体(woff2)の配信元。"
+    },
+    {
+      "rule": "no-csp",
+      "value": "index.html",
+      "reason": "上記4ホストへの許可リストを確定させたうえで別PRで投入する。未検証のまま入れると通信が全て落ちるため、ここでは意図的に見送っている。"
+    }
+  ]
+}
