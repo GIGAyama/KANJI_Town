@@ -34,6 +34,9 @@
     "default": 153600
   },
 
+  "$comment_imageBudgetExemptPrefixes": "ここに挙げた場所の画像は上限を見ない。ビルドに含まれず、端末へ配信されないもの限定。",
+  "imageBudgetExemptPrefixes": ["docs/"],
+
   "sourceLimits": {
     "maxLines": 5000,
     "maxBytes": 409600
