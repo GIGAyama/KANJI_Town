@@ -237,7 +237,13 @@ for (const f of config.requiredFiles) {
 // ── E. 性能 ────────────────────────────────────────────────────
 {
   const budgets = config.imageBudgetBytes;
-  for (const f of allFiles.filter((x) => /\.(png|jpe?g|webp|gif)$/i.test(x))) {
+  // 画像の上限は「配信される成果物を軽く保つ」ためのもの。
+  // 資料用のスクリーンショット（docs/）はビルドに含まれず端末へ届かないので数えない。
+  const exempt = config.imageBudgetExemptPrefixes ?? [];
+  const targets = allFiles
+    .filter((x) => /\.(png|jpe?g|webp|gif)$/i.test(x))
+    .filter((x) => !exempt.some((p) => x.startsWith(p)));
+  for (const f of targets) {
     const { size } = await stat(join(ROOT, f));
     const limit = budgets[f] ?? budgets.default;
     if (size > limit) fail('E1', `${f} が ${(size / 1024).toFixed(1)}KB（上限 ${(limit / 1024).toFixed(0)}KB）`);
