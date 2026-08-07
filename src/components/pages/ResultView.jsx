@@ -6,7 +6,7 @@ import AnimatedCounter from '../ui/AnimatedCounter';
 import Confetti from '../ui/Confetti';
 import { TOWN_ITEMS, SvgVillager } from '../../data/town-items';
 import { GACHA_POOL } from '../../data/gacha-pool';
-import { STORY_STAGES } from '../../data/story-stages';
+import { STORY_STAGES, getCurrentStage } from '../../data/story-stages';
 import { StorageAPI } from '../../systems/storage';
 import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
@@ -32,8 +32,10 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
   const oldLevelInfo = getLevelInfoFromExp(oldExp);
   const newLevelInfo = getLevelInfoFromExp(oldExp + earnedExp);
 
-  const masteredCount = Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length;
-  const currentStage = STORY_STAGES.slice().reverse().find(s => masteredCount >= s.minKanji && (stats.population || 0) >= s.minPop) || STORY_STAGES[0];
+  // ステージはレベルで決まる（story-stages.js は minKanji / minPop を持たない）。
+  // ここで存在しないキーを見ていたため、ステージが「荒野の旅人」から動かず、
+  // 次のステージまでの表示も NaN になっていた。
+  const currentStage = getCurrentStage(newLevelInfo.level);
   const nextStage = STORY_STAGES.find(s => s.id === currentStage.id + 1);
 
   useEffect(() => {
@@ -167,7 +169,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         <p className="text-xs text-[var(--text)] opacity-60 mt-1 leading-relaxed">{currentStage.desc}</p>
         {nextStage && (
           <div className="mt-2 text-[10px] text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
-            {F("次","つぎ")}のステージまで：{F("漢字","かんじ")}{Math.max(0, nextStage.minKanji - masteredCount)}{F("文字","もじ")} / {F("人口","じんこう")}{Math.max(0, nextStage.minPop - (stats.population || 0))}{F("人","にん")}
+            {F("次","つぎ")}のステージ「{nextStage.title}」まで あと{F("レベル","れべる")}{Math.max(0, nextStage.minLevel - newLevelInfo.level)}
           </div>
         )}
       </motion.div>
