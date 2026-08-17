@@ -1,9 +1,7 @@
 {
   "$comment": "GIGA Standard v4 の品質ゲート設定。scripts/check-project.mjs が読む。",
-
   "repoName": "KANJI_Town",
   "basePath": "/KANJI_Town/",
-
   "requiredFiles": [
     "LICENSE",
     ".gitignore",
@@ -15,7 +13,6 @@
     "public/sw.js",
     "public/offline.html"
   ],
-
   "icons": {
     "dir": "public/icons",
     "required": [
@@ -26,22 +23,20 @@
       "apple-touch-icon.png"
     ]
   },
-
   "imageBudgetBytes": {
     "public/favicon.png": 30720,
     "public/icons/icon-512.png": 61440,
     "public/icons/icon-maskable-512.png": 61440,
     "default": 153600
   },
-
   "$comment_imageBudgetExemptPrefixes": "ここに挙げた場所の画像は上限を見ない。ビルドに含まれず、端末へ配信されないもの限定。",
-  "imageBudgetExemptPrefixes": ["docs/"],
-
+  "imageBudgetExemptPrefixes": [
+    "docs/"
+  ],
   "sourceLimits": {
     "maxLines": 5000,
     "maxBytes": 409600
   },
-
   "securityExceptions": [
     {
       "rule": "external-runtime-host",
@@ -67,6 +62,31 @@
       "rule": "no-csp",
       "value": "index.html",
       "reason": "上記4ホストへの許可リストを確定させたうえで別PRで投入する。未検証のまま入れると通信が全て落ちるため、ここでは意図的に見送っている。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "kanji-town.giga-school.com",
+      "reason": "このアプリ自身の公開 URL。プライバシーポリシーの canonical と自己参照リンクに書いてある。実行コードの取得元ではない。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "giga-school.com",
+      "reason": "全アプリの一覧ページ（ポータル）へのリンク。プライバシーポリシーの運用者欄に書いてある。実行コードの取得元ではない。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "pages.github.com",
+      "reason": "配信に GitHub Pages を使っていることの説明リンク。プライバシーポリシーの本文中。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "myaccount.google.com",
+      "reason": "利用者が自分で権限を取り消すための案内リンク。プライバシーポリシーの本文中。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "developers.google.com",
+      "reason": "参照している Google のドキュメントへのリンク。プライバシーポリシーの本文中。"
     }
   ]
 }
