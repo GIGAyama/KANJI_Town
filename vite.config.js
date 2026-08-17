@@ -24,7 +24,7 @@ const releaseMetadata = {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), releaseMetadata],
-  base: '/KANJI_Town/',
+  base: './',
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_COMMIT__: JSON.stringify(buildCommit),
