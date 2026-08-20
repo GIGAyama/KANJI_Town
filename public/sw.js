@@ -1,7 +1,8 @@
 /* マイ漢字タウン Service Worker
  *
  * 【最重要】activate では自アプリ以外のキャッシュを削除しない。
- *   gigayama.github.io は数十個のアプリで同一オリジンを共有している。
+ *   いまは独自ドメイン kanji-town.giga-school.com を単独で使っているが、
+ *   旧配信元 gigayama.github.io は数十個のアプリで同一オリジンを共有していた。
  *   caches.keys() を接頭辞で絞らずに消すと、このアプリを開いただけで
  *   他のアプリがオフラインで起動しなくなる。
  *   必ず CACHE_PREFIX で始まるものだけを掃除すること。
@@ -20,7 +21,10 @@ const CACHE_FONTS = `${CACHE_PREFIX}fonts-v1`;
 const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-v${APP_VERSION}`;
 const KEEP_CACHES = [CACHE_STATIC, CACHE_KANJIVG, CACHE_FONTS, CACHE_RUNTIME];
 
-const BASE = '/KANJI_Town/';
+// アプリの基点。sw.js は必ずアプリ直下に置かれるので、自分の場所から求める。
+// 直書きすると、配信先（独自ドメイン直下 / サブパス）が変わった瞬間に
+// プリキャッシュもオフライン応答も存在しないパスを指して黙って壊れる。
+const BASE = new URL('./', self.location).pathname;
 
 // プリキャッシュ: アプリシェルの最低限
 const PRECACHE_URLS = [BASE, BASE + 'offline.html'];

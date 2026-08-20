@@ -5,9 +5,9 @@
   "lang": "ja",
   "dir": "ltr",
 
-  "id": "/KANJI_Town/",
-  "start_url": "/KANJI_Town/",
-  "scope": "/KANJI_Town/",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
 
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],

@@ -131,11 +131,15 @@ for (const f of config.requiredFiles) {
     try { mf = JSON.parse(raw); } catch { mf = null; }
     if (!mf) fail('C1', 'public/manifest.json が JSON として壊れている');
     else {
+      // 配信の基点と完全に一致させる。ここがずれると、ホーム画面から起動した
+      // ときに存在しないパスへ飛んで真っ白になる（独自ドメインへ移行した際に
+      // 実際に起きた）。前方一致で見ていると基点が "/" のとき何でも通るため、
+      // 一致で見る。
       const base = config.basePath;
       for (const key of ['id', 'scope', 'start_url']) {
         if (!mf[key]) fail('C1', `manifest に ${key} が無い（同一オリジンの別アプリと取り違えられる）`);
-        else if (!String(mf[key]).startsWith(base)) {
-          fail('C1', `manifest の ${key} が "${mf[key]}" になっている。リポジトリ名の絶対パス "${base}" にすること`);
+        else if (String(mf[key]) !== base) {
+          fail('C1', `manifest の ${key} が "${mf[key]}" になっている。配信の基点 "${base}"（quality.config.json の basePath）と一致させること`);
         } else pass('C1', `manifest の ${key} = ${mf[key]}`);
       }
       const purposes = new Set((mf.icons || []).map((i) => i.purpose));

@@ -1,7 +1,7 @@
 # マイ漢字タウン（KANJI_Town)
 
 教育漢字1026字を「読み・意味・書字・筆順」の4技能で学ぶ、小学生向けの漢字学習アプリ。
-学習するほど自分の町が育つ。GIGA山 学習アプリ群の一員として `https://gigayama.github.io/KANJI_Town/` で公開している。
+学習するほど自分の町が育つ。GIGA山 学習アプリ群の一員として `https://kanji-town.giga-school.com/` で公開している。
 
 - **対象**：小学1〜6年。学年別漢字配当表（2020年改訂）に準拠し、1年80字／2年160字／3年200字／4年220字／5年185字／6年181字＝**計1026字**を収録（`src/data/kanji-data.js`）。
 - **必要なもの**：ブラウザだけ。アカウント登録・ログイン・課金はなく、サーバーも持たない。学習の記録は端末の `localStorage` にだけ保存する。
@@ -103,10 +103,14 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 
 ホーム画面に入れるとアプリとして起動し、オフラインでも使える。
 
-- `public/manifest.json` … `id` / `scope` / `start_url` はすべて `/KANJI_Town/`。
-  **この3つは絶対に変えない。** `gigayama.github.io` は数十個のアプリが同一オリジンを
-  共有しているため、`id` を省いたり変えたりすると別アプリと取り違えられ、
-  「開いたら違うアプリが立ち上がる」事故になる。
+- `public/manifest.json` … `id` / `scope` / `start_url` はすべて `/`（独自ドメイン
+  `kanji-town.giga-school.com` の直下で配信しているため）。**この3つは配信の基点と
+  必ず一致させる。** ずれるとホーム画面から起動したときに存在しないパスへ飛び、
+  真っ白な画面になる（`gigayama.github.io/KANJI_Town/` から移行した際に実際に起きた）。
+  値は `quality.config.json` の `basePath` と突き合わせて `npm run check` が確認する。
+- アプリ内で配信パスを直書きしない。`src/systems/base-path.js` から求める
+  （`public/sw.js` は自分の `self.location` から求める）。直書きは配信先が変わった
+  瞬間に404を指し、Service Worker の登録もインストールも黙って壊れる。
 - `public/sw.js` … キャッシュ名は必ず `CACHE_PREFIX`（`kanji-town-`）で始める。
   **`activate` で接頭辞を確認せずにキャッシュを消してはいけない**（同一オリジンの
   他アプリのオフライン起動を壊す）。Service Worker から `localStorage` に触れるのも禁止。
