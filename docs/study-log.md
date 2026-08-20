@@ -8,6 +8,7 @@
 - アプリは **保存のみ** を行い、外部送信は一切行わない（仕様 §0-1）
 - 児童を識別する情報（氏名・出席番号・メールアドレス）はレコードに含めない（§0-2）
 - 保存先: `localStorage` キー `study.records.v1`（全アプリ共通・上限500件）
+  - **キーが共通なだけで、保存先はアプリごとに別々**（独自ドメイン移行後。下の §9 を見ること）
 
 ## 3層構成（§6）
 
@@ -54,5 +55,40 @@
 かつてのクラウド同期・見守り共有（`cloud-client.js` / `cloud-sync.js` / `cloud-sharing.js` /
 `useCloudSync` / `useLearningSharing` / `LearningSharePanel` / `AccountSyncPanel` /
 `supabase/` / `@supabase/supabase-js` 依存）は削除した。教師への学習データ共有は、
-同一オリジンの送信ページが `study.records.v1` を読む方式（仕様 §7・付録A）へ移行する。
+送信ページが `study.records.v1` を読む方式（仕様 §7・付録A）へ移行する。
+ただし独自ドメインへ移ったあとは「同一オリジン」ではなくなっているので、下の §9 の受け渡し口を使う。
 `buildLearningReport()` は本スキーマの `ext` 生成元として存置している（§8.2）。
+
+
+## 独自ドメイン移行後の横断集計（§9）
+
+旧構成では、すべてのアプリが `gigayama.github.io` という**ひとつのオリジン**に
+置かれていた。`localStorage` はオリジンごとに分かれるため、全アプリが文字どおり
+同じ `study.records.v1` を読み書きしており、送信ページは自分の `localStorage` を
+読むだけで横断集計ができていた。
+
+独自ドメインに移り、アプリは `kanji-town.giga-school.com` のように
+**サブドメインごとに別のオリジン**になった。キー名は共通のままだが、
+**中身は共有されない。**
+
+そこで、集計側から取りに来てもらう受け渡し口を置いた。
+
+| ファイル | 役割 |
+|---|---|
+| `public/records-export.html` | 受け渡し口のページ（児童が開く画面ではない） |
+| `public/records-export.js` | `study.records.v1` を読んで `postMessage` で返す |
+
+- 集計ページが**同一サイトの `iframe`** でこのページを開き、`postMessage` で問い合わせる。
+  サブドメイン同士は同一サイト（eTLD+1 が `giga-school.com`）なので、
+  third-party ストレージ分割の対象にならず、`iframe` の中でも第一者と同じ
+  `localStorage` が見える
+- **読むだけ。書き込みも削除もしない。** 集計側の不具合でこのアプリの記録が
+  壊れることが原理的に起きない形にしてある
+- 渡す相手は `giga-school.com` とそのサブドメインだけ。判定は
+  `test/records-export.test.js` で、通してはいけない例を並べて確かめている
+- このページからは親へ声をかけない（宛先を `'*'` にする `postMessage` を残さない）。
+  集計側は `iframe` の `load` を合図にする
+
+旧 `gigayama.github.io` に保存されていた記録は、オリジンが変わったため
+**引き継がれない。** 旧オリジンはホストごと転送されるようになっており、
+そこで JavaScript を動かして読み出す手段がない。

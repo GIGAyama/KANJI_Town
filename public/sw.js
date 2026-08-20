@@ -13,7 +13,7 @@
 const CACHE_PREFIX = 'kanji-town-';
 // リリースごとに必ず上げる。package.json の version と一致させること
 // （不一致は scripts/check-project.mjs が検出して CI を落とす）。
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 
 const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
 const CACHE_KANJIVG = `${CACHE_PREFIX}kanjivg-v1`;
@@ -130,17 +130,28 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
+          // ⚠️ どのナビゲーションでも BASE として保存してはいけない。
+          //    このサイトには SPA の入口のほかに offline.html と
+          //    records-export.html（学習ログの受け渡し口）という
+          //    中身の違う実ファイルがある。それを開いたときの応答を
+          //    BASE に入れてしまうと、次に圏外でアプリを開いたときに
+          //    アプリのかわりにそれらのページが出る。
+          const path = new URL(request.url).pathname;
+          const isAppRoot = path === BASE || path === BASE + 'index.html';
           // 200のみキャッシュ（404等をキャッシュしない）
-          if (response.ok) {
+          if (isAppRoot && response.ok && !response.redirected) {
             const clone = response.clone();
             caches.open(CACHE_STATIC).then((cache) => cache.put(BASE, clone));
           }
           return response;
         })
         .catch(() =>
-          // オフライン時はルートページのキャッシュで応答（SPA対応）
-          caches.match(BASE).then((cached) =>
-            cached || caches.match(BASE + 'offline.html')
+          // オフライン時は、まず開こうとした画面そのものを探し、
+          // 無ければルートページのキャッシュで応答（SPA対応）
+          caches.match(request).then((exact) =>
+            exact || caches.match(BASE).then((cached) =>
+              cached || caches.match(BASE + 'offline.html')
+            )
           )
         )
     );
