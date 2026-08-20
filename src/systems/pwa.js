@@ -6,7 +6,11 @@
  * 「ホームにいれる」ボタンが出なくなる。ここではその結果だけを読む。
  */
 
-const SW_URL = '/KANJI_Town/sw.js';
+import { resolveFromBase } from './base-path';
+
+// 登録先はアプリの基点から求める（直書きすると配信先が変わった瞬間に404になり、
+// 登録が失敗してオフライン起動もインストールもできなくなる）。
+const swUrl = () => resolveFromBase('sw.js');
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6時間
 
 /** ホーム画面から起動しているか（＝もうインストール済み） */
@@ -111,7 +115,7 @@ export function registerServiceWorker({ onError } = {}) {
 
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register(SW_URL);
+      const reg = await navigator.serviceWorker.register(swUrl());
 
       // 登録した時点で既に新版が待機していることがある（前回タブを閉じた場合など）
       if (reg.waiting && navigator.serviceWorker.controller) markWaiting(reg.waiting);

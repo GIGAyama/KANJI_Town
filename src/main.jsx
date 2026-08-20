@@ -4,12 +4,13 @@ import App from './App';
 import './index.css';
 import { installGlobalDiagnostics, recordAppError, recordDiagnosticEvent } from './systems/diagnostics';
 import { registerServiceWorker } from './systems/pwa';
+import { getBasePath } from './systems/base-path';
 
 // 画面外で発生した例外も、個人情報を除去した端末内診断へ記録する。
 installGlobalDiagnostics();
 
-// ── URLクリーンアップ: 不正なサブパス（/KANJI_Town/undefined等）をルートに戻す ──
-const BASE_PATH = '/KANJI_Town/';
+// ── URLクリーンアップ: 不正なサブパス（/undefined等）をアプリの基点に戻す ──
+const BASE_PATH = getBasePath();
 if (window.location.pathname !== BASE_PATH && window.location.pathname.startsWith(BASE_PATH)) {
   // サブパスが存在する場合、クエリパラメータを維持しつつルートにリダイレクト
   window.history.replaceState({}, '', BASE_PATH + window.location.search);

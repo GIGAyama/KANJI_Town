@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const buildCommit = process.env.GITHUB_SHA || 'local';
@@ -34,6 +35,14 @@ export default defineConfig({
     sourcemap: 'hidden',
     // チャンク分割の最適化
     rollupOptions: {
+      // プライバシーポリシーと利用規約も配信対象に含める。
+      // 入口に並べていないと dist に入らず、独自ドメインへ移したあと
+      // /privacy.html /terms.html が 404 になる（互いにリンクし合っている）。
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        privacy: fileURLToPath(new URL('./privacy.html', import.meta.url)),
+        terms: fileURLToPath(new URL('./terms.html', import.meta.url)),
+      },
       output: {
         manualChunks(id) {
           const moduleId = id.replaceAll('\\', '/');

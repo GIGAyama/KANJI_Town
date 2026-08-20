@@ -1,7 +1,8 @@
 {
   "$comment": "GIGA Standard v4 の品質ゲート設定。scripts/check-project.mjs が読む。",
   "repoName": "KANJI_Town",
-  "basePath": "/KANJI_Town/",
+  "$comment_basePath": "配信の基点。独自ドメイン kanji-town.giga-school.com の直下に置いているため \"/\"。manifest の id/scope/start_url はこれと一致させる。",
+  "basePath": "/",
   "requiredFiles": [
     "LICENSE",
     ".gitignore",

@@ -224,8 +224,3 @@ export const TEST = {
   PASS_THRESHOLD: 70,
   QUESTION_OPTIONS: [10, 20, 50, 100],
 };
-
-/** PWA / Service Worker */
-export const PWA = {
-  SW_PATH: '/KANJI_Town/sw.js',
-};

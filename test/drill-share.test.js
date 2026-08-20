@@ -19,7 +19,7 @@ import {
   readSharedDrill,
 } from '../src/systems/drill-share.js';
 
-const BASE_URL = 'https://gigayama.github.io/KANJI_Town/';
+const BASE_URL = 'https://kanji-town.giga-school.com/';
 
 test('漢字IDは学年ごとのまとまりに畳んで短くする', () => {
   assert.equal(encodeKanjiIds(['k1_1', 'k1_2', 'k2_5']), '1:1.2-2:5');

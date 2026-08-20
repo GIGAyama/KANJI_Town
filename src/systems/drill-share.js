@@ -3,7 +3,7 @@
 // このアプリはサーバーを持たない静的サイトなので、ドリルの中身そのものをURLへ畳み込む。
 // 端末をまたいでも、受け取り側がオフラインでも復元できるのが利点。
 //
-// URL例: https://gigayama.github.io/KANJI_Town/?drill=eyJ2IjoxLCJuIjoi...
+// URL例: https://kanji-town.giga-school.com/?drill=eyJ2IjoxLCJuIjoi...
 //
 // 副作用を持たない純粋ロジックだけを置き、DOM・React・KANJI_DATA には依存しない。
 // （存在しない漢字IDの除外は、表示側でKANJI_DATAと突き合わせて行う）
