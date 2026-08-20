@@ -88,6 +88,16 @@
       "rule": "external-runtime-host",
       "value": "developers.google.com",
       "reason": "参照している Google のドキュメントへのリンク。プライバシーポリシーの本文中。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "kanjivg.tagaini.net",
+      "reason": "書き順データ KanjiVG の出典元。CC BY-SA 3.0 は原典の表示を求めるため、画面フッターのクレジットから張っている。実行コードの取得元ではない。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "creativecommons.org",
+      "reason": "KanjiVG のライセンス条文(CC BY-SA 3.0)へのリンク。同ライセンスは条文への参照を求めるため、画面フッターのクレジットから張っている。実行コードの取得元ではない。"
     }
   ]
 }

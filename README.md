@@ -226,3 +226,23 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | [`docs/study-log.md`](./docs/study-log.md) | 学習ログ `study.v1` の実装 |
 | [`docs/operations.md`](./docs/operations.md) | 運用・障害対応・診断ファイルの扱い |
 | [`AUDIT.md`](./AUDIT.md) / [`ROLLOUT.md`](./ROLLOUT.md) | 監査結果とロールアウト記録 |
+
+
+## 素材とライセンス
+
+このアプリは、次の第三者の成果物を使っています。
+
+| 使っているもの | 用途 | ライセンス |
+| --- | --- | --- |
+| [KanjiVG](https://kanjivg.tagaini.net/) | 漢字の字形と書き順（なぞり書き・お手本・採点） | **CC BY-SA 3.0** © Ulrich Apel / KanjiVG contributors |
+| [jsQR](https://github.com/cozmo/jsQR) | QR コードの読み取り | Apache License 2.0 |
+| [PeerJS](https://peerjs.com/) | 端末どうしの通信 | MIT License |
+| [qrcode](https://github.com/soldair/node-qrcode) | QR コードの生成 | MIT License |
+| Klee One / Zen Maru Gothic（Google Fonts） | 画面の書体 | SIL Open Font License 1.1 |
+
+**書き順データについて。** 本アプリは KanjiVG の SVG を実行時に読み込み、字形の表示・なぞり書きの採点に使っています。
+KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0）** で提供されており、
+表示にあたっては著作者の表示が必要です。アプリの「このアプリについて」にも同じ表示を入れています。
+
+このリポジトリの LICENSE（MIT）は、**自作のソースコードにのみ適用されます。**
+上記の第三者の成果物には、それぞれのライセンスが適用されます。
