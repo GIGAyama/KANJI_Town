@@ -11,9 +11,9 @@
  *   study.records.v1 を含む学習データには触れない。
  */
 const CACHE_PREFIX = 'kanji-town-';
-// リリースごとに必ず上げる。package.json の version と一致させること
-// （不一致は scripts/check-project.mjs が検出して CI を落とす）。
-const APP_VERSION = '0.4.1';
+// APP_VERSION は手で上げない。tools/build-sw.mjs がビルド後に dist/sw.js の
+// この行を、配信物の内容ハッシュで書き換える（原本のここは 'dev' のまま）。
+const APP_VERSION = 'dev'; /* __APP_VERSION__ */
 
 const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
 const CACHE_KANJIVG = `${CACHE_PREFIX}kanjivg-v1`;

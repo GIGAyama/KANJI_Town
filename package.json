@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/check-bundle-budget.mjs && cp dist/index.html dist/404.html",
+    "build": "vite build && node scripts/check-bundle-budget.mjs && cp dist/index.html dist/404.html && node tools/build-sw.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "check": "node scripts/check-project.mjs",
     "preview": "vite preview",
