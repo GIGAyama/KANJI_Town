@@ -13,7 +13,7 @@
 const CACHE_PREFIX = 'kanji-town-';
 // リリースごとに必ず上げる。package.json の version と一致させること
 // （不一致は scripts/check-project.mjs が検出して CI を落とす）。
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.4.1';
 
 const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
 const CACHE_KANJIVG = `${CACHE_PREFIX}kanjivg-v1`;
