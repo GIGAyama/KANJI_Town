@@ -98,6 +98,11 @@
       "rule": "external-runtime-host",
       "value": "creativecommons.org",
       "reason": "KanjiVG のライセンス条文(CC BY-SA 3.0)へのリンク。同ライセンスは条文への参照を求めるため、画面フッターのクレジットから張っている。実行コードの取得元ではない。"
+    },
+    {
+      "rule": "external-runtime-host",
+      "value": "gamification.giga-school.com",
+      "reason": "学習ログを記録ボックス（まなびクエスト）へ写す iframe の宛先。records-hub-client.js が postMessage の宛先もこのオリジンに固定している。実行コードの取得元ではない。"
     }
   ]
 }
