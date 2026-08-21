@@ -1,0 +1,10 @@
+{
+  "distDir": "dist",
+  "maxBytes": 16777216,
+  "precache": [
+    "index.html",
+    "offline.html",
+    "manifest.webmanifest",
+    "assets/"
+  ]
+}

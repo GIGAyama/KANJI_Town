@@ -171,12 +171,19 @@ for (const f of config.requiredFiles) {
     if (/localStorage/.test(stripComments(sw))) fail('C5', 'sw.js が localStorage を触っている（学習データに触れてはいけない）');
     else pass('C5', 'sw.js は localStorage を触っていない');
 
-    // sw.js の APP_VERSION と package.json の version がずれると更新が届かない
-    const m = sw.match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-    if (!m) fail('C6', 'sw.js に APP_VERSION が無い');
-    else if (m[1] !== pkg.version) {
-      fail('C6', `sw.js の APP_VERSION (${m[1]}) が package.json の version (${pkg.version}) と違う。リリース時は両方上げること`);
-    } else pass('C6', `APP_VERSION = ${m[1]}（package.json と一致）`);
+    // 版は手で上げず、tools/build-sw.mjs がビルド後に dist/sw.js を
+    // 配信物の内容ハッシュで書き換える（手動運用は 2026-08-21 に
+    // 全リポジトリで上げ忘れる事故を起こした）。ここでは自動生成の形を見る。
+    if (!/APP_VERSION = '[^']*'; \/\* __APP_VERSION__ \*\//.test(sw)) {
+      fail('C6', 'public/sw.js の版が自動生成の形（__APP_VERSION__ の目印つき）になっていない');
+    } else if (!(await exists('tools/build-sw.mjs'))) {
+      fail('C6', 'tools/build-sw.mjs が無い。版の自動生成が外れている');
+    } else {
+      const distSw = await read('dist/sw.js');
+      if (distSw && distSw.includes("APP_VERSION = 'dev'")) {
+        fail('C6', "dist/sw.js の版が 'dev' のまま。build-sw が走っていない");
+      } else pass('C6', '版は自動生成（__APP_VERSION__）');
+    }
   }
 }
 {
