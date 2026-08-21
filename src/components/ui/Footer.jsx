@@ -14,7 +14,7 @@ export default function Footer() {
       <div className="text-[11px] text-[var(--text)] opacity-40 hover:opacity-100 transition-opacity">
         ©2026 マイ漢字タウン{' '}
         <a
-          href="https://note.com/cute_borage86"
+          href="https://giga-school.com"
           target="_blank"
           rel="noopener noreferrer"
           className="font-normal text-inherit cursor-default decoration-transparent no-underline"
