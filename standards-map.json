@@ -30,6 +30,10 @@
         "app-id",
         "records-export-import"
       ]
+    },
+    {
+      "canonical": "lib/check-secrets.mjs",
+      "local": "tools/check-secrets.mjs"
     }
   ]
 }
