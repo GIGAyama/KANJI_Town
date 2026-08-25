@@ -15,13 +15,18 @@ const loadScript = (urls, onLoad, onError) => {
 };
 
 // QRコード生成ライブラリをCDNから動的ロード
+//
+// 版を 1.4.4 に固定している。qrcode は 1.5.0 で build/ を公開物から外したため、
+// 1.5.x の build/qrcode.min.js は CDN に存在せず 404 になる。
+// 気づきにくいのは、その場合でも予備の unpkg（1.4.4）が読み込まれて画面は動くこと。
+// 見た目が正常なまま、校内フィルタリングで許可すべきアドレスだけが増える。
 export const useQRCode = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
     if (window.QRCode) { setIsLoaded(true); return; }
     loadScript(
       [
-        "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js",
+        "https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js",
         "https://unpkg.com/qrcode@1.4.4/build/qrcode.min.js",
       ],
       () => setIsLoaded(true),
