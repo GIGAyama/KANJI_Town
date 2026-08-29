@@ -4,6 +4,7 @@
   "precache": [
     "index.html",
     "offline.html",
+    "giga-app-links.js",
     "manifest.webmanifest",
     "assets/"
   ]
