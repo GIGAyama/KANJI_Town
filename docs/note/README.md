@@ -189,7 +189,7 @@ docs/note/
 | 復習の間隔が1分・10分・1日と伸びる | `src/systems/srs.js` の `LEARNING_STEPS` と `GRADUATING_INTERVAL` |
 | そこから先は容易度をかけて伸びる | 同上の `calculateNextReview` |
 | 復習の期限が来ると町にお化けが出る | `src/components/town/DraggableTownMap.jsx` の ghosts |
-| これから7日間の復習予報 | `MANUAL.md`。16番の画像にも「7日間の復習予報」と出ている |
+| これから7日間の復習予報 | `docs/manual/manual.md` の「学習きろく」の章。16番の画像にも「7日間の復習予報」と出ている |
 | 4つの力を0から100で別々に記録 | `src/systems/mastery.js`。16番の画像で読み8／意味8／書字54／筆順62 |
 | なぞり書き1〜2回目／手書き3〜5回目／空書き6回目〜 | `src/components/session/WriteMode.jsx` の表示分岐 |
 | 配点（字形30・書き順25・とめはね15・交差10・始点10・終点10） | `src/constants/gameConfig.js` の `GRADING.WEIGHTS`。根拠は `docs/stroke-grading.md` |
@@ -201,11 +201,11 @@ docs/note/
 | 実績92種類 | `src/data/achievements.js` を数えて92 |
 | クラフト85種 | `src/data/recipes.js` を数えた。クラフト画面が使う5つのタブぶんの合計で、加工素材8・建物50・強化9・大型10・レア8 |
 | テストの出題数（全部／10・20・50・100） | `gameConfig.js` の `TEST.QUESTION_OPTIONS` と `src/components/pages/MyDrillsView.jsx`。ドリルの字数に届いている選択肢だけが出る |
-| 1日10字が目安で10分から15分 | `MANUAL.md` |
-| 「大きく表示」で1.5倍 | `MANUAL.md` |
+| 1日10字が目安で10分から15分 | 10字は `README.md` の「1日の目標（既定10字）」。10〜15分のほうは、統合前の `MANUAL.md`（`5845617` で削除）に書いてあった見積もりで、コードに根拠はない |
+| 「大きく表示」で1.5倍 | `src/index.css` の `.presentation { font-size: 150% }` |
 | 声は録音・保存・送信しない | `docs/reading-check.md` と `src/utils/voice-activity.js` |
 | フィルタリングで要許可（cdn.jsdelivr.net / fonts.googleapis.com） | `src/hooks/useQRCode.js`、`src/hooks/usePeerJS.js`、`src/constants/gameConfig.js` |
-| iOSは7日で記録が消えることがある | `README.md` と `MANUAL.md` |
+| iOSは7日で記録が消えることがある | `README.md` の既知の制約の表と、`docs/manual/manual.md` の「ホーム画面に 入れて、記録を まもる」の章 |
 | クラウド同期をやめた | 2026-07-27 のコミット「学習ログ共通スキーマ study.v1 に準拠し、Supabase 機能を廃止」 |
 
 ### リポジトリの README と食いちがったところ
