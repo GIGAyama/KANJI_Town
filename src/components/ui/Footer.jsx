@@ -38,10 +38,10 @@ export default function Footer() {
       </div>
       {/* ⚠️ 行き先のリンクを手で書かないこと。中身は正本の部品が出す。
           ⚠️ <div> にしないこと。そこで改行が入って h-8 に収まらなくなる。
-          ⚠️ data-links で「つかいかた」を外してある。このアプリにはまだ
-             docs/manual/ が無く、既定のまま出すと行き止まりのリンクになる。
-             マニュアルを書いたら、この属性ごと消すこと。 */}
-      <span data-giga-links data-links="terms,privacy" />
+          data-links で「つかいかた」を外していたのは、docs/manual/ が無く、
+          既定のまま出すと行き止まりのリンクになったため。マニュアルを
+          docs/manual/manual.md に置いたので、属性ごと外して既定に戻した。 */}
+      <span data-giga-links />
       {/* KanjiVG の表示はライセンス（CC BY-SA 3.0）の条件。消さない・切らない。 */}
       <div className="whitespace-nowrap text-[11px] text-[var(--text)] opacity-40 hover:opacity-100 transition-opacity">
         書き順データ:{' '}
