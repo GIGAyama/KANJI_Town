@@ -5,7 +5,9 @@
 
 - **対象**：小学1〜6年。学年別漢字配当表（2020年改訂）に準拠し、1年80字／2年160字／3年200字／4年220字／5年185字／6年181字＝**計1026字**を収録（`src/data/kanji-data.js`）。
 - **必要なもの**：ブラウザだけ。アカウント登録・ログイン・課金はなく、サーバーも持たない。学習の記録は端末の `localStorage` にだけ保存する。
-- **先生向けの使いかた** → [`MANUAL.md`](./MANUAL.md)（専門用語なし・「うまくいかないとき」付き）。
+- **使い方マニュアル** → [`docs/manual/manual.md`](./docs/manual/manual.md)（画面写真40点・専門用語なし・「うまくいかないとき」付き）。
+  児童向けに書き、ドリル配布やデータ移行など先生だけが使う章には「（先生向け）」と付けている。
+  公開先は <https://giga-school.com/apps/kanji-town/manual/>（旗艦リポジトリが毎朝組み立てる）。
 
 ## 🎯 できること
 
@@ -150,7 +152,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
 | 共有できるドリル | 名前40字・漢字300字まで（`?drill=` は4000字まで） | 超えた分は取り込み時に切り捨てる |
 | localStorage | 端末ごと数MB | 上限に達すると `StorageErrorBanner` が出る。エクスポートして整理する |
-| iOS Safari (ITP) | 未使用7日で localStorage が消える | ホーム画面追加を推奨し、エクスポートを案内する（`MANUAL.md`） |
+| iOS Safari (ITP) | 未使用7日で localStorage が消える | ホーム画面追加を推奨し、エクスポートを案内する（`docs/manual/manual.md`） |
 | Chromebook | メモリ4GBでタブが破棄される | `pagehide` で記録を確定。キャンバスの描画倍率は上限2に固定 |
 | 初回JS | 220KiB（`scripts/check-bundle-budget.mjs`） | 超えるとビルドが落ちる |
 
@@ -220,7 +222,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 
 | ファイル | 内容 |
 |---|---|
-| [`MANUAL.md`](./MANUAL.md) | 先生向けの使いかた（専門用語なし） |
+| [`docs/manual/manual.md`](./docs/manual/manual.md) | 使い方マニュアル（画面写真つき・児童向け／先生向けの章あり） |
 | [`docs/stroke-grading.md`](./docs/stroke-grading.md) | 書字採点の配点と設計の根拠 |
 | [`docs/reading-check.md`](./docs/reading-check.md) | 音読チャレンジの判定設計と調整値 |
 | [`docs/study-log.md`](./docs/study-log.md) | 学習ログ `study.v1` の実装 |
