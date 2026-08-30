@@ -26,8 +26,11 @@ const KEEP_CACHES = [CACHE_STATIC, CACHE_KANJIVG, CACHE_FONTS, CACHE_RUNTIME];
 // プリキャッシュもオフライン応答も存在しないパスを指して黙って壊れる。
 const BASE = new URL('./', self.location).pathname;
 
-// プリキャッシュ: アプリシェルの最低限
-const PRECACHE_URLS = [BASE, BASE + 'offline.html'];
+// プリキャッシュ: アプリシェルの最低限。
+// ⚠️ 中身は tools/build-sw.mjs がビルド後に実体で埋める（目印の行）。
+//    ここを手で書き並べない。書き並べると、ハッシュ付きのファイル名が
+//    リリースごとに変わるたびに古い一覧が残る。
+const PRECACHE_URLS = []; /* __PRECACHE_URLS__ */
 
 /* index.html を読んで、そこに書かれているビルド成果物（JS/CSS）の URL を拾う。
  *
