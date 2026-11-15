@@ -2,12 +2,13 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Download, Wifi, Gift, ArrowLeft, Camera, X, Delete } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
-import { usePeerJS, PEER_OPTIONS, PEER_ID_PREFIX } from '../../hooks/usePeerJS';
+import { usePeerJS, classifyPeerError, PEER_OPTIONS, PEER_ID_PREFIX } from '../../hooks/usePeerJS';
 import { useJsQR } from '../../hooks/useQRCode';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
+import { drillCheckCode, parseDrillMessage } from '../../systems/drill-p2p';
 
 // ソフトウェア数字キーボード
 const NumericKeypad = ({ value, onChange, onSubmit, disabled }) => {
@@ -211,10 +212,13 @@ const QRScanner = ({ onScan, onClose }) => {
   );
 };
 
+const KNOWN_KANJI_IDS = new Set(KANJI_DATA.map(k => k.id));
+
 const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
-  const { Peer, isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJS();
+  const { Peer, loadError: peerLoadError, offline } = usePeerJS();
   const [hostId, setHostId] = useState(initialConnectId || '');
-  const [status, setStatus] = useState('');
+  // tone: wait | ok | error
+  const [status, setStatus] = useState({ tone: 'idle', text: '' });
   const [receivedDrill, setReceivedDrill] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const peerRef = useRef(null);
@@ -231,42 +235,68 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
       if (peerRef.current) peerRef.current.destroy();
       const peer = new Peer(PEER_OPTIONS);
       peerRef.current = peer;
-      setStatus('つないでいます...');
+      setStatus({ tone: 'wait', text: 'つないでいます...' });
       peer.on('open', () => {
         const conn = peer.connect(fullId);
-        conn.on('open', () => setStatus('つながりました！まっています...'));
+        conn.on('open', () => setStatus({ tone: 'wait', text: 'つながりました！まっています...' }));
         conn.on('data', data => {
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.type === 'drill') {
-              setReceivedDrill(parsed.data);
-              setStatus('ドリルをうけとりました！');
-              audioCtrl.playSE('chest_open');
-            }
-          } catch (e) { setStatus('データのうけとりにしっぱいしました'); }
+          // 公開サーバーの上で数字だけを頼りにつながった相手から来るので、外部入力として確かめる。
+          // 大きすぎる・形が違うものは開かずに捨てる（リンクで受け取るときと同じ検証）。
+          const drill = parseDrillMessage(data);
+          if (!drill) {
+            setStatus({ tone: 'error', text: 'ドリルの うけとりに しっぱいしました' });
+            return;
+          }
+          setReceivedDrill(drill);
+          setStatus({ tone: 'ok', text: 'ドリルをうけとりました！' });
+          audioCtrl.playSE('chest_open');
+          // 受け取ったら、それ以上は受けつけない（確認しているあいだに中身を差し替えられないように）
+          peer.destroy();
         });
-        conn.on('error', () => setStatus('せつぞくエラーがおきました'));
+        conn.on('error', () => setStatus({ tone: 'error', text: 'つうしんが とちゅうで きれました' }));
       });
-      peer.on('error', () => setStatus('つなげませんでした。IDをかくにんしてください'));
-    } catch (e) { setStatus('PeerJS のじゅんびにしっぱいしました'); }
+      peer.on('error', (err) => {
+        const kind = classifyPeerError(err);
+        if (kind === 'not-found') {
+          setStatus({ tone: 'error', text: 'その すうじの せんせいが みつかりません。すうじを たしかめてね' });
+        } else if (kind === 'unsupported') {
+          setStatus({ tone: 'error', text: 'この ブラウザでは つかえません。せんせいに「リンク」で くばってもらってね' });
+        } else {
+          setStatus({ tone: 'error', text: 'つうしんが とめられているかもしれません。せんせいに「リンク」で くばってもらってね' });
+        }
+      });
+    } catch (e) { setStatus({ tone: 'error', text: 'つうしんの じゅんびに しっぱいしました' }); }
   }, [Peer, hostId]);
 
   // 4桁入力完了で自動接続
   useEffect(() => {
-    if (hostId.length === 4 && isPeerLoaded && !receivedDrill) {
+    if (hostId.length === 4 && Peer && !receivedDrill) {
       // 少し待ってから接続（キーパッドアニメーション用）
       const timer = setTimeout(handleConnect, 300);
       return () => clearTimeout(timer);
     }
-  }, [hostId, isPeerLoaded, receivedDrill, handleConnect]);
+  }, [hostId, Peer, receivedDrill, handleConnect]);
+
+  // このアプリに無い漢字IDは落とす（版の違う端末どうしでも壊れないように）
+  const knownKanjis = (receivedDrill?.kanjis || []).filter(id => KNOWN_KANJI_IDS.has(id));
+  const checkCode = receivedDrill ? drillCheckCode(receivedDrill) : '';
 
   const handleSaveDrill = () => {
-    if (!receivedDrill) return;
-    const newStats = { ...stats, myDrills: [...(stats.myDrills || []), { ...receivedDrill, createdAt: Date.now() }] };
+    if (!receivedDrill || knownKanjis.length === 0) return;
+    const newDrill = { name: receivedDrill.name, kanjis: knownKanjis, createdAt: Date.now() };
+    const newStats = { ...stats, myDrills: [...(stats.myDrills || []), newDrill] };
     setStats(newStats);
-    StorageAPI.saveStats(newStats);
+    // 受け取りは一度きりなので、保存直後にタブを閉じられても消えないよう即時保存する
+    StorageAPI.saveStatsImmediate(newStats);
     audioCtrl.playSE('success');
     setView('myDrills');
+  };
+
+  const handleDiscard = () => {
+    audioCtrl.playSE('click');
+    setReceivedDrill(null);
+    setHostId('');
+    setStatus({ tone: 'idle', text: '' });
   };
 
   const handleQRScan = useCallback((scannedId) => {
@@ -277,7 +307,7 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('home')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
+        <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
@@ -296,7 +326,7 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
             value={hostId}
             onChange={setHostId}
             onSubmit={handleConnect}
-            disabled={!isPeerLoaded}
+            disabled={!Peer}
           />
 
           {/* QRコードスキャンボタン */}
@@ -311,35 +341,36 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
             <Camera size={22} /> QRコードでよみとる
           </MotionButton>
 
-          {!isPeerLoaded && !peerLoadError && (
+          {!Peer && !peerLoadError && (
             <div className="text-xs text-center text-[var(--text)] opacity-50">
               じゅんびしています...
             </div>
           )}
           {peerLoadError && (
-            <div className="text-xs text-center text-rose-600 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-3 py-2">
-              つうしんライブラリのよみこみに しっぱいしました。<br />
-              ネットワークをかくにんしてください。
+            <div role="alert" className="text-xs text-center text-rose-600 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-3 py-2">
+              {offline
+                ? <>いまは インターネットに つながっていません。<br />つながってから もういちど ひらいてね。</>
+                : <>つうしんの じゅんびが できませんでした。<br />{F("先生","せんせい")}に「リンク」で くばってもらってね。</>}
             </div>
           )}
         </div>
       )}
 
       {/* 接続ステータス */}
-      {status !== '' && (
-        <div className={`border-[3px] rounded-xl p-4 font-bold text-center transition-colors ${
-          status.includes('うけとり') ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-            : status.includes('エラー') || status.includes('しっぱい') ? 'bg-rose-50 border-rose-400 text-rose-700'
+      {status.text !== '' && (
+        <div role="status" aria-live="polite" className={`border-[3px] rounded-xl p-4 font-bold text-center transition-colors ${
+          status.tone === 'ok' ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+            : status.tone === 'error' ? 'bg-rose-50 border-rose-400 text-rose-700'
             : 'bg-[var(--bg)] border-[var(--text)] text-[var(--text)]'
         }`}>
-          <div className="text-2xl mb-1">
-            {status.includes('うけとり') ? '🎉' : status.includes('エラー') || status.includes('しっぱい') ? '😢' : '⏳'}
+          <div className="text-2xl mb-1" aria-hidden="true">
+            {status.tone === 'ok' ? '🎉' : status.tone === 'error' ? '😢' : '⏳'}
           </div>
-          {status}
+          {status.text}
         </div>
       )}
 
-      {/* 受信したドリル */}
+      {/* 受信したドリル（保存する前に、先生の画面と見くらべてもらう） */}
       <AnimatePresence>
         {receivedDrill && (
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -348,14 +379,28 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
               <Gift size={20} className="text-emerald-500" /> {receivedDrill.name}
             </div>
             <div className="flex flex-wrap gap-1">
-              {(receivedDrill.kanjis || []).map(id => {
+              {knownKanjis.map(id => {
                 const k = KANJI_DATA.find(k => k.id === id);
                 return k ? <span key={id} className="text-2xl font-black">{k.char}</span> : null;
               })}
             </div>
-            <MotionButton variant="success" onClick={handleSaveDrill}
-              className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#065f46]">
-              マイドリルに{F("保存","ほぞん")}する
+            {checkCode && (
+              <div className="flex items-center justify-center gap-3 bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-2xl px-4 py-2">
+                <span className="text-3xl leading-none" aria-label={`かくにんのしるし ${checkCode}`}>{checkCode}</span>
+                <span className="text-xs font-bold text-[var(--text)] text-left leading-relaxed">{F("先生","せんせい")}の {F("画面","がめん")}の しるしと<br />おなじか たしかめてね</span>
+              </div>
+            )}
+            {knownKanjis.length === 0 ? (
+              <p className="text-sm font-bold text-rose-700">この ドリルには つかえる {F("漢字","かんじ")}が ありませんでした。</p>
+            ) : (
+              <MotionButton variant="success" onClick={handleSaveDrill}
+                className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#065f46]">
+                おなじだったら マイドリルに{F("保存","ほぞん")}する
+              </MotionButton>
+            )}
+            <MotionButton variant="secondary" onClick={handleDiscard}
+              className="w-full py-3 text-sm font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">
+              ちがったら うけとらない（すうじを いれなおす）
             </MotionButton>
           </motion.div>
         )}

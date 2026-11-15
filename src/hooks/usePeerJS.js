@@ -50,3 +50,20 @@ export const usePeerJS = () => {
   return { Peer: lib, isLoaded, loadError, offline };
 };
 
+/**
+ * PeerJS のエラーの種類を、画面に出す案内の種類にまとめる。
+ * - id-taken    : 数字がほかの人に使われていた（作り直せばよい）
+ * - not-found   : その数字の相手がいない（打ちまちがい・相手が画面を閉じた）
+ * - unsupported : この端末のブラウザでは使えない
+ * - blocked     : 仲介のサーバーに届かない（校内フィルタ・圏外・サーバーの不調）
+ * @param {{ type?: string }} err
+ * @returns {'id-taken'|'not-found'|'unsupported'|'blocked'}
+ */
+export function classifyPeerError(err) {
+  const type = err?.type;
+  if (type === 'unavailable-id') return 'id-taken';
+  if (type === 'peer-unavailable') return 'not-found';
+  if (type === 'browser-incompatible') return 'unsupported';
+  return 'blocked';
+}
+
