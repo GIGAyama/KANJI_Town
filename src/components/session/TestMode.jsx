@@ -6,7 +6,7 @@ import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
 import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
-import { gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
+import { allowedEvaluations, gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
@@ -126,10 +126,14 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
     audioCtrl.playSE('click');
   };
 
+  // 1本も書かずに答えを見て「よくできた」を押せないよう、書いてからでないと答え合わせに進めない。
+  // 書き順データの読みこみ中は、前の字のお手本で採点してしまうので待つ。
+  const canReveal = userStrokes.length > 0 && !isDrawing && !isLoading;
   const handleReveal = () => {
+    if (!canReveal) return;
     setShowAnswer(true);
     audioCtrl.playSE('click');
-    if (strokeData && strokeData.length > 0 && userStrokes.length > 0) {
+    if (strokeData && strokeData.length > 0) {
       const result = gradeStrokes(userStrokes, strokeData, canvasSize);
       setGradeResult(result);
       setRecommendedEval(recommendEvaluation(result));
@@ -137,6 +141,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
   };
 
   const banner = getScoreBanner(gradeResult);
+  const allowedKeys = allowedEvaluations(recommendedEval);
 
   const main = (
     <div className="flex flex-row flex-wrap gap-4 md:gap-6 justify-center items-center w-full h-full overflow-y-auto no-scrollbar content-center pb-4 pt-4">
@@ -200,7 +205,12 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
         </div>
       )}
       {!showAnswer ? (
-        <MotionButton variant="primary" onClick={handleReveal} className="w-full py-5 md:py-8 text-xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] animate-pulse"><Eye size={28} /> こたえあわせ</MotionButton>
+        <>
+          {userStrokes.length === 0 && (
+            <div className="text-center text-xs md:text-sm font-bold text-[var(--text)] opacity-70" role="status">✏️ まず {F("書","か")}いてみよう</div>
+          )}
+          <MotionButton variant="primary" onClick={handleReveal} disabled={!canReveal} aria-disabled={!canReveal || undefined} className={`w-full py-5 md:py-8 text-xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] ${canReveal ? 'animate-pulse' : ''}`}><Eye size={28} /> こたえあわせ</MotionButton>
+        </>
       ) : (
         <div className="flex flex-col gap-2 md:gap-3 animate-in slide-in-from-bottom-2">
           {banner ? (
@@ -214,13 +224,14 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
           )}
           {recommendedEval && (
             <div className="text-center text-[10px] md:text-xs font-bold text-[var(--text)] opacity-70">
-              コンピューターの おすすめだよ！ちがうと おもったら ほかのボタンでも OK👌
+              コンピューターの おすすめより 1つ{F("上","うえ")}まで えらべるよ
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
             {EVAL_BUTTONS.map(btn => {
               const isRecommended = recommendedEval === btn.key;
               const hasRecommendation = recommendedEval !== null;
+              const isAllowed = allowedKeys.includes(btn.key);
               return (
                 <div key={btn.key} className="relative">
                   {isRecommended && (
@@ -234,8 +245,10 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
                   )}
                   <MotionButton
                     variant={btn.variant}
-                    onClick={() => onEvaluate(btn.key)}
-                    disabled={evaluationLocked}
+                    // 採点できなかった（お手本が無い）ときの評価は、自己申告として記録で区別する
+                    onClick={() => { if (isAllowed) onEvaluate(btn.key, { selfReport: !hasRecommendation }); }}
+                    disabled={evaluationLocked || !isAllowed}
+                    aria-disabled={!isAllowed || undefined}
                     className={`w-full font-black border-[var(--text)] ${
                       isRecommended
                         ? `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`

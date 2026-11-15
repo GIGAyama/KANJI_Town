@@ -420,6 +420,23 @@ export function recommendEvaluation(result) {
   return 'again';
 }
 
+/** 自己評価のボタンの並び（下から順に） */
+export const EVALUATION_ORDER = ['again', 'hard', 'good', 'easy'];
+
+/**
+ * 自己評価で選べるボタンを返す。
+ * 採点できたときは、おすすめより1段上までしか選べない（自分に厳しくつける方向は自由）。
+ * 以前は線を1本も書かずに「よくできた」を押せ、間隔反復・技能点・EXP が自己申告どおりに進んでいた。
+ * お手本が読めず採点できないとき（recommended が null）だけ、すべて選べる。
+ * @param {'again'|'hard'|'good'|'easy'|null} recommended - recommendEvaluation の結果
+ * @returns {Array<'again'|'hard'|'good'|'easy'>}
+ */
+export function allowedEvaluations(recommended) {
+  const index = EVALUATION_ORDER.indexOf(recommended);
+  if (index < 0) return [...EVALUATION_ORDER];
+  return EVALUATION_ORDER.slice(0, Math.min(EVALUATION_ORDER.length, index + 2));
+}
+
 /**
  * 合計スコアから評価ラベルを取得する
  * @param {number} total - 合計スコア(0-100)

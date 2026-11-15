@@ -92,7 +92,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
   // 画面を離れたあとに onFinish が動いて結果画面へ飛ばないよう、タイマーを止める
   useEffect(() => () => clearTimeout(evaluationTimerRef.current), []);
 
-  const handleEvaluation = (evalType) => {
+  const handleEvaluation = (evalType, { selfReport = false } = {}) => {
     if (evaluatingRef.current) return;
     evaluatingRef.current = true;
     if (evalType === 'easy') onRecordEasy();
@@ -102,7 +102,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
     setActiveStamp(evalType === 'hard' ? 'good' : evalType); // hard は good スタンプで表示
     evaluationTimerRef.current = setTimeout(() => {
       setActiveStamp(null);
-      const success = onUpdateStat(currentKanji, evalType, WRITING_SKILLS);
+      const success = onUpdateStat(currentKanji, evalType, { ...WRITING_SKILLS, selfReport });
       if (success) {
         const nextQueue = queue.slice(1);
         onProgress?.(nextQueue);

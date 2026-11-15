@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
+import { allowedEvaluations, gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
 
@@ -292,4 +292,19 @@ test('画数ちがい・採点できない結果は、書き順のまちがい�
   assert.equal(isOrderMistake(noModel), false);
   assert.equal(recommendEvaluation(noModel), 'again');
   assert.equal(recommendEvaluation(null), 'again');
+});
+
+test('自己評価は、おすすめより1段上までしか選べない（厳しくつける方向は自由）', () => {
+  assert.deepEqual(allowedEvaluations('again'), ['again', 'hard']);
+  assert.deepEqual(allowedEvaluations('hard'), ['again', 'hard', 'good']);
+  assert.deepEqual(allowedEvaluations('good'), ['again', 'hard', 'good', 'easy']);
+  assert.deepEqual(allowedEvaluations('easy'), ['again', 'hard', 'good', 'easy']);
+  // 画数ちがいは again がおすすめになり、「よくできた」「書けた」は選べない
+  const wrongCount = gradeStrokes(sanUser([0, 1]), SAN, CANVAS);
+  assert.deepEqual(allowedEvaluations(recommendEvaluation(wrongCount)), ['again', 'hard']);
+});
+
+test('採点できないとき（おすすめが無いとき）だけ、自己評価をすべて選べる', () => {
+  assert.deepEqual(allowedEvaluations(null), ['again', 'hard', 'good', 'easy']);
+  assert.deepEqual(allowedEvaluations(undefined), ['again', 'hard', 'good', 'easy']);
 });

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { migrateCard, recordPracticeAttempt } from '../src/systems/srs.js';
+import { migrateCard, recordPracticeAttempt, recordSelfReport } from '../src/systems/srs.js';
+
+test('採点できずに自己申告で評価したときだけ、その回数と時刻を記録する', () => {
+  assert.deepEqual(recordSelfReport({}, false, 100), {});
+  assert.deepEqual(recordSelfReport({}, true, 100), { selfReports: 1, lastSelfReportAt: 100 });
+  assert.deepEqual(recordSelfReport({ selfReports: 2 }, true, 200), { selfReports: 3, lastSelfReportAt: 200 });
+});
 
 test('既存カードへ苦手特訓の進捗フィールドを安全に追加する', () => {
   const migrated = migrateCard({

@@ -226,6 +226,15 @@ export function recordPracticeAttempt(card, evaluation, now = Date.now()) {
 }
 
 /**
+ * お手本が読めずに採点できず、自己申告だけで評価した回数を数える。
+ * 先生が「採点した結果」と「本人の申告」を記録で見分けられるようにする。
+ */
+export function recordSelfReport(card, selfReport, now = Date.now()) {
+  if (!selfReport) return {};
+  return { selfReports: (card?.selfReports || 0) + 1, lastSelfReportAt: now };
+}
+
+/**
  * 古いカードデータを現在のスキーマに移行する
  * @param {object|null} card
  * @returns {CardState}

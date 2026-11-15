@@ -13,7 +13,7 @@ import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
-import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
+import { calculateNextReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
 import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { readSharedDrill } from './systems/drill-share';
@@ -618,7 +618,7 @@ export default function App() {
     });
   }, []);
 
-  const handleUpdateStat = (kanjiObj, evalType, { skills = [] } = {}) => {
+  const handleUpdateStat = (kanjiObj, evalType, { skills = [], selfReport = false } = {}) => {
     const id = kanjiObj.id;
     recordStudyAttempt(id, { ok: evalType !== 'again', skill: skills[0] });
     const cur = migrateCard(stats.kanjiStats?.[id]);
@@ -638,6 +638,7 @@ export default function App() {
             [id]: {
               ...latestWithMastery,
               ...recordPracticeAttempt(latestWithMastery, evalType),
+              ...recordSelfReport(latestWithMastery, selfReport),
             },
           },
         };
@@ -706,6 +707,7 @@ export default function App() {
           status: newStatus,
           mistakes: evalType === 'again' ? (curWithMastery.mistakes || 0) + 1 : (curWithMastery.mistakes || 0),
           ...recordPracticeAttempt(curWithMastery, evalType),
+          ...recordSelfReport(curWithMastery, selfReport),
         },
       },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
