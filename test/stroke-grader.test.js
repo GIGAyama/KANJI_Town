@@ -295,6 +295,44 @@ test('画数ちがい・採点できない結果は、書き順のまちがい�
   assert.equal(recommendEvaluation(null), 'again');
 });
 
+// ── でたらめな入力 ──
+const dotAt = (x, y) => [{ x: x * CANVAS, y: y * CANVAS, time: 0 }, { x: x * CANVAS + 1, y: y * CANVAS + 1, time: 30 }];
+const ICHI = [expectedStroke({ x: 0.15, y: 0.5 }, { x: 0.85, y: 0.5 }, 'tome')];
+
+test('点を打っただけの入力は 30 点未満で、書き順・とめの点も入らない', () => {
+  // 以前は「一」に点を1つ打つと 45 点（書き順 28 ＋ とめ 17）で、おすすめが「むずかしい」（合格扱い）になった
+  for (const [label, strokes, model] of [
+    ['一に右下の点', [dotAt(0.8, 0.8)], ICHI],
+    ['三に中央の点3つ', [dotAt(0.5, 0.5), dotAt(0.5, 0.5), dotAt(0.5, 0.5)], SAN],
+  ]) {
+    const result = gradeStrokes(strokes, model, CANVAS);
+    assert.ok(result.total < 30, `${label}: ${result.total}`);
+    assert.equal(result.order, 0, `${label}: 書き順 ${result.order}`);
+    assert.equal(result.ending, 0, `${label}: とめ ${result.ending}`);
+    assert.equal(recommendEvaluation(result), 'again', label);
+    assert.ok(!result.details.includes('書き順：ぜんぶ正しい ✓'), label);
+    assert.ok(result.details.some(d => d.includes('おてほんを よく見よう')), label);
+  }
+});
+
+test('お手本とちがう向きの線（「一」に縦線）も 30 点未満になる', () => {
+  const result = gradeStrokes([userStroke({ x: 0.5, y: 0.15 }, { x: 0.5, y: 0.85 })], ICHI, CANVAS);
+  assert.ok(result.total < 30, `${result.total}`);
+  assert.equal(recommendEvaluation(result), 'again');
+  // 形の分からない画は、書き順のまちがいとも数えない（ボス・サバイバルの「書き順ちがい」にしない）
+  assert.equal(isOrderMistake(result), false);
+});
+
+test('形の取れた字では、書き順・とめの点はこれまでどおり入る', () => {
+  const clean = gradeStrokes(sanUser(), SAN, CANVAS);
+  assert.ok(clean.order >= 25, `${clean.order}`);
+  // 少しずつずれた字（各画を 0.03 ずらす）でも書き順は満点
+  const shifted = SAN.map((s, i) => userStroke(s.s, s.e, { offset: { x: (i - 1) * 0.03, y: 0.02 } }));
+  const result = gradeStrokes(shifted, SAN, CANVAS);
+  assert.equal(result.orderMatch, true);
+  assert.equal(result.order, clean.order);
+});
+
 test('自己評価は、おすすめより1段上までしか選べない（厳しくつける方向は自由）', () => {
   assert.deepEqual(allowedEvaluations('again'), ['again', 'hard']);
   assert.deepEqual(allowedEvaluations('hard'), ['again', 'hard', 'good']);

@@ -25,6 +25,13 @@ const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
 const distanceOf = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/** 点の並びの長さ（正規化座標） */
+function pathLength(points) {
+  let length = 0;
+  for (let i = 1; i < points.length; i++) length += distanceOf(points[i - 1], points[i]);
+  return length;
+}
+
 /** 距離を 0-1 のスコアへ（0で満点、threshold で 0点） */
 const distanceScore = (dist, threshold) => clamp01(1 - dist / threshold);
 
@@ -242,7 +249,8 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   let endTotal = 0;
   let endingTotal = 0;
   let endingCount = 0;
-  let orderCorrect = 0;
+  let orderPoints = 0;
+  let orderMistakes = 0;
   const strokeFeedback = [];
   const reversedStrokes = [];
   const endingMisses = [];
@@ -255,7 +263,6 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const discriminable = assignment[i] !== i
       && cost[i][assignment[i]] < cost[i][i] - STROKE_THRESHOLDS.ORDER_AMBIGUITY_MARGIN;
     const inOrder = !discriminable;
-    if (inOrder) orderCorrect++;
 
     if (!stroke || stroke.length === 0) {
       strokeFeedback.push({ index: i, matched: assignment[i], inOrder, shape: 0, reversed: false, ending: null });
@@ -268,6 +275,17 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const shapeRatio = distanceScore(shape.forward, tolerances.shape);
     shapeTotal += shapeRatio;
     if (isReversed) reversedStrokes.push(i + 1);
+    // お手本のどの画とも似ていない画（点を打っただけ、でたらめな線）は、書き順・とめの点に数えない。
+    // 以前は対応づけの誤りがはっきりしない限り「書き順正しい」になり、3点未満の画は「とめ」と判定されて、
+    // 点を1つ打つだけで 45 点（おすすめ「むずかしい」＝合格扱い）になっていた。
+    // 形の分からない画は、どの画のつもりかも分からないので、書き順のまちがいとも数えない。
+    // 長い画のところに点を打っただけのものも、形が近く見えることがあるので長さも見る（点の画はそのまま）
+    const targetLength = pathLength(target.points);
+    const lengthOk = targetLength < GRADING.SHORT_STROKE_LENGTH
+      || pathLength(stroke) >= targetLength * GRADING.MIN_LENGTH_RATIO;
+    const recognizable = shapeRatio >= GRADING.MIN_STROKE_SHAPE && lengthOk;
+    if (inOrder && recognizable) orderPoints++;
+    if (!inOrder && recognizable) orderMistakes++;
 
     startTotal += distanceScore(distanceOf(stroke[0], target.s), tolerances.start);
     endTotal += distanceScore(distanceOf(stroke[stroke.length - 1], target.e), tolerances.end);
@@ -275,9 +293,9 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const actualEnding = Analyzer.analyzeEnding(stroke).code;
     const similarity = endingSimilarity(target.endingType ?? null, actualEnding);
     if (similarity !== null) {
-      endingTotal += similarity;
+      endingTotal += recognizable ? similarity : 0;
       endingCount++;
-      if (similarity < 1) {
+      if (recognizable && similarity < 1) {
         endingMisses.push({ index: i + 1, expected: target.endingType, actual: actualEnding });
       }
     }
@@ -325,7 +343,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   // ── 配点（評価できない項目は他項目へ按分）──
   const components = [
     { key: 'shape', weight: WEIGHTS.SHAPE, ratio: shapeTotal / expectedCount },
-    { key: 'order', weight: WEIGHTS.ORDER, ratio: orderCorrect / expectedCount },
+    { key: 'order', weight: WEIGHTS.ORDER, ratio: orderPoints / expectedCount },
     { key: 'ending', weight: WEIGHTS.ENDING, ratio: endingCount > 0 ? endingTotal / endingCount : null },
     { key: 'cross', weight: WEIGHTS.CROSS, ratio: crossPairs > 0 ? crossTotal / crossPairs : null },
     { key: 'start', weight: WEIGHTS.START, ratio: startTotal / expectedCount },
@@ -355,14 +373,18 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   total = Math.max(0, Math.min(100, total));
 
   // 書き順の誤りは、見た目が同じでも別の学びなので合格させない
-  const orderMatch = orderCorrect === expectedCount;
+  const orderMatch = orderMistakes === 0;
   if (!orderMatch) total = Math.min(total, GRADING.ORDER_FAIL_CAP);
+  // 字の形がほとんどお手本と合わないときは、ほかの項目が残っていても「書けた」側に入れない
+  const meanShape = shapeTotal / expectedCount;
+  if (meanShape < GRADING.SHAPE_FAIL_RATIO) total = Math.min(total, GRADING.SHAPE_FAIL_CAP);
 
   // ── フィードバック文言 ──
-  details.push(shapeComment(shapeTotal / expectedCount));
+  details.push(shapeComment(meanShape));
 
   if (orderMatch) {
-    details.push('書き順：ぜんぶ正しい ✓');
+    // 形の分からない画があるときは、書き順が正しいとは言わない
+    if (orderPoints === expectedCount) details.push('書き順：ぜんぶ正しい ✓');
   } else {
     const firstWrong = strokeFeedback.find(f => !f.inOrder);
     const wrote = firstWrong ? firstWrong.matched + 1 : null;
@@ -391,7 +413,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   if (endingMisses.length > 0) {
     const miss = endingMisses[0];
     details.push(`${miss.index}かくめは ${endingVerb(miss.expected)} ところだよ`);
-  } else if (endingCount > 0) {
+  } else if (endingCount > 0 && endingTotal === endingCount) {
     details.push('とめ・はね・はらい：ばっちり ✓');
   }
 
