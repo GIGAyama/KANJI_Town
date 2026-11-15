@@ -3,11 +3,13 @@
   "maxBytes": 16777216,
   "precache": [
     "index.html",
+    "install-hook.js",
     "offline.html",
     "giga-app-links.js",
     "records-hub-client.js",
     "manifest.json",
     "icons/",
-    "assets/"
+    "assets/",
+    "kanjivg/"
   ]
 }

@@ -3,9 +3,11 @@
 
 <head>
   <meta charset="UTF-8">
+  <!-- このページは文章だけ。スクリプトも外部の読みこみも使わない -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>利用規約｜KANJI_Town</title>
-  <meta name="description" content="KANJI_Town の利用規約です。利用条件、禁止事項、免責事項について定めています。">
+  <title>利用規約｜マイ漢字タウン</title>
+  <meta name="description" content="マイ漢字タウン（KANJI_Town）の利用規約です。利用条件、禁止事項、免責事項について定めています。">
   <meta name="theme-color" content="#124a94">
   <link rel="canonical" href="https://kanji-town.giga-school.com/terms.html">
   <style>
@@ -57,7 +59,7 @@
 <body>
   <main>
     <h1>利用規約</h1>
-    <p class="meta"><span>KANJI_Town</span><span>最終更新：2026年08月17日</span></p>
+    <p class="meta"><span>マイ漢字タウン（KANJI_Town）</span><span>最終更新：2026年11月15日</span></p>
 
     <div class="callout">
       <p><strong>要点</strong></p>
@@ -70,7 +72,7 @@
 
     <h2>第1条（適用）</h2>
     <p>本規約は、GIGAyama（以下「制作者」）が <code>kanji-town.giga-school.com</code> において提供する
-      「KANJI_Town」（以下「本アプリ」）の利用条件を定めるものです。
+      「マイ漢字タウン（KANJI_Town）」（以下「本アプリ」）の利用条件を定めるものです。
       本アプリを利用された方（以下「利用者」）は、本規約に同意したものとみなします。</p>
 
     <h2>第2条（利用料金）</h2>
@@ -79,7 +81,7 @@
     <h2>第3条（データの取り扱い）</h2>
     <ol>
       <li>本アプリは静的ファイルとして配信され、制作者が運用するサーバーに利用者のデータが送信・保存されることはありません。</li>
-      <li>利用者が入力したデータは、利用者の端末内、または利用者ご自身の Google アカウント内に保存されます。</li>
+      <li>学習の記録・設定・マイドリルは、利用者の端末のブラウザ内だけに保存されます。本アプリは Google アカウントへのログインを求めず、Google ドライブ等へも保存しません。</li>
       <li>ブラウザの設定変更、端末の故障、外部サービスの仕様変更等によりデータが失われる可能性があります。
         重要なデータについては、利用者ご自身の責任でバックアップを取得してください。</li>
       <li>詳細は<a href="https://kanji-town.giga-school.com/privacy.html">プライバシーポリシー</a>をご確認ください。</li>
@@ -100,8 +102,8 @@
       <li>本アプリは現状有姿で提供されます。制作者は、本アプリの正確性、完全性、有用性、特定目的への適合性、および継続的な提供について、いかなる保証も行いません。</li>
       <li>制作者は、本アプリの利用または利用不能によって利用者に生じた損害について、責任を負いません。
         ただし、制作者に故意または重過失がある場合はこの限りではありません。</li>
-      <li>本アプリが依存する外部サービス（Google、GitHub 等）の障害・仕様変更により、
-        本アプリが利用できなくなる場合があります。</li>
+      <li>本アプリが依存する外部サービス（配信に使う GitHub Pages、「4けたの数字で送る」が使う PeerJS の公開サーバー等）の障害・仕様変更により、
+        本アプリの全部または一部が利用できなくなる場合があります。</li>
       <li>本アプリは、勤務先の学校・教育委員会その他いかなる組織の公式なサービスでもなく、
         制作者が個人として公開しているものです。</li>
     </ol>
@@ -114,6 +116,13 @@
       <a href="https://github.com/GIGAyama" target="_blank" rel="noopener">GitHub</a>
       で公開しています。再利用の条件は、各リポジトリのライセンス表示に従ってください。
       利用者が本アプリで作成したデータの権利は、利用者に帰属します。</p>
+    <p>本アプリは、次の第三者の成果物を同梱しています。これらには、それぞれのライセンスが適用されます。</p>
+    <ul>
+      <li>書き順データ：KanjiVG（Copyright (C) 2009/2010/2011 Ulrich Apel、クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0））。
+        本アプリが同梱する学年別の書き順データ（<code>kanjivg/</code>）は KanjiVG から作った派生物で、同じ CC BY-SA 3.0 で提供します。</li>
+      <li>書体：Zen Maru Gothic・Klee One（SIL Open Font License 1.1。本文は <code>fonts/OFL.txt</code>）</li>
+      <li>プログラムの部品：PeerJS・qrcode（MIT License）、jsQR（Apache License 2.0）ほか（本文は <code>licenses/third-party.txt</code>）</li>
+    </ul>
 
     <h2>第7条の2（第三者の権利について）</h2>
     <p>本アプリが、既存の商品・作品・サービスと同じ名称や似た名称を用いている場合であっても、
@@ -135,11 +144,11 @@
     <h2>お問い合わせ</h2>
     <p><a href="mailto:basstar.1102@gmail.com">basstar.1102@gmail.com</a></p>
 
-    <p><a href="https://kanji-town.giga-school.com/">← KANJI_Town に戻る</a>　/　<a href="https://giga-school.com/">GIGA school トップ</a>　/　<a href="https://kanji-town.giga-school.com/privacy.html">プライバシーポリシー</a></p>
+    <p><a href="https://kanji-town.giga-school.com/">← マイ漢字タウンに戻る</a>　/　<a href="https://giga-school.com/">GIGA school トップ</a>　/　<a href="https://kanji-town.giga-school.com/privacy.html">プライバシーポリシー</a></p>
   </main>
 
   <footer>
-    <p>KANJI_Town（kanji-town.giga-school.com）／ GIGAyama</p>
+    <p>マイ漢字タウン（kanji-town.giga-school.com）／ GIGAyama</p>
   </footer>
 </body>
 

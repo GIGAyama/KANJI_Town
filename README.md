@@ -120,17 +120,33 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
   ずれていると `npm run check` が落ちる。**リリースのたびに両方上げる。**
 - 更新は無言で適用せず、`UpdateToast` で児童に確認してから切り替える
   （学習の途中で画面が飛ばないようにするため）。実装は `src/systems/pwa.js`。
-- インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` 最上部で
-  受け取る。**ここより後ろに移すと、通信が遅い端末で取りこぼす。**
+- インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` の最初に読む
+  `public/install-hook.js` で受け取る（CSP のためインラインには書かない）。**defer / async を付けたり、
+  ほかの読み込みより後ろに移したりすると、通信が遅い端末で取りこぼす。**`npm run check`（C7）が見る。
 
 ## 🔐 セキュリティ設計
 
 サーバーを持たない構成のため、信頼境界は「端末の中」だけで完結する。
 
 - 学習の記録・ドリルはすべて端末の `localStorage` に保存し、外部送信しない。
-- ドリルの受け渡しはサーバーを経由しない。リンク配布はURLに内容を埋め込み
+  例外は、先生が「4けたの数字で送る」で送るドリル（下記）と、`*.giga-school.com` で開いたときに
+  学習ログ（`study.records.v1`）を記録ボックスへ写すこと（同じ端末の iframe へ postMessage するだけ）。
+  外部との通信の一覧は「制限とクォータ」と `privacy.html` の「5. 外部との通信」にある。
+- ドリルの受け渡しはサーバーに保存しない。リンク配布はURLに内容を埋め込み
   （`src/systems/drill-share.js`）、教室内配布は PeerJS の P2P 通信を使う。
   **受け取ったドリルは外部入力として扱い、取り込み時に検証する。**
+- 「4けたの数字で送る」は、PeerJS の公開サーバー（`0.peerjs.com`）の上で
+  `kanji-town-` ＋ 4けたの ID を使う。この名前空間は全国の利用者で共有なので、
+  打ちまちがい・偶然の衝突・先に同じ数字を取った第三者につながる余地がある。そのため:
+  - 受け取ったメッセージは 8,192 字を超えたら開かずに捨て、リンクと同じ形（`param`）を
+    `decodeDrillParam` に通す（名前40字・漢字300字・ID の形・重複除去。余分な欄は捨てる）。
+    実装は `src/systems/drill-p2p.js`。このアプリに無い漢字 ID は保存の前に落とす。
+  - 保存する前に、ドリルの名前と漢字に加えて「かくにんの しるし」（中身から作る絵2つ）を
+    先生の画面と児童の画面の両方に出し、見くらべてから保存してもらう。違えば「うけとらない」。
+  - 保存は即時（`saveStatsImmediate`）。受け取ったら接続を閉じ、確認中に差し替えられないようにする。
+  - 数字を6けたにする・接頭辞を変えるといった手は、教室での入力の手間と、更新前の版の端末との
+    互換が崩れるため取っていない。外部のサーバーを使わずに配りたいときは「リンクで配る」を使う
+    （つながらないときは送る画面からそちらへ案内する）。
 - 音読チャレンジの音声は音量（RMS）に変換して判定に使うだけで、録音・保存・送信をしない。
   クラウド音声認識（`SpeechRecognition`）は音声が外部へ出るため使用しない。
 - APIキー・スプレッドシートID・メールアドレスの直書きはない。
@@ -138,17 +154,31 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 - `localStorage.clear()` は使わない。`study.records.v1` はアプリ間共有キーであり、
   リセット処理の対象に含めない。
 
-> **CSP は未導入。** 実行時に外部から読み込むものがあるため、
-> 許可リストを確定させたうえで別途投入する（下記「制限とクォータ」を参照）。
+- **CSP（Content-Security-Policy）を `index.html` の `<meta>` に置いている**（GitHub Pages は応答ヘッダを
+  足せないため。`frame-ancestors` と `report-uri` は meta では効かない）。中身は
+  `script-src 'self'`（同梱した JS だけ。インラインの script とイベント属性は動かない）、
+  `connect-src 'self' https://0.peerjs.com wss://0.peerjs.com`（「4けたの数字で送る」の仲介だけ）、
+  `frame-src https://gamification.giga-school.com`（学習ログの写し）、`img-src 'self' data: blob:`、
+  `font-src 'self'`、`object-src 'none'` など。`style-src` だけは React が `<style>` 要素を作る箇所が
+  あるため `'unsafe-inline'` を残している。
+  - `privacy.html` / `terms.html` / `offline.html` は何も読みこまないので `default-src 'none'`。
+    `offline.html` の「もう一度ためす」は、onclick ではなくアプリの入口へのリンク。
+  - インストールの合図の捕捉は `public/install-hook.js` に出してある（インラインの script をなくすため）。
+  - 開発サーバー（`npm run dev`）では `vite.config.js` が CSP を外す（Vite が開発用のインライン script を入れるため）。
+    ビルドした配信物には必ず残り、`npm run check`（B5）が全ページの CSP・`script-src`・インラインの
+    script とイベント属性・`dist/index.html` を見る。
+  - 外部の接続先を足すときは、CSP・`quality.config.json`・`privacy.html`・下の「制限とクォータ」を同時に直す。
+  - `public/records-export.html` は正本の配布物なので、CSP は正本（`standards/records/`）で入れる。
 
 ## ⚠️ 制限とクォータ
 
 | 項目 | 制限 | 影響と対処 |
 |---|---|---|
-| 外部依存（書き順） | `cdn.jsdelivr.net` の KanjiVG | 校内フィルタで遮断されると手本が出ない。一度取得すればキャッシュされる |
-| 外部依存（P2P） | `cdn.jsdelivr.net` → `unpkg.com` の順に PeerJS を取得 | 両方遮断されると「4けたの数字で送る」が使えない。リンク配布は影響を受けない |
-| 外部依存（QR） | 同じ順で `qrcode`（表示）と `jsQR`（カメラ読み取り）を取得 | 遮断時はQRが出ない・読めない。4けたの数字の入力は使える |
-| 外部依存（フォント） | Google Fonts | 遮断時は端末内のゴシックで代替表示される |
+| 書き順データ | 同梱（`public/kanjivg/grade-1〜6.json`、計約0.9MB・gzip 約0.36MB） | 外部へは取りに行かない。Service Worker が全学年を先読みするので、一度開いた端末は圏外でも全学年の書き順が出る。それでも読めない字（データ破損など）は、音読だけ字（フォント）で続け、書く段階は「この字は あとで」で飛ばせる（正誤は記録しない。次の学習でまた出る） |
+| 外部への接続（「4けたの数字で送る」だけ） | ライブラリ（PeerJS 1.5.4）は同梱。接続の仲介に PeerJS の公開サーバー `0.peerjs.com`（https / wss）、経路探しに `stun.l.google.com:19302`、直接つながらないときの中継に `eu-0.turn.peerjs.com` / `us-0.turn.peerjs.com`（3478）。値は `src/hooks/usePeerJS.js` の `PEER_OPTIONS` | 校内フィルタでこれらが止められていると送れない。そのときは送る画面に理由と「リンクで配る」ボタンが出る。リンク配布は外部へ通信しないので影響を受けない |
+| 学習ログの写し | `*.giga-school.com` で開いたときだけ、`public/records-hub-client.js` が `https://gamification.giga-school.com/records-hub.html` を見えない iframe で開き、学習ログを postMessage で写す | ハブのページを読む通常のアクセスだけで、学習ログはサーバーへ送らない。止められていても学習には影響しない |
+| QR（表示・読み取り） | `qrcode`（表示）と `jsQR`（カメラ読み取り）を同梱し、使う画面を開いたときに読む | 外部へは取りに行かない。読めなかったときは「URLをコピー」「4けたの数字」を使うよう画面に出る |
+| 書体 | 同梱（`src/fonts/`、woff2 11本・計約1.17MB。`unicode-range` で束に分けてある） | 外部へは取りに行かない。端末は画面に要る束だけを読む。書体に無い字（児童が入力した珍しい字など）は端末の書体で出る（□にはならない） |
 | 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
 | 共有できるドリル | 名前40字・漢字300字まで（`?drill=` は4000字まで） | 超えた分は取り込み時に切り捨てる |
 | localStorage | 端末ごと数MB | 上限に達すると `StorageErrorBanner` が出る。エクスポートして整理する |
@@ -157,7 +187,10 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 初回JS | 220KiB（`scripts/check-bundle-budget.mjs`） | 超えるとビルドが落ちる |
 
 外部ホストの許可理由は `quality.config.json` の `securityExceptions` に明記してあり、
-`npm run check` がここに無いホストの追加を検出する。
+`npm run check` がここに無いホストの追加を検出する。ただし検出はソースに書かれた `https://` の
+文字列だけを見る。`stun:` / `turn:` のような URL は見えないので、PeerJS の接続先は
+`src/hooks/usePeerJS.js` の `PEER_OPTIONS` に書き出し、`index.html` の CSP と並べて管理する。
+外へ出る通信を実ブラウザで確かめるときは、ポータルの `standards/web/verify-no-external.mjs` を使う。
 
 ## マイドリルの配り方
 
@@ -237,14 +270,46 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 使っているもの | 用途 | ライセンス |
 | --- | --- | --- |
 | [KanjiVG](https://kanjivg.tagaini.net/) | 漢字の字形と書き順（なぞり書き・お手本・採点） | **CC BY-SA 3.0** © Ulrich Apel / KanjiVG contributors |
-| [jsQR](https://github.com/cozmo/jsQR) | QR コードの読み取り | Apache License 2.0 |
-| [PeerJS](https://peerjs.com/) | 端末どうしの通信 | MIT License |
-| [qrcode](https://github.com/soldair/node-qrcode) | QR コードの生成 | MIT License |
-| Klee One / Zen Maru Gothic（Google Fonts） | 画面の書体 | SIL Open Font License 1.1 |
+| [jsQR](https://github.com/cozmo/jsQR) 1.4.0（npm で同梱） | QR コードの読み取り | Apache License 2.0 |
+| [PeerJS](https://peerjs.com/) 1.5.4（npm で同梱） | 端末どうしの通信 | MIT License |
+| [qrcode](https://github.com/soldair/node-qrcode) 1.5.4（npm で同梱） | QR コードの生成 | MIT License |
+| Zen Maru Gothic / Klee One（Google Fonts から取り寄せて同梱） | 画面の書体 | SIL Open Font License 1.1（`public/fonts/OFL.txt`） |
 
-**書き順データについて。** 本アプリは KanjiVG の SVG を実行時に読み込み、字形の表示・なぞり書きの採点に使っています。
+**書き順データについて。** 本アプリは KanjiVG の **`r20260714`（commit `d95a9762`）** から、
+教育漢字1026字の各画の `d` 属性と `kvg:type` だけを取り出した学年別の JSON
+（`public/kanjivg/grade-1.json`〜`grade-6.json`）を同梱し、字形の表示・なぞり書きの採点に使っています。
+実行時に外部から取得することはありません。版を固定しているので、端末によって手本や採点の基準が変わることもありません。
+
+- 作り方: `node tools/build-kanjivg.mjs`（固定したコミットを `raw.githubusercontent.com` から取り寄せて書き出す。
+  手元の SVG から作るときは `--src <フォルダ>`、コミット済みの生成物と同じかを見るだけなら `--check`）
+- 版を上げるときは `tools/build-kanjivg.mjs` の `KANJIVG_TAG` と `KANJIVG_COMMIT` を両方変え、生成物をコミットする。
+  `test/kanjivg-data.test.js` が、漢字一覧（学年の配当）と生成物がずれていないかを見る。
+
 KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0）** で提供されており、
-表示にあたっては著作者の表示が必要です。アプリの「このアプリについて」にも同じ表示を入れています。
+派生物である同梱データも同じ CC BY-SA 3.0 で配布します（出典・版・変更点は各 JSON の先頭と
+`public/kanjivg/LICENSE.txt` に記載）。アプリの「このアプリについて」にも同じ表示を入れています。
+
+**書体について。** 画面の書体は Google Fonts から**ビルドの前に**取り寄せ、必要な字だけにしたもの
+（`src/fonts/*.woff2` と `src/fonts/fonts.css`）を同梱しています。実行時に Google Fonts へは通信しません。
+`src/index.css` が `fonts.css` を取りこみ、ビルドでファイル名にハッシュが付いて `assets/` に出ます。
+
+- Zen Maru Gothic 500/700/900: かな・英数・記号・教育漢字1026字と、`src/`・`index.html` に出る字（計1,681字、3束）
+- Klee One 600: 教育漢字1026字だけ（漢字を1字だけ大きく見せる所にしか使わないため。400 は使っていないので入れない）
+- 作り直し方: 設定は `fonts.config.json`。道具は艦隊の正本 `standards/fonts/build-fonts.mjs` で、
+  このリポジトリにはまだ配られていない。ポータル（`GIGAyama.github.io`）を隣に置き、
+  このリポジトリの直下で `node ../GIGAyama.github.io/standards/fonts/build-fonts.mjs` を走らせる
+  （正本が `tools/fonts/` に配られたあとは `node tools/fonts/build-fonts.mjs`）。
+  `src/fonts/` と `public/fonts/OFL.txt` が書き直されるので、そのままコミットする。
+- 画面に新しい字を足したときは作り直す。作り直さなくても、その字だけ端末の書体で出る。
+  `test/fonts-config.test.js` が、かな・英数・教育漢字が全ウェイトに入っていることを見て、
+  画面に出るのに書体に無い字があれば知らせる。
+- 両書体とも SIL Open Font License 1.1。本文と著作権表示を `public/fonts/OFL.txt` に置いている
+  （Reserved Font Name は無い）。
+
+**npm で同梱した部品について。** PeerJS・qrcode・jsQR とそれらが使うパッケージの著作権表示と
+ライセンス本文は `public/licenses/third-party.txt` に置き、配信物にも入れています
+（jsQR の Apache License 2.0 は、配る相手にライセンスの写しを渡すことを求めるため）。
+依存の版を上げたら作り直してください。
 
 このリポジトリの LICENSE（MIT）は、**自作のソースコードにのみ適用されます。**
 上記の第三者の成果物には、それぞれのライセンスが適用されます。

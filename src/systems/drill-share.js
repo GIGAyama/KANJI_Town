@@ -33,7 +33,7 @@ export const SHARE_URL_QR_LENGTH = 1000;
 export const CLASSROOM_SHARE_ENDPOINT = 'https://classroom.google.com/share';
 
 /** 漢字ID（例: k3_128）の形式 */
-const KANJI_ID_PATTERN = /^k([1-6])_(\d{1,4})$/;
+export const KANJI_ID_PATTERN = /^k([1-6])_(\d{1,4})$/;
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 
@@ -215,3 +215,4 @@ export function isShareUrlTooLong(url) {
 export function isQrFriendlyUrl(url) {
   return typeof url === 'string' && url.length > 0 && url.length <= SHARE_URL_QR_LENGTH;
 }
+

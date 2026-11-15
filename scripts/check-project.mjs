@@ -122,6 +122,36 @@ for (const f of config.requiredFiles) {
   else if (allowed('no-csp', 'index.html')) warn('B4', 'CSP 未導入（理由付きで許可済み）');
   else fail('B4', 'CSP が無い');
 }
+{
+  // CSP の中身と、CSP の下で動かなくなる書き方を見る。
+  // - 自分で書く HTML にはすべて CSP を置く（records-export.html は正本の配布物なので正本側で入れる）
+  // - script-src は 'self' だけ（外部の取得元・'unsafe-inline'・'unsafe-eval' を入れない）
+  // - インラインの <script> と onclick="" は CSP で止まる。1文字変えても気づけないので、ここで止める
+  // - ビルド後の dist/index.html にも CSP が残り、インラインの <script> が増えていないこと
+  const pages = ['index.html', 'privacy.html', 'terms.html', 'public/offline.html'];
+  const cspOf = (html) => html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)?.[1] ?? null;
+  const inlineProblems = (html) => {
+    const body = html.replace(/<!--[\s\S]*?-->/g, ' ');
+    const out = [];
+    if (/<script(?![^>]*\bsrc=)[^>]*>/i.test(body)) out.push('インラインの <script>');
+    if (/\son[a-z]+\s*=\s*["']/i.test(body)) out.push('インラインのイベント属性（onclick など）');
+    return out;
+  };
+  const problems = [];
+  const targets = [...pages];
+  if (await exists('dist/index.html')) targets.push('dist/index.html');
+  for (const f of targets) {
+    const html = await read(f);
+    if (!html) continue;
+    const csp = cspOf(html);
+    if (!csp) { problems.push(`${f} に CSP が無い`); continue; }
+    const scriptSrc = csp.match(/(?:^|;)\s*script-src\s+([^;]*)/)?.[1] ?? csp.match(/(?:^|;)\s*default-src\s+([^;]*)/)?.[1] ?? '';
+    if (/https?:|\*|'unsafe-inline'|'unsafe-eval'/.test(scriptSrc)) problems.push(`${f} の script-src に外部・inline・eval が入っている（${scriptSrc.trim()}）`);
+    for (const p of inlineProblems(html)) problems.push(`${f} に ${p} がある（CSP で動かない）`);
+  }
+  if (problems.length) fail('B5', problems.join(' / '));
+  else pass('B5', `CSP は ${targets.join(', ')} にあり、script-src は自分のファイルだけ・インラインの script とイベント属性は無い`);
+}
 
 // ── C. PWA ─────────────────────────────────────────────────────
 {
@@ -191,10 +221,16 @@ for (const f of config.requiredFiles) {
   const html = await read('index.html');
   if (!html) fail('C7', 'index.html が読めない');
   else {
-    // 合図は <head> の最上部で受けないと、通信が遅い端末で取りこぼす
-    const bip = html.indexOf('beforeinstallprompt');
-    const firstLink = html.search(/<link|<script[^>]+src=/);
-    if (bip === -1) fail('C7', 'index.html が beforeinstallprompt を捕捉していない');
+    // 合図は <head> の最上部で受けないと、通信が遅い端末で取りこぼす。
+    // CSP（script-src 'self'）のため、捕捉は public/install-hook.js に出してある。
+    // その場合は「最初に読む外部ファイルが install-hook.js で、中で捕捉している」ことを見る。
+    const body = html.replace(/<!--[\s\S]*?-->/g, (m) => ' '.repeat(m.length));
+    const hookSrc = body.match(/<script[^>]+src="\.?\/?install-hook\.js"[^>]*>/);
+    const hook = hookSrc ? await read('public/install-hook.js') : null;
+    const bip = hook && /beforeinstallprompt/.test(hook) ? hookSrc.index : body.indexOf('beforeinstallprompt');
+    const firstLink = body.search(/<link|<script[^>]+src=/);
+    if (hookSrc && /\b(defer|async)\b/.test(hookSrc[0])) fail('C7', 'install-hook.js に defer / async が付いている。合図を取りこぼす');
+    else if (bip === -1) fail('C7', 'index.html が beforeinstallprompt を捕捉していない');
     else if (firstLink !== -1 && bip > firstLink) {
       fail('C7', 'beforeinstallprompt の捕捉が他の読み込みより後ろにある。<head> の最上部へ移すこと');
     } else pass('C7', 'beforeinstallprompt を <head> 最上部で捕捉している');

@@ -8,6 +8,20 @@ const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.met
 const buildCommit = process.env.GITHUB_SHA || 'local';
 const builtAt = new Date().toISOString();
 
+/** 通信できるときにしか使わない塊。先読みに入れない（manualChunks を参照） */
+const NETWORK_ONLY_CHUNKS = new Set(['peerjs', 'jsqr']);
+
+// 開発サーバー（npm run dev）でだけ index.html の CSP を外す。
+// @vitejs/plugin-react は開発用のインライン script を差しこみ、HMR は ws://localhost へつなぐので、
+// 配信物と同じ CSP のままでは開発画面が動かない。ビルドした配信物には必ず残る（npm run check が見る）。
+const stripCspInDev = {
+  name: 'strip-csp-in-dev',
+  apply: 'serve',
+  transformIndexHtml(html) {
+    return html.replace(/\s*<meta http-equiv="Content-Security-Policy"[^>]*>/i, '');
+  },
+};
+
 const releaseMetadata = {
   name: 'release-metadata',
   generateBundle() {
@@ -24,7 +38,7 @@ const releaseMetadata = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), releaseMetadata],
+  plugins: [react(), tailwindcss(), releaseMetadata, stripCspInDev],
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
@@ -56,9 +70,20 @@ export default defineConfig({
           ) return 'vendor-react';
           if (moduleId.includes('/node_modules/framer-motion/')) return 'vendor-motion';
 
-          // peerjs / qrcode / jsQR は CDN からロードするため依存に含めない
+          // 端末どうしの通信（PeerJS）と QR の読み取り（jsQR）は npm の依存を同梱し、
+          // 画面を開いたときに動的 import で読む（初回の JS には入らない）。
+          // どちらも通信できるときにしか使わないので、下の chunkFileNames で net/ に出し、
+          // Service Worker の先読み（sw-build.config.json の "assets/"）から外す。
+          // 使ったときに sw.js の .js の cacheFirst で保存される。
+          if (/\/node_modules\/(peerjs|peerjs-js-binarypack|@msgpack|eventemitter3|webrtc-adapter|sdp)\//.test(moduleId)) return 'peerjs';
+          if (moduleId.includes('/node_modules/jsqr/')) return 'jsqr';
+          // QR の生成（qrcode）はリンク配布の画面で圏外でも使えるので assets/ に残す
+          if (/\/node_modules\/(qrcode|dijkstrajs)\//.test(moduleId)) return 'qrcode';
           return undefined;
         },
+        chunkFileNames: (chunk) => (NETWORK_ONLY_CHUNKS.has(chunk.name)
+          ? 'net/[name]-[hash].js'
+          : 'assets/[name]-[hash].js'),
       },
     },
     // チャンクサイズ警告の閾値（データファイルが大きいため）

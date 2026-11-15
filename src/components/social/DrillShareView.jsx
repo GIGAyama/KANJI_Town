@@ -16,7 +16,7 @@ import {
 const CLASSROOM_GREEN = '#0f9d58';
 
 const DrillShareView = ({ setView, drill }) => {
-  const isQRLoaded = useQRCode();
+  const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
   const qrCanvasRef = useRef(null);
   const urlInputRef = useRef(null);
   const copyTimerRef = useRef(null);
@@ -37,17 +37,15 @@ const DrillShareView = ({ setView, drill }) => {
 
   // QRコードを描画（URLが長すぎるときは読み取りづらいので出さない）
   useEffect(() => {
-    if (!isQRLoaded || !canShowQR || !qrCanvasRef.current || !shareUrl) return;
-    try {
-      window.QRCode.toCanvas(qrCanvasRef.current, shareUrl, {
+    if (!QRCode || !canShowQR || !qrCanvasRef.current || !shareUrl) return;
+    Promise.resolve()
+      .then(() => QRCode.toCanvas(qrCanvasRef.current, shareUrl, {
         width: 200,
         margin: 2,
         color: { dark: '#292f36', light: '#ffffff' },
-      });
-    } catch (e) {
-      console.error('QR code rendering failed:', e);
-    }
-  }, [isQRLoaded, canShowQR, shareUrl]);
+      }))
+      .catch((e) => console.error('QR code rendering failed:', e));
+  }, [QRCode, canShowQR, shareUrl]);
 
   useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
@@ -164,9 +162,15 @@ const DrillShareView = ({ setView, drill }) => {
               <div className={`bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner ${isQRLoaded ? '' : 'hidden'}`}>
                 <canvas ref={qrCanvasRef} />
               </div>
-              <p className="text-xs text-[var(--text)] opacity-50 text-center">
-                {isQRLoaded ? 'QRコードをよみとってもドリルをうけとれます' : 'QRコードをよみこみ中...'}
-              </p>
+              {qrLoadError ? (
+                <p className="text-xs font-bold text-amber-700 text-center">
+                  QRコードは だせませんでした。上のURLを コピーして くばってください。
+                </p>
+              ) : (
+                <p className="text-xs text-[var(--text)] opacity-50 text-center">
+                  {isQRLoaded ? 'QRコードをよみとってもドリルをうけとれます' : 'QRコードをよみこみ中...'}
+                </p>
+              )}
             </div>
           )}
 

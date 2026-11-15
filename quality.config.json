@@ -12,7 +12,8 @@
     "index.html",
     "public/manifest.json",
     "public/sw.js",
-    "public/offline.html"
+    "public/offline.html",
+    "public/install-hook.js"
   ],
   "icons": {
     "dir": "public/icons",
@@ -41,28 +42,8 @@
   "securityExceptions": [
     {
       "rule": "external-runtime-host",
-      "value": "cdn.jsdelivr.net",
-      "reason": "書き順データ(KanjiVG)と PeerJS の取得元。自己ホストすると成果物が数十MB増えるため、許可リストで明示して受け入れる。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "unpkg.com",
-      "reason": "PeerJS / qrcode / jsQR の予備の取得元。jsdelivr が校内フィルタで遮断された場合の代替。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "fonts.googleapis.com",
-      "reason": "本文フォント(Zen Maru Gothic / Klee One)。日本語サブセットを同梱すると数MB増え、豆腐の危険もあるため据え置く。遮断時は端末内フォントで代替される。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "fonts.gstatic.com",
-      "reason": "上記フォントの実体(woff2)の配信元。"
-    },
-    {
-      "rule": "no-csp",
-      "value": "index.html",
-      "reason": "上記4ホストへの許可リストを確定させたうえで別PRで投入する。未検証のまま入れると通信が全て落ちるため、ここでは意図的に見送っている。"
+      "value": "0.peerjs.com",
+      "reason": "「4けたの数字で送る」の接続の仲介（PeerJS の公開シグナリングサーバー、https と wss）。index.html の CSP の connect-src に書いてある。数字で相手を見つけるには仲介が要るため外部のまま残す。経路探しの stun.l.google.com と中継の eu-0 / us-0.turn.peerjs.com は CSP の対象外で、src/hooks/usePeerJS.js の PEER_OPTIONS に書いてある。外部を使いたくない学校は「リンクで配る」を使う。"
     },
     {
       "rule": "external-runtime-host",
@@ -78,16 +59,6 @@
       "rule": "external-runtime-host",
       "value": "pages.github.com",
       "reason": "配信に GitHub Pages を使っていることの説明リンク。プライバシーポリシーの本文中。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "myaccount.google.com",
-      "reason": "利用者が自分で権限を取り消すための案内リンク。プライバシーポリシーの本文中。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "developers.google.com",
-      "reason": "参照している Google のドキュメントへのリンク。プライバシーポリシーの本文中。"
     },
     {
       "rule": "external-runtime-host",
