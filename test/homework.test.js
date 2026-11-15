@@ -11,9 +11,11 @@ import {
   unpackDate,
 } from '../src/systems/drill-share.js';
 import { buildDrillMessage, drillCheckCode, parseDrillMessage } from '../src/systems/drill-p2p.js';
-import { homeworkIdFor, homeworkQuestionCount, readHomework, recordHomeworkResult } from '../src/systems/homework.js';
+import { readHomework, recordHomeworkResult } from '../src/systems/homework.js';
 import {
   addDays,
+  homeworkIdFor,
+  homeworkQuestionCount,
   addReceivedDrill,
   daysUntil,
   formatMonthDay,

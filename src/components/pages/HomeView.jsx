@@ -15,6 +15,10 @@ import { SESSION } from '../../constants/gameConfig';
 import { getHabitStatus } from '../../systems/habit';
 
 const DraggableTownMap = lazy(() => import('../town/DraggableTownMap'));
+// 宿題・ならった範囲があるときだけ読む（無い子の初回の JS を増やさない）
+const HomeworkCard = lazy(() => import('../social/HomeAssignments').then((m) => ({ default: m.HomeworkCardForHome })));
+const RangeStatusLine = lazy(() => import('../social/HomeAssignments').then((m) => ({ default: m.RangeStatusLine })));
+const HomeworkBadge = lazy(() => import('../social/HomeAssignments').then((m) => ({ default: m.HomeworkBadge })));
 
 /** 住民がまだいないときに毎回新しい [] を渡すと、町マップが「変わった」とみなして描き直すため */
 const EMPTY_VILLAGERS = Object.freeze([]);
@@ -148,7 +152,7 @@ const TownMap = memo(({ className = '', isTownEditorUnlocked, onOpenEditor, town
 ));
 
 /** 学年選択 + メインアクション */
-const GradeAndAction = ({ selectedGrade, onGradeChange, onStart, isReviewNeeded, dailyProgress, plannedTotalCount, plannedReviewCount, plannedNewCount }) => (
+const GradeAndAction = ({ selectedGrade, onGradeChange, onStart, isReviewNeeded, dailyProgress, plannedTotalCount, plannedReviewCount, plannedNewCount, footer }) => (
   <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-2.5 md:p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)] shrink-0">
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5, 6].map(g => (
@@ -164,6 +168,8 @@ const GradeAndAction = ({ selectedGrade, onGradeChange, onStart, isReviewNeeded,
           ? <><PenTool size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">{F("新出","しんしゅつ")}{F("漢字","かんじ")}{plannedNewCount}{F("文字","もじ")}を{F("覚","おぼ")}える！</span></>
           : <><PenTool size={20} className="shrink-0" /> <span className="min-w-0 leading-snug">{selectedGrade}{F("年生","ねんせい")}の{F("漢字","かんじ")}を{F("練習","れんしゅう")}！</span></>}
     </MotionButton>
+    {/* ならった範囲の小さな表示。ボタンの下に置き、ボタンを押し下げない */}
+    {footer}
   </div>
 );
 
@@ -245,7 +251,7 @@ const ScrollMoreHint = ({ scrollRef, watch }) => {
   );
 };
 
-const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
+const HomeView = ({ setView, stats, setStats, startSession, startDrillSession, startDrillTest, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
   const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
   const { level } = currentLevelInfo;
   const [selectedGrade, setSelectedGrade] = useState(stats.targetGrade || 1);
@@ -256,6 +262,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const sessionSize = stats.settings?.sessionSize || 'normal';
   const baseSessionLimits = SESSION.SIZE_LIMITS[sessionSize] || SESSION.SIZE_LIMITS.normal;
   const sessionLimits = getGoalAwareSessionLimits(baseSessionLimits, dailyProgress);
+  const learningRange = stats.settings?.learningRange;
   const learningPlan = useMemo(() => buildLearningPlan({
     kanjiData: KANJI_DATA,
     kanjiStats: stats.kanjiStats,
@@ -263,7 +270,9 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
     limits: sessionLimits,
     now: Date.now(),
     random: () => 0.5,
-  }), [stats.kanjiStats, selectedGrade, sessionLimits.review, sessionLimits.new, sessionLimits.total]);
+    range: learningRange,
+    today,
+  }), [stats.kanjiStats, selectedGrade, sessionLimits.review, sessionLimits.new, sessionLimits.total, learningRange, today]);
   const reviewTargetsCount = learningPlan.dueCount;
   const plannedReviewCount = learningPlan.reviewCount;
   const plannedNewCount = learningPlan.newCount;
@@ -322,7 +331,13 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
       plannedTotalCount={plannedTotalCount}
       plannedReviewCount={plannedReviewCount}
       plannedNewCount={plannedNewCount}
+      footer={learningRange ? <Suspense fallback={null}><RangeStatusLine range={learningRange} kanjiStats={stats.kanjiStats} today={today} grade={selectedGrade} /></Suspense> : null}
     />
+  );
+  // 宿題があるときだけ出す（学習を始めるボタンの下）
+  const hasHomework = (stats.myDrills || []).some((d) => d?.homework);
+  const homeworkCard = hasHomework && (
+    <Suspense fallback={null}><HomeworkCard drills={stats.myDrills} today={today} start={{ startDrillSession, startDrillTest }} onOpenList={() => setView('myDrills')} max={isMobile ? 2 : 3} /></Suspense>
   );
   const drillButtons = <DrillButtons setView={setView} />;
   const specialTraining = <SpecialTraining isUnlocked={isSpecialTrainingUnlocked} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} />;
@@ -344,10 +359,14 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         {expBar}
         {dailyGoalCard}
 
-        {/* タウンマップ（コンパクト） */}
-        <TownMap className="h-[20vh] min-h-[110px] shrink-0" {...townMapProps} />
+        {/* タウンマップ（コンパクト）。宿題があれば左上に札を重ねる（下のカードは最初の画面の外になるため） */}
+        <div className="relative shrink-0">
+          <TownMap className="h-[20vh] min-h-[110px]" {...townMapProps} />
+          {hasHomework && <Suspense fallback={null}><HomeworkBadge drills={stats.myDrills} today={today} /></Suspense>}
+        </div>
 
         {gradeAndAction}
+        {homeworkCard}
 
         {/* デイリーミッション */}
         {missionsPanel}
@@ -377,6 +396,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
         {missionsPanel}
 
         {gradeAndAction}
+        {homeworkCard}
         {drillButtons}
         {specialTraining}
         <NavButtons setView={setView} />

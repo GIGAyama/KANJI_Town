@@ -1,74 +1,70 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Copy, Link2, ExternalLink } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, Link2, NotebookPen } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import { useQRCode } from '../../hooks/useQRCode';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
-import {
-  buildClassroomShareUrl,
-  buildDrillShareUrl,
-  isQrFriendlyUrl,
-  isShareUrlTooLong,
-} from '../../systems/drill-share';
+import { HOMEWORK_TEST_COUNTS, buildDrillShareUrl, isValidDateKey, sanitizeHomework } from '../../systems/drill-share';
+import { addDays, daysUntil, formatMonthDay } from '../../systems/homework-status';
+import { getTodayString } from '../../utils/date-utils';
+import ShareLinkPanel from './ShareLinkPanel';
 
-// Google Classroom のブランドカラー
-const CLASSROOM_GREEN = '#0f9d58';
+/** 合格の目安（%）のえらびかた */
+const PASS_OPTIONS = [60, 70, 80, 90, 100];
+const DEFAULT_PASS = 80;
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-const DrillShareView = ({ setView, drill }) => {
-  const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
-  const qrCanvasRef = useRef(null);
-  const urlInputRef = useRef(null);
-  const copyTimerRef = useRef(null);
-  const [copyState, setCopyState] = useState('idle'); // idle | copied | failed
+const weekdayOf = (key) => (isValidDateKey(key) ? WEEKDAYS[new Date(`${key}T12:00:00`).getDay()] : '');
 
-  const shareUrl = useMemo(() => {
-    if (!drill) return null;
-    return buildDrillShareUrl(drill, `${window.location.origin}${window.location.pathname}`);
-  }, [drill]);
+/** えらぶボタン（宿題の決まり） */
+const Choice = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    onClick={() => { audioCtrl.playSE('click'); onClick(); }}
+    className={`min-h-[48px] px-3 rounded-xl border-[3px] text-sm font-black transition-all ${active ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--text)] shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/25 text-[var(--text)] hover:border-[var(--text)]'}`}
+  >
+    {children}
+  </button>
+);
 
-  const classroomUrl = useMemo(
-    () => (shareUrl ? buildClassroomShareUrl(shareUrl, drill?.name) : null),
-    [shareUrl, drill],
+/**
+ * ドリルをリンク・QR・Classroom・4けたの数字で配る画面。
+ * 「宿題にする（先生向け）」を選ぶと、しめきり・やること・問題数・合格の目安もリンクに入る。
+ * どの配り方でも同じ中身（drill-share.js の param）が届く。
+ */
+const DrillShareView = ({ setView, drill, setHostDrill }) => {
+  const today = getTodayString();
+  const kanjiCount = drill?.kanjis?.length || 0;
+  // 4けたの数字の画面から戻ってきたときは、えらんでいた宿題の決まりを続ける
+  const initial = sanitizeHomework(drill?.homework);
+  const [isHomework, setIsHomework] = useState(Boolean(initial));
+  const [due, setDue] = useState(initial?.due || addDays(today, 7) || today);
+  const [mode, setMode] = useState(initial?.mode || 'test');
+  const [count, setCount] = useState(initial?.mode === 'test' ? initial.count : (kanjiCount > 10 ? 10 : 0));
+  const [pass, setPass] = useState(initial?.mode === 'test' ? initial.pass : DEFAULT_PASS);
+
+  // 問題数は、ドリルの字数より少ないものと「ぜんぶ」だけを出す
+  const countOptions = [...HOMEWORK_TEST_COUNTS.filter(n => n > 0 && n < kanjiCount), 0];
+  const homework = isHomework ? sanitizeHomework({ due, mode, count, pass }) : null;
+  const homeworkInvalid = isHomework && !homework;
+  const daysLeft = homework ? daysUntil(homework.due, today) : null;
+
+  const homeworkKey = homework ? JSON.stringify(homework) : '';
+  const sharedDrill = useMemo(
+    () => (drill ? { name: drill.name, kanjis: drill.kanjis, ...(homeworkKey ? { homework: JSON.parse(homeworkKey) } : {}) } : null),
+    [drill, homeworkKey],
   );
+  const shareUrl = useMemo(() => {
+    if (!sharedDrill || homeworkInvalid) return null;
+    return buildDrillShareUrl(sharedDrill, `${window.location.origin}${window.location.pathname}`);
+  }, [sharedDrill, homeworkInvalid]);
+  const title = homework ? `しゅくだい ${formatMonthDay(homework.due)}まで：${drill?.name || ''}` : drill?.name;
 
-  const canShowQR = isQrFriendlyUrl(shareUrl);
-  const isTooLong = isShareUrlTooLong(shareUrl);
-
-  // QRコードを描画（URLが長すぎるときは読み取りづらいので出さない）
-  useEffect(() => {
-    if (!QRCode || !canShowQR || !qrCanvasRef.current || !shareUrl) return;
-    Promise.resolve()
-      .then(() => QRCode.toCanvas(qrCanvasRef.current, shareUrl, {
-        width: 200,
-        margin: 2,
-        color: { dark: '#292f36', light: '#ffffff' },
-      }))
-      .catch((e) => console.error('QR code rendering failed:', e));
-  }, [QRCode, canShowQR, shareUrl]);
-
-  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
-
-  const handleCopy = useCallback(async () => {
-    if (!shareUrl) return;
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
-      await navigator.clipboard.writeText(shareUrl);
-      setCopyState('copied');
-      audioCtrl.playSE('success');
-    } catch {
-      // コピーできない環境（権限なし・古いブラウザ）では手で選べるようにする
-      urlInputRef.current?.focus();
-      urlInputRef.current?.select();
-      setCopyState('failed');
-    }
-    copyTimerRef.current = setTimeout(() => setCopyState('idle'), 2500);
-  }, [shareUrl]);
-
-  const handleOpenClassroom = useCallback(() => {
-    audioCtrl.playSE('click');
-  }, []);
+  const sendByNumber = () => {
+    setHostDrill?.(sharedDrill);
+    setView('peerHost');
+  };
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -81,7 +77,7 @@ const DrillShareView = ({ setView, drill }) => {
         </h2>
       </div>
 
-      {!drill || !shareUrl ? (
+      {!drill || !buildDrillShareUrl(drill, 'https://x/') ? (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-8 text-center shadow-sm">
           <div className="text-4xl mb-3">🔗</div>
           <p className="font-bold text-[var(--text)] opacity-60">このドリルはリンクにできませんでした</p>
@@ -89,99 +85,110 @@ const DrillShareView = ({ setView, drill }) => {
         </div>
       ) : (
         <>
-          <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-5 shadow-[4px_4px_0_var(--text)] flex flex-col gap-4">
-            <div>
-              <div className="font-black text-[var(--text)] text-lg">{drill.name}</div>
-              <div className="text-sm text-[var(--text)] opacity-60">{drill.kanjis?.length || 0}{F("文字","もじ")}</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {(drill.kanjis || []).map(id => {
-                  const k = KANJI_DATA.find(k => k.id === id);
-                  return k ? <span key={id} className="text-xl font-black">{k.char}</span> : null;
-                })}
-              </div>
+          <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-5 shadow-[4px_4px_0_var(--text)]">
+            <div className="font-black text-[var(--text)] text-lg">{drill.name}</div>
+            <div className="text-sm text-[var(--text)] opacity-60">{kanjiCount}{F("文字","もじ")}</div>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(drill.kanjis || []).map(id => {
+                const k = KANJI_DATA.find(k => k.id === id);
+                return k ? <span key={id} className="text-xl font-black">{k.char}</span> : null;
+              })}
             </div>
+          </div>
 
-            {/* 共有URL */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="drill-share-url" className="text-sm font-black text-[var(--text)]">
-                ドリルのURL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="drill-share-url"
-                  ref={urlInputRef}
-                  value={shareUrl}
-                  readOnly
-                  onFocus={e => e.target.select()}
-                  className="flex-1 min-w-0 bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl px-3 py-3 text-sm text-[var(--text)] font-mono focus:outline-none focus:border-[var(--primary)]"
-                />
-                <button
-                  onClick={handleCopy}
-                  aria-label="URLをコピー"
-                  className="shrink-0 px-4 rounded-xl border-[3px] border-[var(--text)] bg-[var(--panel)] hover:bg-[var(--accent)] transition-colors min-w-[56px] min-h-[48px] flex items-center justify-center"
-                >
-                  {copyState === 'copied'
-                    ? <Check size={24} className="text-emerald-500" />
-                    : <Copy size={24} className="text-[var(--text)] opacity-60" />}
-                </button>
-              </div>
-              {copyState === 'copied' && (
-                <p className="text-sm font-bold text-emerald-600">コピーしました！Classroomにはりつけてください</p>
-              )}
-              {copyState === 'failed' && (
-                <p className="text-sm font-bold text-amber-700">じどうコピーできませんでした。えらばれているURLを手でコピーしてください</p>
-              )}
-            </div>
+          {/* 宿題にする（先生向け） */}
+          <div className={`bg-[var(--panel)] border-[4px] rounded-2xl p-5 flex flex-col gap-4 ${isHomework ? 'border-[var(--primary)] shadow-[4px_4px_0_var(--primary)]' : 'border-[var(--text)] shadow-[4px_4px_0_var(--text)]'}`}>
+            <label className="flex items-center gap-3 cursor-pointer min-h-[48px]">
+              <input
+                type="checkbox"
+                checked={isHomework}
+                onChange={(e) => { audioCtrl.playSE('click'); setIsHomework(e.target.checked); }}
+                className="w-7 h-7 shrink-0 accent-[var(--primary)]"
+              />
+              <span className="flex flex-col">
+                <span className="font-black text-[var(--text)] flex items-center gap-1"><NotebookPen size={18} aria-hidden="true" /> {F("宿題","しゅくだい")}にする（{F("先生","せんせい")}{F("向","む")}け）</span>
+                <span className="text-xs font-bold text-[var(--text-muted)]">しめきりと やることも いっしょに {F("配","くば")}ります。{F("児童","じどう")}のホームに「しゅくだい」が{F("出","で")}ます。</span>
+              </span>
+            </label>
 
-            {/* Google Classroom へ共有 */}
-            <a
-              href={classroomUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleOpenClassroom}
-              className="w-full py-4 rounded-[20px] font-black text-white text-base flex items-center justify-center gap-2 border-none shadow-[0_4px_0_#0b7043] hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all touch-manipulation"
-              style={{ backgroundColor: CLASSROOM_GREEN }}
-            >
-              <ExternalLink size={20} /> Google Classroom で{F("共有","きょうゆう")}する
-            </a>
-            <p className="text-xs text-[var(--text)] opacity-50 -mt-2">
-              Classroomがひらいたら、クラスと「{F("課題","かだい")}」「{F("資料","しりょう")}」などをえらんで{F("投稿","とうこう")}してください。
-            </p>
+            {isHomework && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="homework-due" className="text-sm font-black text-[var(--text)]">しめきり</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      id="homework-due"
+                      type="date"
+                      value={due}
+                      min="2020-01-01"
+                      max="2099-12-31"
+                      onChange={(e) => setDue(e.target.value)}
+                      className="min-h-[48px] bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl px-3 font-bold text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
+                    />
+                    {homework && <span className="text-sm font-bold text-[var(--text)]">{formatMonthDay(homework.due)}（{weekdayOf(homework.due)}）まで</span>}
+                  </div>
+                  {daysLeft !== null && daysLeft < 0 && (
+                    <p className="text-xs font-bold text-amber-700">きょうより{F("前","まえ")}の{F("日","ひ")}です。このまま{F("配","くば")}ると、{F("児童","じどう")}の{F("画面","がめん")}では「しめきりを すぎた」と{F("出","で")}ます。</p>
+                  )}
+                </div>
 
-            {isTooLong && (
-              <div className="text-sm text-amber-800 font-bold bg-amber-50 border-2 border-amber-400 rounded-xl px-3 py-2">
-                {F("漢字","かんじ")}が多いためURLがとても長くなっています。
-                うまく{F("開","ひら")}けないときは、ドリルを分けて{F("配","くば")}ってください。
-              </div>
+                <div className="flex flex-col gap-1">
+                  <div id="homework-mode" className="text-sm font-black text-[var(--text)]">やること</div>
+                  <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="homework-mode">
+                    <Choice active={mode === 'practice'} onClick={() => setMode('practice')}>{F("練習","れんしゅう")}</Choice>
+                    <Choice active={mode === 'test'} onClick={() => setMode('test')}>テスト</Choice>
+                  </div>
+                  <p className="text-xs font-bold text-[var(--text-muted)]">
+                    {mode === 'practice'
+                      ? <>ドリルの{F("字","じ")}を ぜんぶ {F("練習","れんしゅう")}したら「できた」になります。</>
+                      : <>テストの{F("点","てん")}が {F("合格","ごうかく")}の めやす{F("以上","いじょう")}になったら「できた」になります。</>}
+                  </p>
+                </div>
+
+                {mode === 'test' && (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <div id="homework-count" className="text-sm font-black text-[var(--text)]">テストの{F("問題数","もんだいすう")}</div>
+                      <div className="grid grid-cols-4 gap-2" role="group" aria-labelledby="homework-count">
+                        {countOptions.map(n => (
+                          <Choice key={n} active={count === n} onClick={() => setCount(n)}>
+                            {n === 0 ? <>ぜんぶ<span className="text-xs">（{kanjiCount}）</span></> : <>{n}{F("問","もん")}</>}
+                          </Choice>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div id="homework-pass" className="text-sm font-black text-[var(--text)]">{F("合格","ごうかく")}の めやす（{F("正","せい")}かいの わりあい）</div>
+                      <div className="grid grid-cols-5 gap-2" role="group" aria-labelledby="homework-pass">
+                        {PASS_OPTIONS.map(p => (
+                          <Choice key={p} active={pass === p} onClick={() => setPass(p)}>{p}%</Choice>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {homeworkInvalid && (
+                  <p role="alert" className="text-sm font-bold text-rose-700">しめきりの{F("日","ひ")}を えらんでください。</p>
+                )}
+                <p className="text-xs font-bold text-[var(--text-muted)] bg-[var(--bg)] rounded-xl px-3 py-2">
+                  サーバーが ないので、{F("児童","じどう")}の{F("結果","けっか")}は {F("先生","せんせい")}の{F("端末","たんまつ")}には とどきません。
+                  {F("児童","じどう")}は おわったあとの{F("画面","がめん")}の「{F("先生","せんせい")}に{F("見","み")}せる」で、ドリルの{F("名前","なまえ")}・{F("点数","てんすう")}・できた{F("日","ひ")}を{F("見","み")}せます。
+                </p>
+              </>
             )}
           </div>
 
-          {/* QRコード */}
-          {canShowQR && (
-            <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-5 shadow-[4px_4px_0_var(--text)] flex flex-col items-center gap-3">
-              <div className={`bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner ${isQRLoaded ? '' : 'hidden'}`}>
-                <canvas ref={qrCanvasRef} />
-              </div>
-              {qrLoadError ? (
-                <p className="text-xs font-bold text-amber-700 text-center">
-                  QRコードは だせませんでした。上のURLを コピーして くばってください。
-                </p>
-              ) : (
-                <p className="text-xs text-[var(--text)] opacity-50 text-center">
-                  {isQRLoaded ? 'QRコードをよみとってもドリルをうけとれます' : 'QRコードをよみこみ中...'}
-                </p>
-              )}
-            </div>
-          )}
+          <ShareLinkPanel shareUrl={shareUrl} title={title} label={homework ? '宿題のURL' : 'ドリルのURL'} />
 
           <div className="bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl p-4 flex flex-col gap-1 text-sm text-[var(--text)] opacity-70">
             <p className="font-black opacity-100">リンクについて</p>
-            <p>・ドリルの{F("中身","なかみ")}はURLの中に{F("入","はい")}っています。サーバーに{F("保存","ほぞん")}されません。</p>
+            <p>・ドリルの{F("中身","なかみ")}（{F("宿題","しゅくだい")}の{F("決","き")}まりも）はURLの中に{F("入","はい")}っています。サーバーに{F("保存","ほぞん")}されません。</p>
             <p>・リンクを{F("開","ひら")}くと、そのままマイドリルに{F("保存","ほぞん")}できます。アプリを{F("入","い")}れなおす{F("必要","ひつよう")}はありません。</p>
             <p>・あとからドリルを{F("直","なお")}しても、{F("配","くば")}ったリンクは{F("変","か")}わりません。新しいリンクを{F("配","くば")}りなおしてください。</p>
           </div>
 
-          <MotionButton variant="secondary" onClick={() => setView('peerHost')} className="w-full py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] text-sm">
+          <MotionButton variant="secondary" onClick={sendByNumber} disabled={homeworkInvalid} className="w-full py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] text-sm min-h-[48px]">
             4けたのすうじで{F("送","おく")}る（{F("同","おな")}じ{F("教室","きょうしつ")}のとき）
           </MotionButton>
         </>

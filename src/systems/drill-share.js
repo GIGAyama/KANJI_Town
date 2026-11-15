@@ -14,6 +14,8 @@
 // 副作用を持たない純粋ロジックだけを置き、DOM・React・KANJI_DATA には依存しない。
 // （存在しない漢字IDの除外は、表示側でKANJI_DATAと突き合わせて行う）
 
+import { HOMEWORK_TEST_COUNTS, isValidDateKey, sanitizeHomework } from './homework.js';
+
 /** 共有URLのクエリパラメータ名 */
 export const DRILL_SHARE_PARAM = 'drill';
 
@@ -126,44 +128,18 @@ export function decodeKanjiSpec(spec) {
   return ids;
 }
 
-// ── 日付 ──
-// 宿題のしめきり・ならった範囲の「この日から」。端末のローカル日付（date-utils の
+// ── 日付・宿題 ──
+// 宿題のしめきり・ならった範囲の「この日から」は、端末のローカル日付（date-utils の
 // getTodayString と同じ YYYY-MM-DD）で持ち、リンクの中では - を抜いた8けたにする。
-
-/** YYYY-MM-DD として正しい日付か（2020〜2099年の、暦にある日だけ） */
-export function isValidDateKey(value) {
-  const m = typeof value === 'string' ? value.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
-  if (!m) return false;
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  return y >= 2020 && y <= 2099 && mo >= 1 && mo <= 12 && d >= 1
-    && d <= new Date(Date.UTC(y, mo, 0)).getUTCDate();
-}
+// 日付と宿題の決まりの検証は homework.js に置く（宿題の記録の確定で起動時に読むため。
+// このファイルは起動時には読まない）。ここからも同じものを出す。
+export { HOMEWORK_TEST_COUNTS, isValidDateKey, sanitizeHomework };
 
 /** リンクの中の8けたの日付（YYYYMMDD）を YYYY-MM-DD に戻す（だめなら null） */
 export function unpackDate(text) {
   if (typeof text !== 'string' || !/^\d{8}$/.test(text)) return null;
   const key = `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6)}`;
   return isValidDateKey(key) ? key : null;
-}
-
-// ── 宿題 ──
-
-/** 宿題のテストの問題数（0 は「ぜんぶ」） */
-export const HOMEWORK_TEST_COUNTS = [0, 10, 20, 50];
-
-/**
- * 宿題の決まり（リンク・P2P・保存データから来る外部入力）を確かめて整える。だめなら null。
- *   れんしゅう: { due: 'YYYY-MM-DD', mode: 'practice' }
- *   テスト    : { due, mode: 'test', count: 0|10|20|50, pass: 0〜100 }
- * 余分な欄は捨てる。
- */
-export function sanitizeHomework(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !isValidDateKey(value.due)) return null;
-  if (value.mode === 'practice') return { due: value.due, mode: 'practice' };
-  const { count, pass } = value;
-  if (value.mode !== 'test' || !HOMEWORK_TEST_COUNTS.includes(count)
-    || !Number.isInteger(pass) || pass < 0 || pass > 100) return null;
-  return { due: value.due, mode: 'test', count, pass };
 }
 
 function packHomework(value) {

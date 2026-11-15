@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2 } from 'lucide-react';
+import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2, CalendarDays } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModalDialog from '../ui/ModalDialog';
 import { KANJI_DATA } from '../../data/kanji-data';
@@ -8,11 +8,18 @@ import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { TEST } from '../../constants/gameConfig';
+import { getTodayString } from '../../utils/date-utils';
+import { DrillHomeworkLine } from '../social/HomeworkParts';
+import { homeworkIdFor } from '../../systems/homework-status';
 
-const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillTest, setHostDrill }) => {
+const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPractice, startDrillTest: startTest, setHostDrill }) => {
+  // 宿題のドリルは、やることが合っていれば（テストは決められた問題数以上なら）宿題として記録する
+  const startDrillSession = (drill) => startPractice(drill, homeworkIdFor(drill, 'practice'));
+  const startDrillTest = (drill, count) => startTest(drill, count, homeworkIdFor(drill, 'test', count));
   const drills = stats.myDrills || [];
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [testDrill, setTestDrill] = useState(null);
+  const today = getTodayString();
 
   const handleDelete = (idx) => {
     const newDrills = drills.filter((_, i) => i !== idx);
@@ -35,6 +42,8 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillT
         </div>
         <MotionButton variant="primary" onClick={() => setView('drillEditor')} className="px-4 py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239] min-h-[44px]"><Plus size={16} /> {F("作","つく")}る</MotionButton>
       </div>
+      {/* 授業で習った字だけを毎日の新出に出す予定を、日付つきで配る（先生向け） */}
+      <MotionButton variant="secondary" onClick={() => setView('rangeEditor')} className="w-full py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] min-h-[48px]"><CalendarDays size={18} /> ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）</MotionButton>
       {drills.length === 0 ? (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-8 text-center shadow-sm">
           <div className="text-5xl mb-3">📋</div>
@@ -49,6 +58,7 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillT
                 <div className="font-black text-[var(--text)] text-lg truncate">{drill.name}</div>
                 <div className="text-sm text-[var(--text-muted)]">{drill.kanjis?.length || 0}{F("文字","もじ")}</div>
                 <div className="flex flex-wrap gap-1 mt-1">{(drill.kanjis || []).slice(0, 8).map(id => { const k = KANJI_DATA.find(k => k.id === id); return k ? <span key={id} className="text-lg font-black">{k.char}</span> : null; })}{(drill.kanjis?.length || 0) > 8 && <span className="text-xs font-bold text-[var(--text-muted)] self-center">+{drill.kanjis.length - 8}</span>}</div>
+                <DrillHomeworkLine drill={drill} today={today} />
               </div>
               <div className="flex flex-col gap-2 shrink-0">
                 <MotionButton variant="primary" onClick={() => startDrillSession(drill)} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#9f1239] min-h-[36px]"><PenTool size={14} /> {F("練習","れんしゅう")}</MotionButton>

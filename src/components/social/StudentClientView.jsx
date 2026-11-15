@@ -9,6 +9,9 @@ import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { drillCheckCode, parseDrillMessage } from '../../systems/drill-p2p';
+import { addReceivedDrill } from '../../systems/homework-status';
+import { getTodayString } from '../../utils/date-utils';
+import { HomeworkSummary } from './HomeworkParts';
 
 // ソフトウェア数字キーボード
 const NumericKeypad = ({ value, onChange, onSubmit, disabled }) => {
@@ -283,13 +286,16 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
 
   const handleSaveDrill = () => {
     if (!receivedDrill || knownKanjis.length === 0) return;
-    const newDrill = { name: receivedDrill.name, kanjis: knownKanjis, createdAt: Date.now() };
-    const newStats = { ...stats, myDrills: [...(stats.myDrills || []), newDrill] };
-    setStats(newStats);
-    // 受け取りは一度きりなので、保存直後にタブを閉じられても消えないよう即時保存する
-    StorageAPI.saveStatsImmediate(newStats);
+    // 宿題なら端末の中の印を付けて保存する。まったく同じものがもうあれば2つめを作らない（リンクと同じ）
+    const { myDrills, alreadySaved } = addReceivedDrill(stats.myDrills, receivedDrill, { isKnownKanji: (id) => KNOWN_KANJI_IDS.has(id) });
+    if (!alreadySaved) {
+      const newStats = { ...stats, myDrills };
+      setStats(newStats);
+      // 受け取りは一度きりなので、保存直後にタブを閉じられても消えないよう即時保存する
+      StorageAPI.saveStatsImmediate(newStats);
+    }
     audioCtrl.playSE('success');
-    setView('myDrills');
+    setView(receivedDrill.homework ? 'home' : 'myDrills');
   };
 
   const handleDiscard = () => {
@@ -378,6 +384,9 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
             <div className="font-black text-[var(--text)] text-lg flex items-center gap-2">
               <Gift size={20} className="text-emerald-500" /> {receivedDrill.name}
             </div>
+            {receivedDrill.homework && (
+              <HomeworkSummary homework={receivedDrill.homework} kanjiCount={knownKanjis.length} today={getTodayString()} />
+            )}
             <div className="flex flex-wrap gap-1">
               {knownKanjis.map(id => {
                 const k = KANJI_DATA.find(k => k.id === id);
@@ -395,7 +404,7 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
             ) : (
               <MotionButton variant="success" onClick={handleSaveDrill}
                 className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#065f46]">
-                おなじだったら マイドリルに{F("保存","ほぞん")}する
+                おなじだったら {receivedDrill.homework ? <>{F("宿題","しゅくだい")}として</> : 'マイドリルに'}{F("保存","ほぞん")}する
               </MotionButton>
             )}
             <MotionButton variant="secondary" onClick={handleDiscard}

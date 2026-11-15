@@ -16,7 +16,7 @@ import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, isEarlyReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
 import { buildFlashcardQueue, buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
-import { readSharedDrill } from './systems/drill-share';
+import { recordHomeworkResult } from './systems/homework';
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
 import { audioCtrl } from './systems/audio';
 import { checkLevelUp, grantExpWithLevelRewards } from './utils/level-system';
@@ -73,6 +73,8 @@ const TeacherHostView = lazy(() => import('./components/social/TeacherHostView')
 const StudentClientView = lazy(() => import('./components/social/StudentClientView'));
 const DrillShareView = lazy(() => import('./components/social/DrillShareView'));
 const DrillImportView = lazy(() => import('./components/social/DrillImportView'));
+const RangeEditorView = lazy(() => import('./components/social/RangeEditorView'));
+const RangeImportView = lazy(() => import('./components/social/RangeImportView'));
 
 // Tutorial & Phase 7
 // ときどきしか出ない重ね画面は、出すときにだけ読みこむ（初回に読む JS を軽くするため）
@@ -137,18 +139,21 @@ function createInitialSessionData(overrides = {}) {
 export default function App() {
   // 起動時のURLパラメータを1回だけ読む
   //  ?connect=XXXX : QRコード／4桁IDからのP2P接続
-  //  ?drill=...    : リンクで配られたドリル（Google Classroomなどからの起動）
+  //  ?drill=...    : リンクで配られたドリル・宿題（Google Classroomなどからの起動）
+  //  ?range=...    : 先生が配った「ならった範囲」
+  // ドリル・範囲の中身は、受け取りの画面で読んで確かめる（drill-share.js / learning-range.js は
+  // 起動時に読まない。初回の JS を小さくするため）
   const launchParams = useMemo(() => {
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
+    const params = new URLSearchParams(window.location.search);
     const rawConnectId = params.get('connect');
     const connectId = rawConnectId && /^\d{4}$/.test(rawConnectId) ? rawConnectId : null;
-    const shared = readSharedDrill(search);
-    if (connectId || shared.status !== 'none') {
+    const drillParam = params.get('drill') || null;
+    const rangeParam = params.get('range') || null;
+    if (connectId || drillParam || rangeParam) {
       // パラメータを消してURLをクリーンにする（再読み込みで同じ画面に戻らないように）
       window.history.replaceState({}, '', window.location.pathname);
     }
-    return { connectId, sharedDrillStatus: shared.status, sharedDrill: shared.drill };
+    return { connectId, drillParam, rangeParam };
   }, []);
   const connectParam = launchParams.connectId;
 
@@ -162,9 +167,11 @@ export default function App() {
 
   const initialView = connectParam
     ? 'peerClient'
-    : launchParams.sharedDrillStatus !== 'none'
+    : launchParams.drillParam
       ? 'drillImport'
-      : initialAppState.restoredSession ? 'session' : 'home';
+      : launchParams.rangeParam
+        ? 'rangeImport'
+        : initialAppState.restoredSession ? 'session' : 'home';
   // 端末の「戻る」操作でアプリが終了しないよう、いつ横取りするかを保持する
   const backInterceptorRef = useRef(null);
   const [exitHintAt, setExitHintAt] = useState(0);
@@ -572,6 +579,9 @@ export default function App() {
       kanjiStats: stats.kanjiStats,
       selectedGrade,
       limits,
+      // 先生が配った「ならった範囲」があれば、新出は日付が来た段の字だけから出す
+      range: stats.settings?.learningRange,
+      today: getTodayString(),
     });
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
@@ -584,16 +594,18 @@ export default function App() {
     }
   };
 
-  const startDrillSession = (drill) => {
+  // homeworkId: 宿題として記録するときの宿題の印。宿題になるかは呼ぶ側（宿題のカード・マイドリル）が
+  // homework-status.js の homeworkIdFor で決める（やることが合っていて、テストは決められた問題数以上のとき）
+  const startDrillSession = (drill, homeworkId = null) => {
     audioCtrl.init();
     const queue = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (queue.length > 0) {
-      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier, isDrill: true, studyUnit: buildDrillStudyUnit(drill) });
+      beginSession('session', { queue, oldExp: stats.totalExp, expMultiplier, isDrill: true, studyUnit: buildDrillStudyUnit(drill), homeworkId });
     }
   };
 
-  const startDrillTest = (drill, questionCount) => {
+  const startDrillTest = (drill, questionCount, homeworkId = null) => {
     audioCtrl.init();
     let candidates = KANJI_DATA.filter(k => drill.kanjis?.includes(k.id));
     if (questionCount < candidates.length) {
@@ -610,7 +622,7 @@ export default function App() {
     candidates.sort(() => Math.random() - 0.5);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     if (candidates.length > 0) {
-      beginSession('drillTest', { queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true, studyUnit: buildDrillStudyUnit(drill) });
+      beginSession('drillTest', { queue: candidates, oldExp: stats.totalExp, expMultiplier, isDrill: true, isTest: true, studyUnit: buildDrillStudyUnit(drill), homeworkId });
     }
   };
 
@@ -864,6 +876,12 @@ export default function App() {
       setTimeout(() => audioCtrl.playSE('level_up', 0.5), 500);
     }
 
+    // 宿題の学習なら、そのドリルに最高点・できた日・回数を残す（学習ログ study.v1 の形は変えない）
+    const homeworkArgs = { correct: activeSession.correctCount + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0), attempts: activeSession.attemptCount + (additionalResults.attemptCount || 0), today: getTodayString() };
+    const homeworkReport = activeSession.homeworkId
+      ? recordHomeworkResult(statsRef.current.myDrills, activeSession.homeworkId, homeworkArgs).report
+      : null;
+
     const finalSessionData = { 
       ...activeSession,
       finalized: true,
@@ -877,7 +895,9 @@ export default function App() {
       correctCount: activeSession.correctCount
         + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0),
       unlockedItems: unlockedItemsThisSession,
-      levelUpData // ResultViewに渡すレベルアップ情報
+      levelUpData, // ResultViewに渡すレベルアップ情報
+      // 結果の画面の「先生に見せる」に出す（宿題でなければ前の宿題の結果を引き継がない）
+      homeworkReport: homeworkReport || activeSession.homeworkReport || null,
     };
     
     setSessionData(finalSessionData);
@@ -889,6 +909,7 @@ export default function App() {
       if (addedRadius > 0) newStats.exploredRadius = Math.max(newStats.exploredRadius || 3, addedRadius);
       // セッション数カウント更新
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
+      if (homeworkReport) newStats.myDrills = recordHomeworkResult(newStats.myDrills, activeSession.homeworkId, homeworkArgs).drills;
       // 実績の進み具合は、セッション数とコインを足したあとで数え直す（以前は1回遅れていた）
       StorageAPI.refreshAchievements(newStats);
 
@@ -948,6 +969,8 @@ export default function App() {
       // 出題元は同じマイドリルなので、学習ログの単元もテストから引き継ぐ
       isDrill: true,
       studyUnit,
+      // 宿題のテストの結果は確定ずみ。復習のあとの結果の画面でも「先生に見せる」を出す（2回は記録しない）
+      homeworkReport: sessionDataRef.current.homeworkReport || null,
     });
   };
 
@@ -1071,7 +1094,7 @@ export default function App() {
             AnimatePresenceの外側でサスペンドを捕捉するとツリー全体が
             非表示化されて遷移状態が壊れ、ホワイトアウトするため。 */}
         <AnimatePresence mode="wait">
-          {view === 'home' && <PageWrapper key="home" wide><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} isMobile={isMobile} /></ErrorBoundary></PageWrapper>}
+          {view === 'home' && <PageWrapper key="home" wide><ErrorBoundary onReset={() => setView('home')}><HomeView setView={setView} stats={stats} setStats={setStats} startSession={startSession} startDrillSession={startDrillSession} startDrillTest={startDrillTest} startFlashcard={startFlashcard} startSurvival={startSurvival} startBossBattle={startBossBattle} levelInfo={levelInfo} dailyMissions={dailyMissions} onClaimMission={handleClaimMission} isMobile={isMobile} /></ErrorBoundary></PageWrapper>}
           {view === 'dictionary' && <PageWrapper key="dict" wide><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="dictionary" seenHints={seenHints} onDismiss={handleDismissHint} /><DictionaryView kanjiStats={stats.kanjiStats} onBack={() => setView('home')} onSelectKanji={startSingleSession} /></ErrorBoundary></PageWrapper>}
           {view === 'townEditor' && <FullScreenWrapper key="townEditor"><ErrorBoundary onReset={() => setView('home')}><TownEditorView setView={setView} stats={stats} setStats={setStats} onCraft={() => {
                 setDailyMissions(prev => {
@@ -1094,8 +1117,10 @@ export default function App() {
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
-          {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
-          {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
+          {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
+          {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} drillParam={launchParams.drillParam} startDrillSession={startDrillSession} startDrillTest={startDrillTest} /></ErrorBoundary></PageWrapper>}
+          {view === 'rangeEditor' && <PageWrapper key="rangeEditor" wide><ErrorBoundary onReset={() => setView('myDrills')}><RangeEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
+          {view === 'rangeImport' && <PageWrapper key="rangeImport"><ErrorBoundary onReset={() => setView('home')}><RangeImportView setView={setView} stats={stats} setStats={setStats} rangeParam={launchParams.rangeParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
           {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}

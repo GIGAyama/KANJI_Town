@@ -8,6 +8,7 @@ import PresentationToggle from '../ui/PresentationToggle';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
 import { buildDrillMessage, drillCheckCode } from '../../systems/drill-p2p';
+import { sanitizeHomework } from '../../systems/drill-share';
 
 // 4桁のランダムな数字IDを生成
 const generate4DigitId = () => {
@@ -33,6 +34,8 @@ const TeacherHostView = ({ setView, drill }) => {
   const message = useMemo(() => (drill ? buildDrillMessage(drill) : null), [drill]);
   // 受け取った児童の画面にも同じ絵が出る。数字の打ちまちがいに気づいてもらうため
   const checkCode = useMemo(() => (drill ? drillCheckCode(drill) : ''), [drill]);
+  // 「リンクで配る」で宿題にしてから来たときは、宿題の決まりも送る（リンクと同じ中身）
+  const homework = sanitizeHomework(drill?.homework);
 
   // QRコード描画（接続用URLをエンコード）
   const renderQR = useCallback((numId) => {
@@ -209,6 +212,12 @@ const TeacherHostView = ({ setView, drill }) => {
           <div className="font-black text-[var(--text)] mb-2">
             {F("送","おく")}るドリル：{drill.name}
           </div>
+          {homework && (
+            <div className="mb-2 text-sm font-bold text-[var(--text)] bg-[var(--bg)] border-2 border-[var(--primary)] rounded-xl px-3 py-2">
+              {F("宿題","しゅくだい")}として{F("送","おく")}ります：しめきり {Number(homework.due.slice(5, 7))}/{Number(homework.due.slice(8, 10))}・
+              {homework.mode === 'test' ? <>テスト{homework.count || (drill.kanjis || []).length}{F("問","もん")}・{homework.pass}%で{F("合格","ごうかく")}</> : <>{F("練習","れんしゅう")}</>}
+            </div>
+          )}
           <div className="flex flex-wrap gap-1">
             {(drill.kanjis || []).map(id => {
               const k = KANJI_DATA.find(k => k.id === id);

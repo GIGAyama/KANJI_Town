@@ -2,8 +2,27 @@
 //
 // 画面でしか使わないものをここに置く（起動時に読む homework.js を小さく保つため）。
 // 副作用を持たない純粋ロジックだけを置き、DOM・React・KANJI_DATA には依存しない。
-import { isValidDateKey, sanitizeHomework } from './drill-share.js';
-import { HOMEWORK_ID_PATTERN, readHomework } from './homework.js';
+import { HOMEWORK_ID_PATTERN, isValidDateKey, readHomework, sanitizeHomework } from './homework.js';
+
+/** テストの宿題で出す問題数（0「ぜんぶ」と、ドリルより多い数は、ドリルの字数） */
+export function homeworkQuestionCount(hw, kanjiCount) {
+  const total = Math.max(0, Math.floor(Number(kanjiCount) || 0));
+  return hw?.count > 0 ? Math.min(hw.count, total) : total;
+}
+
+/**
+ * この学習が宿題になるときは、その宿題の id を返す（ならないときは null）。
+ * やることが合っていて、テストなら決められた問題数以上で受けたときだけ宿題として数える。
+ * @param {object} drill マイドリル
+ * @param {'practice'|'test'} kind
+ * @param {number} [count] テストの問題数
+ */
+export function homeworkIdFor(drill, kind, count = 0) {
+  const hw = readHomework(drill);
+  if (!hw || hw.mode !== kind) return null;
+  if (kind === 'test' && count < homeworkQuestionCount(hw, drill.kanjis?.length)) return null;
+  return hw.id;
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
