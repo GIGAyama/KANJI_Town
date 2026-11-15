@@ -38,7 +38,8 @@ import { createTabCoordinator } from './systems/tab-coordinator';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
-import { F } from './components/ui/FormatKun';
+import { F, FuriganaContext } from './components/ui/FormatKun';
+import { buildGradeLookup, getFuriganaMode } from './utils/furigana';
 
 // Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
@@ -89,6 +90,13 @@ const GlobalStyle = ({ themeName, reducedMotion }) => {
     <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; } ${reducedMotionStyle}`}</style>
   );
 };
+
+// ふりがなの「学年より上の字だけ」で使う、字 → 学年 の表。
+// 字の一覧（約3KB）は初回のJSに入れず、起動と同時に別に読む。読めるまではすべてに出す。
+let gradeLookupCache = null;
+const gradeLookupPromise = import('./data/kanji-grades')
+  .then(({ KANJI_BY_GRADE }) => { gradeLookupCache = buildGradeLookup(KANJI_BY_GRADE); return gradeLookupCache; })
+  .catch(() => null);
 
 /** 設定の音量レベルID → 実音量値 */
 const VOLUME_VALUES = { off: 0, low: 0.3, mid: 0.6, high: 1.0 };
@@ -200,6 +208,19 @@ export default function App() {
       : false
   ));
   const motionPreference = getMotionPreference(stats.settings);
+  // ふりがなの設定を画面へ渡す（F()・RubyText が読む）
+  const [gradeLookup, setGradeLookup] = useState(gradeLookupCache);
+  useEffect(() => {
+    if (gradeLookup) return undefined;
+    let alive = true;
+    gradeLookupPromise.then((lookup) => { if (alive && lookup) setGradeLookup(lookup); });
+    return () => { alive = false; };
+  }, [gradeLookup]);
+  const furiganaMode = getFuriganaMode(stats.settings);
+  const furiganaValue = useMemo(
+    () => ({ mode: furiganaMode, grade: stats.targetGrade || 1, gradeLookup }),
+    [furiganaMode, stats.targetGrade, gradeLookup],
+  );
   const isReducedMotion = shouldReduceMotion(motionPreference, systemPrefersReducedMotion);
 
   useEffect(() => {
@@ -884,6 +905,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={isReducedMotion ? 'always' : 'never'}>
+      <FuriganaContext.Provider value={furiganaValue}>
       <div data-reduced-motion={isReducedMotion ? 'true' : 'false'} className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle themeName={activeThemeName} reducedMotion={isReducedMotion} />
 
@@ -1019,6 +1041,7 @@ export default function App() {
       )}
       <Footer />
       </div>
+      </FuriganaContext.Provider>
     </MotionConfig>
   );
 }

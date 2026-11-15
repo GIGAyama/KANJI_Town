@@ -6,7 +6,8 @@ import InstallAppPanel from '../ui/InstallAppPanel';
 import { StorageAPI } from '../../systems/storage';
 import { IMPORT_MAX_BYTES, validateImportedStats } from '../../systems/stats-schema';
 import { audioCtrl } from '../../systems/audio';
-import { F } from '../ui/FormatKun';
+import { F, Ruby } from '../ui/FormatKun';
+import { getFuriganaMode } from '../../utils/furigana';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
 import { isReadingCheckEnabled } from '../../utils/reading-preference';
@@ -41,6 +42,36 @@ const MOTION_OPTIONS = [
   { id: 'full', label: '標準', desc: '演出を楽しむ' },
   { id: 'reduced', label: '少なめ', desc: '動きをおさえる' },
 ];
+
+// ふりがなの出し方（utils/furigana.js）。えらぶ文字は、設定にかかわらずふりがなを付ける
+const FURIGANA_OPTIONS = [
+  { id: 'all', label: 'すべて', desc: <>どの<Ruby base="字" reading="じ" always />にも</> },
+  { id: 'aboveGrade', label: <><Ruby base="学年" reading="がくねん" always />より<Ruby base="上" reading="うえ" always />の<Ruby base="字" reading="じ" always />だけ</> },
+  { id: 'none', label: 'なし', desc: <><Ruby base="出" reading="だ" always />さない</> },
+];
+
+// オン・オフのスイッチ。読み上げでは「スイッチ、オン」のように名前と状態が伝わる
+const SwitchRow = ({ id, title, desc, checked, onToggle }) => (
+  <div className="flex items-center justify-between gap-3">
+    <div>
+      <div id={id} className="text-sm font-bold text-[var(--text)]">{title}</div>
+      <div id={`${id}-desc`} className="text-xs text-[var(--text-muted)]">{desc}</div>
+    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={id}
+      aria-describedby={`${id}-desc`}
+      onClick={onToggle}
+      className="shrink-0 w-16 flex items-center justify-center rounded-full"
+    >
+      <span className={`block w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${checked ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
+        <motion.span animate={{ x: checked ? 22 : 2 }} className="absolute top-0.5 left-0 block w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
+      </span>
+    </button>
+  </div>
+);
 
 // 確認ダイアログ
 const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
@@ -84,7 +115,8 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const volumeLevel = settings.volumeLevel ?? (isMuted ? 'off' : 'high');
   const autoPlay = settings.autoPlay !== false;
   const readingCheck = isReadingCheckEnabled(settings);
-  const showFurigana = settings.showFurigana !== false;
+  const furiganaMode = getFuriganaMode(settings);
+  const currentGrade = stats.targetGrade || 1;
   const sessionSize = settings.sessionSize || 'normal';
   const dailyGoal = getDailyGoal(settings);
   const motionPreference = getMotionPreference(settings);
@@ -285,35 +317,47 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       {/* 学習設定 */}
       <Section icon={GraduationCap} title={<>{F("学習","がくしゅう")}せってい</>}>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-bold text-[var(--text)]">ふりがなを{F("表示","ひょうじ")}</div>
-              <div className="text-xs text-[var(--text-muted)]">{F("漢字","かんじ")}の{F("上","うえ")}にひらがなを{F("表示","ひょうじ")}する</div>
+          {/* ふりがな。えらぶ文字は設定にかかわらずふりがなを付ける（「なし」にしても戻せるように） */}
+          <div>
+            <div id="setting-furigana" className="text-sm font-bold text-[var(--text)]">ふりがな</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2"><Ruby base="漢字" reading="かんじ" always />の<Ruby base="上" reading="うえ" always />に ひらがなを <Ruby base="出" reading="だ" always />す</div>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="setting-furigana">
+              {FURIGANA_OPTIONS.map((option) => {
+                const isActive = furiganaMode === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => { audioCtrl.playSE('click'); updateSettings({ furiganaMode: option.id }); }}
+                    className={`min-h-[64px] rounded-xl border-[3px] p-2 text-center transition-all ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/25 hover:border-[var(--text)]'}`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-black text-[var(--text)]">
+                      {option.label}
+                      {isActive && <Check size={13} className="text-[var(--secondary)]" aria-hidden="true" />}
+                    </div>
+                    <div className="mt-1 text-xs font-bold leading-tight text-[var(--text-muted)]">{option.id === 'aboveGrade' ? <>いま {currentGrade}<Ruby base="年" reading="ねん" always /></> : option.desc}</div>
+                  </button>
+                );
+              })}
             </div>
-            <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ showFurigana: !showFurigana }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${showFurigana ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
-              <motion.div animate={{ x: showFurigana ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
-            </button>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-bold text-[var(--text)]">{F("自動","じどう")}{F("再生","さいせい")}</div>
-              <div className="text-xs text-[var(--text-muted)]">{F("音読","おんどく")}のとき お{F("手本","てほん")}の{F("音声","おんせい")}を{F("自動","じどう")}で{F("再生","さいせい")}</div>
-            </div>
-            <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ autoPlay: !autoPlay }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${autoPlay ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
-              <motion.div animate={{ x: autoPlay ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
-            </button>
-          </div>
+          <SwitchRow
+            id="setting-autoplay"
+            title={<>{F("自動","じどう")}{F("再生","さいせい")}</>}
+            desc={<>{F("音読","おんどく")}のとき お{F("手本","てほん")}の{F("音声","おんせい")}を{F("自動","じどう")}で{F("再生","さいせい")}</>}
+            checked={autoPlay}
+            onToggle={() => { audioCtrl.playSE('click'); updateSettings({ autoPlay: !autoPlay }); }}
+          />
 
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-bold text-[var(--text)]">{F("音読","おんどく")}チャレンジ</div>
-              <div className="text-xs text-[var(--text-muted)]">マイクで{F("声","こえ")}に{F("出","だ")}して よめたかチェック（ろくおん・そうしんは しない）</div>
-            </div>
-            <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ readingCheck: !readingCheck }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${readingCheck ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
-              <motion.div animate={{ x: readingCheck ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
-            </button>
-          </div>
+          <SwitchRow
+            id="setting-reading-check"
+            title={<>{F("音読","おんどく")}チャレンジ</>}
+            desc={<>マイクで{F("声","こえ")}に{F("出","だ")}して よめたかチェック（ろくおん・そうしんは しない）</>}
+            checked={readingCheck}
+            onToggle={() => { audioCtrl.playSE('click'); updateSettings({ readingCheck: !readingCheck }); }}
+          />
 
           <div>
             <div className="text-sm font-bold text-[var(--text)] mb-2">1{F("回","かい")}のセッションの{F("量","りょう")}</div>
