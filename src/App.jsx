@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -73,9 +73,10 @@ const DrillShareView = lazy(() => import('./components/social/DrillShareView'));
 const DrillImportView = lazy(() => import('./components/social/DrillImportView'));
 
 // Tutorial & Phase 7
-import TutorialOverlay from './components/tutorial/TutorialOverlay';
-import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
-import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
+// ときどきしか出ない重ね画面は、出すときにだけ読みこむ（初回に読む JS を軽くするため）
+const TutorialOverlay = lazy(() => import('./components/tutorial/TutorialOverlay'));
+const LoginBonusPopup = lazy(() => import('./components/tutorial/LoginBonusPopup'));
+const ResidentCollectionPopup = lazy(() => import('./components/tutorial/ResidentCollectionPopup'));
 import FeatureHint from './components/tutorial/FeatureHint';
 
 // テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
@@ -958,23 +959,26 @@ export default function App() {
 
       {/* Phase 5: チュートリアルオーバーレイ */}
       <AnimatePresence>
-        {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+        {showTutorial && <Suspense key="tutorial" fallback={null}><TutorialOverlay onComplete={handleTutorialComplete} /></Suspense>}
       </AnimatePresence>
 
       {/* Phase 7: ログインボーナスポップアップ */}
       <AnimatePresence>
         {showLoginBonus && !showTutorial && loginBonusReward && (
-          <LoginBonusPopup
-            streak={loginBonusReward.streak}
-            bonusDay={loginBonusReward.bonusDay}
-            reward={loginBonusReward}
-            onClaim={handleClaimLoginBonus}
-          />
+          <Suspense key="login-bonus" fallback={null}>
+            <LoginBonusPopup
+              streak={loginBonusReward.streak}
+              bonusDay={loginBonusReward.bonusDay}
+              reward={loginBonusReward}
+              onClaim={handleClaimLoginBonus}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
       {/* Phase 7: 住民素材収集ポップアップ */}
       <AnimatePresence>
         {showResidentCollection && !showTutorial && !showLoginBonus && residentCollectionResult && (
+          <Suspense key="resident-collection" fallback={null}>
           <ResidentCollectionPopup
             result={residentCollectionResult.result}
             satisfaction={residentCollectionResult.satisfaction}
@@ -984,6 +988,7 @@ export default function App() {
               audioCtrl.playSE('click');
             }}
           />
+          </Suspense>
         )}
       </AnimatePresence>
 
