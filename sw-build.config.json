@@ -1,10 +1,13 @@
 {
   "distDir": "dist",
-  "maxBytes": 16777216,
+  "$comment_maxBytes": "先読みの量の上限（超えると build-sw が警告する）。正本の目安は 1MB だが、このアプリは圏外でも全学年の書き順と書体を出すために、書き順データ（kanjivg/、約0.9MB・gzip 約0.36MB）と書体（assets/ の woff2 11本、約1.17MB）を先読みに入れている。アプリ本体の JS/CSS（約1.7MB・gzip 約0.5MB）と合わせて約3.8MB、転送は約2.2MB。先読みは最初の画面を出したあとに裏で進むので、初回の表示は待たせない。版が変わったときは、ハッシュ付きのファイルは前の版のキャッシュから写し、名前の変わらないものは 304 で確かめるだけなので、2回目以降はほとんど通信しない。通信できるときにしか使わない PeerJS と jsQR は net/ に出して外してある。これを超えたら、何が増えたかを確かめてから上げること。",
+  "maxBytes": 4500000,
   "precache": [
     "index.html",
     "install-hook.js",
     "offline.html",
+    "privacy.html",
+    "terms.html",
     "giga-app-links.js",
     "records-hub-client.js",
     "manifest.json",

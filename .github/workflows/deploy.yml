@@ -31,6 +31,11 @@ jobs:
       - run: npm run check
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
+      # ソースマップ（.map）は配信しない。sourcemap: 'hidden' なので端末は取りに来ないが、
+      # 配信物の約7割（47本・約4.4MB）を占め、ソース全文が決まった URL で公開されてしまう。
+      # SW の版（build-sw.mjs）は .map を数えないので、消しても版は変わらない。
+      - name: ソースマップを配信物から外す
+        run: find dist -name '*.map' -delete
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push'
         with:

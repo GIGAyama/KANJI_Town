@@ -116,8 +116,34 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 - `public/sw.js` … キャッシュ名は必ず `CACHE_PREFIX`（`kanji-town-`）で始める。
   **`activate` で接頭辞を確認せずにキャッシュを消してはいけない**（同一オリジンの
   他アプリのオフライン起動を壊す）。Service Worker から `localStorage` に触れるのも禁止。
-- `APP_VERSION`（`public/sw.js`）は `package.json` の `version` と一致させる。
-  ずれていると `npm run check` が落ちる。**リリースのたびに両方上げる。**
+- `APP_VERSION`（`public/sw.js`）は手で上げない。`npm run build` の最後に `tools/build-sw.mjs`（正本の配布物）が、
+  先読みするファイルの中身から版（`v` ＋16進12桁）を作って `dist/sw.js` に書き、先読みの一覧も埋める。
+  確かめるだけなら `node tools/build-sw.mjs --check`。キャッシュ名は `kanji-town-static-<版>` /
+  `kanji-town-runtime-<版>`。
+- **先読み（`sw-build.config.json`）** は、アプリ本体（`assets/` の JS・CSS）に加えて、書き順データ
+  （`kanjivg/`、全学年）と書体（`assets/` の woff2 11本）、`privacy.html` / `terms.html` まで入れている。
+  一度オンラインで開いた端末は、圏外でも全学年の書き順と書体が出て、利用規約・プライバシーポリシーも
+  アプリに化けずに開ける。量は約3.9MB・80件（gzip 後の転送は1台あたり約2.1MB。下の表）。
+  正本の目安 1MB を超えるので `maxBytes` を 4,500,000 にし、理由を `$comment_maxBytes` に書いてある。
+  通信できるときにしか使わない PeerJS と jsQR は `net/` に出して先読みから外している。
+
+  | 場面 | 1台あたりの転送（実測） | 40台で |
+  | --- | --- | --- |
+  | 初めて開く（画面の表示＋裏での先読み） | 約2.1MB（JS/CSS 約0.5MB・書き順 約0.36MB・書体 約1.17MB ほか） | 約84MB |
+  | 新しい版が出たあと（先読みの入れ直し） | 数KB〜（変わったファイルの分だけ） | ほぼ変わったファイルの分だけ |
+
+  最初の画面は先読みを待たずに出る（先読みは表示のあとに裏で進む）。初回の画面が読んだファイルは
+  HTTP キャッシュから先読みに回すので二重には取らない。版が変わったときは、ファイル名にハッシュの付いた
+  ものは前の版のキャッシュから写し、名前の変わらないもの（`index.html`・書き順データなど）は
+  `cache: 'no-cache'` で確かめて 304 なら取り直さない。
+- SW は**ほかのオリジンへの要求には関わらない**（同梱に替えたので、外から取って保存するものが無い）。
+  同じオリジンのハッシュ付きファイル・書き順データは cacheFirst で、`ignoreVary` を付けて照合する
+  （`Vary: Origin` を返す配信で、Origin 付きの要求と先読みしたものが一致しなくなるのを避ける）。
+  書き順データは JSON の応答だけを保存する（途中の機器が 200 で別のページを返しても覚えない）。
+- `vite preview` は `Vary: Origin` を付けて返すなど、GitHub Pages と応答ヘッダが違う。圏外の確かめを
+  `vite preview` で行うときは、そのことを念頭に置く。
+- ソースマップ（`.map`）は `sourcemap: 'hidden'` で作るが、配信しない（`.github/workflows/deploy.yml` が
+  アップロードの前に消す。配信物の約7割を占め、ソース全文が決まった URL で公開されてしまうため）。
 - 更新は無言で適用せず、`UpdateToast` で児童に確認してから切り替える
   （学習の途中で画面が飛ばないようにするため）。実装は `src/systems/pwa.js`。
 - インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` の最初に読む
