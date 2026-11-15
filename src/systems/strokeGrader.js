@@ -391,6 +391,36 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
 }
 
 /**
+ * 画数と交差は合っているのに、書き順だけが違うか。
+ * 見た目が同じでも合格させないため（README「書字の正誤判定」）、
+ * 点数のしきい値より先にこれを見ること。ボス・サバイバルは点数だけで判定していて、
+ * 上限69点の書き順ちがいが「成功」として扱われていた。
+ * @param {object|null} result - gradeStrokes の結果
+ * @returns {boolean}
+ */
+export function isOrderMistake(result) {
+  return Boolean(result)
+    && result.strokeCountMatch === true
+    && result.crossMatch !== false
+    && result.orderMatch === false;
+}
+
+/**
+ * 採点結果から、間隔反復に渡す評価のおすすめを決める（毎日の学習のテストと同じ基準）。
+ * 書き順ちがいは、点数にかかわらず 'hard' より上にしない。
+ * @param {object|null} result - gradeStrokes の結果
+ * @returns {'easy'|'good'|'hard'|'again'}
+ */
+export function recommendEvaluation(result) {
+  if (!result || !result.strokeCountMatch || result.crossMatch === false) return 'again';
+  if (result.orderMatch === false) return result.total >= 30 ? 'hard' : 'again';
+  if (result.total >= 80) return 'easy';
+  if (result.total >= 55) return 'good';
+  if (result.total >= 30) return 'hard';
+  return 'again';
+}
+
+/**
  * 合計スコアから評価ラベルを取得する
  * @param {number} total - 合計スコア(0-100)
  * @returns {{ label: string, grade: string }}

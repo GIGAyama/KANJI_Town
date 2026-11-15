@@ -4,7 +4,7 @@ import { Flame, RefreshCw, Zap, Trophy, Clock, Target } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
-import { gradeStrokes } from '../../systems/strokeGrader';
+import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -19,6 +19,8 @@ const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 // gradeStrokes の 0-100 スコアをサバイバルのランクに変換
 function scoreToRank(result) {
   if (!result.strokeCountMatch || !result.crossMatch) return 'miss';
+  // 書き順ちがい（上限69点）は、点数が足りていても成功にしない
+  if (isOrderMistake(result)) return 'miss';
   if (result.total >= 80) return 'perfect';
   if (result.total >= 60) return 'ok';
   return 'miss';
@@ -451,7 +453,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     } else {
       setMissCount(c => c + 1);
       audioCtrl.playSE('stamp_bad');
-      onUpdateStat(kanji, 'again', WRITING_SKILLS);
+      // 書き順だけのまちがいは、毎日の学習のテストと同じ基準（'hard' まで）で記録する
+      onUpdateStat(kanji, isOrderMistake(result) ? recommendEvaluation(result) : 'again', WRITING_SKILLS);
       // ミスフラッシュ
       setMissFlash(true);
       setTimeout(() => setMissFlash(false), 400);

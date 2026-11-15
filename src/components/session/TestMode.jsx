@@ -6,20 +6,10 @@ import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
 import { FormatKun, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
-import { gradeStrokes } from '../../systems/strokeGrader';
+import { gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
-
-function scoreToRecommendation(result) {
-  if (!result.strokeCountMatch || !result.crossMatch) return 'again';
-  // 書き順が違うと見た目は同じでも身についていない。もう一度練習する扱いにする。
-  if (result.orderMatch === false) return result.total >= 30 ? 'hard' : 'again';
-  if (result.total >= 80) return 'easy';
-  if (result.total >= 55) return 'good';
-  if (result.total >= 30) return 'hard';
-  return 'again';
-}
 
 function getScoreBanner(result) {
   if (!result) return null;
@@ -138,7 +128,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
     if (strokeData && strokeData.length > 0 && userStrokes.length > 0) {
       const result = gradeStrokes(userStrokes, strokeData, canvasSize);
       setGradeResult(result);
-      setRecommendedEval(scoreToRecommendation(result));
+      setRecommendedEval(recommendEvaluation(result));
     }
   };
 

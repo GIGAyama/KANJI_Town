@@ -4,7 +4,7 @@ import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { SvgGhostBoss } from '../../data/town-items';
 import { FormatKun, F } from '../ui/FormatKun';
-import { gradeStrokes } from '../../systems/strokeGrader';
+import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -284,6 +284,14 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
         doBossAttack(2, '交差ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
         onUpdateStat(kanji, 'again', WRITING_SKILLS);
+      } else if (isOrderMistake(result)) {
+        // 書き順ちがい → 見た目が合っていても攻撃は通らない。復習リストに入れる。
+        // 点数（上限69点）だけで見ると「ダメージを与えた」になり、まちがった書き順に報酬が出ていた。
+        setBattleMessage('書き順がちがう！ダメージが通らない！');
+        audioCtrl.playSE('stamp_bad');
+        doBossAttack(1, 'ボスの反撃！');
+        addToFailedKanji(kanji);
+        onUpdateStat(kanji, recommendEvaluation(result), WRITING_SKILLS);
       } else if (result.total >= 80) {
         // 会心の一撃
         setBattleMessage('会心の一撃！');
