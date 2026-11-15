@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import { TOWN_ITEMS } from '../../data/town-items';
+import { TOWN_ITEMS, TOWN_ITEM_MAP } from '../../data/town-items';
 import { MATERIALS } from '../../data/materials';
 import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
 import { OCCUPATIONS } from '../../data/residents';
@@ -14,6 +14,7 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
 import { getMinLevelForGrade } from '../../utils/level-system';
+import { countMissionBuildings, patchHistory, trackPlacementGain } from '../../systems/town-editing';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -94,16 +95,48 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   const isCraftUnlocked = playerLevel >= 3;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
-  const pushHistory = (newMap) => {
-    const trimmed = history.slice(0, historyIdx + 1);
+  const pushHistory = (newMap, permanentPatch) => {
+    const trimmed = patchHistory(history.slice(0, historyIdx + 1), permanentPatch);
     const next = [...trimmed, { ...newMap }].slice(-20);
     setHistory(next); setHistoryIdx(next.length - 1);
   };
 
+  // 置いた建物は、そのたびに保存する（ほかの画面と同じく自動保存）。
+  // 以前は「保存」を押さずに ← や端末の戻るで出ると、並べた建物が確認なしに消えていた。
+  // しかも開拓したときだけは、その時点の配置がまるごと保存されていた
+  const persistMap = (newMap, statsPatch) => {
+    setStats(s => {
+      const next = { ...s, ...(statsPatch ? statsPatch(s) : null), townMap: newMap };
+      StorageAPI.saveStats(next);
+      return next;
+    });
+  };
+
+  // 「建物を配置」のミッションは、開いてからの最多の数を超えたときだけ数える
+  // （動かす・もとに戻してから置きなおす、では増えない）
+  const placedHighWater = useRef(null);
+  if (placedHighWater.current === null) {
+    placedHighWater.current = countMissionBuildings(stats.townMap || {}, TOWN_ITEM_MAP);
+  }
+  const countPlacement = (newMap) => {
+    const { gained, highWater } = trackPlacementGain(placedHighWater.current, newMap, TOWN_ITEM_MAP);
+    placedHighWater.current = highWater;
+    if (onPlace) for (let i = 0; i < gained; i++) onPlace();
+  };
+
+  /** 地図を変えたら、表示・もとに戻す履歴・保存・ミッションをまとめて進める */
+  const commitMap = (newMap, { permanentPatch, statsPatch } = {}) => {
+    setLocalMap(newMap);
+    pushHistory(newMap, permanentPatch);
+    persistMap(newMap, statsPatch);
+    countPlacement(newMap);
+  };
+
   const handleUndo = () => {
     if (historyIdx <= 0) return;
-    const prev = history[historyIdx - 1];
-    setLocalMap({ ...prev }); setHistoryIdx(historyIdx - 1); audioCtrl.playSE('click');
+    const prev = { ...history[historyIdx - 1] };
+    setLocalMap(prev); setHistoryIdx(historyIdx - 1); audioCtrl.playSE('click');
+    persistMap(prev);
   };
 
   const showError = (msg) => {
@@ -154,9 +187,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       const cost = terrainDef?.cultivateCost || 5;
       if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}枚必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
-      setLocalMap(newMap); pushHistory(newMap);
-      const newStats = { ...stats, coins: stats.coins - cost, townMap: newMap };
-      setStats(newStats); StorageAPI.saveStats(newStats);
+      // 開拓はコインを払うので、もとに戻すで荒れ地へ戻らないよう履歴にも書きこむ
+      commitMap(newMap, { permanentPatch: { [key]: 't_cleared' }, statsPatch: (s) => ({ coins: (s.coins || 0) - cost }) });
       audioCtrl.playSE('place'); spawnDust(); return;
     }
 
@@ -170,7 +202,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
           }
         }
-        setLocalMap(newMap); pushHistory(newMap);
+        commitMap(newMap);
         audioCtrl.playSE('click');
         return;
       }
@@ -183,7 +215,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         } else {
           newMap[key] = 't_cleared';
         }
-        setLocalMap(newMap); pushHistory(newMap);
+        commitMap(newMap);
         audioCtrl.playSE('click');
       }
       return;
@@ -197,7 +229,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           if (topItemId) {
             const newMap = { ...localMap };
             delete newMap[`${key}:top`];
-            setLocalMap(newMap); pushHistory(newMap);
+            commitMap(newMap);
             setSelectedItem(topItemId);
             audioCtrl.playSE('click');
             return;
@@ -211,13 +243,13 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
                 newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
               }
             }
-            setLocalMap(newMap); pushHistory(newMap);
+            commitMap(newMap);
             setSelectedItem(item.id);
             audioCtrl.playSE('click');
             return;
           }
           const newMap = { ...localMap, [key]: 't_cleared' };
-          setLocalMap(newMap); pushHistory(newMap);
+          commitMap(newMap);
           setSelectedItem(itemDef.id);
           audioCtrl.playSE('click');
         }
@@ -271,19 +303,15 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           newMap[`${x + dx},${y + dy}`] = 't_cleared';
         }
       }
-      setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
+      commitMap(newMap); audioCtrl.playSE('place');
       return;
     }
 
     const newMap = { ...localMap, [targetKey]: selectedItem };
-    setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
-
-    // デイリーミッション進捗更新
-    if (onPlace && itemDef && ['building', 'special', 'mega', 'rare'].includes(itemDef.type)) {
-      onPlace(itemDef);
-    }
+    commitMap(newMap); audioCtrl.playSE('place');
   };
 
+  // 配置はそのたびに保存してある。「保存」は、書き出しを待たずに確定してホームへ戻る
   const handleSave = () => {
     const newStats = { ...stats, townMap: localMap }; setStats(newStats); StorageAPI.saveStatsImmediate(newStats);
     audioCtrl.playSE('success'); setView('home');
