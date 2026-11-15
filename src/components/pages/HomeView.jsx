@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, memo, useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, TrendingUp, PenTool, FileText, Download, AlertCircle, Zap, Flame, Ghost, Library, Map, Medal, BarChart3, ShieldAlert, Users, Lock, Sparkles, Target, CheckCircle2 } from 'lucide-react';
 import { MotionButton } from '../ui';
@@ -100,7 +100,8 @@ const DailyGoalCard = ({ dailyProgress, habitStatus, streak, nextReviewHint }) =
     <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
       <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
     </div>
-    <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60">
+    {/* 背の低いスマホでは、学習を始めるボタンを最初の画面に入れるため、この行を省く */}
+    <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60 max-md:[@media(max-height:620px)]:hidden">
       <span>{habitStatus.canProtectToday
         ? 'きょう学ぶと連続記録を守れます'
         : dailyProgress.isComplete
@@ -219,6 +220,30 @@ const UnlockHints = ({ isTownEditorUnlocked, isCraftUnlocked }) => (
   </>
 );
 
+/**
+ * スマホ幅では画面全体を 1 つのスクロールにしている。スクロールバーは出ないので、
+ * 下に続き（ミッション・ドリルなど）があるときは、下の端に「▼」を出して知らせる
+ */
+const ScrollMoreHint = ({ scrollRef, watch }) => {
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const update = () => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => { el.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
+  }, [scrollRef, watch]);
+  if (!more) return null;
+  return (
+    // 学習を始めるボタンに重ならないよう、下の端の 16px だけを使う
+    <div className="sticky bottom-0 -mt-4 h-4 shrink-0 pointer-events-none flex items-end justify-center bg-gradient-to-t from-[var(--bg)] to-transparent" aria-hidden="true">
+      <span className="rounded-full bg-[var(--panel)] border border-[var(--text)] px-2 py-[2px] text-[10px] leading-none font-black text-[var(--text)] shadow-sm">▼ したにも あるよ</span>
+    </div>
+  );
+};
+
 const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, startSurvival, startBossBattle, levelInfo, dailyMissions, onClaimMission, isMobile }) => {
   const currentLevelInfo = levelInfo || getLevelInfo(stats.totalExp, stats.townMap);
   const { level } = currentLevelInfo;
@@ -270,6 +295,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   const isCraftUnlocked = level >= 3;
   const isTownEditorUnlocked = level >= 1;
 
+  const mobileScrollRef = useRef(null);
   const openTownEditor = useCallback(() => { audioCtrl.playSE('click'); setView('townEditor'); }, [setView]);
 
   const statusBar = <StatusBar levelInfo={currentLevelInfo} stage={stage} population={stats.population} satLabel={satLabel} coins={stats.coins} prosperity={prosperity} />;
@@ -306,27 +332,27 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
   );
 
   // ━━━━━━━━━━ モバイルレイアウト（< md） ━━━━━━━━━━
+  // 学年えらびと「きょうのN字」は、320x568 でもスクロールせずに見える位置（町のすぐ下）に置く。
+  // 以前は町の下の小さなスクロール領域の中、ミッションのあとにあり、最初の画面に見えなかった
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full gap-2 overflow-hidden">
+      <div ref={mobileScrollRef} className="flex flex-col h-full gap-1.5 overflow-y-auto pb-2">
         {/* ステータスバー */}
         {statusBar}
         {expBar}
         {dailyGoalCard}
 
         {/* タウンマップ（コンパクト） */}
-        <TownMap className="h-[30vh] min-h-[160px] shrink-0" {...townMapProps} />
+        <TownMap className="h-[20vh] min-h-[110px] shrink-0" {...townMapProps} />
 
-        {/* コントロール（スクロール可能） */}
-        <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pb-2">
-          {/* デイリーミッション */}
-          {missionsPanel}
+        {gradeAndAction}
 
-          {gradeAndAction}
-          {drillButtons}
-          {specialTraining}
-          {unlockHints}
-        </div>
+        {/* デイリーミッション */}
+        {missionsPanel}
+        {drillButtons}
+        {specialTraining}
+        {unlockHints}
+        <ScrollMoreHint scrollRef={mobileScrollRef} watch={dailyMissions} />
       </div>
     );
   }
