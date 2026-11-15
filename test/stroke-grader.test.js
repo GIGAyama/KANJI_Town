@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { gradeStrokes } from '../src/systems/strokeGrader.js';
+import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
 
@@ -269,4 +269,27 @@ test('終筆フィードバックは、正解が不明なときに褒めも直�
   const unknown = describeEndingFeedback(null, 'hane');
   assert.equal(unknown.ok, true);
   assert.ok(!unknown.text.includes('きれい'));
+});
+
+test('書き順だけのまちがいは、どのモードでも good 以上のおすすめにならない', () => {
+  const wrongOrder = gradeStrokes(sanUser([2, 1, 0]), SAN, CANVAS);
+  assert.equal(isOrderMistake(wrongOrder), true);
+  // ボス（60点以上で攻撃成功）やサバイバル（60点以上で OK）の しきい値を超えていても
+  assert.ok(wrongOrder.total >= 30, `前提: 点数は残っている ${wrongOrder.total}`);
+  assert.ok(['hard', 'again'].includes(recommendEvaluation(wrongOrder)));
+
+  const clean = gradeStrokes(sanUser(), SAN, CANVAS);
+  assert.equal(isOrderMistake(clean), false);
+  assert.equal(recommendEvaluation(clean), 'easy');
+});
+
+test('画数ちがい・採点できない結果は、書き順のまちがいとは数えず again にする', () => {
+  const tooFew = gradeStrokes(sanUser([0, 1]), SAN, CANVAS);
+  assert.equal(isOrderMistake(tooFew), false);
+  assert.equal(recommendEvaluation(tooFew), 'again');
+
+  const noModel = gradeStrokes(sanUser(), [], CANVAS);
+  assert.equal(isOrderMistake(noModel), false);
+  assert.equal(recommendEvaluation(noModel), 'again');
+  assert.equal(recommendEvaluation(null), 'again');
 });

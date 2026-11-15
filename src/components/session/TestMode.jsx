@@ -6,20 +6,10 @@ import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
 import { FormatKun, F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
-import { gradeStrokes } from '../../systems/strokeGrader';
+import { gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
-
-function scoreToRecommendation(result) {
-  if (!result.strokeCountMatch || !result.crossMatch) return 'again';
-  // 書き順が違うと見た目は同じでも身についていない。もう一度練習する扱いにする。
-  if (result.orderMatch === false) return result.total >= 30 ? 'hard' : 'again';
-  if (result.total >= 80) return 'easy';
-  if (result.total >= 55) return 'good';
-  if (result.total >= 30) return 'hard';
-  return 'again';
-}
 
 function getScoreBanner(result) {
   if (!result) return null;
@@ -39,7 +29,7 @@ const EVAL_BUTTONS = [
   { key: 'again', variant: 'danger', label: '忘れた💦', hint: 'もう一度', shadow: 'shadow-[0_4px_0_#334155]' },
 ];
 
-const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate, canvasSize, commonSidebar, isStacked }) => {
+const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -138,7 +128,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
     if (strokeData && strokeData.length > 0 && userStrokes.length > 0) {
       const result = gradeStrokes(userStrokes, strokeData, canvasSize);
       setGradeResult(result);
-      setRecommendedEval(scoreToRecommendation(result));
+      setRecommendedEval(recommendEvaluation(result));
     }
   };
 
@@ -151,16 +141,6 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={canvasRef} className="absolute inset-0 z-10 cursor-crosshair w-full h-full touch-none" />
         <div className="absolute top-3 left-3 bg-[var(--text)] text-[var(--panel)] text-[10px] md:text-xs font-bold px-3 py-1 rounded-full opacity-50 pointer-events-none">かくところ</div>
-        {!showAnswer && userStrokes.length > 0 && (
-          <div className="absolute bottom-3 right-3 z-20 flex gap-1.5">
-            <button onClick={undoLastStroke} className="bg-[var(--panel)] text-[var(--text)] text-xs font-bold px-3 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1 hover:bg-[var(--bg)] transition-colors">
-              <Undo2 size={14} /> 1{F("画","かく")}もどす
-            </button>
-            <button onClick={clearCanvas} className="bg-[var(--panel)] text-[var(--text)] text-xs font-bold px-3 py-1.5 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1 hover:bg-[var(--bg)] transition-colors">
-              <RotateCcw size={14} /> {F("書","か")}きなおす
-            </button>
-          </div>
-        )}
       </div>
       {showAnswer && (
         <div className="relative border-[4px] border-[var(--primary)] rounded-[20px] bg-[var(--bg)] overflow-hidden flex items-center justify-center transition-all duration-200 shadow-[4px_4px_0_var(--primary)] md:shadow-[8px_8px_0_var(--primary)] animate-in fade-in slide-in-from-left-4 shrink-0" style={{ width: canvasSize, maxWidth: 'calc(50% - 16px)', maxHeight: '100%', aspectRatio: '1/1' }}>
@@ -186,6 +166,14 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
 
   const action = (
     <div className="flex flex-col gap-2 md:gap-3">
+      {!showAnswer && (
+        // 「1画もどす／書きなおす」はキャンバスの外に置く。以前はキャンバスの右下に重ねていたため、
+        // 狭い画面では下のほうの画の書きはじめをボタンが受けとり、「かくすうが ちがう」と誤って採点されていた。
+        <div className="flex gap-2">
+          <MotionButton variant="secondary" onClick={undoLastStroke} disabled={userStrokes.length === 0} className="py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)]"><Undo2 size={16} /> 1{F("画","かく")}もどす</MotionButton>
+          <MotionButton variant="secondary" onClick={clearCanvas} disabled={userStrokes.length === 0} className="py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)]"><RotateCcw size={16} /> {F("書","か")}きなおす</MotionButton>
+        </div>
+      )}
       {!showAnswer ? (
         <MotionButton variant="primary" onClick={handleReveal} className="w-full py-5 md:py-8 text-xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] animate-pulse"><Eye size={28} /> こたえあわせ</MotionButton>
       ) : (
@@ -222,6 +210,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
                   <MotionButton
                     variant={btn.variant}
                     onClick={() => onEvaluate(btn.key)}
+                    disabled={evaluationLocked}
                     className={`w-full font-black border-[var(--text)] ${
                       isRecommended
                         ? `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`

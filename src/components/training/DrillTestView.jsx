@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, RefreshCw, CheckCircle, XCircle, RotateCcw, LogOut, X, Search, Pencil } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import KanjiGlyph from '../ui/KanjiGlyph';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
@@ -491,7 +492,7 @@ const AnswerDetailSheet = ({ answer, index, total, onPrev, onNext, onClose, onPr
 };
 
 // --- メインのテストビュー ---
-const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
+const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequestLeave }) => {
   const [phase, setPhase] = useState('testing'); // 'testing' | 'results'
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
@@ -503,6 +504,9 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
   const [strokeData, setStrokeData] = useState([]);
   const [paths, setPaths] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // 書き順データを読めなかった（校内フィルタ・オフライン）。採点できないので、書かせない。
+  const [fetchError, setFetchError] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
 
   const total = queue.length;
   const kanji = queue[currentIdx];
@@ -513,21 +517,24 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
     let cancelled = false;
     const load = async () => {
       setIsLoading(true);
+      setFetchError(false);
       try {
         const { strokeData: data, paths: p } = await fetchKanjiVg(kanji.char);
         if (cancelled) return;
         setStrokeData(data);
         setPaths(p);
+        setFetchError(!Array.isArray(data) || data.length === 0);
       } catch {
         if (cancelled) return;
         setStrokeData([]);
         setPaths([]);
+        setFetchError(true);
       }
       setIsLoading(false);
     };
     load();
     return () => { cancelled = true; };
-  }, [kanji, phase]);
+  }, [kanji, phase, reloadCount]);
 
   // 次の問題をプリフェッチ
   useEffect(() => {
@@ -539,6 +546,9 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
   // ストローク提出
   const handleSubmitStrokes = (userStrokes) => {
     if (phase !== 'testing') return;
+    // お手本が無いと gradeStrokes は0点を返す。正しく書いた子を「不正解」と記録しないよう、
+    // 採点も記録もしない（以前は全問0点・習熟度が下がった記録が残っていた）。
+    if (!Array.isArray(strokeData) || strokeData.length === 0) return;
     const result = gradeStrokes(userStrokes, strokeData, canvasSize);
     const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch && result.crossMatch !== false;
 
@@ -569,24 +579,33 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
     }
   };
 
-  // 結果: 終了
-  const handleFinish = () => {
-    onFinish();
+  // 結果画面のボタンは、どれか1つを1回だけ受けつける。
+  // 2回押すと報酬が2回入り、セッション数やミッションも余分に進んでいた。
+  const leavingRef = useRef(false);
+  const leaveOnce = (action) => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    action();
   };
+
+  // 結果: 終了
+  const handleFinish = () => leaveOnce(() => onFinish());
 
   // 結果: 間違えた漢字だけを学習モードで復習する
   const handleReview = () => {
     const failedKanjis = answers.filter(a => !a.passed).map(a => a.kanji);
     if (failedKanjis.length === 0) return;
-    audioCtrl.playSE('click');
-    onReviewMistakes(failedKanjis);
+    leaveOnce(() => {
+      audioCtrl.playSE('click');
+      onReviewMistakes(failedKanjis);
+    });
   };
 
   // 詳細から: この漢字1文字だけを学習モードで練習する
-  const handlePracticeOne = (kanji) => {
+  const handlePracticeOne = (kanji) => leaveOnce(() => {
     audioCtrl.playSE('click');
     onReviewMistakes([kanji]);
-  };
+  });
 
   const ex = kanji?.examples?.[Math.floor(Math.random() * (kanji?.examples?.length || 1))];
   // exをrefで固定して再レンダー時に変わらないようにする
@@ -604,6 +623,7 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
         {/* ヘッダー */}
         <div className="flex-shrink-0 px-3 py-2 md:px-4 md:py-3 z-10 bg-[var(--panel)] border-b-[3px] border-[var(--text)]">
           <div className="flex items-center gap-2 mb-1.5">
+            <LeaveLearningButton onClick={onRequestLeave} />
             <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 rounded-full px-2.5 py-0.5 shrink-0">
               <span className="text-xs font-black text-blue-600">テスト</span>
             </div>
@@ -625,6 +645,17 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
             <div className="text-center">
               <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
+            </div>
+          ) : fetchError ? (
+            <div role="alert" className="flex flex-col items-center justify-center gap-4 p-6 text-center max-w-sm">
+              <div className="text-5xl" aria-hidden="true">😢</div>
+              <p className="text-[var(--text)] font-bold text-base leading-relaxed">
+                {F("書","か")}き{F("順","じゅん")}の データを よみこめませんでした。<br />
+                インターネットに つないでから ためしてね。
+              </p>
+              <MotionButton variant="primary" onClick={() => setReloadCount(c => c + 1)} className="min-h-[48px] px-6 py-3 text-base font-black border-[3px] border-[var(--text)]">
+                🔄 もういちど ためす
+              </MotionButton>
             </div>
           ) : (
             <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
@@ -670,6 +701,8 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
               {/* 右: キャンバス */}
               <div className="w-full lg:w-auto flex flex-col items-center">
                 <TestCanvas
+                  // 問題ごとに作り直す（前の問題の線を次の問題へ持ちこまない）
+                  key={currentIdx}
                   strokeData={strokeData}
                   canvasSize={canvasSize}
                   onSubmit={handleSubmitStrokes}

@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import StartupErrorBoundary from './components/ui/StartupErrorBoundary';
 import './index.css';
 import { installGlobalDiagnostics, recordAppError, recordDiagnosticEvent } from './systems/diagnostics';
 import { registerServiceWorker } from './systems/pwa';
@@ -18,7 +19,10 @@ if (window.location.pathname !== BASE_PATH && window.location.pathname.startsWit
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    {/* 起動時の例外で画面が真っ白のまま戻らないよう、いちばん外で受ける */}
+    <StartupErrorBoundary>
+      <App />
+    </StartupErrorBoundary>
   </React.StrictMode>
 );
 

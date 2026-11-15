@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, PlayCircle, Pencil, CheckCircle2, Star, ChevronRight } from 'lucide-react';
 import StampEffect from '../ui/StampEffect';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import { audioCtrl } from '../../systems/audio';
 import ReadMode from './ReadMode';
 import WatchMode from './WatchMode';
@@ -16,7 +17,7 @@ import { getRecommendedPracticeMode } from '../../systems/mastery';
 const MODE_LABELS = { read: '音読', watch: '書き順', write: 'なぞる', test: 'テスト' };
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
-const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, isResumed = false }) => {
+const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, onRequestLeave, isResumed = false }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
   const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
@@ -83,13 +84,23 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, MODES, isNew, reachedStep]);
 
+  // 評価は1字につき1回だけ受けつける。スタンプの演出中もボタンは押せるため、
+  // 2回押すとタイマーが2本走り、EXP・コイン・住民が2〜3倍に記録されていた。
+  const evaluatingRef = useRef(false);
+  const evaluationTimerRef = useRef(null);
+  useEffect(() => { evaluatingRef.current = false; }, [currentKanji]);
+  // 画面を離れたあとに onFinish が動いて結果画面へ飛ばないよう、タイマーを止める
+  useEffect(() => () => clearTimeout(evaluationTimerRef.current), []);
+
   const handleEvaluation = (evalType) => {
+    if (evaluatingRef.current) return;
+    evaluatingRef.current = true;
     if (evalType === 'easy') onRecordEasy();
     if (evalType === 'easy' || evalType === 'good') { const newC = combo + 1; setCombo(newC); }
     else { setCombo(0); }
     audioCtrl.playSE(evalType === 'again' ? 'stamp_bad' : evalType === 'easy' ? 'stamp_perfect' : evalType === 'hard' ? 'click' : 'stamp_good');
     setActiveStamp(evalType === 'hard' ? 'good' : evalType); // hard は good スタンプで表示
-    setTimeout(() => {
+    evaluationTimerRef.current = setTimeout(() => {
       setActiveStamp(null);
       const success = onUpdateStat(currentKanji, evalType, WRITING_SKILLS);
       if (success) {
@@ -102,6 +113,8 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
         onProgress?.(nextQueue);
         setQueue(nextQueue);
         setMode('watch');
+        // 同じ字を先送りにしただけなら currentKanji が変わらないこともあるので、ここで戻す
+        if (nextQueue[0] === currentKanji) evaluatingRef.current = false;
       }
     }, evalType === 'again' ? 1500 : 900); // again以外は短めに
   };
@@ -157,7 +170,10 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
       </AnimatePresence>
       <StampEffect stamp={activeStamp} />
       <div className="flex justify-between items-center mb-1.5 md:mb-2 shrink-0 gap-2">
-        <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
+        <div className="flex items-center gap-2 min-w-0">
+          <LeaveLearningButton onClick={onRequestLeave} />
+          <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
+        </div>
         <div className="flex gap-2">
           {voicedCount > 0 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-emerald-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-emerald-400 shadow-sm flex items-center gap-1">🎤 ×{voicedCount}</motion.div>}
           {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-[var(--accent)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
@@ -198,7 +214,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             {mode === 'read' && <ReadMode kanji={currentKanji} paths={paths} isLoading={isLoading} settings={settings} challengeCleared={voicedKanjiIds.has(currentKanji.id)} onChallengeClear={handleChallengeClear} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => { recordSkills([{ skill: 'stroke', evidence: 'exposed' }]); setMode('write'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} onPracticeComplete={(evidence) => recordSkills([{ skill: 'writing', evidence }, { skill: 'stroke', evidence }])} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
-            {mode === 'test' && <TestMode kanji={currentKanji} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
           </>
         )}
       </div>

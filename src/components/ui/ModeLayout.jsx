@@ -21,42 +21,40 @@
  * 注意: mainContent に canvas + ref を含む場合、同じ要素を2か所に
  * レンダリングすると ref が最後の DOM 要素を指してしまい描画が壊れる。
  * そのため JS でレイアウトを切り替え、canvas は常に1か所だけ描画する。
+ *
+ * 注意2: 2つのレイアウトで mainContent の枠を「同じ位置・同じ要素」に置くこと。
+ * 以前は isStacked ごとに別の木を返していたため、画面を回すと <canvas> が作り直され、
+ * 最初の canvas にだけ付けた入力リスナーが外れて、なぞり・テストが指に反応しなくなっていた。
+ * 横並びのときは、枠を包む div を display: contents にしてレイアウトに影響させない。
  */
-const ModeLayout = ({ mainContent, tabsContent, infoContent, actionContent, isStacked }) => {
-  if (isStacked) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 w-full h-full">
-        {/* タブ — 常に表示 */}
-        {tabsContent && <div className="shrink-0">{tabsContent}</div>}
+const ModeLayout = ({ mainContent, tabsContent, infoContent, actionContent, isStacked }) => (
+  <div className={isStacked ? 'flex flex-col flex-1 min-h-0 w-full h-full' : 'flex flex-row flex-1 min-h-0 gap-3 lg:gap-5 xl:gap-6 w-full h-full'}>
+    {/* タブ — 縦並びのときは常に上に表示 */}
+    {isStacked && tabsContent ? <div className="shrink-0">{tabsContent}</div> : null}
 
-        {/* メインコンテンツ + 情報パネル — スクロール可能 */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar gap-3 py-2">
-          <div className="bg-[var(--bg)] rounded-[16px] border-[3px] border-[var(--text)] flex items-center justify-center overflow-hidden p-2 shadow-inner relative shrink-0 mx-auto w-full h-[min(50dvh,640px)] min-h-[220px] max-h-[640px]">
-            {mainContent}
-          </div>
-          {infoContent && <div className="flex flex-col gap-3">{infoContent}</div>}
-        </div>
-
-        {/* アクションボタン — 常に表示 */}
-        {actionContent && (
-          <div className="shrink-0 pt-1 pb-1">{actionContent}</div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-row flex-1 min-h-0 gap-3 lg:gap-5 xl:gap-6 w-full h-full">
-      <div className="flex-1 bg-[var(--bg)] rounded-[20px] border-[4px] border-[var(--text)] flex items-center justify-center overflow-auto p-2 lg:p-3 shadow-inner relative min-h-0">
+    {/* メインコンテンツ（縦並びのときは情報パネルといっしょにスクロール） */}
+    <div className={isStacked ? 'flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar gap-3 py-2' : 'contents'}>
+      <div
+        className={isStacked
+          ? 'bg-[var(--bg)] rounded-[16px] border-[3px] border-[var(--text)] flex items-center justify-center overflow-hidden p-2 shadow-inner relative shrink-0 mx-auto w-full h-[min(50dvh,640px)] min-h-[220px] max-h-[640px]'
+          : 'flex-1 bg-[var(--bg)] rounded-[20px] border-[4px] border-[var(--text)] flex items-center justify-center overflow-auto p-2 lg:p-3 shadow-inner relative min-h-0'}
+      >
         {mainContent}
       </div>
+      {isStacked && infoContent ? <div className="flex flex-col gap-3">{infoContent}</div> : null}
+    </div>
+
+    {isStacked ? (
+      /* アクションボタン — 常に表示 */
+      actionContent ? <div className="shrink-0 pt-1 pb-1">{actionContent}</div> : null
+    ) : (
       <div className="w-[clamp(280px,28vw,360px)] flex flex-col shrink-0 h-full overflow-y-auto no-scrollbar">
         {tabsContent}
         {infoContent}
         {actionContent && <div className="mt-auto pt-4 pb-2">{actionContent}</div>}
       </div>
-    </div>
-  );
-};
+    )}
+  </div>
+);
 
 export default ModeLayout;

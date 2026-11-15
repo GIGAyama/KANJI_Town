@@ -7,6 +7,7 @@ import { useViewNavigation } from './hooks/useViewNavigation';
 import { EXIT_CONFIRM_WINDOW, isLearningView } from './systems/view-navigation';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import OfflineBanner from './components/ui/OfflineBanner';
+import OtherTabNotice from './components/ui/OtherTabNotice';
 import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
@@ -31,6 +32,8 @@ import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/l
 import { getTodayString } from './utils/date-utils';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
+import { fillQueue, shuffled } from './systems/question-queue';
+import { createTabCoordinator } from './systems/tab-coordinator';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
@@ -168,6 +171,9 @@ export default function App() {
     onBeforeBack: handleBeforeBack,
     onExitBlocked: handleExitBlocked,
   });
+  // 終了処理のタイマーが、学習をやめたあとに動いても結果画面へ飛ばないように、いまの画面を参照できるようにする
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
   const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
@@ -298,6 +304,42 @@ export default function App() {
         return updated;
       });
     }
+  }, []);
+
+  // 同じ端末で複数のタブに開いたとき、記録を書くのは最後に開いたタブだけにする。
+  // 以前は古いタブがあとから1回保存しただけで、新しいタブで学んだ記録やドリルが消えていた。
+  const [tabInactive, setTabInactive] = useState(false);
+  useEffect(() => {
+    const coordinator = createTabCoordinator({
+      onDeactivate: () => {
+        const flushed = StorageAPI.flushPendingSave();
+        StorageAPI.setWritable(false);
+        audioCtrl.stopBGM();
+        setTabInactive(true);
+        return flushed;
+      },
+      // こちらが開いた直後に、前のタブが保存待ちを書き出したときは読み直す
+      onPeerFlushed: () => {
+        const fresh = StorageAPI.getStats();
+        setStats(fresh);
+        setSeenHints(fresh.seenHints || []);
+        setDailyMissions(fresh.dailyMissions || []);
+      },
+    });
+    coordinator.claim();
+    return () => coordinator.destroy();
+  }, []);
+
+  // 画面を離れる・タブを閉じるときは、保存待ちの変更をすぐに書く（待ち時間のあいだに閉じると消えていた）
+  useEffect(() => {
+    const flush = () => { StorageAPI.flushPendingSave(); };
+    const handleVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   // 初回ロード時
@@ -438,6 +480,9 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [exitHintAt]);
 
+  // 学習画面の「やめる」ボタン。戻る操作と同じ確認ダイアログを出す
+  const requestLeaveLearning = useCallback(() => setShowLeaveConfirm(true), []);
+
   const handleLeaveLearning = useCallback(() => {
     setShowLeaveConfirm(false);
     abandonLearningSession();
@@ -538,7 +583,7 @@ export default function App() {
     audioCtrl.init();
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
     if (learned.length === 0) return;
-    const queue = [...learned].sort(() => Math.random() - 0.5);
+    const queue = shuffled(learned);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('survival', { queue, oldExp: stats.totalExp, expMultiplier });
   };
@@ -547,13 +592,11 @@ export default function App() {
     audioCtrl.init();
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
     if (learned.length === 0) return;
-    const queue = [...learned]
+    const weakest = [...learned]
       .sort((a, b) => (stats.kanjiStats?.[b.id]?.mistakes || 0) - (stats.kanjiStats?.[a.id]?.mistakes || 0))
       .slice(0, 10);
-    // 10問に満たない場合はランダムに複製して埋める
-    while (queue.length > 0 && queue.length < 10) {
-      queue.push(queue[Math.floor(Math.random() * queue.length)]);
-    }
+    // 10問に満たない場合は複製して埋める。同じ字は、ほかに選べる限りとなりに並べない
+    const queue = fillQueue(weakest, 10);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('boss', { queue, oldExp: stats.totalExp, expMultiplier });
   };
@@ -698,10 +741,15 @@ export default function App() {
   }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
-    markStudySessionCompleted();
     // setSessionData はrefも同期更新するため、最後の回答直後でも最新集計を確定できる。
     const activeSession = sessionDataRef.current;
+    // 1つのセッションは1回だけ確定する。二重に呼ばれると EXP・コイン・セッション数・
+    // ミッションが二重に入っていた（ボタンの連打や、画面切り替え中のタップ）。
+    if (activeSession.finalized) return;
+    // 「やめる」でホームに戻ったあとに、ボス・サバイバルなどの演出のタイマーから呼ばれても確定しない
+    if (!isLearningView(viewRef.current)) return;
+    // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
+    markStudySessionCompleted();
     const totalExp = activeSession.earnedExp + (additionalResults.exp || 0);
     const coinBonus = Math.floor(totalExp / ECONOMY.EXP_TO_COIN_DIVISOR) + (additionalResults.coins || 0);
     const rareChance = RARE_DROP.BASE_CHANCE + (stats.streak * RARE_DROP.STREAK_BONUS);
@@ -734,6 +782,7 @@ export default function App() {
 
     const finalSessionData = { 
       ...activeSession,
+      finalized: true,
       earnedExp: totalExp, 
       rareDrop, 
       perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),
@@ -884,6 +933,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* ほかのタブで開かれたとき。「このタブで つづける」で読みなおして、こちらを使うタブにする */}
+      {tabInactive && <OtherTabNotice onResume={() => window.location.reload()} />}
+
       {/* 学習中の戻る操作の確認 */}
       <AnimatePresence>
         {showLeaveConfirm && (
@@ -954,11 +1006,11 @@ export default function App() {
           {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onReviewMistakes={startMistakeReview} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onReviewMistakes={startMistakeReview} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
       </main>

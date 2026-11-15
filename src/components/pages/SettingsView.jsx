@@ -4,6 +4,7 @@ import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download
 import { MotionButton } from '../ui';
 import InstallAppPanel from '../ui/InstallAppPanel';
 import { StorageAPI } from '../../systems/storage';
+import { IMPORT_MAX_BYTES, validateImportedStats } from '../../systems/stats-schema';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
@@ -137,12 +138,19 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const handleImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > IMPORT_MAX_BYTES) {
+      showToast('ファイルが大きすぎます');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const imported = JSON.parse(ev.target.result);
-        if (!imported.kanjiStats && !imported.totalExp && imported.totalExp !== 0) {
-          showToast('ファイルの形式が正しくありません');
+        // このアプリが書き出したバックアップだけを受けつける。以前は {"totalExp":0} のような
+        // ファイルでも通り、上書きした直後に記録がすべて消えたり、起動できなくなったりしていた。
+        const checked = validateImportedStats(JSON.parse(ev.target.result));
+        if (!checked.ok) {
+          showToast('マイ漢字タウンのバックアップではないようです');
           return;
         }
         setConfirm({
@@ -150,9 +158,13 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           message: 'バックアップデータで今のデータを上書きします。この操作は取り消せません。',
           danger: true,
           onConfirm: () => {
-            StorageAPI.saveStatsImmediate(imported);
-            setStats(StorageAPI.getStats());
+            const saved = StorageAPI.saveStatsImmediate(checked.stats);
             setConfirm(null);
+            if (!saved) {
+              showToast('保存できませんでした。今のデータはそのままです');
+              return;
+            }
+            setStats(StorageAPI.getStats());
             showToast('データを復元しました');
           },
         });

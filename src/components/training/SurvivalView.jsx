@@ -4,7 +4,9 @@ import { Flame, RefreshCw, Zap, Trophy, Clock, Target } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
-import { gradeStrokes } from '../../systems/strokeGrader';
+import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
+import { appendRound, shuffled } from '../../systems/question-queue';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -19,6 +21,8 @@ const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 // gradeStrokes の 0-100 スコアをサバイバルのランクに変換
 function scoreToRank(result) {
   if (!result.strokeCountMatch || !result.crossMatch) return 'miss';
+  // 書き順ちがい（上限69点）は、点数が足りていても成功にしない
+  if (isOrderMistake(result)) return 'miss';
   if (result.total >= 80) return 'perfect';
   if (result.total >= 60) return 'ok';
   return 'miss';
@@ -297,8 +301,8 @@ const ResultSummary = ({ wave, waveProgress, bestCombo, perfectCount, okCount, m
 );
 
 // --- メインのサバイバルビュー ---
-const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
-  const [currentQueue, setCurrentQueue] = useState([...queue].sort(() => Math.random() - 0.5));
+const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
+  const [currentQueue, setCurrentQueue] = useState(() => shuffled(queue));
   const [idx, setIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const timeLeftRef = useRef(INITIAL_TIME);
@@ -451,7 +455,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
     } else {
       setMissCount(c => c + 1);
       audioCtrl.playSE('stamp_bad');
-      onUpdateStat(kanji, 'again', WRITING_SKILLS);
+      // 書き順だけのまちがいは、毎日の学習のテストと同じ基準（'hard' まで）で記録する
+      onUpdateStat(kanji, isOrderMistake(result) ? recommendEvaluation(result) : 'again', WRITING_SKILLS);
       // ミスフラッシュ
       setMissFlash(true);
       setTimeout(() => setMissFlash(false), 400);
@@ -501,7 +506,9 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const advanceToNext = () => {
     const nextIdx = idx + 1;
     if (nextIdx >= currentQueue.length) {
-      setCurrentQueue(prev => [...prev, ...queue].sort(() => Math.random() - 0.5));
+      // 出しおわった並びは変えずに、つなぎ目で同じ字が続かない1周ぶんを足す。
+      // 以前は全体を並べかえていたので、直前と同じ字が次に来ることがあった。
+      setCurrentQueue(prev => appendRound(prev, queue));
     }
     setIdx(nextIdx);
   };
@@ -531,6 +538,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
       <div className="flex-shrink-0 px-3 py-2 md:px-4 md:py-2 z-10 bg-[var(--panel)] border-b-[3px] border-[var(--text)]">
         {/* 1段目: ウェーブ + スコア + タイマー */}
         <div className="flex items-center gap-2 mb-1.5">
+          {phase !== 'finished' && <LeaveLearningButton onClick={onRequestLeave} />}
           {/* ウェーブバッジ */}
           <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-400 rounded-full px-2.5 py-0.5 shrink-0">
             <Flame size={14} className="text-amber-500" />
@@ -676,6 +684,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                 </div>
               ) : (
                 <SurvivalCanvas
+                  // 問題ごとに作り直す。同じ字が続くと strokeData が変わらず、前の問題の線が残っていた
+                  key={idx}
                   strokeData={strokeData}
                   canvasSize={canvasSize}
                   onSubmit={handleSubmitStrokes}

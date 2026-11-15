@@ -5,7 +5,9 @@
     "index.html",
     "offline.html",
     "giga-app-links.js",
-    "manifest.webmanifest",
+    "records-hub-client.js",
+    "manifest.json",
+    "icons/",
     "assets/"
   ]
 }
