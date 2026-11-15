@@ -67,7 +67,8 @@ const GachaView = ({ stats, setStats, onBack }) => {
       <div className="flex items-center justify-between mb-8">
         <button 
           onClick={onBack}
-          className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors"
+          aria-label="ホームに戻る"
+          className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <ArrowLeft size={24} className="text-[var(--text)]" />
         </button>

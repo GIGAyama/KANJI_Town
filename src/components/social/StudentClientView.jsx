@@ -53,7 +53,7 @@ const NumericKeypad = ({ value, onChange, onSubmit, disabled }) => {
         {keys.flat().map((key) => {
           if (key === 'del') {
             return (
-              <button key={key} onClick={handleDelete} disabled={value.length === 0}
+              <button key={key} onClick={handleDelete} disabled={value.length === 0} aria-label="1けた けす"
                 className="h-14 rounded-xl border-[3px] border-[var(--text)] bg-[var(--bg)] font-bold text-[var(--text)] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 touch-manipulation">
                 <Delete size={24} />
               </button>
@@ -179,8 +179,8 @@ const QRScanner = ({ onScan, onClose }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
       <div className="relative w-full max-w-sm">
-        <button onClick={() => { stopCamera(); onClose(); }}
-          className="absolute -top-12 right-0 text-white p-2 rounded-full bg-white/20 z-10">
+        <button onClick={() => { stopCamera(); onClose(); }} aria-label="カメラを とじる"
+          className="absolute -top-12 right-0 text-white p-2 rounded-full bg-white/20 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center">
           <X size={28} />
         </button>
         {error ? (

@@ -652,14 +652,15 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
         onPointerUp={(e) => e.stopPropagation()}>
         {isEditing && (
           <>
-            <button onClick={handleZoomIn} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
-            <button onClick={handleZoomOut} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
+            <button onClick={handleZoomIn} aria-label="町を大きく見る" className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
+            <button onClick={handleZoomOut} aria-label="町を小さく見る" className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
           </>
         )}
         {!isEditing && (
           <button 
             onClick={toggleResidentMode} 
             title={`住民表示: ${residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '非表示'}`}
+            aria-label={`住民の表示を切りかえる（いまは ${residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '表示しない'}）`}
             className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex flex-col items-center justify-center shadow-md hover:scale-110 transition-transform relative group"
           >
             <Users size={18} className={residentDisplayMode === 'none' ? 'opacity-30' : 'opacity-100'} />
