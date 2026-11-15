@@ -148,7 +148,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 書き順データ | 同梱（`public/kanjivg/grade-1〜6.json`、計約0.9MB・gzip 約0.36MB） | 外部へは取りに行かない。Service Worker が全学年を先読みするので、一度開いた端末は圏外でも全学年の書き順が出る。それでも読めない字（データ破損など）は、音読だけ字（フォント）で続け、書く段階は「この字は あとで」で飛ばせる（正誤は記録しない。次の学習でまた出る） |
 | 外部依存（P2P） | `cdn.jsdelivr.net` → `unpkg.com` の順に PeerJS を取得 | 両方遮断されると「4けたの数字で送る」が使えない。リンク配布は影響を受けない |
 | 外部依存（QR） | 同じ順で `qrcode`（表示）と `jsQR`（カメラ読み取り）を取得 | 遮断時はQRが出ない・読めない。4けたの数字の入力は使える |
-| 外部依存（フォント） | Google Fonts | 遮断時は端末内のゴシックで代替表示される |
+| 書体 | 同梱（`src/fonts/`、woff2 11本・計約1.17MB。`unicode-range` で束に分けてある） | 外部へは取りに行かない。端末は画面に要る束だけを読む。書体に無い字（児童が入力した珍しい字など）は端末の書体で出る（□にはならない） |
 | 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
 | 共有できるドリル | 名前40字・漢字300字まで（`?drill=` は4000字まで） | 超えた分は取り込み時に切り捨てる |
 | localStorage | 端末ごと数MB | 上限に達すると `StorageErrorBanner` が出る。エクスポートして整理する |
@@ -240,7 +240,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | [jsQR](https://github.com/cozmo/jsQR) | QR コードの読み取り | Apache License 2.0 |
 | [PeerJS](https://peerjs.com/) | 端末どうしの通信 | MIT License |
 | [qrcode](https://github.com/soldair/node-qrcode) | QR コードの生成 | MIT License |
-| Klee One / Zen Maru Gothic（Google Fonts） | 画面の書体 | SIL Open Font License 1.1 |
+| Zen Maru Gothic / Klee One（Google Fonts から取り寄せて同梱） | 画面の書体 | SIL Open Font License 1.1（`public/fonts/OFL.txt`） |
 
 **書き順データについて。** 本アプリは KanjiVG の **`r20260714`（commit `d95a9762`）** から、
 教育漢字1026字の各画の `d` 属性と `kvg:type` だけを取り出した学年別の JSON
@@ -255,6 +255,23 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0）** で提供されており、
 派生物である同梱データも同じ CC BY-SA 3.0 で配布します（出典・版・変更点は各 JSON の先頭と
 `public/kanjivg/LICENSE.txt` に記載）。アプリの「このアプリについて」にも同じ表示を入れています。
+
+**書体について。** 画面の書体は Google Fonts から**ビルドの前に**取り寄せ、必要な字だけにしたもの
+（`src/fonts/*.woff2` と `src/fonts/fonts.css`）を同梱しています。実行時に Google Fonts へは通信しません。
+`src/index.css` が `fonts.css` を取りこみ、ビルドでファイル名にハッシュが付いて `assets/` に出ます。
+
+- Zen Maru Gothic 500/700/900: かな・英数・記号・教育漢字1026字と、`src/`・`index.html` に出る字（計1,681字、3束）
+- Klee One 600: 教育漢字1026字だけ（漢字を1字だけ大きく見せる所にしか使わないため。400 は使っていないので入れない）
+- 作り直し方: 設定は `fonts.config.json`。道具は艦隊の正本 `standards/fonts/build-fonts.mjs` で、
+  このリポジトリにはまだ配られていない。ポータル（`GIGAyama.github.io`）を隣に置き、
+  このリポジトリの直下で `node ../GIGAyama.github.io/standards/fonts/build-fonts.mjs` を走らせる
+  （正本が `tools/fonts/` に配られたあとは `node tools/fonts/build-fonts.mjs`）。
+  `src/fonts/` と `public/fonts/OFL.txt` が書き直されるので、そのままコミットする。
+- 画面に新しい字を足したときは作り直す。作り直さなくても、その字だけ端末の書体で出る。
+  `test/fonts-config.test.js` が、かな・英数・教育漢字が全ウェイトに入っていることを見て、
+  画面に出るのに書体に無い字があれば知らせる。
+- 両書体とも SIL Open Font License 1.1。本文と著作権表示を `public/fonts/OFL.txt` に置いている
+  （Reserved Font Name は無い）。
 
 このリポジトリの LICENSE（MIT）は、**自作のソースコードにのみ適用されます。**
 上記の第三者の成果物には、それぞれのライセンスが適用されます。

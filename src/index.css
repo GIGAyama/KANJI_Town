@@ -1,4 +1,9 @@
 @import "tailwindcss";
+/* 画面の書体（Zen Maru Gothic / Klee One）は自分のところから配る。
+   以前は Google Fonts を <head> で読んでいて、校内フィルタが応答を返さない形で
+   止めると、起動画面が数十秒まっ白になった。中身は fonts.config.json から
+   build-fonts.mjs が作る（README「素材とライセンス」）。直接編集しない。 */
+@import "./fonts/fonts.css";
 
 :root {
   /* 端末の強制ダークモード（自動暗色化）を無効化。

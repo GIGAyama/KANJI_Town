@@ -16,11 +16,11 @@ const CACHE_PREFIX = 'kanji-town-';
 const APP_VERSION = 'dev'; /* __APP_VERSION__ */
 
 const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
-const CACHE_FONTS = `${CACHE_PREFIX}fonts-v1`;
 const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-v${APP_VERSION}`;
-// 以前あった kanji-town-kanjivg-v1（jsDelivr から1字ずつ取った KanjiVG）は
-// ここに無いので、activate で消える。書き順データは同梱に替えた。
-const KEEP_CACHES = [CACHE_STATIC, CACHE_FONTS, CACHE_RUNTIME];
+// 以前あった kanji-town-kanjivg-v1（jsDelivr から1字ずつ取った KanjiVG）と
+// kanji-town-fonts-v1（Google Fonts）はここに無いので、activate で消える。
+// 書き順データと書体は同梱に替えた。
+const KEEP_CACHES = [CACHE_STATIC, CACHE_RUNTIME];
 
 // アプリの基点。sw.js は必ずアプリ直下に置かれるので、自分の場所から求める。
 // 直書きすると、配信先（独自ドメイン直下 / サブパス）が変わった瞬間に
@@ -125,12 +125,6 @@ self.addEventListener('fetch', (event) => {
   if (origin === self.location.origin && pathname.startsWith(BASE + 'kanjivg/')) {
     event.respondWith(cacheFirst(request, CACHE_RUNTIME,
       (response) => (response.headers.get('content-type') || '').includes('json')));
-    return;
-  }
-
-  // ── Google Fonts ──
-  if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
-    event.respondWith(cacheFirst(request, CACHE_FONTS));
     return;
   }
 
