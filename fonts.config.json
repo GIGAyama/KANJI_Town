@@ -1,5 +1,5 @@
 {
-  "$comment": "node <ポータル>/standards/fonts/build-fonts.mjs をこのリポジトリの直下で走らせると、src/fonts/ と public/fonts/OFL.txt を作り直す。README「素材とライセンス」を参照。",
+  "$comment": "node tools/fonts/build-fonts.mjs をこのリポジトリの直下で走らせると、src/fonts/ と public/fonts/OFL.txt を作り直す。README「素材とライセンス」を参照。",
   "$comment_families": "Zen Maru Gothic は画面の文字（かな・英数・記号・教育漢字1026字・src/ と index.html に出る字）。Klee One は漢字を1字だけ大きく見せる所（図鑑・きろく・住民・ドリルの受け取り・書き順を読めないときの字）にしか使わないので、教育漢字1026字だけを入れる。どれも font-black(900) で指定しているが Klee One には 600 までしか無いので 600 だけを取る（400 は使っていない）。text は src/data/kanji-data.js の字を並べたもの。test/fonts-config.test.js がずれを見る。",
   "families": [
     {

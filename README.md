@@ -327,11 +327,10 @@ KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-S
 
 - Zen Maru Gothic 500/700/900: かな・英数・記号・教育漢字1026字と、`src/`・`index.html` に出る字（計1,681字、3束）
 - Klee One 600: 教育漢字1026字だけ（漢字を1字だけ大きく見せる所にしか使わないため。400 は使っていないので入れない）
-- 作り直し方: 設定は `fonts.config.json`。道具は艦隊の正本 `standards/fonts/build-fonts.mjs` で、
-  このリポジトリにはまだ配られていない。ポータル（`GIGAyama.github.io`）を隣に置き、
-  このリポジトリの直下で `node ../GIGAyama.github.io/standards/fonts/build-fonts.mjs` を走らせる
-  （正本が `tools/fonts/` に配られたあとは `node tools/fonts/build-fonts.mjs`）。
+- 作り直し方: 設定は `fonts.config.json`。このリポジトリの直下で `node tools/fonts/build-fonts.mjs` を走らせる。
   `src/fonts/` と `public/fonts/OFL.txt` が書き直されるので、そのままコミットする。
+  `tools/fonts/` の3本（`build-fonts.mjs`・`chars.mjs`・`ofl.mjs`）は艦隊の正本 `standards/fonts/` の写しで、
+  ここで直さず正本を直して配る（`standards-map.json` に載っていて、drift の検査が食い違いを見る）。
 - 画面に新しい字を足したときは作り直す。作り直さなくても、その字だけ端末の書体で出る。
   `test/fonts-config.test.js` が、かな・英数・教育漢字が全ウェイトに入っていることを見て、
   画面に出るのに書体に無い字があれば知らせる。
