@@ -49,17 +49,17 @@ export const ACHIEVEMENTS = [
   { id: 'grade1_half', type: 'grade', target: 40,  gradeNum: 1, name: '一年生（いちねんせい）の中間（ちゅうかん）',   desc: '小学（しょうがく）1年（ねん）の漢字（かんじ）を40字（じ）マスター',          reward: 800,  rewardExp: 400,   rewardItem: null, category: 'grade' },
   { id: 'grade2_half', type: 'grade', target: 80,  gradeNum: 2, name: '二年生（にねんせい）の中間（ちゅうかん）',     desc: '小学（しょうがく）2年（ねん）の漢字（かんじ）を80字（じ）マスター',          reward: 1200, rewardExp: 800,   rewardItem: null, category: 'grade' },
   { id: 'grade3_half', type: 'grade', target: 100, gradeNum: 3, name: '三年生（さんねんせい）の中間（ちゅうかん）',   desc: '小学（しょうがく）3年（ねん）の漢字（かんじ）を100字（じ）マスター',         reward: 1500, rewardExp: 1200,  rewardItem: null, category: 'grade' },
-  { id: 'grade4_half', type: 'grade', target: 99,  gradeNum: 4, name: '四年生（よねんせい）の中間（ちゅうかん）',     desc: '小学（しょうがく）4年（ねん）の漢字（かんじ）を99字（じ）マスター',          reward: 2000, rewardExp: 2000,  rewardItem: null, category: 'grade' },
-  { id: 'grade5_half', type: 'grade', target: 99,  gradeNum: 5, name: '五年生（ごねんせい）の中間（ちゅうかん）',     desc: '小学（しょうがく）5年（ねん）の漢字（かんじ）を99字（じ）マスター',          reward: 2500, rewardExp: 3000,  rewardItem: null, category: 'grade' },
+  { id: 'grade4_half', type: 'grade', target: 101, gradeNum: 4, name: '四年生（よねんせい）の中間（ちゅうかん）',     desc: '小学（しょうがく）4年（ねん）の漢字（かんじ）を101字（じ）マスター',          reward: 2000, rewardExp: 2000,  rewardItem: null, category: 'grade' },
+  { id: 'grade5_half', type: 'grade', target: 97,  gradeNum: 5, name: '五年生（ごねんせい）の中間（ちゅうかん）',     desc: '小学（しょうがく）5年（ねん）の漢字（かんじ）を97字（じ）マスター',          reward: 2500, rewardExp: 3000,  rewardItem: null, category: 'grade' },
   { id: 'grade6_half', type: 'grade', target: 96,  gradeNum: 6, name: '六年生（ろくねんせい）の中間（ちゅうかん）',   desc: '小学（しょうがく）6年（ねん）の漢字（かんじ）を96字（じ）マスター',          reward: 3000, rewardExp: 4000,  rewardItem: null, category: 'grade' },
 
   // ── 各学年の完全制覇 ─────────────────────
   { id: 'grade1_all', type: 'grade', target: 80,  gradeNum: 1, name: '一年生（いちねんせい）マスター',               desc: '小学（しょうがく）1年（ねん）の漢字（かんじ）80字（じ）をすべてマスター',    reward: 2000,  rewardExp: 1000,  rewardItem: null, category: 'grade' },
   { id: 'grade2_all', type: 'grade', target: 160, gradeNum: 2, name: '二年生（にねんせい）マスター',                 desc: '小学（しょうがく）2年（ねん）の漢字（かんじ）160字（じ）をすべてマスター',   reward: 3000,  rewardExp: 2000,  rewardItem: null, category: 'grade' },
   { id: 'grade3_all', type: 'grade', target: 200, gradeNum: 3, name: '三年生（さんねんせい）マスター',               desc: '小学（しょうがく）3年（ねん）の漢字（かんじ）200字（じ）をすべてマスター',   reward: 4000,  rewardExp: 3000,  rewardItem: null, category: 'grade' },
-  { id: 'grade4_all', type: 'grade', target: 197, gradeNum: 4, name: '四年生（よねんせい）マスター',                 desc: '小学（しょうがく）4年（ねん）の漢字（かんじ）197字（じ）をすべてマスター',   reward: 5000,  rewardExp: 5000,  rewardItem: null, category: 'grade' },
-  { id: 'grade5_all', type: 'grade', target: 197, gradeNum: 5, name: '五年生（ごねんせい）マスター',                 desc: '小学（しょうがく）5年（ねん）の漢字（かんじ）197字（じ）をすべてマスター',   reward: 6000,  rewardExp: 8000,  rewardItem: null, category: 'grade' },
-  { id: 'grade6_all', type: 'grade', target: 192, gradeNum: 6, name: '六年生（ろくねんせい）マスター',               desc: '小学（しょうがく）6年（ねん）の漢字（かんじ）192字（じ）をすべてマスター',   reward: 7000,  rewardExp: 10000, rewardItem: null, category: 'grade' },
+  { id: 'grade4_all', type: 'grade', target: 202, gradeNum: 4, name: '四年生（よねんせい）マスター',                 desc: '小学（しょうがく）4年（ねん）の漢字（かんじ）202字（じ）をすべてマスター',   reward: 5000,  rewardExp: 5000,  rewardItem: null, category: 'grade' },
+  { id: 'grade5_all', type: 'grade', target: 193, gradeNum: 5, name: '五年生（ごねんせい）マスター',                 desc: '小学（しょうがく）5年（ねん）の漢字（かんじ）193字（じ）をすべてマスター',   reward: 6000,  rewardExp: 8000,  rewardItem: null, category: 'grade' },
+  { id: 'grade6_all', type: 'grade', target: 191, gradeNum: 6, name: '六年生（ろくねんせい）マスター',               desc: '小学（しょうがく）6年（ねん）の漢字（かんじ）191字（じ）をすべてマスター',   reward: 7000,  rewardExp: 10000, rewardItem: null, category: 'grade' },
 
   // ── 全学年制覇 ───────────────────────────
   { id: 'all_grades', type: 'master', target: 1026, name: '小学校（しょうがっこう）の漢字王（かんじおう）', desc: '小学校（しょうがっこう）6年間（ねんかん）の漢字（かんじ）をすべてマスター', reward: 100000, rewardExp: 100000, rewardItem: null, category: 'grade' },

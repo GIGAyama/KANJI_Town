@@ -184,7 +184,7 @@ docs/note/
 
 | 数字 | 出どころ |
 |---|---|
-| 教育漢字1026字（1年80／2年160／3年200／4年220／5年185／6年181） | `src/data/kanji-data.js` を数えた。学年別の内訳もその場で数えて一致を確認 |
+| 教育漢字1026字（1年80／2年160／3年200／4年202／5年193／6年191） | `src/data/kanji-data.js` を数えた。学年別の内訳もその場で数えて一致を確認 |
 | 例文2033 | `src/data/kanji-data.js` の examples を数えた |
 | 復習の間隔が1分・10分・1日と伸びる | `src/systems/srs.js` の `LEARNING_STEPS` と `GRADUATING_INTERVAL` |
 | そこから先は容易度をかけて伸びる | 同上の `calculateNextReview` |
