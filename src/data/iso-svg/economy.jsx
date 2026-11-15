@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, WinSE, IsoShadow, MarketStall } from './shared.jsx';
+import { isoPt, iso3, IsoCube, FaceSW, WinSE, IsoShadow, MarketStall } from './shared.jsx';
 
 // 生産（倉庫・市場・港・工場など）
 
@@ -75,7 +75,6 @@ export const SvgWarehouse = () => {
 
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       <g transform="translate(50, 100) scale(2.2)">
         
         {/* === 1. 土台 === */}
@@ -204,7 +203,6 @@ export const SvgGrandWarehouse = () => {
 
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       <g transform="translate(82, 74) scale(2.9)">
 
         {/* === 1. ベース（1x2マスの敷地） === */}
@@ -285,7 +283,7 @@ export const SvgGrandWarehouse = () => {
 
 
 export const SvgMarket = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={42} />
       {/* 石畳の広場 */}
@@ -466,7 +464,6 @@ export const SvgPort = () => {
 
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       <g transform="translate(50, 67) scale(3.03)">
         <polygon points={`${iso(50,0,seaZ)} ${iso(100,0,seaZ)} ${iso(100,100,seaZ)} ${iso(50,100,seaZ)}`} fill="#0891b2" />
         <polygon points={`${iso(0,0,0)} ${iso(50,0,0)} ${iso(50,100,0)} ${iso(0,100,0)}`} fill="#94a3b8" />
@@ -504,7 +501,7 @@ export const SvgPort = () => {
 };
 
 export const SvgGarden = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       {/* 芝生ベース */}
       <IsoCube x={4} y={4} w={92} d={92} h={2.5} top="#4ade80" left="#22c55e" right="#16a34a" sw={1} />
@@ -554,7 +551,7 @@ export const SvgGarden = () => (
 );
 
 export const SvgSmithy = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={40} />
       {/* 土の敷地 */}
@@ -603,7 +600,7 @@ export const SvgSmithy = () => (
 );
 
 export const SvgFactory = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* メイン工場棟 */}
       <polygon points="0,-3 -30,-18 -30,-38 0,-23" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
@@ -697,7 +694,6 @@ export const SvgWatermill = () => {
   };
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       <g transform="translate(-2, 126) scale(2.35)">
         {/* 地面と水路 */}
         <polygon points={`${iso(0,0,0)} ${iso(65,0,0)} ${iso(65,100,0)} ${iso(0,100,0)}`} fill={colors.base} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round" />
@@ -749,7 +745,7 @@ export const SvgWatermill = () => {
 };
 
 export const SvgMine = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       <polygon points="-25,-5 -15,-30 0,-45 20,-35 30,-10 15,5 -10,5" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,-45 20,-35 30,-10 15,5 0,0 -10,-20" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, IsoShadow } from './shared.jsx';
+import { isoPt, iso3, IsoCube, FaceSW, FaceSE, IsoShadow } from './shared.jsx';
 
 // 乗り物（自動車・バス・船・飛行機など）
 
@@ -27,7 +27,7 @@ export const SvgCar = ({ seed = 0 }) => {
   ];
   const c = bodies[(seed || 0) % bodies.length];
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 100) scale(2.15)">
         <IsoShadow cy={-21} rx={26} ry={11} o={0.2} />
         {/* 奥のタイヤ */}
@@ -56,7 +56,7 @@ export const SvgCar = ({ seed = 0 }) => {
 };
 
 export const SvgBus = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow cy={-21} rx={32} ry={12} o={0.2} />
       <WheelSW x={26} y={42} r={4.5} />
@@ -86,7 +86,7 @@ export const SvgBus = () => (
 );
 
 export const SvgBicycle = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 78) scale(2.3)">
       <ellipse cx="0" cy="10" rx="18" ry="5" fill="#020617" opacity="0.18" />
       {/* 車輪 */}
@@ -119,7 +119,7 @@ export const SvgBicycle = () => (
 );
 
 export const SvgShipVehicle = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       {/* 水面パッド */}
       <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
@@ -151,7 +151,7 @@ export const SvgShipVehicle = () => (
 );
 
 export const SvgAirplane = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       {/* 駐機場パッド */}
       <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#94a3b8" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
@@ -182,7 +182,7 @@ export const SvgAirplane = () => (
 );
 
 export const SvgFireTruck = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow cy={-21} rx={32} ry={12} o={0.2} />
       <WheelSW x={26} y={42} r={4.5} />

@@ -1,5 +1,4 @@
 import React from 'react';
-import { SharedDefs } from './shared.jsx';
 
 // 地形（荒れ地・草地・森・砂地・浅瀬・高台など）
 
@@ -7,7 +6,7 @@ import { SharedDefs } from './shared.jsx';
 // 2. Terrain Assets
 // ==========================================
 export const SvgGrassland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#451a03" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -20,7 +19,7 @@ export const SvgGrassland = () => (
 );
 
 export const SvgBedrock = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full" ><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full" >
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#334155" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#1e293b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -32,7 +31,7 @@ export const SvgBedrock = () => (
 );
 
 export const SvgRoughland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#451a03" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -44,7 +43,7 @@ export const SvgRoughland = () => (
 );
 
 export const SvgCleared = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#92400e" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#78350f" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -59,7 +58,7 @@ export const SvgCleared = () => (
 );
 
 export const SvgForestFloor = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#064e3b" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#022c22" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -72,7 +71,7 @@ export const SvgForestFloor = () => (
 );
 
 export const SvgSand = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#d97706" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#b45309" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -84,7 +83,7 @@ export const SvgSand = () => (
 );
 
 export const SvgShallowWater = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 40)">
       <polygon points="0,25 50,50 50,60 0,35" fill="#0284c7" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,35 50,60" fill="#0369a1" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
@@ -96,7 +95,7 @@ export const SvgShallowWater = () => (
 );
 
 export const SvgHighland = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full"><SharedDefs />
+  <svg viewBox="0 0 100 100" className="w-full h-full">
     <g transform="translate(0, 20)">
       <polygon points="0,25 50,50 50,80 0,55" fill="#44403c" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />
       <polygon points="50,50 100,25 100,55 50,80" fill="#292524" stroke="#000" strokeWidth="2.5" strokeLinejoin="round" />

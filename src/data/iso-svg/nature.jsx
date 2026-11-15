@@ -1,5 +1,4 @@
 import React from 'react';
-import { SharedDefs } from './shared.jsx';
 
 // 自然（くさ・花・木・岩など）
 
@@ -7,7 +6,7 @@ import { SharedDefs } from './shared.jsx';
 // 3. Nature Assets
 // ==========================================
 export const SvgWeed = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       <path d="M 0,2 Q -10,-20 -20,-30" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" />
       <path d="M 0,2 Q 10,-15 20,-25" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" />
@@ -22,7 +21,7 @@ export const SvgWeed = () => (
 );
 
 export const SvgGrass = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       <path d="M -5,2 Q -15,-15 -25,-10 Q -15,-5 -5,2 Z" fill="#15803d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <path d="M 5,2 Q 20,-10 25,-5 Q 15,0 5,2 Z" fill="#16a34a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
@@ -35,7 +34,7 @@ export const SvgGrass = () => (
 );
 
 export const SvgFlower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       <path d="M -2,0 Q -10,-10 -5,-25" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
       <path d="M 2,0 Q 15,-5 20,-20" fill="none" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" />
@@ -62,7 +61,7 @@ export const SvgFlower = () => (
 );
 
 export const SvgTree = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: 'visible' }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: 'visible' }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="14" ry="7" fill="rgba(0,0,0,0.15)" />
@@ -104,7 +103,7 @@ export const SvgTree = () => (
 );
 
 export const SvgSakura = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="16" ry="8" fill="rgba(0,0,0,0.15)" />
@@ -153,7 +152,7 @@ export const SvgSakura = () => (
 );
 
 export const SvgPine = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="14" ry="7" fill="rgba(0,0,0,0.15)" />
@@ -191,7 +190,7 @@ export const SvgPine = () => (
 );
 
 export const SvgRock = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="1" rx="22" ry="10" fill="rgba(0,0,0,0.15)" />
@@ -205,7 +204,7 @@ export const SvgRock = () => (
 );
 
 export const SvgBambooGrove = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       {/* Ground Shadow */}
       <ellipse cx="0" cy="2" rx="20" ry="10" fill="rgba(0,0,0,0.15)" />

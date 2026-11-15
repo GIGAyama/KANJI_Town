@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, FaceSW, FaceSE, Fl } from './shared.jsx';
+import { isoPt, iso3, FaceSW, FaceSE, Fl } from './shared.jsx';
 
 // 平面・住宅（道・水路・家・お店・学校など）
 
@@ -31,7 +31,7 @@ const HOUSE_PALETTES = [
 export const SvgHouse1 = ({ seed = 0 }) => {
   const p = HOUSE_PALETTES[seed % HOUSE_PALETTES.length];
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 100) scale(2.5)">
         <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill={p.wallSW} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
         <polygon points="0,-4 20,-14 20,-30 0,-20" fill={p.wallSE} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
@@ -142,7 +142,7 @@ export const SvgHouse2 = ({ seed = 0 }) => {
   };
 
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 75) scale(2.5)">
         {/* Driveway & Path to use 2x1 ground space beautifully */}
         <polygon points={`${pt(0.2, 0.85, 0)} ${pt(0.7, 0.85, 0)} ${pt(0.7, 1.0, 0)} ${pt(0.2, 1.0, 0)}`} fill="#d1d5db" opacity="0.6" strokeLinejoin="round" />
@@ -278,7 +278,7 @@ export const SvgHouse3 = ({ seed = 0 }) => {
   };
 
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 70) scale(2.5)">
         <ellipse cx="0" cy="18" rx="46" ry="23" fill="rgba(0,0,0,0.15)" />
 
@@ -363,7 +363,7 @@ export const SvgShop = ({ seed = 0 }) => {
   const v = variants[(seed || 0) % variants.length];
 
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 100) scale(2.5)">
         {/* Ground Shadow */}
         <ellipse cx="0" cy="0" rx="26" ry="13" fill="rgba(0,0,0,0.15)" />
@@ -427,7 +427,6 @@ export const SvgSchool = () => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       {/* 既存の環境への互換性のため残しています */}
-      {typeof SharedDefs !== 'undefined' && <SharedDefs />}
       
       <g transform="translate(50, 41) scale(3.55)">
 
@@ -544,7 +543,7 @@ export const SvgSchool = () => {
 };
 
 export const SvgWall = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.5)">
       <polygon points="0,0 -20,-10 -20,-30 0,-20" fill="#94a3b8" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
       <polygon points="0,0 20,-10 20,-30 0,-20" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
@@ -556,7 +555,7 @@ export const SvgWall = () => (
 );
 
 export const SvgFence = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       {/* 草地の細長い基礎 */}
       <polygon points={`${iso3(30, 6, 0)} ${iso3(70, 6, 0)} ${iso3(70, 94, 0)} ${iso3(30, 94, 0)}`} fill="#86efac" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round" />
@@ -583,7 +582,7 @@ export const SvgFence = () => (
 );
 
 export const SvgBridge = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       {/* 水面 */}
       <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />

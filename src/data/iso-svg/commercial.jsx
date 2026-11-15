@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow, ShopBase } from './shared.jsx';
+import { isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow, ShopBase } from './shared.jsx';
 
 // 店（カフェ・パン屋・コンビニなど）
 
@@ -10,7 +10,7 @@ import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow, 
 
 
 export const SvgCafe = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#ffedd5" base="#78350f" roof="#a16207" awn1="#b45309" awn2="#fef3c7" sign="#fff7ed" signEdge="#78350f"
         glyph={<g>
@@ -23,7 +23,7 @@ export const SvgCafe = () => (
 );
 
 export const SvgBakery = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#fff7ed" base="#9a3412" roof="#ea580c" awn1="#ea580c" awn2="#ffedd5" sign="#fff7ed" signEdge="#9a3412"
         glyph={<g>
@@ -35,7 +35,7 @@ export const SvgBakery = () => (
 );
 
 export const SvgBurgerShop = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#fef9c3" base="#a16207" roof="#dc2626" awn1="#dc2626" awn2="#fef08a" sign="#fef9c3" signEdge="#dc2626"
         glyph={<g>
@@ -49,7 +49,7 @@ export const SvgBurgerShop = () => (
 );
 
 export const SvgFamilyRestaurant = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wide wall="#fef9c3" base="#b45309" roof="#f97316" awn1="#f97316" awn2="#fffbeb" sign="#fffbeb" signEdge="#ea580c"
         glyph={<g>
@@ -62,7 +62,7 @@ export const SvgFamilyRestaurant = () => (
 );
 
 export const SvgConvenienceStore = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#f8fafc" base="#475569" roof="#e2e8f0" awn1="#0ea5e9" awn2="#f8fafc" sign="#f8fafc" signEdge="#0284c7" h={22}
         glyph={<g>
@@ -76,7 +76,7 @@ export const SvgConvenienceStore = () => (
 );
 
 export const SvgFlowerShop = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#fdf2f8" base="#9d174d" roof="#f472b6" awn1="#db2777" awn2="#fce7f3" sign="#fdf2f8" signEdge="#db2777"
         glyph={<g>
@@ -97,7 +97,7 @@ export const SvgFlowerShop = () => (
 );
 
 export const SvgCinema = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wide wall="#334155" base="#0f172a" roof="#1e293b" awn1="#dc2626" awn2="#fef3c7" sign="#0f172a" signEdge="#dc2626" h={30} pad="#475569"
         glyph={<g>
@@ -118,7 +118,7 @@ export const SvgCinema = () => (
 );
 
 export const SvgHotel = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.1)">
       <IsoShadow rx={32} />
       <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />

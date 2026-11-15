@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, IsoShadow } from './shared.jsx';
+import { isoPt, iso3, IsoCube, IsoShadow } from './shared.jsx';
 
 // 遊び（公園・遊具・プール・観覧車など）
 
@@ -210,7 +210,7 @@ export const SvgPark = ({ seed = 0 }) => {
   const L = layouts[variant];
 
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 68) scale(1.5)">
         {/* === 地面 === */}
         <polygon points={groundPts} fill="#4ade80" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -259,7 +259,7 @@ export const SvgPark = ({ seed = 0 }) => {
 };
 
 export const SvgPlayground = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={38} />
       {/* 砂地パッド */}
@@ -297,7 +297,7 @@ export const SvgPlayground = () => (
 );
 
 export const SvgPool = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={42} />
       {/* デッキ */}
@@ -335,7 +335,7 @@ export const SvgFerrisWheel = () => {
   const R = 26; const CX = 0; const CY = -58;
   const cabinColors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#facc15'];
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 100) scale(2.1)">
         <IsoShadow rx={30} ry={13} />
         {/* 支柱（A型フレーム前後） */}
@@ -375,7 +375,7 @@ export const SvgFerrisWheel = () => {
 };
 
 export const SvgAmusementPark = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={44} />
       {/* 敷地 */}

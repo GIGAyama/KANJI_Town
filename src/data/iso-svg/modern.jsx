@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow } from './shared.jsx';
+import { isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow } from './shared.jsx';
 
 // 都市（オフィスビル・タワマン・テレビ塔など）
 
@@ -7,7 +7,7 @@ import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow }
 // 9. 現代建築 (Modern Architecture)
 // ==========================================
 export const SvgOfficeBuilding = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.1)">
       <IsoShadow rx={34} />
       {/* 敷地 */}
@@ -45,7 +45,7 @@ export const SvgOfficeBuilding = () => (
 );
 
 export const SvgTowerApartment = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.1)">
       <IsoShadow rx={32} />
       <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#d6d3d1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
@@ -81,7 +81,7 @@ export const SvgTowerApartment = () => (
 );
 
 export const SvgTvTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.1)">
       <IsoShadow rx={30} ry={13} />
       {/* 4本脚がカーブを描くラティス構造（東京タワー風） */}
@@ -115,7 +115,7 @@ export const SvgTvTower = () => (
 );
 
 export const SvgStadium = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 78) scale(2.1)">
       <ellipse cx="0" cy="8" rx="42" ry="20" fill="#020617" opacity="0.16" />
       {/* 外壁（下段） */}

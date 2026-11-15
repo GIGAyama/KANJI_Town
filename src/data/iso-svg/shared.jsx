@@ -6,49 +6,62 @@ import React from 'react';
 // ==========================================
 // 1. Shared Definitions & Helpers
 // ==========================================
-const SharedDefs = () => (
-  <defs>
-    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="1.5" dy="3" stdDeviation="2" floodColor="#0f172a" floodOpacity="0.4" />
-    </filter>
-    <filter id="strong-shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="-2" dy="5" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.6" />
-    </filter>
-    <filter id="glow-effect" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-      <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
-    </filter>
-    <linearGradient id="grad-glass" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#bae6fd" stopOpacity="0.9" />
-      <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.6" />
-      <stop offset="100%" stopColor="#0284c7" stopOpacity="0.8" />
-    </linearGradient>
-    <linearGradient id="grad-gold" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stopColor="#d97706" />
-      <stop offset="40%" stopColor="#fbbf24" />
-      <stop offset="60%" stopColor="#fef08a" />
-      <stop offset="100%" stopColor="#b45309" />
-    </linearGradient>
-    <linearGradient id="grad-water" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#7dd3fc" />
-      <stop offset="100%" stopColor="#0ea5e9" />
-    </linearGradient>
-    <linearGradient id="grad-roof-red" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stopColor="#ef4444" /><stop offset="100%" stopColor="#991b1b" />
-    </linearGradient>
-    <linearGradient id="grad-roof-blue" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1e3a8a" />
-    </linearGradient>
-    <linearGradient id="grad-roof-slate" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stopColor="#64748b" /><stop offset="100%" stopColor="#334155" />
-    </linearGradient>
-    <linearGradient id="grad-magma" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#f97316" />
-      <stop offset="50%" stopColor="#ef4444" />
-      <stop offset="100%" stopColor="#b91c1c" />
-    </linearGradient>
-  </defs>
-);
+/**
+ * 建物の絵が url(#soft-shadow) などで参照する影・光・グラデーション。
+ * 以前は 112 個の絵がそれぞれ <defs> を持ち、重い町では DOM の 3 割が <defs> の中だった
+ * （同じ id が何百個も重複していた）。絵のかたまりを読みこんだときに、文書に 1 回だけ置く。
+ * display:none にすると一部のブラウザで参照が切れるので、大きさ 0 の SVG にしておく。
+ */
+const SHARED_DEFS_ID = 'iso-svg-shared-defs';
+const SHARED_DEFS_MARKUP =
+  '<defs>' +
+  '<filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">' +
+  '<feDropShadow dx="1.5" dy="3" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.4" />' +
+  '</filter>' +
+  '<filter id="strong-shadow" x="-30%" y="-30%" width="160%" height="160%">' +
+  '<feDropShadow dx="-2" dy="5" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.6" />' +
+  '</filter>' +
+  '<filter id="glow-effect" x="-50%" y="-50%" width="200%" height="200%">' +
+  '<feGaussianBlur stdDeviation="3" result="coloredBlur" />' +
+  '<feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>' +
+  '</filter>' +
+  '<linearGradient id="grad-glass" x1="0%" y1="0%" x2="100%" y2="100%">' +
+  '<stop offset="0%" stop-color="#bae6fd" stop-opacity="0.9" />' +
+  '<stop offset="50%" stop-color="#38bdf8" stop-opacity="0.6" />' +
+  '<stop offset="100%" stop-color="#0284c7" stop-opacity="0.8" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-gold" x1="0%" y1="100%" x2="100%" y2="0%">' +
+  '<stop offset="0%" stop-color="#d97706" />' +
+  '<stop offset="40%" stop-color="#fbbf24" />' +
+  '<stop offset="60%" stop-color="#fef08a" />' +
+  '<stop offset="100%" stop-color="#b45309" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-water" x1="0%" y1="0%" x2="100%" y2="100%">' +
+  '<stop offset="0%" stop-color="#7dd3fc" />' +
+  '<stop offset="100%" stop-color="#0ea5e9" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-roof-red" x1="0%" y1="0%" x2="0%" y2="100%">' +
+  '<stop offset="0%" stop-color="#ef4444" /><stop offset="100%" stop-color="#991b1b" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-roof-blue" x1="0%" y1="0%" x2="0%" y2="100%">' +
+  '<stop offset="0%" stop-color="#3b82f6" /><stop offset="100%" stop-color="#1e3a8a" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-roof-slate" x1="0%" y1="0%" x2="0%" y2="100%">' +
+  '<stop offset="0%" stop-color="#64748b" /><stop offset="100%" stop-color="#334155" />' +
+  '</linearGradient>' +
+  '<linearGradient id="grad-magma" x1="0%" y1="0%" x2="100%" y2="100%">' +
+  '<stop offset="0%" stop-color="#f97316" />' +
+  '<stop offset="50%" stop-color="#ef4444" />' +
+  '<stop offset="100%" stop-color="#b91c1c" />' +
+  '</linearGradient>' +
+  '</defs>';
+
+export function mountSharedDefs(doc = globalThis.document) {
+  if (!doc || !doc.body || doc.getElementById(SHARED_DEFS_ID)) return;
+  const holder = doc.createElement('div');
+  holder.innerHTML = `<svg id="${SHARED_DEFS_ID}" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">${SHARED_DEFS_MARKUP}</svg>`;
+  doc.body.appendChild(holder.firstChild);
+}
 
 const darken = (hex, amt = 20) => {
   if (!hex || typeof hex !== 'string' || hex.startsWith('url')) return hex || '#000';
@@ -167,7 +180,6 @@ const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, 
 
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <SharedDefs />
       <polygon points={`0,0 ${dx},-${dy} ${dx},${-dy + thickness} 0,${thickness}`} fill={rightFill} stroke={rightFill} strokeWidth="0.5" strokeLinejoin="round" />
       <polygon points={`0,0 -${dx},-${dy} -${dx},${-dy + thickness} 0,${thickness}`} fill={leftFill} stroke={leftFill} strokeWidth="0.5" strokeLinejoin="round" />
       <polygon points={`0,0 ${dx},-${dy} 0,-${dy * 2} -${dx},-${dy}`} fill={topFill} stroke={topStroke} strokeWidth={topStroke !== 'none' ? "1" : "0"} strokeLinejoin="round" />
@@ -349,4 +361,4 @@ const ShopBase = ({ wall = '#fff7ed', base, roof = '#e7e5e4', awn1 = '#ef4444', 
   );
 };
 
-export { SharedDefs, darken, lighten, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, Fl, MarketStall, ShopBase };
+export { darken, lighten, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, Fl, MarketStall, ShopBase };

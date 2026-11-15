@@ -1,5 +1,5 @@
 import React from 'react';
-import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, IsoShadow, ShopBase } from './shared.jsx';
+import { isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, IsoShadow, ShopBase } from './shared.jsx';
 
 // 公共（病院・消防署・交番・駅など）
 
@@ -7,7 +7,7 @@ import { SharedDefs, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, IsoShad
 // 8. 公共施設 (Public Services)
 // ==========================================
 export const SvgHospital = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.0)">
       {/* メイン棟 */}
       <polygon points="0,0 -24,-12 -24,-32 0,-20" fill="#f8fafc" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
@@ -41,7 +41,7 @@ export const SvgHospital = () => (
 );
 
 export const SvgFireStation = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.0)">
       {/* メイン建物 */}
       <polygon points="0,0 -22,-11 -22,-28 0,-17" fill="#dc2626" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
@@ -65,7 +65,7 @@ export const SvgFireStation = () => (
 );
 
 export const SvgPoliceBox = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <IsoShadow rx={32} />
       {/* 敷地パッド */}
@@ -97,7 +97,7 @@ export const SvgPoliceBox = () => (
 );
 
 export const SvgPostOffice = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
       <ShopBase wall="#f8fafc" base="#991b1b" roof="#e2e8f0" awn1="#ef4444" awn2="#f8fafc" sign="#f8fafc" signEdge="#dc2626"
         glyph={<g>
@@ -116,7 +116,7 @@ export const SvgPostOffice = () => (
 );
 
 export const SvgStation = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.0)">
       {/* ホーム（プラットフォーム） */}
       <polygon points="0,10 -40,-10 0,-30 40,-10" fill="#94a3b8" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
@@ -144,7 +144,7 @@ export const SvgStation = () => (
 );
 
 export const SvgAirport = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.1)">
       <IsoShadow rx={46} />
       {/* エプロン（駐機場） */}

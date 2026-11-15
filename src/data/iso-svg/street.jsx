@@ -1,5 +1,4 @@
 import React from 'react';
-import { SharedDefs } from './shared.jsx';
 
 // 街路（ベンチ・ポスト・街灯など）
 
@@ -8,7 +7,7 @@ import { SharedDefs } from './shared.jsx';
 // 小物は正面寄りの2.5Dで大きく描き、太い輪郭線で統一
 // ==========================================
 export const SvgBench = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 82) scale(2.6)">
       <ellipse cx="0" cy="8" rx="17" ry="5" fill="#020617" opacity="0.18" />
       {/* 脚（鋳鉄風） */}
@@ -28,7 +27,7 @@ export const SvgBench = () => (
 );
 
 export const SvgMailbox = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 85) scale(2.6)">
       <ellipse cx="0" cy="7" rx="10" ry="3.5" fill="#020617" opacity="0.2" />
       {/* 台座 */}
@@ -48,7 +47,7 @@ export const SvgMailbox = () => (
 );
 
 export const SvgPhoneBooth = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 88) scale(2.5)">
       <ellipse cx="0" cy="6" rx="12" ry="4" fill="#020617" opacity="0.2" />
       {/* ボックス本体（2.5D） */}
@@ -73,7 +72,7 @@ export const SvgPhoneBooth = () => (
 );
 
 export const SvgStreetLight = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 92) scale(2.5)">
       <ellipse cx="0" cy="3.5" rx="8" ry="3" fill="#020617" opacity="0.18" />
       {/* 台座 */}
@@ -94,7 +93,7 @@ export const SvgStreetLight = () => (
 );
 
 export const SvgBusStop = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 88) scale(2.5)">
       <ellipse cx="0" cy="5" rx="12" ry="4" fill="#020617" opacity="0.18" />
       {/* 台座とポール */}
@@ -125,7 +124,7 @@ export const SvgBusStop = () => (
 );
 
 export const SvgVendingMachine = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 86) scale(2.5)">
       <ellipse cx="0" cy="6" rx="11" ry="4" fill="#020617" opacity="0.2" />
       {/* 本体（2.5D） */}
@@ -154,7 +153,7 @@ export const SvgVendingMachine = () => (
 );
 
 export const SvgTrashCan = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><SharedDefs />
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 84) scale(2.5)">
       <ellipse cx="0" cy="5" rx="9.5" ry="3.5" fill="#020617" opacity="0.2" />
       {/* 本体（円筒） */}
