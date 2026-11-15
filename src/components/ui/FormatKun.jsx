@@ -25,10 +25,16 @@ const R = ({ c, r }) => <Ruby base={c} reading={r} />;
 /** インラインふりがな関数: F("漢字","かんじ") → <ruby>漢字<rt>かんじ</rt></ruby>（設定に従う） */
 const F = (base, reading) => <Ruby base={base} reading={reading} />;
 
+/**
+ * 訓読みを表示する。「ひと(つ)」の送りがなは色を変え、辞書用の「-」（ひと- = 「ひと」の
+ * あとに何かが続く）は 1年生には意味がわからないので取りのぞく。
+ */
 const FormatKun = ({ text }) => {
-  if (!text) return null; const match = text.match(/^(.*?)\((.*?)\)$/);
-  if (match) return <>{match[1]}<span className="text-rose-500">{match[2]}</span></>;
-  return <>{text}</>;
+  if (!text) return null;
+  const clean = text.replace(/^-+|-+$/g, '');
+  const match = clean.match(/^(.*?)\((.*?)\)$/);
+  if (match) return <>{match[1]}<span className="text-[var(--primary)]">{match[2]}</span></>;
+  return <>{clean}</>;
 };
 
 /**
