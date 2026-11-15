@@ -200,10 +200,13 @@ export const DEBOUNCE = {
   DATE_CHECK_INTERVAL: 60000,
 };
 
-/** KanjiVG設定 */
+/**
+ * KanjiVG設定
+ * データは public/kanjivg/ に同梱している（版は tools/build-kanjivg.mjs で固定）。
+ */
 export const KANJI_VG = {
-  CDN_URL: 'https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji',
-  FETCH_TIMEOUT: 5000,
+  /** 学年ファイル（最大約0.2MB）1本を待つ時間(ms)。混んだ校内Wi-Fiでも読み切れる長さにする */
+  FETCH_TIMEOUT: 15000,
   MAX_RETRIES: 3,
   VIEWBOX_SIZE: 109,
   SAMPLE_INTERVAL: 2,

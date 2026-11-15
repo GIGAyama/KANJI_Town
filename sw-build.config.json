@@ -8,6 +8,7 @@
     "records-hub-client.js",
     "manifest.json",
     "icons/",
-    "assets/"
+    "assets/",
+    "kanjivg/"
   ]
 }

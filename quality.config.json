@@ -42,7 +42,7 @@
     {
       "rule": "external-runtime-host",
       "value": "cdn.jsdelivr.net",
-      "reason": "書き順データ(KanjiVG)と PeerJS の取得元。自己ホストすると成果物が数十MB増えるため、許可リストで明示して受け入れる。"
+      "reason": "PeerJS の取得元。書き順データ(KanjiVG)は public/kanjivg/ に同梱したので、ここからは取らない。"
     },
     {
       "rule": "external-runtime-host",

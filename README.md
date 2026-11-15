@@ -145,7 +145,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 
 | 項目 | 制限 | 影響と対処 |
 |---|---|---|
-| 外部依存（書き順） | `cdn.jsdelivr.net` の KanjiVG | 校内フィルタで遮断されると手本が出ない。一度取得すればキャッシュされる |
+| 書き順データ | 同梱（`public/kanjivg/grade-1〜6.json`、計約0.9MB・gzip 約0.36MB） | 外部へは取りに行かない。Service Worker が全学年を先読みするので、一度開いた端末は圏外でも全学年の書き順が出る |
 | 外部依存（P2P） | `cdn.jsdelivr.net` → `unpkg.com` の順に PeerJS を取得 | 両方遮断されると「4けたの数字で送る」が使えない。リンク配布は影響を受けない |
 | 外部依存（QR） | 同じ順で `qrcode`（表示）と `jsQR`（カメラ読み取り）を取得 | 遮断時はQRが出ない・読めない。4けたの数字の入力は使える |
 | 外部依存（フォント） | Google Fonts | 遮断時は端末内のゴシックで代替表示される |
@@ -242,9 +242,19 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | [qrcode](https://github.com/soldair/node-qrcode) | QR コードの生成 | MIT License |
 | Klee One / Zen Maru Gothic（Google Fonts） | 画面の書体 | SIL Open Font License 1.1 |
 
-**書き順データについて。** 本アプリは KanjiVG の SVG を実行時に読み込み、字形の表示・なぞり書きの採点に使っています。
+**書き順データについて。** 本アプリは KanjiVG の **`r20260714`（commit `d95a9762`）** から、
+教育漢字1026字の各画の `d` 属性と `kvg:type` だけを取り出した学年別の JSON
+（`public/kanjivg/grade-1.json`〜`grade-6.json`）を同梱し、字形の表示・なぞり書きの採点に使っています。
+実行時に外部から取得することはありません。版を固定しているので、端末によって手本や採点の基準が変わることもありません。
+
+- 作り方: `node tools/build-kanjivg.mjs`（固定したコミットを `raw.githubusercontent.com` から取り寄せて書き出す。
+  手元の SVG から作るときは `--src <フォルダ>`、コミット済みの生成物と同じかを見るだけなら `--check`）
+- 版を上げるときは `tools/build-kanjivg.mjs` の `KANJIVG_TAG` と `KANJIVG_COMMIT` を両方変え、生成物をコミットする。
+  `test/kanjivg-data.test.js` が、漢字一覧（学年の配当）と生成物がずれていないかを見る。
+
 KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0）** で提供されており、
-表示にあたっては著作者の表示が必要です。アプリの「このアプリについて」にも同じ表示を入れています。
+派生物である同梱データも同じ CC BY-SA 3.0 で配布します（出典・版・変更点は各 JSON の先頭と
+`public/kanjivg/LICENSE.txt` に記載）。アプリの「このアプリについて」にも同じ表示を入れています。
 
 このリポジトリの LICENSE（MIT）は、**自作のソースコードにのみ適用されます。**
 上記の第三者の成果物には、それぞれのライセンスが適用されます。

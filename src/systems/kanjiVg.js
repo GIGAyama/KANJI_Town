@@ -1,112 +1,126 @@
 // ==========================================
-// KanjiVG SVG データの取得・パース・キャッシュ
-// 三層キャッシュ: メモリ → IndexedDB → ネットワーク
-// タイムアウト・リトライ・指数バックオフ対応
+// 書き順データ（KanjiVG）の読み込み・キャッシュ
+//
+// データはアプリに同梱している（public/kanjivg/grade-<学年>.json）。
+// tools/build-kanjivg.mjs が、版を固定した KanjiVG から
+// 画の d 属性と kvg:type だけを学年ごとに取り出して作る。
+//
+// 以前は jsDelivr の KanjiVG（@master）から1字ずつ取り、IndexedDB と
+// Service Worker に二重に保存していた。校内フィルタで止められると書き順が
+// 出ず、@master のため取った時期によって端末ごとに採点の基準が食い違いえた。
+//
+// キャッシュ: メモリ（学年ファイル単位）→ Service Worker（先読み済み）→ ネットワーク
 // ==========================================
-import { idbGet, idbSet, idbGetAllKeys, migrateFromLocalStorage } from './idb-cache';
 import { KANJI_VG } from '../constants/gameConfig.js';
+import { KANJI_DATA } from '../data/kanji-data.js';
 import { endingTypeFromKvgType } from './strokeKind.js';
+import { resolveFromBase } from './base-path.js';
 
-const LEGACY_STORAGE_KEY = 'kanji_vg_cache';
-/** KanjiVG 独自属性の名前空間 */
-const KVG_NAMESPACE = 'http://kanjivg.tagaini.net';
+/** 学年ファイルの置き場（アプリの基点からの相対） */
+const gradeFilePath = (grade) => `kanjivg/grade-${grade}.json`;
 
-/** @type {Map<string, Array<{d: string, type: string|null}>>} メモリキャッシュ（セッション中は即返却） */
+/** @type {Map<number, Promise<Record<string, Array<[string, string|null]>>>>} 学年 → 画データ */
+const gradeCache = new Map();
+/** @type {Set<number>} 読みこみ終えた学年 */
+const loadedGrades = new Set();
+/** @type {Map<string, Array<{d: string, type: string|null}>>} 16進 → 整えた画データ */
 const memoryCache = new Map();
 
-// 起動時に localStorage → IndexedDB へ移行（非同期・失敗無視）
-migrateFromLocalStorage(LEGACY_STORAGE_KEY);
+/** @type {Map<string, number>|null} 字 → 学年（初めて要るときに作る） */
+let gradeOfChar = null;
+const gradeOf = (char) => {
+  if (!gradeOfChar) gradeOfChar = new Map(KANJI_DATA.map(k => [k.char, k.grade]));
+  return gradeOfChar.get(char);
+};
+
+const hexOf = (char) => char.codePointAt(0).toString(16).padStart(5, '0');
+
+const abortError = () => new DOMException('Aborted', 'AbortError');
+
+// 旧版が端末に残した KanjiVG の写し（IndexedDB と、さらに古い localStorage）を片づける。
+// 同梱データに替えたので読まない。残しておくと数MBを使い続けるうえ、
+// @master から取った古い版が採点に混ざる余地が残る。
+try { globalThis.indexedDB?.deleteDatabase('kanji-town-cache'); } catch { /* 使えない環境では何もしない */ }
+try { globalThis.localStorage?.removeItem('kanji_vg_cache'); } catch { /* 同上 */ }
 
 /**
- * タイムアウト付きfetch（外部 AbortSignal も連携）
+ * タイムアウト付きfetch
  * @param {string} url
  * @param {number} timeout - タイムアウト(ms)
- * @param {AbortSignal} [externalSignal] - 呼び出し側のキャンセル信号
  * @returns {Promise<Response>}
  */
-function fetchWithTimeout(url, timeout, externalSignal) {
+function fetchWithTimeout(url, timeout) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  // 外部 signal が aborted されたら自分も abort
-  const onExternalAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort();
-    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
-  }
-  return fetch(url, { signal: controller.signal }).finally(() => {
-    clearTimeout(timeoutId);
-    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
-  });
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
 }
 
 /**
- * 指数バックオフ付きリトライfetch
- * @param {string} url
- * @param {number} maxRetries
- * @param {number} timeout
- * @param {AbortSignal} [externalSignal]
- * @returns {Promise<Response>}
- * @throws {Error} 全リトライ失敗時
+ * 学年ファイルを読む（指数バックオフ付きで数回ためす）。
+ * 中身が期待した形でなければ失敗として扱い、メモリに残さない
+ * （途中の機器が 200 で別のページを返しても、それを「画が0本」として覚えない）。
+ * @param {number} grade
+ * @returns {Promise<Record<string, Array<[string, string|null]>>>}
  */
-async function fetchWithRetry(url, maxRetries, timeout, externalSignal) {
+async function fetchGradeFile(grade) {
+  const url = resolveFromBase(gradeFilePath(grade));
   let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (externalSignal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  for (let attempt = 0; attempt < KANJI_VG.MAX_RETRIES; attempt++) {
     try {
-      const res = await fetchWithTimeout(url, timeout, externalSignal);
-      if (res.ok) return res;
-      lastError = new Error(`HTTP ${res.status}`);
+      const res = await fetchWithTimeout(url, KANJI_VG.FETCH_TIMEOUT);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json || typeof json.strokes !== 'object' || json.strokes === null) throw new Error('kanjivg-broken');
+      return json.strokes;
     } catch (e) {
-      // 外部からのキャンセルは即座に伝播
-      if (externalSignal?.aborted) throw e;
       lastError = e;
     }
-    if (attempt < maxRetries - 1) {
-      await new Promise((r, rej) => {
-        const t = setTimeout(r, 1000 * Math.pow(2, attempt));
-        if (externalSignal) {
-          externalSignal.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('Aborted', 'AbortError')); }, { once: true });
-        }
-      });
+    if (attempt < KANJI_VG.MAX_RETRIES - 1) {
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
     }
   }
   throw lastError;
 }
 
-/**
- * SVGテキストから各画の d属性と kvg:type を抽出する
- * kvg:type は終筆（とめ・はね・はらい）の正解を導くために使う。
- * @param {string} svgText - SVG文字列
- * @returns {Array<{d: string, type: string|null}>}
- */
-function extractStrokes(svgText) {
-  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  return Array.from(doc.querySelectorAll('path'))
-    .map(p => ({
-      d: p.getAttribute('d'),
-      type: p.getAttribute('kvg:type') ?? p.getAttributeNS(KVG_NAMESPACE, 'type') ?? null,
-    }))
-    .filter(stroke => stroke.d);
+/** 学年ファイルを1回だけ読み、同時に来た呼び出しで分け合う。失敗したら次は読み直す。 */
+function loadGrade(grade) {
+  if (!gradeCache.has(grade)) {
+    const pending = fetchGradeFile(grade).then((table) => {
+      loadedGrades.add(grade);
+      return table;
+    }, (e) => {
+      gradeCache.delete(grade);
+      throw e;
+    });
+    gradeCache.set(grade, pending);
+  }
+  return gradeCache.get(grade);
+}
+
+/** 呼び出し側のキャンセルを待ちに反映する（共有している読み込み自体は止めない） */
+function untilAborted(promise, signal) {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (v) => { signal.removeEventListener('abort', onAbort); resolve(v); },
+      (e) => { signal.removeEventListener('abort', onAbort); reject(e); },
+    );
+  });
 }
 
 /**
- * キャッシュ済みデータを現在の形式へ揃える。
- * 旧版は d属性の文字列配列だけを保存していたため、その形も受け付ける。
- * @param {Array<string|{d: string, type: string|null}>} cached
+ * 学年ファイルの1字ぶんを {d, type} の並びに整える（形が違うものは捨てる）
+ * @param {unknown} raw
  * @returns {Array<{d: string, type: string|null}>}
  */
-function normalizeCachedStrokes(cached) {
-  if (!Array.isArray(cached)) return [];
-  return cached
-    .map(stroke => (typeof stroke === 'string'
-      ? { d: stroke, type: null }
-      : { d: stroke?.d, type: stroke?.type ?? null }))
-    .filter(stroke => stroke.d);
-}
-
-/** 旧形式（d属性のみ）のキャッシュか判定する */
-function isLegacyCache(cached) {
-  return Array.isArray(cached) && cached.some(stroke => typeof stroke === 'string');
+function normalizeStrokes(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(s => (Array.isArray(s) ? { d: s[0], type: typeof s[1] === 'string' ? s[1] : null } : null))
+    .filter(s => s && typeof s.d === 'string' && s.d);
 }
 
 /**
@@ -146,61 +160,32 @@ function buildStrokeData(strokes) {
 /**
  * 漢字の画データ（d属性＋筆画種）を取得する
  *
- * キャッシュ戦略:
- * 1. メモリキャッシュ（即返却）
- * 2. IndexedDBキャッシュ（容量制限なし）
- * 3. ネットワーク取得（リトライ付き）
- *
  * @param {string} char - 漢字1文字
  * @param {object} [options]
  * @param {AbortSignal} [options.signal] - キャンセル用シグナル
  * @returns {Promise<Array<{d: string, type: string|null}>>}
- * @throws {Error} 全リトライ失敗時 or AbortError
+ * @throws {Error} 読めないとき・その字のデータが無いとき、または AbortError
  */
 async function loadStrokes(char, options = {}) {
   const { signal } = options;
-  const hex = char.charCodeAt(0).toString(16).padStart(5, '0');
-
-  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-
-  // 1. メモリキャッシュ
+  if (signal?.aborted) throw abortError();
+  if (typeof char !== 'string' || !char) throw new Error('kanjivg-missing');
+  const hex = hexOf(char);
   if (memoryCache.has(hex)) return memoryCache.get(hex);
 
-  // 2. IndexedDB キャッシュ
-  const idbCached = await idbGet(hex);
-  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  // 旧形式には筆画の種類（＝とめはねの正解）が無いので、可能なら取り直す。
-  // 取り直せなければ旧データをそのまま使い、終筆の採点だけを見送る。
-  const legacyStrokes = idbCached && isLegacyCache(idbCached) ? normalizeCachedStrokes(idbCached) : null;
-  if (idbCached && !legacyStrokes) {
-    const strokes = normalizeCachedStrokes(idbCached);
-    memoryCache.set(hex, strokes);
-    return strokes;
-  }
-
-  // 3. ネットワーク取得（リトライ付き）
-  let strokes;
-  try {
-    const res = await fetchWithRetry(
-      `${KANJI_VG.CDN_URL}/${hex}.svg`,
-      KANJI_VG.MAX_RETRIES,
-      KANJI_VG.FETCH_TIMEOUT,
-      signal
-    );
-    strokes = extractStrokes(await res.text());
-  } catch (e) {
-    if (legacyStrokes && !signal?.aborted && e?.name !== 'AbortError') {
-      memoryCache.set(hex, legacyStrokes);
-      return legacyStrokes;
+  // 教育漢字なら学年が決まっている。万一一覧に無い字なら、全学年を順に探す。
+  const known = gradeOf(char);
+  const grades = known ? [known] : [1, 2, 3, 4, 5, 6];
+  for (const grade of grades) {
+    const table = await untilAborted(loadGrade(grade), signal);
+    const strokes = normalizeStrokes(table[hex]);
+    if (strokes.length > 0) {
+      memoryCache.set(hex, strokes);
+      return strokes;
     }
-    throw e;
   }
-
-  // キャッシュ保存（非同期・失敗無視）
-  memoryCache.set(hex, strokes);
-  idbSet(hex, strokes);
-
-  return strokes;
+  // 画が0本のまま返すと、手本もなぞりも空のまま進んでしまう。失敗として扱う。
+  throw new Error('kanjivg-missing');
 }
 
 /**
@@ -210,7 +195,7 @@ async function loadStrokes(char, options = {}) {
  * @param {object} [options]
  * @param {AbortSignal} [options.signal] - キャンセル用シグナル
  * @returns {Promise<{ paths: string[], strokeData: Array<{s: {x: number, y: number}, e: {x: number, y: number}, points: Array}> }>}
- * @throws {Error} 全リトライ失敗時 or AbortError
+ * @throws {Error} 読めないとき or AbortError
  */
 export async function fetchKanjiVg(char, options = {}) {
   const strokes = await loadStrokes(char, options);
@@ -224,7 +209,7 @@ export async function fetchKanjiVg(char, options = {}) {
  * @param {object} [options]
  * @param {AbortSignal} [options.signal] - キャンセル用シグナル
  * @returns {Promise<string[]>} 各画の d 属性
- * @throws {Error} 全リトライ失敗時 or AbortError
+ * @throws {Error} 読めないとき or AbortError
  */
 export async function fetchKanjiVgPaths(char, options = {}) {
   const strokes = await loadStrokes(char, options);
@@ -232,50 +217,40 @@ export async function fetchKanjiVgPaths(char, options = {}) {
 }
 
 /**
- * 指定された漢字リストのKanjiVG SVGデータをバックグラウンドで事前キャッシュする
- * オンライン時に呼び出し、オフライン学習に備える
+ * 学年ファイルを Service Worker のキャッシュに入れておく（中身は読まない）。
+ * ふだんはインストール時の先読みで入っているので、通信は起きない。
+ * 先読みが途中で切れた端末だけ、ここで足りない学年が補われる。
  *
- * @param {Array<{char: string}>} kanjiList - 漢字オブジェクトの配列
- * @returns {Promise<{cached: number, total: number}>} キャッシュ結果
+ * @param {number[]} grades - 学年の並び
+ * @returns {Promise<void>}
  */
-export async function prefetchKanjiVg(kanjiList) {
-  // 既にキャッシュ済みのキーを取得
-  const cachedKeys = new Set(await idbGetAllKeys());
-  const uncached = kanjiList.filter(k => {
-    const hex = k.char.charCodeAt(0).toString(16).padStart(5, '0');
-    return !memoryCache.has(hex) && !cachedKeys.has(hex);
-  });
-
-  let cached = kanjiList.length - uncached.length;
-  for (const k of uncached) {
-    // オフラインになったら中断
-    if (!navigator.onLine) break;
-    const hex = k.char.charCodeAt(0).toString(16).padStart(5, '0');
+export async function prefetchKanjiVgGrades(grades) {
+  for (const grade of grades) {
     try {
-      const res = await fetchWithTimeout(
-        `${KANJI_VG.CDN_URL}/${hex}.svg`,
-        KANJI_VG.FETCH_TIMEOUT
-      );
-      if (res.ok) {
-        const strokes = extractStrokes(await res.text());
-        memoryCache.set(hex, strokes);
-        await idbSet(hex, strokes);
-        cached++;
-      }
+      const res = await fetchWithTimeout(resolveFromBase(gradeFilePath(grade)), KANJI_VG.FETCH_TIMEOUT);
+      if (res.ok) await res.arrayBuffer();
     } catch {
-      // 個別の失敗は無視して次へ
+      // 圏外などで取れなければ次の起動でまたためす
     }
-    // サーバー負荷軽減のため少し間隔を空ける
-    await new Promise(r => setTimeout(r, 50));
   }
-  return { cached, total: kanjiList.length };
 }
 
 /**
- * キャッシュ済み漢字数を取得する
+ * 圏外でも書き順を出せる漢字の数（Service Worker のキャッシュにある学年＋読みこみ済みの学年）
  * @returns {Promise<number>}
  */
 export async function getCachedKanjiCount() {
-  const keys = await idbGetAllKeys();
-  return keys.length;
+  let count = 0;
+  for (const grade of [1, 2, 3, 4, 5, 6]) {
+    let available = loadedGrades.has(grade);
+    if (!available && typeof caches !== 'undefined') {
+      try {
+        available = Boolean(await caches.match(resolveFromBase(gradeFilePath(grade))));
+      } catch {
+        available = false;
+      }
+    }
+    if (available) count += KANJI_DATA.filter(k => k.grade === grade).length;
+  }
+  return count;
 }
