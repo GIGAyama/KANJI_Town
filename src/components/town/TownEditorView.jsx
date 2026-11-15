@@ -14,7 +14,7 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
 import { getMinLevelForGrade } from '../../utils/level-system';
-import { buildMegaIndex, countMissionBuildings, countPlacedItems, patchHistory, trackPlacementGain } from '../../systems/town-editing';
+import { applyUpgrade, buildMegaIndex, countMissionBuildings, countPlacedItems, patchHistory, trackPlacementGain } from '../../systems/town-editing';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -381,12 +381,25 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + result.result.amount;
     } else {
       const townItemId = getResultTownItemId(result.result.type);
-      if (townItemId) {
+      if (recipe.category === 'upgrade' && recipe.requires && townItemId) {
+        // 強化は元の建物を使う。もちものだけでなく地図の上の元の建物も減らし、収まるなら
+        // その場で上位の建物に置きかえる（以前はもちものだけ減らしていたので、次に起動
+        // すると地図の建物の数に合わせて元の建物が戻っていた）
+        const upgraded = applyUpgrade(
+          { townMap: localMap, townItems: newStats.townItems },
+          { requires: recipe.requires, quantity, resultItemId: townItemId, resultAmount: result.result.amount },
+          TOWN_ITEM_MAP,
+        );
+        newStats.townItems = upgraded.townItems;
+        newStats.townMap = upgraded.townMap;
+        if (upgraded.replacedOnMap + upgraded.clearedOnMap > 0) {
+          // 強化はもとに戻せない（素材とコインを使った）。履歴はここから始めなおす
+          setLocalMap(upgraded.townMap);
+          setHistory([{ ...upgraded.townMap }]); setHistoryIdx(0);
+          placedHighWater.current = countMissionBuildings(upgraded.townMap, TOWN_ITEM_MAP);
+        }
+      } else if (townItemId) {
         newStats.townItems = { ...newStats.townItems, [townItemId]: (newStats.townItems?.[townItemId] || 0) + result.result.amount };
-      }
-      if (recipe.category === 'upgrade' && recipe.requires) {
-        const oldCount = newStats.townItems?.[recipe.requires] || 0;
-        newStats.townItems = { ...newStats.townItems, [recipe.requires]: Math.max(0, oldCount - quantity) };
       }
     }
 

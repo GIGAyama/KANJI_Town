@@ -6,16 +6,21 @@ import {
   trackPlacementGain,
   patchHistory,
   buildMegaIndex,
+  applyUpgrade,
 } from '../src/systems/town-editing.js';
 
 const ITEMS = new Map([
   ['t_cleared', { id: 't_cleared', type: 'terrain' }],
   ['t_roughland', { id: 't_roughland', type: 'terrain' }],
+  ['t_weed', { id: 't_weed', type: 'terrain' }],
   ['t_road', { id: 't_road', type: 'building', isFlat: true }],
   ['t_house1', { id: 't_house1', type: 'building' }],
   ['t_tree', { id: 't_tree', type: 'nature' }],
   ['t_temple', { id: 't_temple', type: 'special', size: { w: 2, h: 2 } }],
   ['t_bench', { id: 't_bench', type: 'decoration' }],
+  ['t_shop', { id: 't_shop', type: 'building' }],
+  ['t_house2', { id: 't_house2', type: 'building', size: { w: 2, h: 1 } }],
+  ['t_house3', { id: 't_house3', type: 'building', size: { w: 3, h: 2 } }],
 ]);
 
 test('置いてある数をアイテムごとに 1 回で数える（上乗せも含む）', () => {
@@ -77,4 +82,69 @@ test('大きな建物は、どのマスからでも左上のマスを引ける',
   assert.equal(index.get('7,7'), undefined, '1 マスの建物は入れない');
   assert.equal(index.get('7,6'), undefined);
   assert.equal(index.size, 4);
+});
+
+// 起動時の整合補正（storage.js getStats）と同じ: 持っている数 = max(持っている数, 置いてある数)
+const reconcile = ({ townMap, townItems }) => {
+  const placed = countPlacedItems(townMap);
+  const items = { ...townItems };
+  for (const [id, n] of Object.entries(placed)) {
+    if (ITEMS.get(id)?.type !== 'terrain') items[id] = Math.max(items[id] || 0, n);
+  }
+  return items;
+};
+
+test('強化: 置いていない元の建物から使い、地図はそのまま', () => {
+  const state = { townMap: { '1,1': 't_house1', '2,2': 't_cleared' }, townItems: { t_house1: 2 } };
+  const r = applyUpgrade(state, { requires: 't_house1', quantity: 1, resultItemId: 't_house2', resultAmount: 1 }, ITEMS);
+  assert.deepEqual(r.townItems, { t_house1: 1, t_house2: 1 });
+  assert.equal(r.townMap['1,1'], 't_house1');
+  assert.equal(r.replacedOnMap + r.clearedOnMap, 0);
+  assert.deepEqual(reconcile(r), r.townItems, '次に起動しても数が変わらない');
+});
+
+test('強化: 置いてある元の建物を使うときは、その場で上位の建物に置きかえる', () => {
+  const state = { townMap: { '1,1': 't_house1', '2,1': 't_cleared' }, townItems: { t_house1: 1 } };
+  const r = applyUpgrade(state, { requires: 't_house1', quantity: 1, resultItemId: 't_house2', resultAmount: 1 }, ITEMS);
+  assert.equal(r.townMap['1,1'], 't_house2');
+  assert.equal(r.townMap['2,1'], 't_cleared', '2x1 の残りの足もとは更地');
+  assert.equal(r.replacedOnMap, 1);
+  assert.deepEqual(r.townItems, { t_house1: 0, t_house2: 1 });
+  assert.deepEqual(reconcile(r), r.townItems, '次に起動しても元の建物が戻らない');
+});
+
+test('強化: 上位の建物が収まらなければ更地に戻し、上位の建物はもちものに入る', () => {
+  // 右どなりに木があるので 2x1 は収まらない
+  const state = { townMap: { '1,1': 't_house1', '2,1': 't_tree' }, townItems: { t_house1: 1, t_tree: 1 } };
+  const r = applyUpgrade(state, { requires: 't_house1', quantity: 1, resultItemId: 't_house2', resultAmount: 1 }, ITEMS);
+  assert.equal(r.townMap['1,1'], 't_cleared');
+  assert.equal(r.townMap['2,1'], 't_tree');
+  assert.equal(r.clearedOnMap, 1);
+  assert.equal(r.townItems.t_house2, 1);
+  assert.deepEqual(reconcile(r), r.townItems);
+});
+
+test('強化: 大きな建物から大きな建物へ（足もとを全部片づけてから置く）', () => {
+  const state = {
+    townMap: { '4,4': 't_house2', '5,4': 't_cleared', '6,4': 't_cleared', '4,5': 't_cleared', '5,5': 't_weed', '6,5': 't_cleared' },
+    townItems: { t_house2: 1 },
+  };
+  const r = applyUpgrade(state, { requires: 't_house2', quantity: 1, resultItemId: 't_house3', resultAmount: 1 }, ITEMS);
+  assert.equal(r.townMap['4,4'], 't_house3');
+  assert.equal(r.townMap['5,4'], 't_cleared');
+  assert.equal(r.townMap['5,5'], 't_cleared', 'ざっそうの上も更地にしてから置く');
+  assert.equal(r.replacedOnMap, 1);
+  assert.deepEqual(reconcile(r), r.townItems);
+});
+
+test('強化: 道の上に乗せた建物は、上に乗せられる形なら置きかえ、そうでなければ外す', () => {
+  const state = { townMap: { '1,1': 't_road', '1,1:top': 't_house1', '3,3': 't_road', '3,3:top': 't_house1' }, townItems: { t_house1: 2, t_road: 2 } };
+  const toShop = applyUpgrade(state, { requires: 't_house1', quantity: 1, resultItemId: 't_shop', resultAmount: 1 }, ITEMS);
+  assert.equal(toShop.townMap['1,1:top'], 't_shop');
+  assert.equal(toShop.townMap['3,3:top'], 't_house1');
+  const toBig = applyUpgrade(state, { requires: 't_house1', quantity: 2, resultItemId: 't_house2', resultAmount: 2 }, ITEMS);
+  assert.equal(toBig.townMap['1,1:top'], undefined);
+  assert.equal(toBig.townMap['3,3:top'], undefined);
+  assert.equal(toBig.townMap['1,1'], 't_road', '下の道は残る');
+  assert.deepEqual(reconcile(toBig), toBig.townItems);
 });
