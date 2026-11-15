@@ -18,7 +18,7 @@ const DrillEditorView = ({ setView, stats, setStats }) => {
     if (!drillName.trim() || selectedKanjis.length === 0) { audioCtrl.playSE('stamp_bad'); return; }
     const newDrill = { name: drillName.trim(), kanjis: selectedKanjis, createdAt: Date.now() };
     const newStats = { ...stats, myDrills: [...(stats.myDrills || []), newDrill] };
-    setStats(newStats); StorageAPI.saveStats(newStats); audioCtrl.playSE('success'); setView('myDrills');
+    setStats(newStats); StorageAPI.saveStatsImmediate(newStats); audioCtrl.playSE('success'); setView('myDrills');
   };
 
   const filtered = KANJI_DATA.filter(k => filterGrade === 0 || k.grade === filterGrade);

@@ -182,6 +182,9 @@ export default function App() {
   viewRef.current = view;
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
+  // いまの記録（effect やタイマーの中から、古いクロージャではなく最新を読むため）
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
   const sessionDataRef = useRef(sessionData);
   const setSessionData = useCallback((update) => {
@@ -263,14 +266,24 @@ export default function App() {
     return () => finishStudySession();
   }, [view]);
 
-  // コア学習中は回答記録と残りキューを同じタイミングで端末へ保存する。
+  // コア学習中は、答えが確定したとき（残りの出題が変わったとき）に、記録とチェックポイントを
+  // 同じタイミングで即時保存する。以前は stats・sessionData のどれかが変わるたびに即時保存し、
+  // 1字につき2〜4回、記録全体（重い子で約75万文字）を書いていた（低速の端末で1回40ms）。
   useEffect(() => {
     if (view !== 'session' || !sessionData.remainingQueue?.length) return;
-    const checkpoint = createSessionCheckpoint(sessionData);
+    const checkpoint = createSessionCheckpoint(sessionDataRef.current);
     if (!checkpoint) return;
-    StorageAPI.saveStatsImmediate(stats);
+    StorageAPI.saveStatsImmediate(statsRef.current);
     StorageAPI.saveActiveSession(checkpoint);
-  }, [view, stats, sessionData]);
+  }, [view, sessionData.remainingQueue]);
+
+  // 学習中のそれ以外の更新（技能の記録、ボス・サバイバル・ドリルテストの1問ごとの記録）は、
+  // まとめて保存する。以前はボス・サバイバル・テストは終わるまで漢字の記録を一度も保存せず、
+  // 途中で閉じると消えていた。画面を離れる・閉じるときは保存待ちをすぐ書く（flushPendingSave）。
+  useEffect(() => {
+    if (!isLearningView(view)) return;
+    StorageAPI.saveStats(stats);
+  }, [view, stats]);
 
   // ログインボーナス＆デイリーミッション初期化関数
   // 関数型 setStats を使い、stale な currentStats を上書きしないようにする
@@ -394,8 +407,6 @@ export default function App() {
   // 日付変更の監視（開きっぱなし対策）
   // 保存済みのデータ（getStats）ではなく、メモリ上の記録で判定する。以前は getStats が
   // 保存済みのコピーにだけ放置のペナルティを当てて即時保存し、保存待ちの変更を消していた。
-  const statsRef = useRef(stats);
-  statsRef.current = stats;
   useEffect(() => {
     const checkDate = () => {
       const current = statsRef.current;

@@ -103,7 +103,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
         let skillEvidence = 'guided';
-        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; skillEvidence = 'easy'; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; skillEvidence = 'good'; }
+        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; skillEvidence = 'easy'; onRecordPerfect(); /* 以前は使われない PNG を毎回同期で作っていた */ } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; skillEvidence = 'good'; }
         onPracticeComplete?.(skillEvidence);
         addFloatingText(canvasSize / 2, canvasSize / 2, `${evalText}`, color, 1.5); distSum.current = 0; setStatusMsg("✨ よくできました！"); audioCtrl.playSE('success'); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2500);
       } else { addFloatingText(lastPos.current.x, lastPos.current.y, "✨", "var(--accent)", 1); setStatusMsg(`${nextStroke + 1}かくめ をかこう！`); audioCtrl.playSE('click'); }
