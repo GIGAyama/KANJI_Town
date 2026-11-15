@@ -2,7 +2,7 @@
 // materialDrops: 習得時にドロップする素材
 // tags: ミッション・分類用タグ
 export const KANJI_DATA = [
-  { id: "k1_1", grade: 1, char: "一", on: ["イチ","イツ"], kun: ["ひと","ひと(つ)"], examples: ["一人（ひとり）で 一りん車（いちりんしゃ）に 乗る。","一（いち）から やり直す。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"stone","amount":1},{"type":"crystal","amount":1}], tags: ["number"], unlocks: "t_road" },
+  { id: "k1_1", grade: 1, char: "一", on: ["イチ","イツ"], kun: ["ひと","ひと(つ)"], examples: ["一人（ひとり）で 一りん車（いちりんしゃ）に 乗（の）る。","一（いち）から やり直（なお）す。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"stone","amount":1},{"type":"crystal","amount":1}], tags: ["number"], unlocks: "t_road" },
   { id: "k1_2", grade: 1, char: "二", on: ["ニ"], kun: ["ふた","ふた(つ)"], examples: ["二（に）ひきの 犬（いぬ）が いる。","二（ふた）つに わける。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"crystal","amount":1}], tags: ["number"] },
   { id: "k1_3", grade: 1, char: "九", on: ["キュウ","ク"], kun: ["ここの","ここの(つ)"], examples: ["九（く）じに ねる。","九（ここの）つ かぞえる。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"firestone","amount":2},{"type":"crystal","amount":1}], tags: ["number"] },
   { id: "k1_4", grade: 1, char: "七", on: ["シチ"], kun: ["なな","なな(つ)","なの"], examples: ["七（しち）じに おきる。","七（なな）つの ほし。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"firestone","amount":2}], tags: ["number"] },
@@ -145,7 +145,7 @@ export const KANJI_DATA = [
   { id: "k2_61", grade: 2, char: "来", on: ["ライ"], kun: ["く(る)","きた(る)","きた(す)"], examples: ["友（とも）だちが 来（く）る。","来（らい）年（ねん）は 三年生（さんねんせい）。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"soulstone","amount":2}], tags: ["basic"] },
   { id: "k2_62", grade: 2, char: "社", on: ["シャ"], kun: ["やしろ"], examples: ["神（じん）社（じゃ）に いく。","会（かい）社（しゃ）で はたらく。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"iron","amount":1}], tags: ["basic"] },
   { id: "k2_63", grade: 2, char: "角", on: ["カク"], kun: ["かど","つの"], examples: ["牛（うし）の 角（つの）。","四角（しかく）い はこ。","町（まち）の 角（かど）。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"firestone","amount":1}], tags: ["basic"] },
-  { id: "k2_64", grade: 2, char: "言", on: ["ゲン","ゴン"], kun: ["い(う)","こと"], examples: ["ほんとうの 事を 言（い）う。","伝（でん）言（ごん）を きく。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"iron","amount":1}], tags: ["basic"] },
+  { id: "k2_64", grade: 2, char: "言", on: ["ゲン","ゴン"], kun: ["い(う)","こと"], examples: ["ほんとうの 事（こと）を 言（い）う。","伝（でん）言（ごん）を きく。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"iron","amount":1}], tags: ["basic"] },
   { id: "k2_65", grade: 2, char: "谷", on: ["コク"], kun: ["たに"], examples: ["谷（たに）ぞこを みる。","けい谷（こく）に いく。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"soulstone","amount":2}], tags: ["basic"] },
   { id: "k2_66", grade: 2, char: "走", on: ["ソウ"], kun: ["はし(る)"], examples: ["速（はや）く 走（はし）る。","競（きょう）走（そう）で 一ばんになる。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"wood","amount":1}], tags: ["action"] },
   { id: "k2_67", grade: 2, char: "近", on: ["キン"], kun: ["ちか(い)"], examples: ["家（いえ）が 近（ちか）い。","近（きん）所（じょ）の 人（ひと）。"], materialDrops: [{"type":"kanjistone","amount":1},{"type":"crystal","amount":2}], tags: ["basic"] },
