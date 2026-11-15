@@ -4,7 +4,7 @@
 学習するほど自分の町が育つ。GIGA山 学習アプリ群の一員として `https://kanji-town.giga-school.com/` で公開している。
 
 - **対象**：小学1〜6年。学年別漢字配当表（2020年改訂）に準拠し、1年80字／2年160字／3年200字／4年202字／5年193字／6年191字＝**計1026字**を収録（`src/data/kanji-data.js`）。
-- **必要なもの**：ブラウザだけ。アカウント登録・ログイン・課金はなく、サーバーも持たない。学習の記録は端末の `localStorage` にだけ保存する。
+- **必要なもの**：ブラウザだけ。アカウント登録・ログイン・課金はなく、サーバーも持たない。学習の記録は端末の `localStorage` に保存する（記録ボックス〔まなびクエスト〕への写しについては「学習ログ」の節を参照）。
 - **使い方マニュアル** → [`docs/manual/manual.md`](./docs/manual/manual.md)（画面写真40点・専門用語なし・「うまくいかないとき」付き）。
   児童向けに書き、ドリル配布やデータ移行など先生だけが使う章には「（先生向け）」と付けている。
   公開先は <https://giga-school.com/apps/kanji-town/manual/>（旗艦リポジトリが毎朝組み立てる）。
@@ -116,6 +116,9 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 - `public/sw.js` … キャッシュ名は必ず `CACHE_PREFIX`（`kanji-town-`）で始める。
   **`activate` で接頭辞を確認せずにキャッシュを消してはいけない**（同一オリジンの
   他アプリのオフライン起動を壊す）。Service Worker から `localStorage` に触れるのも禁止。
+- **バージョンは2種類ある。** `package.json` の `version` は使う人向けの版で、設定の「アプリの状態」と
+  `release.json` に出る。`docs/CHANGELOG.md` に日付を足すような変更をまとめて出すときに人が上げる
+  （0.5.0 = 2026-11 の改善調査の直し）。同じ版のビルドは commit SHA（同じ画面に出る）で見分ける。
 - `APP_VERSION`（`public/sw.js`）は手で上げない。`npm run build` の最後に `tools/build-sw.mjs`（正本の配布物）が、
   先読みするファイルの中身から版（`v` ＋16進12桁）を作って `dist/sw.js` に書き、先読みの一覧も埋める。
   確かめるだけなら `node tools/build-sw.mjs --check`。キャッシュ名は `kanji-town-static-<版>` /
@@ -253,7 +256,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 - マイクの音声は**その場で音量（RMS）に変換して発声判定に使うだけ**で、
   録音・保存・外部送信は一切しない。判定後はマイクを即座に解放する。
 - クラウド音声認識（Web Speech API の `SpeechRecognition`）は音声が外部サーバーへ
-  送信されるため使用しない（上記「外部送信は一切行わない」方針による）。
+  送信されるため使用しない（音声を端末の外へ出さない方針による）。
 - お手本の読み上げは端末内蔵（`localService`）の日本語音声だけを使う。
 - マイクが使えない端末・許可されていない環境では、チャレンジは自動的に
   案内表示へ切り替わり、学習は通常どおり進められる。
@@ -262,7 +265,10 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 ## 学習ログ（study.v1）
 
 本アプリは「学習ログ共通スキーマ仕様書 `study.v1`」に準拠した学習ログを端末の
-`localStorage` に保存する。**保存のみを行い、外部送信は一切行わない。**
+`localStorage` に保存する。アプリ自身は外部へ送らない。同じ giga-school.com のアプリで
+共通の記録ボックス（まなびクエスト）へは、正本の配布物 `public/records-hub-client.js` が、
+見えない iframe（`https://gamification.giga-school.com`）経由で端末の中から写す
+（サーバーへは送らない。写し先も児童の端末のブラウザ内）。
 
 - 出力スキーマ版: **`study.v1`**
 - 保存キー: **`study.records.v1`**
@@ -313,7 +319,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 
 KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-SA 3.0）** で提供されており、
 派生物である同梱データも同じ CC BY-SA 3.0 で配布します（出典・版・変更点は各 JSON の先頭と
-`public/kanjivg/LICENSE.txt` に記載）。アプリの「このアプリについて」にも同じ表示を入れています。
+`public/kanjivg/LICENSE.txt` に記載）。アプリでは画面下のフッターに同じ表示を入れています。
 
 **書体について。** 画面の書体は Google Fonts から**ビルドの前に**取り寄せ、必要な字だけにしたもの
 （`src/fonts/*.woff2` と `src/fonts/fonts.css`）を同梱しています。実行時に Google Fonts へは通信しません。
