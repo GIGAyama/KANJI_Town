@@ -205,6 +205,9 @@ export function buildWeakKanjiPlan({
 /**
  * 復習を最優先しつつ、設定された新出漢字も同じセッションに加える。
  * 既存UIの「復習N＋新出N」という表示と実際の出題数を一致させる。
+ *
+ * 新出漢字は、データの並び（学年の中で画数の少ない順）に出す。以前はランダムで、
+ * 1年生の初日に「森（12画）」や「校」が出ることがあった。newOrder: 'random' で従来の出し方にできる。
  */
 export function buildLearningPlan({
   kanjiData,
@@ -213,6 +216,7 @@ export function buildLearningPlan({
   limits,
   now = Date.now(),
   random = Math.random,
+  newOrder = 'data',
 }) {
   const reviewLimit = asLimit(limits?.review);
   const newLimit = asLimit(limits?.new);
@@ -239,7 +243,8 @@ export function buildLearningPlan({
 
   const reviewTargets = dueReviews.slice(0, Math.min(reviewLimit, totalLimit));
   const remainingSlots = Math.max(0, totalLimit - reviewTargets.length);
-  const newTargets = shuffle(newCandidates, random).slice(0, Math.min(newLimit, remainingSlots));
+  const orderedNew = newOrder === 'random' ? shuffle(newCandidates, random) : newCandidates;
+  const newTargets = orderedNew.slice(0, Math.min(newLimit, remainingSlots));
   const queue = [...reviewTargets, ...newTargets];
 
   if (queue.length === 0) {

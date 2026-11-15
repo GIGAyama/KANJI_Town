@@ -37,6 +37,20 @@ test('復習と新出漢字を同じセッションへ復習優先で組み込�
   assert.equal(plan.newCount, 1);
 });
 
+test('新出漢字はデータの並び（画数の少ない順）に出し、乱数に左右されない', () => {
+  // 以前はシャッフルしてから切り出していて、1年生の初日に「森」「校」が出ることがあった
+  for (const value of [0, 0.5, 0.99]) {
+    const plan = buildLearningPlan({
+      kanjiData, kanjiStats: {}, selectedGrade: 1, limits: { review: 5, new: 2 }, now: 200, random: () => value,
+    });
+    assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['a', 'b']);
+  }
+  const shuffledPlan = buildLearningPlan({
+    kanjiData, kanjiStats: {}, selectedGrade: 1, limits: { review: 5, new: 3 }, now: 200, random: () => 0, newOrder: 'random',
+  });
+  assert.deepEqual(shuffledPlan.queue.map((kanji) => kanji.id), ['b', 'c', 'a']);
+});
+
 test('学習目標は安全な既定値と当日進捗を返す', () => {
   assert.equal(getDailyGoal({ dailyGoal: 999 }), 10);
   assert.deepEqual(
