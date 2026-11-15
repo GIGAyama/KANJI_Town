@@ -52,6 +52,7 @@ const StatsView = lazy(() => import('./components/pages/StatsView'));
 const ResultView = lazy(() => import('./components/pages/ResultView'));
 const MyDrillsView = lazy(() => import('./components/pages/MyDrillsView'));
 const DrillEditorView = lazy(() => import('./components/pages/DrillEditorView'));
+const PrintTestView = lazy(() => import('./components/pages/PrintTestView'));
 const SettingsView = lazy(() => import('./components/pages/SettingsView'));
 
 // Town
@@ -1094,6 +1095,7 @@ export default function App() {
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'peerHost' && <PageWrapper key="peerHost"><ErrorBoundary onReset={() => setView('home')}><TeacherHostView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'peerClient' && <PageWrapper key="peerClient"><ErrorBoundary onReset={() => setView('home')}><StudentClientView setView={setView} stats={stats} setStats={setStats} initialConnectId={connectParam} /></ErrorBoundary></PageWrapper>}
+          {view === 'printTest' && <PageWrapper key="printTest" wide><ErrorBoundary onReset={() => setView('myDrills')}><PrintTestView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
