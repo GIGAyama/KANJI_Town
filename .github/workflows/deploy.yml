@@ -18,19 +18,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run build
       # GIGA Standard v4 品質ゲート。
       # Service Worker が他アプリのキャッシュを消していないか、manifest の id が
       # 残っているか等を機械で確認する（人の目に頼ると必ず見落とす）。
+      # ⚠️ build のあとに走らせる。dist/ を読む検査があり、build の前だと空振りする。
       - run: npm run check
-      - run: npm audit --omit=dev --audit-level=high
-      - run: npm run build
+      - run: node tools/build-sw.mjs --check
+      # 実ブラウザで開き、外部への通信・CSP 違反・例外が無いことを確かめる。
+      # 静的検査はソースに書いてある URL しか見られないため。ランナーの Chrome を使う。
+      - run: npm run smoke
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push'
         with:
@@ -82,6 +87,14 @@ jobs:
               ]);
               if (!pageResponse.ok || !page.includes('id="root"')) throw new Error('application shell is unavailable');
               if (!releaseResponse.ok || release.commit !== expectedSha) throw new Error(`stale release: ${release.commit || 'unknown'}`);
+              // index.html が指す JS・CSS が実際に届くか（id="root" があるだけでは、
+              // 古い index.html と消えたチャンクの組み合わせでも通ってしまう）
+              const assets = [...page.matchAll(/(?:src|href)="(\.?\/?assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+              if (assets.length === 0) throw new Error('no assets referenced from index.html');
+              for (const asset of assets) {
+                const assetResponse = await fetch(new URL(asset, baseUrl), { cache: 'no-store' });
+                if (!assetResponse.ok) throw new Error(`asset unavailable: ${asset} (${assetResponse.status})`);
+              }
               console.log(`Deployment verified: ${release.version} (${release.commit.slice(0, 8)})`);
               process.exit(0);
             } catch (error) {
@@ -96,9 +109,10 @@ jobs:
   # 正本（GIGAyama.github.io/standards/）との一致。コピーだけ直すと他リポジトリに修正が届かないため。
   drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           repository: GIGAyama/GIGAyama.github.io
           path: .standards-src

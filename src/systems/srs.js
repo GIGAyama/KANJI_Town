@@ -4,14 +4,19 @@
 // ==========================================
 import { normalizeSkillMastery } from './mastery.js';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** 学習ステップ間隔(ms): 1分 → 10分 */
 export const LEARNING_STEPS = [1 * 60 * 1000, 10 * 60 * 1000];
 
 /** 卒業間隔(ms): 1日 */
-export const GRADUATING_INTERVAL = 24 * 60 * 60 * 1000;
+export const GRADUATING_INTERVAL = DAY_MS;
 
 /** Easy評価時の初期間隔(ms): 4日 */
-export const EASY_INTERVAL = 4 * 24 * 60 * 60 * 1000;
+export const EASY_INTERVAL = 4 * DAY_MS;
+
+/** 復習間隔の上限(ms): 1年。読みこみ時の補正（sanitizeNextReview）と合わせる */
+export const MAX_INTERVAL = 365 * DAY_MS;
 
 /** デフォルトの容易度 */
 export const DEFAULT_EASE = 2.5;
@@ -19,11 +24,54 @@ export const DEFAULT_EASE = 2.5;
 /** 容易度の下限（これ以下にならない） */
 export const MIN_EASE = 1.3;
 
+/**
+ * 容易度の上限。以前は上限が無く、ボスバトルで同じ字に easy が続くと
+ * 3.25 まで上がり、数分で間隔が 630 日になっていた。
+ */
+export const MAX_EASE = 3.0;
+
+/**
+ * 1日以上の間隔の復習は、その日のこの時刻から出す（その日の朝3時）。
+ * 以前は「卒業から24時間ちょうど」で、毎日同じ時間帯に学ぶ学級では、授業の後半に
+ * 卒業した字の「翌日の復習」が翌々日にずれていた。
+ */
+export const DAY_START_HOUR = 3;
+
 // 容易度の調整値
 const EASE_BONUS = 0.15;
 const EASE_HARD_PENALTY = 0.15;
 const EASE_AGAIN_PENALTY = 0.2;
+/** 卒業後の good で、下がった容易度を少しずつ戻す（DEFAULT_EASE まで） */
+const EASE_GOOD_RECOVERY = 0.05;
 const INTERVAL_MODIFIER = 1.0;
+
+const clampEase = (ease) => Math.min(MAX_EASE, Math.max(MIN_EASE, ease));
+const clampInterval = (interval) => Math.min(MAX_INTERVAL, Math.max(0, Math.round(interval)));
+
+/**
+ * 間隔から次の復習時刻を決める。1日以上の間隔は、その日の DAY_START_HOUR 時にそろえる
+ * （端末の地方時で日付を数える）。1日未満の学習ステップはそのまま足す。
+ * @param {number} now - Unix ms
+ * @param {number} interval - ms
+ * @returns {number} Unix ms
+ */
+export function dueAtLocalDay(now, interval) {
+  if (!(interval >= DAY_MS)) return now + interval;
+  const due = new Date(now + interval);
+  due.setHours(DAY_START_HOUR, 0, 0, 0);
+  return due.getTime();
+}
+
+/**
+ * 卒業済みのカードを、復習期限の前に解いているか（期限前の早い復習）。
+ * ボスバトル・サバイバル・1字の練習・特訓では、期限の来ていない字が何度も出る。
+ * そのたびに間隔を掛け算で伸ばすと、数分で何百日も先になってしまう。
+ */
+export function isEarlyReview(card, now = Date.now()) {
+  return Boolean(card?.graduated)
+    && Number.isFinite(card?.nextReview)
+    && now < card.nextReview;
+}
 
 /**
  * @typedef {'again'|'hard'|'good'|'easy'} Evaluation
@@ -40,7 +88,7 @@ const INTERVAL_MODIFIER = 1.0;
  * @property {number} stepIdx - 現在の学習ステップ
  * @property {number} interval - 次の復習までの間隔(ms)
  * @property {number} nextReview - 次の復習時刻(Unix ms)
- * @property {number} ease - 容易度(1.3-3.0+)
+ * @property {number} ease - 容易度(1.3-3.0)
  * @property {number} [lapses] - ラプス（卒業後に再度失敗した回数）
  * @property {string} [status] - 'new'|'learning'|'review'|'mastered'
  * @property {number} [mistakes] - 総ミス回数
@@ -53,17 +101,19 @@ const INTERVAL_MODIFIER = 1.0;
  * 次の復習スケジュールを計算する
  *
  * アルゴリズム概要:
- * - 学習フェーズ: LEARNING_STEPS に沿って段階的に間隔を伸ばす
- * - 卒業: 全ステップをクリアすると24時間後に復習
- * - レビューフェーズ: 間隔 × 容易度で次の復習日を決定
+ * - 学習フェーズ: LEARNING_STEPS に沿って段階的に間隔を伸ばす。容易度は変えない
+ *   （つまずいた直後の失敗で容易度が恒久的に下がり、苦手のまま抜けられなくなっていた）
+ * - 卒業: 全ステップをクリアすると翌日に復習（その日の朝3時から出る）
+ * - レビューフェーズ: 間隔 × 容易度で次の復習日を決める
+ * - 期限前の早い復習: again 以外では間隔も容易度も変えない
  *
  * @param {CardState} card - 現在のカード状態
  * @param {Evaluation} evaluation - ユーザーの自己評価
+ * @param {number} [now] - いまの時刻(Unix ms)
  * @returns {Partial<CardState>} 更新されたカード状態の差分
  */
-export const calculateNextReview = (card, evaluation) => {
-  const now = Date.now();
-  const ease = card.ease || DEFAULT_EASE;
+export const calculateNextReview = (card, evaluation, now = Date.now()) => {
+  const ease = clampEase(card.ease || DEFAULT_EASE);
   const stepIdx = card.stepIdx ?? 0;
 
   // ── 学習フェーズ（未卒業カード） ──
@@ -75,7 +125,7 @@ export const calculateNextReview = (card, evaluation) => {
           stepIdx: 0,
           interval: LEARNING_STEPS[0],
           nextReview: now + LEARNING_STEPS[0],
-          ease: Math.max(MIN_EASE, ease - EASE_AGAIN_PENALTY),
+          ease,
         };
 
       case 'hard': {
@@ -87,7 +137,7 @@ export const calculateNextReview = (card, evaluation) => {
           stepIdx,
           interval: delay,
           nextReview: now + delay,
-          ease: Math.max(MIN_EASE, ease - EASE_HARD_PENALTY),
+          ease,
         };
       }
 
@@ -99,7 +149,7 @@ export const calculateNextReview = (card, evaluation) => {
             graduated: true,
             stepIdx: 0,
             interval: GRADUATING_INTERVAL,
-            nextReview: now + GRADUATING_INTERVAL,
+            nextReview: dueAtLocalDay(now, GRADUATING_INTERVAL),
             ease,
           };
         }
@@ -118,8 +168,8 @@ export const calculateNextReview = (card, evaluation) => {
           graduated: true,
           stepIdx: 0,
           interval: EASY_INTERVAL,
-          nextReview: now + EASY_INTERVAL,
-          ease: ease + EASE_BONUS,
+          nextReview: dueAtLocalDay(now, EASY_INTERVAL),
+          ease,
         };
 
       default:
@@ -130,48 +180,60 @@ export const calculateNextReview = (card, evaluation) => {
   // ── レビューフェーズ（卒業済みカード） ──
   const currentInterval = card.interval || GRADUATING_INTERVAL;
 
-  switch (evaluation) {
-    case 'again':
-      // ラプス: 学習フェーズに戻す
-      return {
-        graduated: false,
-        stepIdx: 0,
-        interval: LEARNING_STEPS[0],
-        nextReview: now + LEARNING_STEPS[0],
-        ease: Math.max(MIN_EASE, ease - EASE_AGAIN_PENALTY),
-        lapses: (card.lapses || 0) + 1,
-      };
+  if (evaluation === 'again') {
+    // ラプス: 学習フェーズに戻す（期限前でも、忘れていたことは記録する）
+    return {
+      graduated: false,
+      stepIdx: 0,
+      interval: LEARNING_STEPS[0],
+      nextReview: now + LEARNING_STEPS[0],
+      ease: clampEase(ease - EASE_AGAIN_PENALTY),
+      lapses: (card.lapses || 0) + 1,
+    };
+  }
 
+  // 期限前の早い復習では、間隔も容易度も変えない
+  if (isEarlyReview(card, now)) {
+    return {
+      graduated: true,
+      stepIdx: 0,
+      interval: currentInterval,
+      nextReview: card.nextReview,
+      ease,
+    };
+  }
+
+  switch (evaluation) {
     case 'hard': {
-      const newInterval = Math.round(currentInterval * 1.2 * INTERVAL_MODIFIER);
+      const newInterval = clampInterval(currentInterval * 1.2 * INTERVAL_MODIFIER);
       return {
         graduated: true,
         stepIdx: 0,
         interval: newInterval,
-        nextReview: now + newInterval,
-        ease: Math.max(MIN_EASE, ease - EASE_HARD_PENALTY),
+        nextReview: dueAtLocalDay(now, newInterval),
+        ease: clampEase(ease - EASE_HARD_PENALTY),
       };
     }
 
     case 'good': {
-      const newInterval = Math.round(currentInterval * ease * INTERVAL_MODIFIER);
+      const newInterval = clampInterval(currentInterval * ease * INTERVAL_MODIFIER);
       return {
         graduated: true,
         stepIdx: 0,
         interval: newInterval,
-        nextReview: now + newInterval,
-        ease,
+        nextReview: dueAtLocalDay(now, newInterval),
+        ease: ease < DEFAULT_EASE ? Math.min(DEFAULT_EASE, ease + EASE_GOOD_RECOVERY) : ease,
       };
     }
 
     case 'easy': {
-      const newInterval = Math.round(currentInterval * ease * INTERVAL_MODIFIER * 1.3);
+      const newInterval = clampInterval(currentInterval * ease * INTERVAL_MODIFIER * 1.3);
       return {
         graduated: true,
         stepIdx: 0,
         interval: newInterval,
-        nextReview: now + newInterval,
-        ease: ease + EASE_BONUS,
+        nextReview: dueAtLocalDay(now, newInterval),
+        ease: clampEase(ease + EASE_BONUS),
       };
     }
 
@@ -180,14 +242,37 @@ export const calculateNextReview = (card, evaluation) => {
         graduated: true,
         stepIdx: 0,
         interval: currentInterval,
-        nextReview: now + currentInterval,
+        nextReview: dueAtLocalDay(now, currentInterval),
         ease,
       };
   }
 };
 
+/**
+ * 評価ボタンに「次回」をそのまま出せるよう、評価したあとの次の復習を言いかえる。
+ * 以前は「書けた：翌日〜」のように固定の文言で、新出字の good（実際は 10 分後、
+ * セッションのあとは 30 分後）や卒業後の hard（10 日なら 12 日後）と合っていなかった。
+ * @param {CardState} card
+ * @param {Evaluation} evaluation
+ * @param {number} [now]
+ * @param {{ minLearningDelay?: number }} [options] - 学習中の字をセッションのあとに出すまでの最短の待ち時間
+ * @returns {{ unit: 'minutes'|'days', value: number }}
+ */
+export function describeNextReview(card, evaluation, now = Date.now(), { minLearningDelay = 0 } = {}) {
+  const next = calculateNextReview(card, evaluation, now);
+  let dueAt = next.nextReview;
+  if (!next.graduated) dueAt = Math.max(dueAt, now + minLearningDelay);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(dueAt);
+  dueDay.setHours(0, 0, 0, 0);
+  const days = Math.round((dueDay.getTime() - today.getTime()) / DAY_MS);
+  if (days <= 0) return { unit: 'minutes', value: Math.max(1, Math.round((dueAt - now) / 60000)) };
+  return { unit: 'days', value: days };
+}
+
 /** nextReview の妥当範囲（クライアント時刻ズレ対策） */
-const MAX_FUTURE_MS = 365 * 24 * 60 * 60 * 1000; // 1年
+const MAX_FUTURE_MS = MAX_INTERVAL + DAY_MS; // 1年（朝3時にそろえた分の余裕を含む）
 const MAX_PAST_MS = 365 * 24 * 60 * 60 * 1000; // 1年前まで許容
 
 /**
@@ -203,7 +288,7 @@ function sanitizeNextReview(card) {
   }
   // 未来に1年以上はあり得ない → 適切な間隔で再計算
   if (nr - now > MAX_FUTURE_MS) {
-    const interval = Math.min(card.interval || GRADUATING_INTERVAL, MAX_FUTURE_MS);
+    const interval = Math.min(card.interval || GRADUATING_INTERVAL, MAX_INTERVAL);
     return { ...card, interval, nextReview: now + interval };
   }
   // 過去に1年以上は古すぎる → いますぐ復習対象に
@@ -223,6 +308,15 @@ export function recordPracticeAttempt(card, evaluation, now = Date.now()) {
     practiceAttempts: (card?.practiceAttempts || 0) + 1,
     lastPracticedAt: now,
   };
+}
+
+/**
+ * お手本が読めずに採点できず、自己申告だけで評価した回数を数える。
+ * 先生が「採点した結果」と「本人の申告」を記録で見分けられるようにする。
+ */
+export function recordSelfReport(card, selfReport, now = Date.now()) {
+  if (!selfReport) return {};
+  return { selfReports: (card?.selfReports || 0) + 1, lastSelfReportAt: now };
 }
 
 /**

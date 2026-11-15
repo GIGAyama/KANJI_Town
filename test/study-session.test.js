@@ -6,7 +6,7 @@ const STUDY_LOG_KEY = 'study.records.v1';
 // studySession.js は storage.js 経由で .jsx を取り込むため、node からは直接読めない。
 // レコードの組み立てだけを見たいので、依存する3モジュールを差し替えて読み込む。
 mock.module(new URL('../src/systems/storage.js', import.meta.url).href, {
-  namedExports: { StorageAPI: { getStats: () => ({}) } },
+  namedExports: { StorageAPI: { getStats: () => ({}), peekStats: () => ({}) } },
 });
 mock.module(new URL('../src/systems/learning-report.js', import.meta.url).href, {
   namedExports: {

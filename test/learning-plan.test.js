@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildFlashcardQueue,
   buildLearningPlan,
   buildWeakKanjiPlan,
   getDailyGoal,
@@ -19,6 +20,34 @@ const kanjiData = [
   { id: 'd', grade: 2 },
 ];
 
+test('フラッシュカードは習った字だけから10字を選び、データの先頭にかたよらない', () => {
+  const data = Array.from({ length: 300 }, (_, i) => ({ id: `k${i}`, grade: 1 + Math.floor(i / 50) }));
+  const kanjiStats = Object.fromEntries(data.map((k) => [k.id, { status: 'review' }]));
+  kanjiStats.k299 = { status: 'new' }; // まだ習っていない字は出さない
+  // 決まった乱数で、たくさん選んで数える
+  let seed = 12345;
+  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let head = 0;
+  let tail = 0;
+  const trials = 4000;
+  for (let t = 0; t < trials; t++) {
+    const queue = buildFlashcardQueue({ kanjiData: data, kanjiStats, random });
+    assert.equal(queue.length, 10);
+    assert.equal(new Set(queue).size, 10);
+    assert.ok(!queue.some((k) => k.id === 'k299'));
+    for (const k of queue) {
+      const index = Number(k.id.slice(1));
+      if (index < 30) head++;
+      if (index >= 269 && index < 299) tail++;
+    }
+  }
+  // 先頭30字と末尾30字は、どちらも約10%（以前の並べかえでは 15.8% と 4.7%）
+  const share = (n) => n / (trials * 10);
+  assert.ok(Math.abs(share(head) - 30 / 299) < 0.015, `先頭 ${share(head)}`);
+  assert.ok(Math.abs(share(tail) - 30 / 299) < 0.015, `末尾 ${share(tail)}`);
+  assert.deepEqual(buildFlashcardQueue({ kanjiData: data, kanjiStats: {} }), []);
+});
+
 test('復習と新出漢字を同じセッションへ復習優先で組み込む', () => {
   const plan = buildLearningPlan({
     kanjiData,
@@ -35,6 +64,55 @@ test('復習と新出漢字を同じセッションへ復習優先で組み込�
   assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['b', 'a', 'c']);
   assert.equal(plan.reviewCount, 2);
   assert.equal(plan.newCount, 1);
+});
+
+test('新出漢字はデータの並び（画数の少ない順）に出し、乱数に左右されない', () => {
+  // 以前はシャッフルしてから切り出していて、1年生の初日に「森」「校」が出ることがあった
+  for (const value of [0, 0.5, 0.99]) {
+    const plan = buildLearningPlan({
+      kanjiData, kanjiStats: {}, selectedGrade: 1, limits: { review: 5, new: 2 }, now: 200, random: () => value,
+    });
+    assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['a', 'b']);
+  }
+  const shuffledPlan = buildLearningPlan({
+    kanjiData, kanjiStats: {}, selectedGrade: 1, limits: { review: 5, new: 3 }, now: 200, random: () => 0, newOrder: 'random',
+  });
+  assert.deepEqual(shuffledPlan.queue.map((kanji) => kanji.id), ['b', 'c', 'a']);
+});
+
+test('学年の字をすべて習い、期限の来た復習も無いときは、弱い字から練習を組む（「一」1字だけにしない）', () => {
+  const skill = (score) => ({ reading: { score }, meaning: { score }, writing: { score }, stroke: { score } });
+  const kanjiStats = {
+    a: { status: 'review', graduated: true, nextReview: 5000, skillMastery: skill(90) },
+    b: { status: 'review', graduated: true, nextReview: 9000, skillMastery: skill(40) },
+    c: { status: 'mastered', graduated: true, nextReview: 3000, skillMastery: skill(40) },
+  };
+  const results = [0, 0.5, 0.99].map((value) => buildLearningPlan({
+    kanjiData, kanjiStats, selectedGrade: 1, limits: { review: 5, new: 2, total: 3 }, now: 200, random: () => value,
+  }));
+  for (const plan of results) {
+    // 弱い技能の点が低い順 → 次の期限が近い順
+    assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['c', 'b', 'a']);
+    assert.equal(plan.isPractice, true);
+    assert.equal(plan.practiceCount, 3);
+    assert.equal(plan.newCount, 0);
+  }
+  // 出題数の上限を守る
+  const short = buildLearningPlan({ kanjiData, kanjiStats, selectedGrade: 1, limits: { review: 1, new: 0, total: 1 }, now: 200 });
+  assert.deepEqual(short.queue.map((kanji) => kanji.id), ['c']);
+});
+
+test('選んだ学年をすべて習ったら、下の学年でまだ習っていない字を新出にする', () => {
+  const data = [...kanjiData, { id: 'e', grade: 2 }];
+  const kanjiStats = {
+    a: { status: 'review', nextReview: 5000 },
+    d: { status: 'review', nextReview: 5000 },
+    e: { status: 'review', nextReview: 5000 },
+  };
+  const plan = buildLearningPlan({ kanjiData: data, kanjiStats, selectedGrade: 2, limits: { review: 5, new: 2 }, now: 200 });
+  assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['b', 'c']);
+  assert.equal(plan.isPractice, false);
+  assert.equal(plan.newCount, 2);
 });
 
 test('学習目標は安全な既定値と当日進捗を返す', () => {

@@ -151,9 +151,9 @@ const ReadMode = ({ kanji, paths = [], isLoading = false, onNext, commonSidebar,
       <div className="flex flex-col gap-4 bg-[var(--panel)] p-4 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)]">
         <div className="bg-[var(--accent)] text-[var(--text)] px-4 py-1.5 rounded-full text-sm font-black border-[3px] border-[var(--text)] text-center shadow-sm -mt-8 mx-auto w-max">{F("声","こえ")}にだそう！</div>
         <div className="relative min-h-[80px] flex items-center justify-center">
-          <AnimatePresence mode="wait"><motion.p key={safeIdx} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="ruby-text text-xl md:text-2xl font-bold text-[var(--text)] text-center py-2"><RubyText text={example} /></motion.p></AnimatePresence>
+          <AnimatePresence mode="wait"><motion.p key={safeIdx} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="ruby-text text-xl md:text-2xl font-bold text-[var(--text)] text-center py-2"><RubyText text={example} always /></motion.p></AnimatePresence>
           {hasJaVoice && (<button onClick={() => speak(toSpeechText(example))} disabled={micActive} aria-label="例文を読み上げる" className={`absolute -left-2 top-1/2 -translate-y-1/2 bg-[var(--bg)] border-2 border-[var(--text)] rounded-full p-1 transition-colors shadow-sm ${micActive ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[var(--text)] hover:text-white'}`}><Volume2 size={20} /></button>)}
-          {kanji.examples.length > 1 && (<button onClick={handleNextExample} className="absolute -right-2 top-1/2 -translate-y-1/2 bg-[var(--bg)] border-2 border-[var(--text)] rounded-full p-1 hover:bg-[var(--text)] hover:text-white transition-colors shadow-sm"><ChevronRight size={20} /></button>)}
+          {kanji.examples.length > 1 && (<button onClick={handleNextExample} aria-label="つぎの例文" className="absolute -right-2 top-1/2 -translate-y-1/2 bg-[var(--bg)] border-2 border-[var(--text)] rounded-full p-1 hover:bg-[var(--text)] hover:text-white transition-colors shadow-sm"><ChevronRight size={20} /></button>)}
         </div>
         {kanji.examples.length > 1 && (<div className="flex justify-center gap-1.5">{kanji.examples.map((_, i) => (<div key={i} className={`w-2 h-2 rounded-full border border-[var(--text)] ${i === safeIdx ? 'bg-[var(--text)]' : 'bg-transparent'}`} />))}</div>)}
       </div>
@@ -161,11 +161,11 @@ const ReadMode = ({ kanji, paths = [], isLoading = false, onNext, commonSidebar,
       <div className="flex flex-col gap-3">
         <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
           <span className="text-sm font-bold text-[var(--primary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--primary)] shrink-0 flex items-center gap-1">{F("音","おん")}{hasJaVoice && kanji.on.length > 0 && (<button onClick={() => speak(kanji.on.join('、'))} disabled={micActive} aria-label="音読みを読み上げる" className={micActive ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-60'}><Volume2 size={14} /></button>)}</span>
-          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300">{o}</span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20">{o}</span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
         </div>
         <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
           <span className="text-sm font-bold text-[var(--secondary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--secondary)] shrink-0 flex items-center gap-1">{F("訓","くん")}{hasJaVoice && kanji.kun.length > 0 && (<button onClick={() => speak(kanji.kun.map(toKunSpeech).join('、'))} disabled={micActive} aria-label="訓読みを読み上げる" className={micActive ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-60'}><Volume2 size={14} /></button>)}</span>
-          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
         </div>
       </div>
     </>

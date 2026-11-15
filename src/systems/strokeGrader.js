@@ -25,6 +25,44 @@ const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
 const distanceOf = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/** 交差の判定に使う、児童の1画あたりの点の数 */
+const CROSS_SAMPLES = 64;
+
+/**
+ * 等間隔に取りなおした2つの画の、字形のずれ（Analyzer.shapeDistance と同じ計算）。
+ * @returns {{ forward: number, reversed: number }}
+ */
+function sampledShapeDistance(a, b) {
+  if (a.length === 0 || b.length === 0 || a.length !== b.length) return { forward: Infinity, reversed: Infinity };
+  let forward = 0;
+  let reversed = 0;
+  for (let i = 0; i < a.length; i++) {
+    forward += distanceOf(a[i], b[i]);
+    reversed += distanceOf(a[i], b[a.length - 1 - i]);
+  }
+  return { forward: forward / a.length, reversed: reversed / a.length };
+}
+
+/** お手本どうしの交差表。字ごと（strokeData の配列ごと）に1回だけ求める */
+const crossMatrixCache = new WeakMap();
+function expectedCrossMatrix(strokeData, expected, provided) {
+  const n = expected.length;
+  const valid = (matrix) => Array.isArray(matrix) && matrix.length === n && matrix.every(row => Array.isArray(row) && row.length === n);
+  if (valid(provided)) return provided;
+  const cached = strokeData && typeof strokeData === 'object' ? crossMatrixCache.get(strokeData) : null;
+  if (valid(cached)) return cached;
+  const matrix = expected.map((_, i) => expected.map((__, j) => i !== j && Analyzer.isCrossed(expected[i].points, expected[j].points)));
+  if (strokeData && typeof strokeData === 'object') crossMatrixCache.set(strokeData, matrix);
+  return matrix;
+}
+
+/** 点の並びの長さ（正規化座標） */
+function pathLength(points) {
+  let length = 0;
+  for (let i = 1; i < points.length; i++) length += distanceOf(points[i - 1], points[i]);
+  return length;
+}
+
 /** 距離を 0-1 のスコアへ（0で満点、threshold で 0点） */
 const distanceScore = (dist, threshold) => clamp01(1 - dist / threshold);
 
@@ -55,11 +93,11 @@ function emptyResult(details, flags = {}) {
 }
 
 /**
- * ポイント群の外接枠の中心を返す（サンプリング密度に影響されない基準点）
+ * ポイント群の外接枠の中心と大きさを返す（サンプリング密度に影響されない基準）
  * @param {Array<Array<{x: number, y: number}>>} strokes
- * @returns {{x: number, y: number}|null}
+ * @returns {{x: number, y: number, side: number}|null} side は幅と高さの大きい方（「一」のように高さ0の字があるため）
  */
-function boundsCenter(strokes) {
+function boundsOf(strokes) {
   let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
   for (const stroke of strokes) {
     for (const p of stroke) {
@@ -70,7 +108,7 @@ function boundsCenter(strokes) {
     }
   }
   if (minX === Infinity) return null;
-  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, side: Math.max(maxX - minX, maxY - minY) };
 }
 
 /**
@@ -82,6 +120,24 @@ function boundsCenter(strokes) {
  * @param {number[][]} cost - cost[i][j] = ユーザーi画目を正解j画目に当てる費用
  * @returns {number[]} assignment[i] = 対応する正解の画index
  */
+const UNREACHABLE_COST = 1e6;
+/** これより小さい字の外接枠は、大きさをそろえる基準にしない（点1つなど） */
+const SIZE_EPSILON = 0.02;
+
+const isFinitePoint = (p) => Boolean(p) && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+/** お手本の画から、数でない座標を除く（壊れたキャッシュでも採点が NaN にならないように） */
+function sanitizeTarget(target) {
+  const points = (Array.isArray(target?.points) ? target.points : []).filter(isFinitePoint);
+  const fallback = { x: 0.5, y: 0.5 };
+  return {
+    ...target,
+    points,
+    s: isFinitePoint(target?.s) ? target.s : (points[0] ?? fallback),
+    e: isFinitePoint(target?.e) ? target.e : (points[points.length - 1] ?? fallback),
+  };
+}
+
 function solveAssignment(cost) {
   const n = cost.length;
   if (n === 0) return [];
@@ -102,7 +158,9 @@ function solveAssignment(cost) {
       let j1 = 0;
       for (let j = 1; j <= n; j++) {
         if (used[j]) continue;
-        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        // 費用が NaN だと比較が成り立たず、j1 が 0 のまま抜けられなくなる（タブが固まる）
+        const raw = cost[i0 - 1][j - 1];
+        const cur = (Number.isFinite(raw) ? raw : UNREACHABLE_COST) - u[i0] - v[j];
         if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
         if (minv[j] < delta) { delta = minv[j]; j1 = j; }
       }
@@ -151,16 +209,20 @@ function shapeComment(ratio) {
  * @param {Array<Array<{x: number, y: number, time: number}>>} userStrokes - キャンバス座標
  * @param {Array<{s: {x, y}, e: {x, y}, points: Array, endingType?: string|null}>} strokeData - 正規化済み正解
  * @param {number} canvasSize
+ * @param {{ expectedCross?: boolean[][] }} [options] - expectedCross: お手本どうしの交差表（SessionView の crossMatrix）
  * @returns {object} 採点結果
  */
-export function gradeStrokes(userStrokes, strokeData, canvasSize) {
+export function gradeStrokes(userStrokes, strokeData, canvasSize, options = {}) {
   const details = [];
-  const expected = Array.isArray(strokeData) ? strokeData : [];
+  const expected = Array.isArray(strokeData) ? strokeData.map(sanitizeTarget) : [];
   const expectedCount = expected.length;
   const actualCount = Array.isArray(userStrokes) ? userStrokes.length : 0;
 
   if (expectedCount === 0) {
     return emptyResult(['おてほんを よみこめませんでした']);
+  }
+  if (!(Number.isFinite(canvasSize) && canvasSize > 0)) {
+    return emptyResult(['うまく よみとれなかったよ。もういちど 書いてね']);
   }
 
   // ── 画数チェック ──
@@ -177,13 +239,36 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   // ── 正規化と字全体の位置ずれ補正 ──
   // 字全体が少しずれただけで全画が減点されるのを防ぐ。
   // ただし補正量には上限を設け、大きなずれは減点として残す。
-  const scaled = userStrokes.map(stroke => (stroke ?? []).map(p => ({
-    x: p.x / canvasSize,
-    y: p.y / canvasSize,
-    time: p.time,
-  })));
-  const userCenter = boundsCenter(scaled);
-  const expectedCenter = boundsCenter(expected.map(s => s.points));
+  // 座標が数でない点（キャンバスの幅が 0 のときなど）は捨てる。1点でも混ざると採点が止まらなくなっていた
+  const scaled = userStrokes.map(stroke => (Array.isArray(stroke) ? stroke : [])
+    .filter(isFinitePoint)
+    .map(p => ({
+      x: p.x / canvasSize,
+      y: p.y / canvasSize,
+      time: Number.isFinite(p.time) ? p.time : 0,
+    })));
+  // ── 字全体の大きさをそろえる ──
+  // マスの中に小さく書く・大きくはみ出すと、形も書き順も正しいのに全画が減点されていた
+  // （「三」を 0.6 倍で書くと 62 点、0.5 倍で 57 点）。お手本の外接枠の大きい方の辺に合わせて、
+  // 字の中心を基準に拡大・縮小する。補正には上限を設け、大きすぎる差は講評で伝える。
+  const rawBounds = boundsOf(scaled);
+  const expectedBounds = boundsOf(expected.map(s => s.points));
+  let sizeRatio = 1; // 児童の字の大きさ ÷ お手本の大きさ
+  if (rawBounds && expectedBounds && rawBounds.side > SIZE_EPSILON && expectedBounds.side > SIZE_EPSILON) {
+    sizeRatio = rawBounds.side / expectedBounds.side;
+  }
+  const sizeScale = Math.max(STROKE_THRESHOLDS.SIZE_SCALE_MIN, Math.min(STROKE_THRESHOLDS.SIZE_SCALE_MAX, 1 / sizeRatio));
+  const resized = rawBounds
+    ? scaled.map(stroke => stroke.map(p => ({
+      x: rawBounds.x + (p.x - rawBounds.x) * sizeScale,
+      y: rawBounds.y + (p.y - rawBounds.y) * sizeScale,
+      time: p.time,
+    })))
+    : scaled;
+
+  // 拡大・縮小は中心を基準にしているので、中心は変わらない
+  const userCenter = rawBounds;
+  const expectedCenter = expectedBounds;
   let shiftX = 0;
   let shiftY = 0;
   if (userCenter && expectedCenter) {
@@ -195,17 +280,20 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     shiftX = dx * factor;
     shiftY = dy * factor;
   }
-  const user = scaled.map(stroke => stroke.map(p => ({
+  const user = resized.map(stroke => stroke.map(p => ({
     x: p.x + shiftX,
     y: p.y + shiftY,
     time: p.time,
   })));
 
   // ── 画の対応づけ（どの画を書いたのか）──
-  const cost = user.map(stroke => expected.map(target => {
+  // 字形の比較は、画ごとに1回だけ等間隔に取りなおした点で行う（以前は組ごとに取りなおしていた）。
+  const userSamples = user.map(stroke => (stroke.length > 0 ? Analyzer.resample(stroke, STROKE_THRESHOLDS.SHAPE_SAMPLES) : []));
+  const targetSamples = expected.map(target => Analyzer.resample(target.points, STROKE_THRESHOLDS.SHAPE_SAMPLES));
+  const shapes = user.map((_, i) => expected.map((__, j) => sampledShapeDistance(userSamples[i], targetSamples[j])));
+  const cost = user.map((stroke, i) => expected.map((target, j) => {
     if (stroke.length === 0) return 10;
-    const shape = Analyzer.shapeDistance(stroke, target.points);
-    const shapeDist = Math.min(shape.forward, shape.reversed);
+    const shapeDist = Math.min(shapes[i][j].forward, shapes[i][j].reversed);
     const startDist = distanceOf(stroke[0], target.s);
     const endDist = distanceOf(stroke[stroke.length - 1], target.e);
     return shapeDist * 0.6 + startDist * 0.2 + endDist * 0.2;
@@ -218,32 +306,44 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   let endTotal = 0;
   let endingTotal = 0;
   let endingCount = 0;
-  let orderCorrect = 0;
+  let orderPoints = 0;
+  let orderMistakes = 0;
   const strokeFeedback = [];
   const reversedStrokes = [];
   const endingMisses = [];
 
   for (let i = 0; i < expectedCount; i++) {
     const stroke = user[i];
-    const target = expected[assignment[i]] ?? expected[i];
+    const targetIndex = expected[assignment[i]] ? assignment[i] : i;
+    const target = expected[targetIndex];
     // 対応づけが本来の位置とずれていても、正しい位置との費用差がわずかなら
     // （＝どちらを書いたのか幾何的に区別できない画なら）誤りと断定しない。
     const discriminable = assignment[i] !== i
       && cost[i][assignment[i]] < cost[i][i] - STROKE_THRESHOLDS.ORDER_AMBIGUITY_MARGIN;
     const inOrder = !discriminable;
-    if (inOrder) orderCorrect++;
 
     if (!stroke || stroke.length === 0) {
       strokeFeedback.push({ index: i, matched: assignment[i], inOrder, shape: 0, reversed: false, ending: null });
       continue;
     }
 
-    const shape = Analyzer.shapeDistance(stroke, target.points);
+    const shape = shapes[i][targetIndex];
     // 逆走（例：横画を右から左へ）は、逆順で比べた方が明らかに近いことで分かる
     const isReversed = shape.reversed < shape.forward * 0.6 && shape.reversed < tolerances.shape;
     const shapeRatio = distanceScore(shape.forward, tolerances.shape);
     shapeTotal += shapeRatio;
     if (isReversed) reversedStrokes.push(i + 1);
+    // お手本のどの画とも似ていない画（点を打っただけ、でたらめな線）は、書き順・とめの点に数えない。
+    // 以前は対応づけの誤りがはっきりしない限り「書き順正しい」になり、3点未満の画は「とめ」と判定されて、
+    // 点を1つ打つだけで 45 点（おすすめ「むずかしい」＝合格扱い）になっていた。
+    // 形の分からない画は、どの画のつもりかも分からないので、書き順のまちがいとも数えない。
+    // 長い画のところに点を打っただけのものも、形が近く見えることがあるので長さも見る（点の画はそのまま）
+    const targetLength = pathLength(target.points);
+    const lengthOk = targetLength < GRADING.SHORT_STROKE_LENGTH
+      || pathLength(stroke) >= targetLength * GRADING.MIN_LENGTH_RATIO;
+    const recognizable = shapeRatio >= GRADING.MIN_STROKE_SHAPE && lengthOk;
+    if (inOrder && recognizable) orderPoints++;
+    if (!inOrder && recognizable) orderMistakes++;
 
     startTotal += distanceScore(distanceOf(stroke[0], target.s), tolerances.start);
     endTotal += distanceScore(distanceOf(stroke[stroke.length - 1], target.e), tolerances.end);
@@ -251,9 +351,9 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     const actualEnding = Analyzer.analyzeEnding(stroke).code;
     const similarity = endingSimilarity(target.endingType ?? null, actualEnding);
     if (similarity !== null) {
-      endingTotal += similarity;
+      endingTotal += recognizable ? similarity : 0;
       endingCount++;
-      if (similarity < 1) {
+      if (recognizable && similarity < 1) {
         endingMisses.push({ index: i + 1, expected: target.endingType, actual: actualEnding });
       }
     }
@@ -278,13 +378,18 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   let crossPairs = 0;
   let crossMatch = true;
   const crossIssues = [];
+  // 交差の判定は画の点の数どうしの掛け算になる。ペンでゆっくり書くと 1 画 600 点にもなり、
+  // 20 画の字で 0.4 秒ほど固まっていたので、児童の画は CROSS_SAMPLES 点に取りなおしてから比べる。
+  // お手本どうしの交差は字ごとに1回だけ求めて使いまわす。
+  const expectedCross = expectedCrossMatrix(strokeData, expected, options.expectedCross);
+  const userCross = user.map(stroke => (stroke.length > CROSS_SAMPLES ? Analyzer.resample(stroke, CROSS_SAMPLES) : stroke));
 
   for (let i = 0; i < expectedCount; i++) {
     for (let j = i + 1; j < expectedCount; j++) {
-      const expectedCrossed = Analyzer.isCrossed(expected[i].points, expected[j].points);
+      const expectedCrossed = expectedCross[i][j];
       const ui = inverse[i];
       const uj = inverse[j];
-      const actualDepth = (ui >= 0 && uj >= 0) ? Analyzer.crossingDepth(user[ui], user[uj]) : 0;
+      const actualDepth = (ui >= 0 && uj >= 0) ? Analyzer.crossingDepth(userCross[ui], userCross[uj]) : 0;
       // 交わるべき組と、交わってはいけないのに交わった組だけを評価対象にする
       // （無関係な組を含めると平均が薄まり、誤りが点数に表れなくなる）
       if (!expectedCrossed && actualDepth <= STROKE_THRESHOLDS.CROSS_DEPTH_NONE) continue;
@@ -301,7 +406,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   // ── 配点（評価できない項目は他項目へ按分）──
   const components = [
     { key: 'shape', weight: WEIGHTS.SHAPE, ratio: shapeTotal / expectedCount },
-    { key: 'order', weight: WEIGHTS.ORDER, ratio: orderCorrect / expectedCount },
+    { key: 'order', weight: WEIGHTS.ORDER, ratio: orderPoints / expectedCount },
     { key: 'ending', weight: WEIGHTS.ENDING, ratio: endingCount > 0 ? endingTotal / endingCount : null },
     { key: 'cross', weight: WEIGHTS.CROSS, ratio: crossPairs > 0 ? crossTotal / crossPairs : null },
     { key: 'start', weight: WEIGHTS.START, ratio: startTotal / expectedCount },
@@ -331,14 +436,23 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   total = Math.max(0, Math.min(100, total));
 
   // 書き順の誤りは、見た目が同じでも別の学びなので合格させない
-  const orderMatch = orderCorrect === expectedCount;
+  const orderMatch = orderMistakes === 0;
   if (!orderMatch) total = Math.min(total, GRADING.ORDER_FAIL_CAP);
+  // 字の形がほとんどお手本と合わないときは、ほかの項目が残っていても「書けた」側に入れない
+  const meanShape = shapeTotal / expectedCount;
+  if (meanShape < GRADING.SHAPE_FAIL_RATIO) total = Math.min(total, GRADING.SHAPE_FAIL_CAP);
 
   // ── フィードバック文言 ──
-  details.push(shapeComment(shapeTotal / expectedCount));
+  details.push(shapeComment(meanShape));
+  // 大きさの講評は、形がお手本と合っているときだけ（形がちがうときは形を直すのが先）
+  if (meanShape >= GRADING.SHAPE_FAIL_RATIO) {
+    if (sizeRatio < STROKE_THRESHOLDS.SIZE_SMALL) details.push('字を もうすこし 大きく 書こう');
+    else if (sizeRatio > STROKE_THRESHOLDS.SIZE_LARGE) details.push('字を もうすこし 小さく 書こう');
+  }
 
   if (orderMatch) {
-    details.push('書き順：ぜんぶ正しい ✓');
+    // 形の分からない画があるときは、書き順が正しいとは言わない
+    if (orderPoints === expectedCount) details.push('書き順：ぜんぶ正しい ✓');
   } else {
     const firstWrong = strokeFeedback.find(f => !f.inOrder);
     const wrote = firstWrong ? firstWrong.matched + 1 : null;
@@ -367,7 +481,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   if (endingMisses.length > 0) {
     const miss = endingMisses[0];
     details.push(`${miss.index}かくめは ${endingVerb(miss.expected)} ところだよ`);
-  } else if (endingCount > 0) {
+  } else if (endingCount > 0 && endingTotal === endingCount) {
     details.push('とめ・はね・はらい：ばっちり ✓');
   }
 
@@ -418,6 +532,23 @@ export function recommendEvaluation(result) {
   if (result.total >= 55) return 'good';
   if (result.total >= 30) return 'hard';
   return 'again';
+}
+
+/** 自己評価のボタンの並び（下から順に） */
+export const EVALUATION_ORDER = ['again', 'hard', 'good', 'easy'];
+
+/**
+ * 自己評価で選べるボタンを返す。
+ * 採点できたときは、おすすめより1段上までしか選べない（自分に厳しくつける方向は自由）。
+ * 以前は線を1本も書かずに「よくできた」を押せ、間隔反復・技能点・EXP が自己申告どおりに進んでいた。
+ * お手本が読めず採点できないとき（recommended が null）だけ、すべて選べる。
+ * @param {'again'|'hard'|'good'|'easy'|null} recommended - recommendEvaluation の結果
+ * @returns {Array<'again'|'hard'|'good'|'easy'>}
+ */
+export function allowedEvaluations(recommended) {
+  const index = EVALUATION_ORDER.indexOf(recommended);
+  if (index < 0) return [...EVALUATION_ORDER];
+  return EVALUATION_ORDER.slice(0, Math.min(EVALUATION_ORDER.length, index + 2));
 }
 
 /**

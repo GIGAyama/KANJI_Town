@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -13,8 +13,8 @@ import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
-import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
-import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
+import { calculateNextReview, isEarlyReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
+import { buildFlashcardQueue, buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { readSharedDrill } from './systems/drill-share';
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
@@ -30,14 +30,19 @@ import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
+import { getEffectiveStreak } from './systems/habit';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
+import { THEMES, themeCssVars } from './constants/themes';
 import { createTabCoordinator } from './systems/tab-coordinator';
+import { requestPersistentStorageOnce } from './systems/persistence';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
-import { F } from './components/ui/FormatKun';
+import { F, FuriganaContext } from './components/ui/FormatKun';
+import { buildGradeLookup, getFuriganaMode } from './utils/furigana';
+import { getFontScale } from './utils/text-size';
 
 // Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
@@ -71,20 +76,14 @@ const DrillShareView = lazy(() => import('./components/social/DrillShareView'));
 const DrillImportView = lazy(() => import('./components/social/DrillImportView'));
 
 // Tutorial & Phase 7
-import TutorialOverlay from './components/tutorial/TutorialOverlay';
-import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
-import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
+// ときどきしか出ない重ね画面は、出すときにだけ読みこむ（初回に読む JS を軽くするため）
+const TutorialOverlay = lazy(() => import('./components/tutorial/TutorialOverlay'));
+const LoginBonusPopup = lazy(() => import('./components/tutorial/LoginBonusPopup'));
+const ResidentCollectionPopup = lazy(() => import('./components/tutorial/ResidentCollectionPopup'));
 import FeatureHint from './components/tutorial/FeatureHint';
 
-// テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
-const THEME_VARS = {
-  default: `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`,
-  dark: `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`,
-  sakura: `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`,
-  ocean: `--bg: #f0f9ff; --primary: #0284c7; --secondary: #38bdf8; --accent: #7dd3fc; --text: #0c4a6e; --panel: #ffffff;`,
-  sunset: `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`,
-  gold: `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`,
-};
+// テーマ別CSS変数。色の正本は constants/themes.js（テストが全テーマのコントラストを確かめる）
+const THEME_VARS = Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeCssVars(name)]));
 
 const GlobalStyle = ({ themeName, reducedMotion }) => {
   const tv = THEME_VARS[themeName] || THEME_VARS.default;
@@ -95,6 +94,13 @@ const GlobalStyle = ({ themeName, reducedMotion }) => {
     <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; } ${reducedMotionStyle}`}</style>
   );
 };
+
+// ふりがなの「学年より上の字だけ」で使う、字 → 学年 の表。
+// 字の一覧（約3KB）は初回のJSに入れず、起動と同時に別に読む。読めるまではすべてに出す。
+let gradeLookupCache = null;
+const gradeLookupPromise = import('./data/kanji-grades')
+  .then(({ KANJI_BY_GRADE }) => { gradeLookupCache = buildGradeLookup(KANJI_BY_GRADE); return gradeLookupCache; })
+  .catch(() => null);
 
 /** 設定の音量レベルID → 実音量値 */
 const VOLUME_VALUES = { off: 0, low: 0.3, mid: 0.6, high: 1.0 };
@@ -176,6 +182,9 @@ export default function App() {
   viewRef.current = view;
   const [isMuted, setIsMuted] = useState(audioCtrl.muted);
   const [stats, setStats] = useState(initialAppState.loadedStats);
+  // いまの記録（effect やタイマーの中から、古いクロージャではなく最新を読むため）
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   const [sessionData, setSessionDataState] = useState(() => createInitialSessionData(initialAppState.restoredSession || {}));
   const sessionDataRef = useRef(sessionData);
   const setSessionData = useCallback((update) => {
@@ -206,6 +215,24 @@ export default function App() {
       : false
   ));
   const motionPreference = getMotionPreference(stats.settings);
+  // ふりがなの設定を画面へ渡す（F()・RubyText が読む）
+  const [gradeLookup, setGradeLookup] = useState(gradeLookupCache);
+  useEffect(() => {
+    if (gradeLookup) return undefined;
+    let alive = true;
+    gradeLookupPromise.then((lookup) => { if (alive && lookup) setGradeLookup(lookup); });
+    return () => { alive = false; };
+  }, [gradeLookup]);
+  // 文字の大きさ（設定）。rem の基準になる html に倍率を置く（index.css の html の font-size）
+  const fontScale = getFontScale(stats.settings);
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', String(fontScale));
+  }, [fontScale]);
+  const furiganaMode = getFuriganaMode(stats.settings);
+  const furiganaValue = useMemo(
+    () => ({ mode: furiganaMode, grade: stats.targetGrade || 1, gradeLookup }),
+    [furiganaMode, stats.targetGrade, gradeLookup],
+  );
   const isReducedMotion = shouldReduceMotion(motionPreference, systemPrefersReducedMotion);
 
   useEffect(() => {
@@ -239,14 +266,24 @@ export default function App() {
     return () => finishStudySession();
   }, [view]);
 
-  // コア学習中は回答記録と残りキューを同じタイミングで端末へ保存する。
+  // コア学習中は、答えが確定したとき（残りの出題が変わったとき）に、記録とチェックポイントを
+  // 同じタイミングで即時保存する。以前は stats・sessionData のどれかが変わるたびに即時保存し、
+  // 1字につき2〜4回、記録全体（重い子で約75万文字）を書いていた（低速の端末で1回40ms）。
   useEffect(() => {
     if (view !== 'session' || !sessionData.remainingQueue?.length) return;
-    const checkpoint = createSessionCheckpoint(sessionData);
+    const checkpoint = createSessionCheckpoint(sessionDataRef.current);
     if (!checkpoint) return;
-    StorageAPI.saveStatsImmediate(stats);
+    StorageAPI.saveStatsImmediate(statsRef.current);
     StorageAPI.saveActiveSession(checkpoint);
-  }, [view, stats, sessionData]);
+  }, [view, sessionData.remainingQueue]);
+
+  // 学習中のそれ以外の更新（技能の記録、ボス・サバイバル・ドリルテストの1問ごとの記録）は、
+  // まとめて保存する。以前はボス・サバイバル・テストは終わるまで漢字の記録を一度も保存せず、
+  // 途中で閉じると消えていた。画面を離れる・閉じるときは保存待ちをすぐ書く（flushPendingSave）。
+  useEffect(() => {
+    if (!isLearningView(view)) return;
+    StorageAPI.saveStats(stats);
+  }, [view, stats]);
 
   // ログインボーナス＆デイリーミッション初期化関数
   // 関数型 setStats を使い、stale な currentStats を上書きしないようにする
@@ -271,11 +308,19 @@ export default function App() {
       setDailyMissions(currentStats.dailyMissions || []);
     }
 
-    // ログインボーナス受取
-    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && (currentStats.streak || 0) >= 1) {
-      const bonusDay = getLoginBonusDay(currentStats.streak);
+    // 連続学習日数は学習した日にしか更新されないので、休みが続いて途切れていたら、
+    // 起動したとき（と日付が変わったとき）に 0 へ直す。以前は2週間休んでも「6日連続」のまま、
+    // ホーム・満足度（EXP倍率）・レアドロップ・先生向けの記録に使われていた。
+    const effectiveStreak = getEffectiveStreak(currentStats, today);
+    const streakBroken = effectiveStreak !== (Number(currentStats.streak) || 0);
+    if (streakBroken) needsSave = true;
+
+    // ログインボーナス受取（休みのあとに戻ってきた日は1日目として受けとる）
+    const bonusStreak = currentStats.lastDate ? Math.max(1, effectiveStreak) : effectiveStreak;
+    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && bonusStreak >= 1) {
+      const bonusDay = getLoginBonusDay(bonusStreak);
       const reward = getLoginBonusReward(bonusDay);
-      setLoginBonusReward({ ...reward, bonusDay, streak: currentStats.streak });
+      setLoginBonusReward({ ...reward, bonusDay, streak: bonusStreak });
       setShowLoginBonus(true);
     }
 
@@ -284,6 +329,7 @@ export default function App() {
     if (needsSave || willCollect) {
       setStats(prev => {
         let updated = { ...prev };
+        if (streakBroken) updated.streak = getEffectiveStreak(updated, today);
         if (missionsToSet) {
           updated.dailyMissions = missionsToSet;
           updated.dailyMissionsDate = today;
@@ -345,25 +391,39 @@ export default function App() {
   // 初回ロード時
   useEffect(() => {
     refreshDailyData(stats, true);
-    // 保存済みの音量設定を適用
+    // 保存済みの音量設定を適用。「小・中・大」を選んでいたら音ありで始める
+    // （以前は音量だけ戻して毎回消音で始まり、設定画面の表示と食い違っていた）。
+    // 何も選んでいなければ、学校で急に鳴らないよう今までどおり消音で始める。
     const savedLevel = stats.settings?.volumeLevel;
     if (savedLevel && VOLUME_VALUES[savedLevel] !== undefined) {
       audioCtrl.volume = VOLUME_VALUES[savedLevel];
+      if (savedLevel !== 'off' && audioCtrl.muted) {
+        audioCtrl.muted = false;
+        setIsMuted(false);
+      }
     }
   }, []);
 
   // 日付変更の監視（開きっぱなし対策）
+  // 保存済みのデータ（getStats）ではなく、メモリ上の記録で判定する。以前は getStats が
+  // 保存済みのコピーにだけ放置のペナルティを当てて即時保存し、保存待ちの変更を消していた。
   useEffect(() => {
+    const checkDate = () => {
+      const current = statsRef.current;
+      const maintained = StorageAPI.applyDailyMaintenance(current);
+      if (maintained !== current) {
+        statsRef.current = maintained;
+        setStats(maintained);
+        StorageAPI.saveStats(maintained);
+      }
+      refreshDailyData(maintained);
+    };
     // 1分ごとに日付変更をチェック
-    const timer = setInterval(() => {
-      refreshDailyData(StorageAPI.getStats());
-    }, DEBOUNCE.DATE_CHECK_INTERVAL);
+    const timer = setInterval(checkDate, DEBOUNCE.DATE_CHECK_INTERVAL);
 
     // タブに戻った時にチェック
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshDailyData(StorageAPI.getStats());
-      }
+      if (document.visibilityState === 'visible') checkDate();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -447,6 +507,9 @@ export default function App() {
   }, [setSessionData]);
 
   const abandonLearningSession = useCallback(() => {
+    // 答えた字ごとの記録（間隔反復・技能点）は残す。ボス・サバイバルなどは記録をすぐ保存していないので、
+    // やめたときに書き出す（ダイアログの「書いた字の記録は のこるよ」のとおりにする）
+    setStats(prev => { StorageAPI.saveStatsImmediate(prev); return prev; });
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('home');
@@ -479,6 +542,17 @@ export default function App() {
     const timer = setTimeout(() => setExitHintAt(0), EXIT_CONFIRM_WINDOW);
     return () => clearTimeout(timer);
   }, [exitHintAt]);
+
+  // 実績の画面を開いたときは、いまの記録で進み具合を数え直す（クラフト・建物・コインをすぐ反映する）
+  useEffect(() => {
+    if (view !== 'achievements') return;
+    setStats(prev => {
+      const next = StorageAPI.refreshAchievements({ ...prev });
+      if (JSON.stringify(next.achievements) === JSON.stringify(prev.achievements)) return prev;
+      StorageAPI.saveStats(next);
+      return next;
+    });
+  }, [view]);
 
   // 学習画面の「やめる」ボタン。戻る操作と同じ確認ダイアログを出す
   const requestLeaveLearning = useCallback(() => setShowLeaveConfirm(true), []);
@@ -554,9 +628,9 @@ export default function App() {
 
   const startFlashcard = () => {
     audioCtrl.init();
-    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
-    if (learned.length === 0) return;
-    const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10);
+    // 習った字から一様に選ぶ（以前の sort(() => Math.random() - 0.5) は1年生の字にかたよっていた）
+    const queue = buildFlashcardQueue({ kanjiData: KANJI_DATA, kanjiStats: stats.kanjiStats || {} });
+    if (queue.length === 0) return;
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('flashcard', { queue, oldExp: stats.totalExp, expMultiplier });
   };
@@ -618,18 +692,27 @@ export default function App() {
     });
   }, []);
 
-  const handleUpdateStat = (kanjiObj, evalType, { skills = [] } = {}) => {
+  const handleUpdateStat = (kanjiObj, evalType, { skills = [], selfReport = false, skillEvidence = null } = {}) => {
     const id = kanjiObj.id;
     recordStudyAttempt(id, { ok: evalType !== 'again', skill: skills[0] });
+    // 技能ごとの証拠（毎日のテストでは書字と筆順を採点結果から別々に決める）。無ければ全技能に同じ評価
+    const skillUpdates = Array.isArray(skillEvidence) && skillEvidence.length > 0
+      ? skillEvidence
+      : skills.map(skill => ({ skill, evidence: evalType }));
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    const curWithMastery = skills.length > 0
-      ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
+    const curWithMastery = skillUpdates.length > 0
+      ? { ...cur, skillMastery: recordSkillEvidence(cur, skillUpdates) }
       : cur;
-    if (sessionData.isDrill) {
+    // 期限前の早い復習（ボス・サバイバル・1字の練習で、期限の来ていない字）は、特訓と同じく
+    // 練習の記録だけにする。以前は正解のたびに間隔を掛け算で伸ばし、数分で何百日も先になっていた。
+    // 忘れていた（again）ときは、期限前でも間隔反復に記録する。
+    const now = Date.now();
+    const practiceOnly = sessionData.isDrill || (evalType !== 'again' && isEarlyReview(cur, now));
+    if (practiceOnly) {
       setStats(s => {
         const latest = migrateCard(s.kanjiStats?.[id]);
-        const latestWithMastery = skills.length > 0
-          ? { ...latest, skillMastery: recordSkillEvidence(latest, skills.map(skill => ({ skill, evidence: evalType }))) }
+        const latestWithMastery = skillUpdates.length > 0
+          ? { ...latest, skillMastery: recordSkillEvidence(latest, skillUpdates) }
           : latest;
         return {
           ...s,
@@ -638,6 +721,7 @@ export default function App() {
             [id]: {
               ...latestWithMastery,
               ...recordPracticeAttempt(latestWithMastery, evalType),
+              ...recordSelfReport(latestWithMastery, selfReport),
             },
           },
         };
@@ -652,7 +736,7 @@ export default function App() {
       return evalType !== 'again';
     }
 
-    const next = calculateNextReview(curWithMastery, evalType);
+    const next = calculateNextReview(curWithMastery, evalType, now);
     const wasNew = curWithMastery.status === 'new';
     const isMastering = next.graduated && next.interval >= 7 * 24 * 60 * 60 * 1000;
     const newStatus = isMastering ? 'mastered' : next.graduated ? 'review' : 'learning';
@@ -706,6 +790,7 @@ export default function App() {
           status: newStatus,
           mistakes: evalType === 'again' ? (curWithMastery.mistakes || 0) + 1 : (curWithMastery.mistakes || 0),
           ...recordPracticeAttempt(curWithMastery, evalType),
+          ...recordSelfReport(curWithMastery, selfReport),
         },
       },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
@@ -784,6 +869,8 @@ export default function App() {
       ...activeSession,
       finalized: true,
       earnedExp: totalExp, 
+      // 結果画面に出すコインは、実際に足す量（EXP からの換算＋ボス・サバイバルの報酬＋レベルアップ）
+      earnedCoins,
       rareDrop, 
       perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),
       reviewedCount: activeSession.reviewedCount + (additionalResults.reviewedCount || 0),
@@ -803,6 +890,8 @@ export default function App() {
       if (addedRadius > 0) newStats.exploredRadius = Math.max(newStats.exploredRadius || 3, addedRadius);
       // セッション数カウント更新
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
+      // 実績の進み具合は、セッション数とコインを足したあとで数え直す（以前は1回遅れていた）
+      StorageAPI.refreshAchievements(newStats);
 
       // learningフェーズの漢字がセッション直後にお化けとして出ないよう、
       // nextReviewに猶予を持たせる
@@ -839,6 +928,8 @@ export default function App() {
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('result');
+    // 学習を1回終えたら、記録をブラウザに消されにくくするよう頼む（iOS の7日消去・容量不足時の削除への備え）
+    requestPersistentStorageOnce();
   };
 
   // テスト結果から、間違えた漢字だけの学習セッションへ移る。
@@ -869,7 +960,9 @@ export default function App() {
         const newKanjiStats = { ...s.kanjiStats };
         defeatResults.failedKanji.forEach(k => {
           if (newKanjiStats[k.id]) {
-            newKanjiStats[k.id] = { ...newKanjiStats[k.id], nextReview: Date.now(), mistakes: (newKanjiStats[k.id].mistakes || 0) + 1 };
+            // ミスの数は、失敗したときの onUpdateStat('again') ですでに数えている。
+            // ここでも足すと、負けたときだけ二重に数えていた（勝ったときは1回）。復習の前倒しだけにする。
+            newKanjiStats[k.id] = { ...newKanjiStats[k.id], nextReview: Date.now() };
           }
         });
         const ns = { ...s, kanjiStats: newKanjiStats };
@@ -890,6 +983,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={isReducedMotion ? 'always' : 'never'}>
+      <FuriganaContext.Provider value={furiganaValue}>
       <div data-reduced-motion={isReducedMotion ? 'true' : 'false'} className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle themeName={activeThemeName} reducedMotion={isReducedMotion} />
 
@@ -902,25 +996,29 @@ export default function App() {
       {/* 新しい版が用意できたときの案内（押したときだけ切り替わる） */}
       <UpdateToast />
 
-      {/* Phase 5: チュートリアルオーバーレイ */}
+      {/* Phase 5: チュートリアルオーバーレイ（重ね画面は、それぞれの Suspense で読みこみ中は何も出さない。
+          AnimatePresence の外を Suspense で包むと、退場の追跡が壊れることがある。PageWrapper.jsx 参照） */}
       <AnimatePresence>
-        {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+        {showTutorial && <Suspense key="tutorial" fallback={null}><TutorialOverlay onComplete={handleTutorialComplete} /></Suspense>}
       </AnimatePresence>
 
       {/* Phase 7: ログインボーナスポップアップ */}
       <AnimatePresence>
         {showLoginBonus && !showTutorial && loginBonusReward && (
-          <LoginBonusPopup
-            streak={loginBonusReward.streak}
-            bonusDay={loginBonusReward.bonusDay}
-            reward={loginBonusReward}
-            onClaim={handleClaimLoginBonus}
-          />
+          <Suspense key="login-bonus" fallback={null}>
+            <LoginBonusPopup
+              streak={loginBonusReward.streak}
+              bonusDay={loginBonusReward.bonusDay}
+              reward={loginBonusReward}
+              onClaim={handleClaimLoginBonus}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
       {/* Phase 7: 住民素材収集ポップアップ */}
       <AnimatePresence>
         {showResidentCollection && !showTutorial && !showLoginBonus && residentCollectionResult && (
+          <Suspense key="resident-collection" fallback={null}>
           <ResidentCollectionPopup
             result={residentCollectionResult.result}
             satisfaction={residentCollectionResult.satisfaction}
@@ -930,6 +1028,7 @@ export default function App() {
               audioCtrl.playSE('click');
             }}
           />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -1006,10 +1105,10 @@ export default function App() {
           {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onReviewMistakes={startMistakeReview} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
@@ -1023,8 +1122,10 @@ export default function App() {
           isTownEditorUnlocked={levelInfo.level >= 1}
         />
       )}
-      <Footer />
+      {/* 学習中はリンクの無い 1 行にする（押しそこねて学習の途中で別のタブへ飛ばないように） */}
+      <Footer compact={isLearningView(view)} />
       </div>
+      </FuriganaContext.Provider>
     </MotionConfig>
   );
 }

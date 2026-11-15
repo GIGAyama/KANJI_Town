@@ -163,6 +163,19 @@ export const GRADING = {
    * （0点にはせず、どこがどう違ったかは点数と講評に残す）。
    */
   ORDER_FAIL_CAP: 69,
+  /**
+   * 書き順・とめの点に数える画の、字形の割合の下限（0-1）。
+   * お手本のどの画とも似ていない画（点を打っただけ・でたらめな線）は、書き順やとめが
+   * 「合っている」とは言えないので、その画の分は0点にする。
+   */
+  MIN_STROKE_SHAPE: 0.25,
+  /** 書き順・とめに数える画は、お手本の画の長さのこの割合以上（お手本が点の画なら見ない） */
+  MIN_LENGTH_RATIO: 0.25,
+  /** これより短いお手本の画は「点」とみなし、長さを見ない（タップで書いた点を落とさない） */
+  SHORT_STROKE_LENGTH: 0.25,
+  /** 字形の平均がこれ未満なら、合計を SHAPE_FAIL_CAP までにする（おすすめは「忘れた」） */
+  SHAPE_FAIL_RATIO: 0.2,
+  SHAPE_FAIL_CAP: 29,
   /** 評価ラベルの閾値 */
   LABELS: [
     { min: 90, label: '💮 たいへんよくできました！', grade: 'excellent' },
@@ -200,10 +213,13 @@ export const DEBOUNCE = {
   DATE_CHECK_INTERVAL: 60000,
 };
 
-/** KanjiVG設定 */
+/**
+ * KanjiVG設定
+ * データは public/kanjivg/ に同梱している（版は tools/build-kanjivg.mjs で固定）。
+ */
 export const KANJI_VG = {
-  CDN_URL: 'https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji',
-  FETCH_TIMEOUT: 5000,
+  /** 学年ファイル（最大約0.2MB）1本を待つ時間(ms)。混んだ校内Wi-Fiでも読み切れる長さにする */
+  FETCH_TIMEOUT: 15000,
   MAX_RETRIES: 3,
   VIEWBOX_SIZE: 109,
   SAMPLE_INTERVAL: 2,

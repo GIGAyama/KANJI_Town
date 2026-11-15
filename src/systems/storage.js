@@ -14,6 +14,8 @@ import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
 import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
 import { recordDiagnosticEvent } from './diagnostics.js';
 import { sanitizeStats } from './stats-schema.js';
+import { countStudyTotals, foldDailyIntoArchive } from './daily-archive.js';
+import { STUDY_VIEW_SINCE_KEY } from './studyStats.js';
 
 // ── 内部エラーログ（直近20件を保持、デバッグ用） ──
 const _errorLog = [];
@@ -49,6 +51,8 @@ const ACTIVE_SESSION_KEY = 'kanji_town_active_session_v1';
 const LEGACY_KEYS = ['kanji_mega_builder_final_v6', 'kanji_mega_builder_final_v5'];
 /** 読めなかった記録を、新しく作りなおす前に退避しておく場所（1つだけ持つ） */
 const BROKEN_COPY_KEY = 'kanji_town_v7_broken';
+/** バックアップを読みこむ直前の記録（読みこみを取り消すため。1つだけ持つ） */
+const BEFORE_IMPORT_KEY = 'kanji_town_v7_before_import';
 
 // ── TOWN_ITEMSのルックアップマップ（O(1)検索用） ──
 const _townItemMap = new Map(TOWN_ITEMS.map(i => [i.id, i]));
@@ -60,6 +64,19 @@ const _validKanjiIds = new Set(KANJI_DATA.map(k => k.id));
  * @param {string} id
  * @returns {object|undefined}
  */
+/**
+ * 容量超過の例外か。ブラウザによって名前とコードが違う
+ * （Firefox は NS_ERROR_DOM_QUOTA_REACHED、古い Safari/Chrome は code 22、Firefox の古い版は 1014）。
+ */
+function isQuotaError(e) {
+  return Boolean(e) && (
+    e.name === 'QuotaExceededError'
+    || e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || e.code === 22
+    || e.code === 1014
+  );
+}
+
 function findTownItem(id) {
   return _townItemMap.get(id);
 }
@@ -115,7 +132,7 @@ const StorageAPI = {
       return true;
     } catch (e) {
       // QuotaExceededError: 多段階フォールバック
-      if (e.name === 'QuotaExceededError' && val && typeof val === 'object') {
+      if (isQuotaError(e) && val && typeof val === 'object') {
         logStorageError('safeSet:quota', 'ストレージ容量不足 - データを段階的に圧縮します');
 
         // ステージ1: 30日より古い日次データを削除
@@ -154,7 +171,7 @@ const StorageAPI = {
       }
       logStorageError('safeSet', e);
       _lastSaveFailed = true;
-      _notifySaveError(e.name === 'QuotaExceededError' ? 'quota' : 'unknown');
+      _notifySaveError(isQuotaError(e) ? 'quota' : 'unknown');
       return false;
     }
   },
@@ -176,18 +193,11 @@ const StorageAPI = {
    * @returns {object}
    */
   _compressDailyData: (stats, keepDays = 30) => {
-    if (!stats.daily) return stats;
-    const compressed = { ...stats, daily: { ...stats.daily } };
+    // 古い日を消すのではなく、月ごとの集計（dailyArchive）にたたむ（daily-archive.js）。
+    if (keepDays <= 0) return foldDailyIntoArchive(stats, null);
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - keepDays);
-    const cutoffStr = formatDate(cutoff);
-
-    Object.keys(compressed.daily).forEach(dateKey => {
-      if (dateKey < cutoffStr) {
-        delete compressed.daily[dateKey];
-      }
-    });
-    return compressed;
+    return foldDailyIntoArchive(stats, formatDate(cutoff));
   },
 
   /**
@@ -207,6 +217,7 @@ const StorageAPI = {
           k.startsWith('kanji_town_errors')
           || k === 'kanji_town_diagnostics_v1'
           || k === BROKEN_COPY_KEY
+          || k === BEFORE_IMPORT_KEY
           || k.startsWith('kanji_vg_cache')
         )) {
           removable.push(k);
@@ -221,32 +232,14 @@ const StorageAPI = {
    * @param {object} stats
    * @returns {object}
    */
-  _minimalStats: (stats) => ({
-    totalExp: stats.totalExp || 0,
-    streak: stats.streak || 0,
-    lastDate: stats.lastDate || '',
-    lastNeglectAppliedDate: stats.lastNeglectAppliedDate || '',
-    coins: stats.coins || 0,
-    targetGrade: stats.targetGrade || 1,
-    townMap: stats.townMap || {},
-    townItems: stats.townItems || {},
-    daily: {},
-    kanjiStats: stats.kanjiStats || {},
-    unlockedKanji: stats.unlockedKanji || [],
-    achievements: stats.achievements || {},
-    perfectCountTotal: stats.perfectCountTotal || 0,
-    myDrills: stats.myDrills || [],
-    population: stats.population || 0,
-    villagers: stats.villagers || [],
-    exploredRadius: stats.exploredRadius || MAP.INITIAL_EXPLORE_RADIUS,
-    schemaVersion: stats.schemaVersion || 8,
-    mapSize: stats.mapSize || MAP.GRID_SIZE,
-    materials: stats.materials || {},
-    tutorialCompleted: stats.tutorialCompleted,
-    settings: stats.settings,
-    seenHints: stats.seenHints || [],
-    ...normalizeHabitState(stats),
-  }),
+  _minimalStats: (stats) => {
+    // 残す欄を並べる形だと、並べ忘れた欄（sessionCount・lastLoginBonusDate・dailyMissions など）が
+    // 黙って消え、その日のログインボーナスやミッション報酬をもう一度受け取れていた。
+    // 捨てるものだけを挙げる: 1日ごとの記録（月ごとの集計にたたむ）と、表示用の一時的な結果。
+    const folded = StorageAPI._compressDailyData(stats, 0);
+    const { lastCollectionResult, ...rest } = folded;
+    return { ...rest, daily: {} };
+  },
 
   /**
    * 前回の保存が失敗したかどうか
@@ -323,6 +316,61 @@ const StorageAPI = {
       _notifySaveError('active-session');
       return false;
     }
+  },
+
+  /**
+   * バックアップを読みこむ前に、いまの記録を1つだけ控えておく（あとで取り消せるように）。
+   * @returns {boolean} 控えられたか
+   */
+  keepBeforeImportCopy: () => {
+    try {
+      const current = window.localStorage.getItem(STORAGE_KEY);
+      if (!current) return false;
+      window.localStorage.setItem(BEFORE_IMPORT_KEY, current);
+      return true;
+    } catch (e) {
+      logStorageError('keepBeforeImportCopy', e);
+      return false;
+    }
+  },
+
+  hasBeforeImportCopy: () => {
+    try { return Boolean(window.localStorage.getItem(BEFORE_IMPORT_KEY)); } catch { return false; }
+  },
+
+  /**
+   * 控えておいた「読みこむ前の記録」にもどす。
+   * @returns {boolean} もどせたか
+   */
+  restoreBeforeImportCopy: () => {
+    if (!_writable) return false;
+    try {
+      const saved = window.localStorage.getItem(BEFORE_IMPORT_KEY);
+      if (!saved) return false;
+      if (_saveDebounceTimer) { clearTimeout(_saveDebounceTimer); _saveDebounceTimer = null; }
+      _pendingStats = null;
+      window.localStorage.setItem(STORAGE_KEY, saved);
+      window.localStorage.removeItem(BEFORE_IMPORT_KEY);
+      return true;
+    } catch (e) {
+      logStorageError('restoreBeforeImportCopy', e);
+      return false;
+    }
+  },
+
+  /**
+   * 「すべてのデータを消す」。端末を次の子に引き渡すときに使うので、控え（取り消し用・退避）も消す。
+   * 学習ログ（study.records.v1）はほかのアプリと共通なので消さない（仕様 §1.1/§1.2）。
+   * かわりに、消した時刻より前の記録はこのアプリの画面に出さない（studyStats.js）。
+   */
+  resetAll: () => {
+    if (_saveDebounceTimer) { clearTimeout(_saveDebounceTimer); _saveDebounceTimer = null; }
+    _pendingStats = null;
+    if (!_writable) return false;
+    [STORAGE_KEY, ...LEGACY_KEYS, ACTIVE_SESSION_KEY, BROKEN_COPY_KEY, BEFORE_IMPORT_KEY, 'kanji_town_cloud_owner_v1']
+      .forEach(key => { try { window.localStorage.removeItem(key); } catch { /* 消せなくても先へ進む */ } });
+    try { window.localStorage.setItem(STUDY_VIEW_SINCE_KEY, String(Date.now())); } catch { /* 表示の絞りこみだけなので無視 */ }
+    return true;
   },
 
   /** 保存済みの学習チェックポイントを取得する。 */
@@ -590,6 +638,56 @@ const StorageAPI = {
   },
 
   /**
+   * 書きこまずに、いまの記録を読む（学習ログの拡張など、読み取りだけの用途）。
+   * getStats は放置のペナルティを当てて保存まで行うので、読むたびに呼ぶと
+   * 保存待ちの変更を上書きしたり、乱数のペナルティを何度もかけ直したりしていた。
+   * @returns {object|null}
+   */
+  peekStats: () => {
+    StorageAPI.flushPendingSave();
+    const checked = sanitizeStats(StorageAPI.safeGet(STORAGE_KEY, null));
+    if (!checked || !checked.stats.targetGrade) return null;
+    const kanjiStats = {};
+    Object.entries(checked.stats.kanjiStats || {}).forEach(([id, card]) => {
+      if (_validKanjiIds.has(id)) kanjiStats[id] = migrateCard(card);
+    });
+    return { ...checked.stats, kanjiStats };
+  },
+
+  /**
+   * 日をまたいだときの町の手入れ（放置のペナルティと実績の数え直し）を、メモリ上の記録に当てる。
+   * 保存はしない（呼び出し側が saveStats する）。何も変わらなければ同じオブジェクトを返す。
+   *
+   * 以前は1分ごとの日付チェックが getStats() を呼び、保存済みのコピーにだけペナルティを当てて
+   * 即時保存していた。そのため保存待ちの変更が消え、メモリ側にはペナルティが入らないので、
+   * 次の保存で消えては1分後に別の乱数でかけ直される、をくり返していた。
+   * @param {object} stats
+   * @param {string} [today]
+   * @returns {object}
+   */
+  applyDailyMaintenance: (stats, today = getTodayString()) => {
+    if (!stats || !stats.lastDate || stats.lastDate === today || stats.lastNeglectAppliedDate === today) return stats;
+    const copy = JSON.parse(JSON.stringify(stats));
+    if (!StorageAPI._applyNeglectPenalties(copy)) return stats;
+    StorageAPI._updateAchievements(copy);
+    return copy;
+  },
+
+  /**
+   * 実績の進み具合を、いまの記録から数え直す（stats.achievements を書きかえて、同じ stats を返す）。
+   * 以前は起動時とセッション終了時にしか数えず、クラフト・建物・コインの実績はすぐ受け取れず、
+   * セッション回数の実績は1回遅れていた。
+   * @param {object} stats
+   * @returns {object}
+   */
+  refreshAchievements: (stats) => {
+    if (!stats) return stats;
+    stats.achievements = JSON.parse(JSON.stringify(stats.achievements || {}));
+    StorageAPI._updateAchievements(stats);
+    return stats;
+  },
+
+  /**
    * サボり日数に応じたペナルティを適用する
    * @param {object} stats - 直接変更される
    */
@@ -771,11 +869,8 @@ const StorageAPI = {
       }
     });
 
-    // 通算ログイン日数（daily オブジェクトのキー数）
-    const loginDays = Object.keys(stats.daily || {}).length;
-
-    // 通算復習回数（daily.reviewed の合計）
-    const reviewTotal = Object.values(stats.daily || {}).reduce((sum, d) => sum + (d.reviewed || 0), 0);
+    // 通算の学習日数と復習回数（月ごとの集計にたたんだ古い日も数える）
+    const { loginDays, reviewTotal } = countStudyTotals(stats);
 
     // 実績タイプ → 現在値のマッピング
     const currentValues = {

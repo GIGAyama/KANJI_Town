@@ -175,6 +175,28 @@ class AudioController {
     this._volume = 1;
     /** @type {GainNode|null} マスター音量用ゲインノード */
     this.masterGain = null;
+    /** @type {string|null} 別のタブへ移ったときに止めたBGM（戻ったら再開する） */
+    this._pausedBGM = null;
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => this._handleVisibility());
+    }
+  }
+
+  /**
+   * 別のタブ・アプリへ移ったら BGM を止めて AudioContext も休ませ、戻ったら再開する。
+   * 以前は Classroom などへ移っても、音を出しているタブとしてタイマーが間引かれず鳴り続けた。
+   */
+  _handleVisibility() {
+    if (document.hidden) {
+      this._pausedBGM = this._currentBGM;
+      this._clearBGMTimer();
+      if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
+      return;
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    const paused = this._pausedBGM;
+    this._pausedBGM = null;
+    if (paused && !this.muted) this.playBGM(paused);
   }
 
   /**
@@ -194,7 +216,27 @@ class AudioController {
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
+      this._resumeOnGesture();
     }
+  }
+
+  /**
+   * 押す操作の前に作った AudioContext は、ブラウザが止めた状態（suspended）で始まる。
+   * 保存した音量で音ありで起動したときは、最初に画面にふれたときに鳴らしはじめる。
+   */
+  _resumeOnGesture() {
+    if (this._gestureHooked || typeof document === 'undefined') return;
+    this._gestureHooked = true;
+    const events = ['pointerdown', 'keydown', 'touchend'];
+    const resume = () => {
+      if (!this.ctx || this.ctx.state !== 'suspended') {
+        events.forEach((type) => document.removeEventListener(type, resume, true));
+        this._gestureHooked = false;
+        return;
+      }
+      if (!document.hidden) this.ctx.resume().catch(() => {});
+    };
+    events.forEach((type) => document.addEventListener(type, resume, true));
   }
 
   /** マスター音量(0-1)。設定画面から audioCtrl.volume = 0.6 の形で変更される */
@@ -337,6 +379,8 @@ class AudioController {
    */
   playBGM(type) {
     if (this.muted) return;
+    // 隠れている間に画面が切りかわったときは、戻ったときに鳴らす
+    if (typeof document !== 'undefined' && document.hidden) { this._pausedBGM = type; return; }
     // 同じBGMが再生中なら何もしない
     if (this._currentBGM === type && this.bgmInterval) return;
 
@@ -350,7 +394,8 @@ class AudioController {
     this._currentBGM = type;
 
     this.bgmInterval = setInterval(() => {
-      if (this.muted || !this.ctx) return;
+      // 止まっている AudioContext に予約すると、動き出した瞬間にたまった音が一度に鳴る
+      if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
       try {
         const t = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
@@ -374,6 +419,12 @@ class AudioController {
    * BGMを停止する
    */
   stopBGM() {
+    this._clearBGMTimer();
+    // 止めると決めたら、タブに戻っても再開しない（ほかのタブで開いたときなど）
+    this._pausedBGM = null;
+  }
+
+  _clearBGMTimer() {
     if (this.bgmInterval) {
       clearInterval(this.bgmInterval);
       this.bgmInterval = null;

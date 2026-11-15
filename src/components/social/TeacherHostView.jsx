@@ -1,86 +1,100 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Wifi, ArrowLeft, Copy, Check } from 'lucide-react';
-import { usePeerJSStatus } from '../../hooks/usePeerJS';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Wifi, ArrowLeft, Copy, Check, Link2 } from 'lucide-react';
+import { usePeerJS, classifyPeerError, PEER_OPTIONS, PEER_ID_PREFIX } from '../../hooks/usePeerJS';
 import { useQRCode } from '../../hooks/useQRCode';
 import { F } from '../ui/FormatKun';
+import MotionButton from '../ui/MotionButton';
 import PresentationToggle from '../ui/PresentationToggle';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
+import { buildDrillMessage, drillCheckCode } from '../../systems/drill-p2p';
 
 // 4桁のランダムな数字IDを生成
 const generate4DigitId = () => {
   return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 };
 
-const PEER_ID_PREFIX = 'kanji-town-';
+const STATUS_EMOJI = { wait: '📡', sending: '📨', sent: '✅', error: '❌' };
 
 const TeacherHostView = ({ setView, drill }) => {
-  const { isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJSStatus();
-  const isQRLoaded = useQRCode();
+  const { Peer, loadError: peerLoadError, offline } = usePeerJS();
+  const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
   const [numericId, setNumericId] = useState('');
-  const [status, setStatus] = useState('起動中...');
+  // tone: wait | sending | sent | error
+  const [status, setStatus] = useState({ tone: 'wait', text: '起動中...' });
+  // 送れないとき、リンク配布へ案内する理由（blocked | unsupported）
+  const [blockedReason, setBlockedReason] = useState(null);
   const [copied, setCopied] = useState(false);
   const peerRef = useRef(null);
   const qrCanvasRef = useRef(null);
   const retryCountRef = useRef(0);
 
+  // 送る中身はリンクと同じ形に整えてから送る（受け取る側も同じ検証に通す）
+  const message = useMemo(() => (drill ? buildDrillMessage(drill) : null), [drill]);
+  // 受け取った児童の画面にも同じ絵が出る。数字の打ちまちがいに気づいてもらうため
+  const checkCode = useMemo(() => (drill ? drillCheckCode(drill) : ''), [drill]);
+
   // QRコード描画（接続用URLをエンコード）
   const renderQR = useCallback((numId) => {
-    if (!isQRLoaded || !qrCanvasRef.current || !numId) return;
-    try {
-      const url = `${window.location.origin}${window.location.pathname}?connect=${numId}`;
-      window.QRCode.toCanvas(qrCanvasRef.current, url, {
+    if (!QRCode || !qrCanvasRef.current || !numId) return;
+    const url = `${window.location.origin}${window.location.pathname}?connect=${numId}`;
+    Promise.resolve()
+      .then(() => QRCode.toCanvas(qrCanvasRef.current, url, {
         width: 200,
         margin: 2,
         color: { dark: '#292f36', light: '#ffffff' },
-      });
-    } catch (e) {
-      console.error('QR code rendering failed:', e);
-    }
-  }, [isQRLoaded]);
+      }))
+      .catch((e) => console.error('QR code rendering failed:', e));
+  }, [QRCode]);
 
   // Peer接続を開始（IDが衝突した場合はリトライ）
   const initPeer = useCallback(() => {
-    if (!isPeerLoaded || !drill) return;
+    if (!Peer || !message) return;
     const id4 = generate4DigitId();
     const fullId = PEER_ID_PREFIX + id4;
     try {
       if (peerRef.current) peerRef.current.destroy();
-      const peer = new window.Peer(fullId);
+      const peer = new Peer(fullId, PEER_OPTIONS);
       peerRef.current = peer;
 
       peer.on('open', () => {
         setNumericId(id4);
-        setStatus('IDができました！');
+        setStatus({ tone: 'wait', text: 'IDができました！' });
+        setBlockedReason(null);
         retryCountRef.current = 0;
         renderQR(id4);
       });
 
       peer.on('connection', conn => {
-        setStatus('せつぞくしました！おくっています...');
+        setStatus({ tone: 'sending', text: 'せつぞくしました！おくっています...' });
         conn.on('open', () => {
-          conn.send(JSON.stringify({ type: 'drill', data: drill }));
+          conn.send(message);
           setTimeout(() => {
-            setStatus('おくれました！');
+            setStatus({ tone: 'sent', text: 'おくれました！' });
             audioCtrl.playSE('success');
           }, 500);
         });
       });
 
       peer.on('error', err => {
-        // IDが既に使われている場合はリトライ
-        if (err.type === 'unavailable-id' && retryCountRef.current < 5) {
+        const kind = classifyPeerError(err);
+        // IDが既に使われている場合は作り直す
+        if (kind === 'id-taken' && retryCountRef.current < 5) {
           retryCountRef.current++;
           peer.destroy();
           initPeer();
-        } else {
-          setStatus('エラーがおきました');
+          return;
         }
+        // 相手が途中で抜けただけなら、ほかの児童への送信は続けられる
+        if (kind === 'not-found') return;
+        setStatus({ tone: 'error', text: 'つうしんが できませんでした' });
+        setBlockedReason(kind === 'unsupported' ? 'unsupported' : 'blocked');
       });
     } catch (e) {
-      setStatus('PeerJS のじゅんびにしっぱいしました');
+      setStatus({ tone: 'error', text: 'つうしんの じゅんびに しっぱいしました' });
+      setBlockedReason('blocked');
     }
-  }, [isPeerLoaded, drill, renderQR]);
+  }, [Peer, message, renderQR]);
 
   useEffect(() => {
     initPeer();
@@ -102,12 +116,12 @@ const TeacherHostView = ({ setView, drill }) => {
     });
   };
 
-  const statusEmoji = status.includes('おくれました') ? '✅' : status.includes('エラー') || status.includes('しっぱい') ? '❌' : status.includes('おくって') ? '📨' : '📡';
+  const showLinkGuide = Boolean(blockedReason) || peerLoadError || !message;
 
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('myDrills')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
+        <button onClick={() => setView('myDrills')} aria-label="マイドリルに戻る" className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center">
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
@@ -119,8 +133,8 @@ const TeacherHostView = ({ setView, drill }) => {
       </div>
 
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[4px_4px_0_var(--text)] flex flex-col items-center gap-4">
-        <div className="text-4xl">{statusEmoji}</div>
-        <div className="font-bold text-[var(--text)] text-center">{status}</div>
+        <div className="text-4xl" aria-hidden="true">{STATUS_EMOJI[status.tone]}</div>
+        <div className="font-bold text-[var(--text)] text-center" role="status" aria-live="polite">{status.text}</div>
 
         {numericId && (
           <>
@@ -138,25 +152,54 @@ const TeacherHostView = ({ setView, drill }) => {
               この<span className="font-black text-base text-[var(--primary)]">4けたのすうじ</span>を{F("相手","あいて")}に{F("伝","つた")}えてください
             </p>
 
-            {/* QRコード */}
-            <div className="bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner">
-              <canvas ref={qrCanvasRef} />
-            </div>
-            <p className="text-xs text-[var(--text)] opacity-40 text-center">
-              QRコードをよみとってもつなげます
-            </p>
+            {checkCode && (
+              <div className="flex flex-col items-center gap-1 bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-2xl px-5 py-2">
+                <span className="text-xs font-black text-[var(--text)] opacity-70">かくにんの しるし</span>
+                <span className="text-4xl leading-none" aria-label={`かくにんのしるし ${checkCode}`}>{checkCode}</span>
+                <span className="text-[11px] font-bold text-[var(--text)] opacity-60 text-center">うけとった {F("人","ひと")}の {F("画面","がめん")}にも おなじ しるしが でます</span>
+              </div>
+            )}
+
+            {/* QRコード（読めなければ数字だけで使ってもらう） */}
+            {qrLoadError ? (
+              <p className="text-xs font-bold text-amber-700 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 text-center">
+                QRコードは だせませんでした。4けたの すうじを つたえてください。
+              </p>
+            ) : (
+              <>
+                <div className="bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner">
+                  <canvas ref={qrCanvasRef} />
+                </div>
+                <p className="text-xs text-[var(--text)] opacity-40 text-center">
+                  QRコードをよみとってもつなげます
+                </p>
+              </>
+            )}
           </>
         )}
 
-        {!isPeerLoaded && !peerLoadError && (
+        {!Peer && !peerLoadError && (
           <div className="text-sm text-[var(--text)] opacity-50">
             じゅんびしています...
           </div>
         )}
-        {peerLoadError && (
-          <div className="text-sm text-rose-600 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-3 py-2 text-center">
-            つうしんライブラリのよみこみに しっぱいしました。<br />
-            ネットワークをかくにんして もういちど ひらいてください。
+
+        {showLinkGuide && (
+          <div role="alert" className="w-full flex flex-col gap-3 text-sm text-rose-700 font-bold bg-rose-50 border-2 border-rose-400 rounded-xl px-4 py-3 text-center">
+            <p>
+              {offline
+                ? <>いまは インターネットに つながっていないため、4けたの すうじでは {F("送","おく")}れません。</>
+                : blockedReason === 'unsupported'
+                  ? <>この ブラウザでは 4けたの すうじで {F("送","おく")}れません。</>
+                  : <>{F("学校","がっこう")}の ネットワークで つうしんが とめられているかもしれません。</>}
+              <br />
+              「リンクで{F("配","くば")}る」なら、{F("外","そと")}の サーバーを つかわずに {F("配","くば")}れます。
+            </p>
+            {drill && (
+              <MotionButton variant="accent" onClick={() => setView('drillShare')} className="w-full py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309] text-base font-black">
+                <Link2 size={18} /> リンクで{F("配","くば")}る
+              </MotionButton>
+            )}
           </div>
         )}
       </div>

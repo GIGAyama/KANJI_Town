@@ -20,6 +20,7 @@ import {
   getDiagnosticEvents,
   getRuntimeSnapshot,
 } from '../../systems/diagnostics';
+import { getStorageProtection } from '../../systems/persistence';
 
 const toneClasses = {
   good: 'border-emerald-200 bg-emerald-50 text-emerald-900',
@@ -46,11 +47,13 @@ export default function SystemStatusPanel() {
   const [events, setEvents] = useState(() => getDiagnosticEvents());
   const [notice, setNotice] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [protection, setProtection] = useState({ persisted: null, usage: null, quota: null });
 
   const refresh = useCallback(async () => {
     setChecking(true);
     setRuntime(getRuntimeSnapshot());
     setEvents(getDiagnosticEvents());
+    setProtection(await getStorageProtection());
     setDeployment(await fetchDeploymentMetadata());
     setChecking(false);
   }, []);
@@ -87,12 +90,22 @@ export default function SystemStatusPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <StatusCard
           icon={HardDrive}
           label="端末保存"
           value={runtime.storage.available ? formatBytes(runtime.storage.bytes) : '保存を確認できません'}
           tone={runtime.storage.available ? 'good' : 'warning'}
+        />
+        <StatusCard
+          icon={ShieldCheck}
+          label="記録の保護"
+          value={protection.persisted === true
+            ? 'ブラウザに消されにくい状態です'
+            : protection.persisted === false
+              ? '守られていません。ときどきエクスポートしてください'
+              : '確認できません'}
+          tone={protection.persisted === true ? 'good' : 'warning'}
         />
         <StatusCard
           icon={Wifi}

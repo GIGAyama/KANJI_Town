@@ -16,10 +16,11 @@ const CACHE_PREFIX = 'kanji-town-';
 const APP_VERSION = 'dev'; /* __APP_VERSION__ */
 
 const CACHE_STATIC = `${CACHE_PREFIX}static-v${APP_VERSION}`;
-const CACHE_KANJIVG = `${CACHE_PREFIX}kanjivg-v1`;
-const CACHE_FONTS = `${CACHE_PREFIX}fonts-v1`;
 const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-v${APP_VERSION}`;
-const KEEP_CACHES = [CACHE_STATIC, CACHE_KANJIVG, CACHE_FONTS, CACHE_RUNTIME];
+// 以前あった kanji-town-kanjivg-v1（jsDelivr から1字ずつ取った KanjiVG）と
+// kanji-town-fonts-v1（Google Fonts）はここに無いので、activate で消える。
+// 書き順データと書体は同梱に替えた。
+const KEEP_CACHES = [CACHE_STATIC, CACHE_RUNTIME];
 
 // アプリの基点。sw.js は必ずアプリ直下に置かれるので、自分の場所から求める。
 // 直書きすると、配信先（独自ドメイン直下 / サブパス）が変わった瞬間に
@@ -90,13 +91,15 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
-// KanjiVG の書き順SVG・Webフォントは「一度取れたら中身が変わらない」ため
-// キャッシュ優先。ネットワークに出る回数を減らし、40人同時でも待たせない。
-const cacheFirst = (request, cacheName) =>
+// ハッシュ付きアセット・書き順データ・Webフォントは「その版のあいだ中身が変わらない」
+// ためキャッシュ優先。ネットワークに出る回数を減らし、40人同時でも待たせない。
+// accept を渡すと、それが真の応答だけを保存する（途中の機器が 200 で別のページを
+// 返したときに、それを正しいデータとして覚えてしまわないように）。
+const cacheFirst = (request, cacheName, accept = () => true) =>
   caches.match(request).then((cached) => {
     if (cached) return cached;
     return fetch(request).then((response) => {
-      if (response.ok) {
+      if (response.ok && accept(response)) {
         const clone = response.clone();
         caches.open(cacheName).then((cache) => cache.put(request, clone));
       }
@@ -115,15 +118,13 @@ self.addEventListener('fetch', (event) => {
   // POST, non-HTTP はスキップ
   if (request.method !== 'GET' || !url.startsWith('http')) return;
 
-  // ── KanjiVG CDN ──
-  if (url.includes('cdn.jsdelivr.net') && url.includes('kanjivg')) {
-    event.respondWith(cacheFirst(request, CACHE_KANJIVG));
-    return;
-  }
-
-  // ── Google Fonts ──
-  if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
-    event.respondWith(cacheFirst(request, CACHE_FONTS));
+  // ── 書き順データ（同梱の学年ファイル kanjivg/grade-N.json）: Cache-first ──
+  // インストール時に先読みしてある。版（APP_VERSION）は先読みするものの中身から
+  // 作るので、データが変われば新しい版として入れ直される。
+  const { origin, pathname } = new URL(url);
+  if (origin === self.location.origin && pathname.startsWith(BASE + 'kanjivg/')) {
+    event.respondWith(cacheFirst(request, CACHE_RUNTIME,
+      (response) => (response.headers.get('content-type') || '').includes('json')));
     return;
   }
 

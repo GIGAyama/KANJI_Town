@@ -3,23 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      インストールの合図を「いちばん先に」受け取る。
-      Chrome は条件が揃うと即座に beforeinstallprompt を出すため、
-      React やスタイルの読み込みより後に置くと合図を取りこぼし、
-      通信が遅い校内Wi-Fiで「ホームにいれる」ボタンが出なくなる。
+      Content-Security-Policy（このページが読み書きしてよい相手を、ここに書いたものだけに絞る）。
+      GitHub Pages は応答ヘッダを足せないので meta で置く（frame-ancestors と report-uri は meta では効かない）。
+      - script-src 'self'   … 同梱した JS だけ。インラインの script 要素と onclick 属性は動かない
+      - style-src 'unsafe-inline' … React が <style> 要素を作る箇所（App.jsx・WatchMode.jsx）があるため
+      - img-src data: blob: … Tailwind の任意値が data: の SVG を出す・書き出しで blob を使う
+      - connect-src         … 「4けたの数字で送る」の仲介サーバー（PeerJS 公開サーバー）。
+                               STUN/TURN（stun.l.google.com・*.turn.peerjs.com）は CSP の対象外。
+                               値は src/hooks/usePeerJS.js の PEER_OPTIONS と合わせること
+      - frame-src           … 学習ログを記録ボックス（まなびクエスト）へ写す iframe（public/records-hub-client.js）
+      開発サーバー（npm run dev）では vite.config.js が外す（Vite が開発用のインライン script を入れるため）。
     -->
-    <script>
-      window.__deferredInstallPrompt = null;
-      addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        window.__deferredInstallPrompt = e;
-        dispatchEvent(new Event('pwa-installable'));
-      });
-      addEventListener('appinstalled', function () {
-        window.__deferredInstallPrompt = null;
-        dispatchEvent(new Event('pwa-installed'));
-      });
-    </script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; frame-src https://gamification.giga-school.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <!-- インストールの合図（beforeinstallprompt）を、ほかの読み込みより先に受け取る。中身は install-hook.js -->
+    <script src="./install-hook.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Android WebView / Mi Browser等の強制ダークモードによる自動反転で
@@ -51,9 +48,7 @@
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
 
     <title>マイ漢字タウン</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Klee+One:wght@400;600&display=swap" rel="stylesheet" />
+    <!-- 書体は外から読まない。src/fonts/（src/index.css から取りこむ）に同梱している。 -->
   </head>
   <body>
     <div id="root"></div>

@@ -1,15 +1,30 @@
 @import "tailwindcss";
+/* 画面の書体（Zen Maru Gothic / Klee One）は自分のところから配る。
+   以前は Google Fonts を <head> で読んでいて、校内フィルタが応答を返さない形で
+   止めると、起動画面が数十秒まっ白になった。中身は fonts.config.json から
+   build-fonts.mjs が作る（README「素材とライセンス」）。直接編集しない。 */
+@import "./fonts/fonts.css";
 
 :root {
   /* 端末の強制ダークモード（自動暗色化）を無効化。
      暗色化されるとキャンバスの手書き線やSVGの書き順線が背景に沈んで見えなくなる */
   color-scheme: only light;
+  /* 既定テーマの色。正本は src/constants/themes.js（App.jsx が起動後にテーマごとに上書きする）。
+     ここは JS が動くまでの最初の 1 枚のためにある。値は themes.js の default と同じにすること。 */
   --bg: #fdfbf7;
-  --primary: #ef4444;
-  --secondary: #10b981;
+  --primary: #dc2626;
+  --secondary: #047857;
   --accent: #fbbf24;
   --text: #292f36;
+  /* 補足の文字。opacity で薄くすると 4.5:1 を割るので、薄く見せたい文字はこれを使う */
+  --text-muted: #5b6470;
   --panel: #ffffff;
+  /* 町の満足度（systems/residents.js）。白い地の上で 4.5:1 以上。ダークは themes.js で上書き */
+  --sat-4: #15803d;
+  --sat-3: #4d7c0f;
+  --sat-2: #a16207;
+  --sat-1: #c2410c;
+  --sat-0: #b91c1c;
 
   /* 画面幅に応じて伸び縮みする文字サイズ。
      メディアクエリを何段も書かずに、320px のスマホから電子黒板まで面倒を見る。 */
@@ -39,13 +54,21 @@ html {
   /* 端末の文字サイズ設定で勝手に拡大されると、狭い画面で枠から溢れる */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* 文字の大きさ。Tailwind の text-* と余白は rem なので、html に掛けないと大きくならない。
+     --font-scale は設定の「文字の大きさ」（App が html に置く）、
+     --presentation-scale は提示モード（html.presentation）。 */
+  font-size: calc(100% * var(--font-scale, 1) * var(--presentation-scale, 1));
+}
+html.presentation {
+  --presentation-scale: 1.5;
 }
 
 body {
   font-family: 'Zen Maru Gothic', sans-serif;
   background-color: var(--bg);
   color: var(--text);
-  font-size: var(--fs-body);
+  /* --fs-body は px なので、html の倍率とは別に同じ倍率を掛ける */
+  font-size: calc(var(--fs-body) * var(--font-scale, 1) * var(--presentation-scale, 1));
   touch-action: manipulation;
   transition: background-color 0.3s ease;
   margin: 0;
@@ -167,13 +190,12 @@ ruby.survival-blank rt {
 }
 
 /* ── 提示モード（電子黒板・一斉授業） ──
-   教員が「大きく表示」を押すと <body> に .presentation が付く。
-   教室のいちばん後ろの席から読めることが要件。 */
-.presentation {
-  font-size: 150%;
-}
-.presentation button,
-.presentation [role="button"] {
+   教員が「大きく表示」を押すと <html> に .presentation が付き、文字が 150% になる
+   （倍率は上の html の font-size）。教室のいちばん後ろの席から読めることが要件。
+   ⚠️ 以前は <body> に font-size: 150% を付けていたが、Tailwind の文字は html 基準の
+      rem なので、4けたの数字も QR の説明も大きくならなかった。 */
+html.presentation button,
+html.presentation [role="button"] {
   min-height: 64px;
 }
 /* 大画面では余白を活かして主役の漢字をさらに大きく */

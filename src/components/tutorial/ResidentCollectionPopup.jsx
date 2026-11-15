@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Users, Coins, TrendingUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 import { MATERIALS } from '../../data/materials';
 
@@ -10,7 +11,9 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
   if (!result) return null;
 
   return (
-    <motion.div
+    <ModalDialog
+      labelId="collection-title"
+      onEscape={onConfirm}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -31,12 +34,12 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
           >
             🏠
           </motion.div>
-          <h2 className="text-lg font-black text-[var(--text)] mb-1">{F("住民","じゅうみん")}がお仕事を終えました！</h2>
-          <p className="text-xs text-[var(--text)] opacity-50 mb-4">今日の収穫を報告します</p>
+          <h2 id="collection-title" className="text-lg font-black text-[var(--text)] mb-1">{F("住民","じゅうみん")}がお{F("仕事","しごと")}を{F("終","お")}えました！</h2>
+          <p className="text-xs text-[var(--text-muted)] mb-4">{F("今日","きょう")}の{F("収穫","しゅうかく")}を{F("報告","ほうこく")}します</p>
 
           {/* 満足度ステータス */}
           <div className="flex justify-center items-center gap-2 mb-4 bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl py-2 px-4 shadow-sm">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">町の満足度:</span>
+            <span className="text-xs font-bold text-[var(--text-muted)]">{F("町","まち")}の{F("満足度","まんぞくど")}:</span>
             <span className="font-black text-sm" style={{ color: satLabel.color }}>{satLabel.emoji} {satLabel.text} ({satisfaction}%)</span>
           </div>
 
@@ -52,7 +55,7 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
                       <span className="text-xl">{mat.icon}</span>
                       <span className="text-xs font-bold text-emerald-800">{mat.name}</span>
                     </div>
-                    <span className="font-black text-emerald-600">+{amount}</span>
+                    <span className="font-black text-emerald-700">+{amount}</span>
                   </div>
                 );
               })}
@@ -60,21 +63,21 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
                 <div className="flex items-center justify-between bg-yellow-100/50 rounded-lg px-3 py-1.5 border border-yellow-200 mt-1">
                   <div className="flex items-center gap-2">
                     <Coins size={18} className="text-yellow-600" />
-                    <span className="text-xs font-bold text-yellow-800">コイン報酬</span>
+                    <span className="text-xs font-bold text-yellow-800">コイン{F("報酬","ほうしゅう")}</span>
                   </div>
-                  <span className="font-black text-yellow-600">+{result.coins}</span>
+                  <span className="font-black text-yellow-800">+{result.coins}</span>
                 </div>
               )}
               {result.maintenanceCost > 0 && (
-                <div className="flex items-center justify-between opacity-60 px-3 py-1 border-t border-emerald-200 mt-1">
-                  <span className="text-[10px] font-bold text-emerald-800">建物維持費</span>
-                  <span className="text-[10px] font-bold text-rose-500">-{result.maintenanceCost}</span>
+                <div className="flex items-center justify-between px-3 py-1 border-t border-emerald-200 mt-1">
+                  <span className="text-xs font-bold text-emerald-800">{F("建物","たてもの")}{F("維持費","いじひ")}</span>
+                  <span className="text-xs font-bold text-rose-700">-{result.maintenanceCost}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <p className="text-[10px] text-[var(--text)] opacity-50 mb-4 italic">※学習をサボると満足度が下がり、収穫が減ります</p>
+          <p className="text-[10px] text-[var(--text-muted)] mb-4 italic">※{F("学習","がくしゅう")}をサボると{F("満足度","まんぞくど")}が{F("下","さ")}がり、{F("収穫","しゅうかく")}が{F("減","へ")}ります</p>
 
           <MotionButton
             variant="success"
@@ -85,7 +88,7 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
           </MotionButton>
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

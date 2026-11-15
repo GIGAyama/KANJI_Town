@@ -40,10 +40,10 @@ const AchievementView = ({ setView, stats, setStats }) => {
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('home')} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
+        <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
         <div className="flex-1">
           <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> <RubyText text="実績（じっせき）" /></h2>
-          <div className="text-xs text-[var(--text)] opacity-50">{claimedCount}/{totalCount} <RubyText text="達成（たっせい）" /> ({completedCount}<RubyText text="個（こ）受取（うけとり）可能（かのう）" />)</div>
+          <div className="text-xs text-[var(--text-muted)]">{claimedCount}/{totalCount} <RubyText text="達成（たっせい）" /> ({completedCount}<RubyText text="個（こ）受取（うけとり）可能（かのう）" />)</div>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
               key={key}
               onClick={() => { audioCtrl.playSE('click'); setActiveCategory(key); }}
               className={`shrink-0 px-3 py-2 rounded-xl border-[2px] text-xs font-black transition-all flex items-center gap-1 ${
-                isActive ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'
+                isActive ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'
               }`}
             >
               {cat.emoji} <RubyText text={cat.name} />
@@ -88,24 +88,24 @@ const AchievementView = ({ setView, stats, setStats }) => {
               key={a.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-[var(--panel)] border-[4px] rounded-2xl p-4 shadow-sm transition-all ${canClaim ? 'border-amber-400 shadow-[4px_4px_0_#b45309]' : progress.claimed ? 'border-emerald-400 opacity-70' : 'border-[var(--text)]'}`}
+              className={`bg-[var(--panel)] border-[4px] rounded-2xl p-4 shadow-sm transition-all ${canClaim ? 'border-amber-400 shadow-[4px_4px_0_#b45309]' : progress.claimed ? 'border-emerald-400' : 'border-[var(--text)]'}`}
             >
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    {progress.claimed ? <Trophy size={18} className="text-emerald-500 shrink-0" /> : canClaim ? <Gift size={18} className="text-amber-500 shrink-0" /> : <Lock size={18} className="text-[var(--text)] opacity-30 shrink-0" />}
+                    {progress.claimed ? <Trophy size={18} className="text-emerald-500 shrink-0" /> : canClaim ? <Gift size={18} className="text-amber-500 shrink-0" /> : <Lock size={18} className="text-[var(--text-muted)] shrink-0" />}
                     <span className="font-black text-[var(--text)]"><RubyText text={a.name} /></span>
                   </div>
-                  <p className="text-xs text-[var(--text)] opacity-60 mb-2"><RubyText text={a.desc} /></p>
+                  <p className="text-xs text-[var(--text-muted)] mb-2"><RubyText text={a.desc} /></p>
                   <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden border border-gray-300">
                     <motion.div animate={{ width: `${pct}%` }} className={`h-full rounded-full ${progress.claimed ? 'bg-emerald-400' : canClaim ? 'bg-amber-400' : 'bg-[var(--secondary)]'}`} />
                   </div>
-                  <div className="text-xs font-bold text-[var(--text)] opacity-50 mt-1">{progress.current} / {a.target}</div>
+                  <div className="text-xs font-bold text-[var(--text-muted)] mt-1">{progress.current} / {a.target}</div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <div className="flex flex-col items-end">
-                    {a.reward > 0 && <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>}
-                    {a.rewardExp > 0 && <div className="flex items-center gap-1 text-[10px] font-black text-blue-500">⚡+{a.rewardExp} EXP</div>}
+                    {a.reward > 0 && <div className="flex items-center gap-1 text-xs font-black text-[var(--text)]"><Coins size={12} className="text-amber-600" aria-hidden="true" />{a.reward}</div>}
+                    {a.rewardExp > 0 && <div className="flex items-center gap-1 text-xs font-black text-[var(--text-muted)]">⚡+{a.rewardExp} EXP</div>}
                   </div>
                   {rewardItemDef && <div className={`w-10 h-10 ${rewardItemDef.bg} rounded-lg border-2 border-[var(--text)] flex items-center justify-center`}><rewardItemDef.svg /></div>}
                   {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1"><RubyText text="受（う）けとる！" /></MotionButton>)}

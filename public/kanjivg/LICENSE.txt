@@ -1,0 +1,18 @@
+書き順データ（grade-1.json 〜 grade-6.json）について
+
+このフォルダの JSON は KanjiVG から作った派生物です。
+KanjiVG と同じ CC BY-SA 3.0 で配布します。
+
+  出典:       KanjiVG https://kanjivg.tagaini.net
+  版:         r20260714（commit d95a97627fd9fe5b2c8d06ca81e38149609c0c1e）
+  著作権:     Copyright (C) 2009/2010/2011 Ulrich Apel.
+  ライセンス: https://creativecommons.org/licenses/by-sa/3.0/
+  変更点:     教育漢字 1026 字について、各画の d 属性と kvg:type だけを
+              取り出し、学年ごとの JSON に束ねました。画の形・順は変えていません。
+  作り方:     node tools/build-kanjivg.mjs（マイ漢字タウンのリポジトリ）
+
+This folder contains data derived from KanjiVG (https://kanjivg.tagaini.net),
+Copyright (C) 2009/2010/2011 Ulrich Apel.
+Licensed under the Creative Commons Attribution-Share Alike 3.0 License
+(https://creativecommons.org/licenses/by-sa/3.0/). Only the "d" and "kvg:type" attributes of each
+stroke were extracted and grouped by school grade; strokes are unchanged.

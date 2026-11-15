@@ -3,12 +3,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Gift } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 import { LOGIN_BONUS_CYCLE } from '../../data/login-bonus';
 
 const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
   return (
-    <motion.div
+    <ModalDialog
+      labelId="login-bonus-title"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -29,8 +31,8 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
           >
             🎁
           </motion.div>
-          <h2 className="text-lg font-black text-[var(--text)] mb-1">ログインボーナス！</h2>
-          <p className="text-xs text-[var(--text)] opacity-50 mb-4">{streak}{F("日","にち")}{F("連続","れんぞく")}ログイン</p>
+          <h2 id="login-bonus-title" className="text-lg font-black text-[var(--text)] mb-1">ログインボーナス！</h2>
+          <p className="text-xs text-[var(--text-muted)] mb-4">{streak}{F("日","にち")}{F("連続","れんぞく")}ログイン</p>
 
           {/* 7日間サイクル表示 */}
           <div className="flex justify-center gap-1.5 mb-4">
@@ -45,10 +47,10 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
                   transition={{ type: 'spring', delay: 0.3 + i * 0.05 }}
                   className={`w-10 h-12 rounded-xl border-[2px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-all ${
                     isToday
-                      ? 'border-amber-400 bg-amber-50 shadow-[0_2px_0_#b45309] scale-110'
+                      ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-[0_2px_0_#b45309] scale-110'
                       : isPast
-                      ? 'border-emerald-300 bg-emerald-50 opacity-60'
-                      : 'border-gray-200 bg-gray-50 opacity-40'
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                      : 'border-gray-300 bg-gray-50 text-gray-600'
                   }`}
                 >
                   <span>{b.icon}</span>
@@ -67,11 +69,12 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
           >
             <div className="text-3xl mb-1">{reward.icon}</div>
             <div className="font-black text-amber-700 text-base">{reward.label}</div>
-            <div className="text-xs text-amber-600 opacity-70">Day {bonusDay} ボーナス</div>
+            <div className="text-xs text-amber-800">Day {bonusDay} ボーナス</div>
           </motion.div>
 
           <MotionButton
             variant="accent"
+            data-autofocus
             onClick={onClaim}
             className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309]"
           >
@@ -79,7 +82,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
           </MotionButton>
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

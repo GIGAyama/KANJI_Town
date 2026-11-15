@@ -12,6 +12,7 @@ import { describeEndingFeedback } from '../../systems/strokeKind';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
+import { strokeNormalizedPaths, toNormalizedStroke } from '../../systems/stroke-coords';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -28,7 +29,13 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
   const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { fitSquareCanvas(ref.current, canvasSize); }); }, [canvasSize]);
 
-  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; initCanvases(); }, [paths, canvasSize, initCanvases]);
+  // 字が変わったら、なぞりの回数・書いた線・「これまでに書いた字」をはじめからにする
+  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; const w = writeRef.current; w?.getContext('2d')?.clearRect(0, 0, w.width, w.height); }, [paths]);
+  // キャンバスの大きさが変わったとき（画面の回転・ブラウザの枠の伸び縮み）は、大きさを合わせるだけにする。
+  // 以前はここで練習の状態を全部消していたので、2回なぞり終えても持ちかえると「1回目」に戻り、
+  // 「テストへ進む」も消えていた。書いた線は 0〜1 の比率で持っているので、下の描画の effect が描きなおす。
+  // 書いている途中の1画だけは座標が合わなくなるので取りやめる。
+  useEffect(() => { initCanvases(); currentPathRef.current = []; setIsDrawing(false); }, [initCanvases]);
 
   const drawGuide = useCallback(() => {
     const gCtx = guideRef.current?.getContext('2d'); if (!gCtx || !paths.length) return;
@@ -36,14 +43,14 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     const isBlindMode = count >= 5;
     paths.forEach((d, i) => {
       const p = new Path2D(d);
-      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.strokeStyle = "rgba(0,0,0,0.05)"; gCtx.stroke(p); }
+      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.save(); gCtx.globalAlpha = 0.12; gCtx.strokeStyle = resolveThemeColor('--text'); gCtx.stroke(p); gCtx.restore(); }
     }); gCtx.restore();
   }, [paths, currentStroke, count, strokeData, canvasSize]);
 
   const drawInk = useCallback(() => {
     const iCtx = inkRef.current?.getContext('2d'); if (!iCtx || !paths.length) return;
     iCtx.clearRect(0, 0, canvasSize, canvasSize);
-    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = canvasSize * 0.08; userStrokes.forEach(stroke => { if (stroke.length === 0) return; iCtx.beginPath(); iCtx.moveTo(stroke[0].x, stroke[0].y); stroke.forEach(pt => iCtx.lineTo(pt.x, pt.y)); iCtx.stroke(); }); iCtx.restore(); }
+    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = canvasSize * 0.08; strokeNormalizedPaths(iCtx, userStrokes, canvasSize); iCtx.restore(); }
   }, [paths, currentStroke, count, userStrokes, canvasSize]);
 
   useEffect(() => { drawGuide(); drawInk(); }, [drawGuide, drawInk]);
@@ -82,9 +89,9 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         for (let pastIdx = 0; pastIdx < currentStrokeRef.current; pastIdx++) {
           const pastPoints = userStrokes[pastIdx];
           if (!pastPoints) continue;
-          const pastNormalized = pastPoints.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize }));
+          // 書いた線はもともと 0〜1 の比率で持っている
           const isExpectedCrossed = crossMatrix[currentStrokeRef.current]?.[pastIdx] ?? false;
-          const verdict = Analyzer.judgeCrossing(isExpectedCrossed, Analyzer.crossingDepth(pastNormalized, normalizedPoints));
+          const verdict = Analyzer.judgeCrossing(isExpectedCrossed, Analyzer.crossingDepth(pastPoints, normalizedPoints));
           if (verdict !== 'ok') { isError = true; errMsg = verdict === 'extra' ? "ちがう画を つきぬけているよ💦" : "ほかの画と まじわっていないよ💦"; break; }
         }
         // 終筆は正解の筆画種と比べて助言する（正解が分からないときは褒めも直しもしない）。
@@ -92,11 +99,11 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         if (!isError) { const fb = describeEndingFeedback(strokeData[currentStrokeRef.current]?.endingType ?? null, ending.code); addFloatingText(lastPos.current.x, lastPos.current.y - 30, fb.text, fb.ok ? "var(--primary)" : "var(--accent)", 1.0); }
       }
       if (isError) { clearCanvas(writeRef); setStatusMsg(errMsg); audioCtrl.playSE('stamp_bad'); return; }
-      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
+      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, toNormalizedStroke(currentPathRef.current, canvasSize)]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
         let skillEvidence = 'guided';
-        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; skillEvidence = 'easy'; onRecordPerfect(inkRef.current?.toDataURL('image/png')); } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; skillEvidence = 'good'; }
+        if (avgDist < 0.08) { evalText = "Perfect!!"; color = "var(--primary)"; skillEvidence = 'easy'; onRecordPerfect(); /* 以前は使われない PNG を毎回同期で作っていた */ } else if (avgDist < 0.15) { evalText = "Great!"; color = "var(--accent)"; skillEvidence = 'good'; }
         onPracticeComplete?.(skillEvidence);
         addFloatingText(canvasSize / 2, canvasSize / 2, `${evalText}`, color, 1.5); distSum.current = 0; setStatusMsg("✨ よくできました！"); audioCtrl.playSE('success'); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2500);
       } else { addFloatingText(lastPos.current.x, lastPos.current.y, "✨", "var(--accent)", 1); setStatusMsg(`${nextStroke + 1}かくめ をかこう！`); audioCtrl.playSE('click'); }
@@ -128,7 +135,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <div className="flex justify-between items-center bg-[var(--bg)] p-2 rounded-xl border-[2px] border-[var(--text)]">
           <span className="text-sm font-bold text-[var(--text)] pl-2">{count < 2 ? <>なぞり{F("書","が")}き</> : count < 5 ? <>{F("手","て")}{F("書","が")}き ({F("手本","てほん")}あり)</> : <>{F("空書","からが")}き ({F("手本","てほん")}なし)</>}</span><div className="text-sm font-black bg-[var(--text)] text-[var(--panel)] px-3 py-1 rounded-lg shadow-sm">{count + 1} {F("回目","かいめ")}</div>
         </div>
-        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-white text-[var(--text)]'}`}>{statusMsg}</div>
+        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-[var(--panel)] text-[var(--text)]'}`}>{statusMsg}</div>
       </div>
       {history.length > 0 && (
         <div className="bg-[var(--panel)] p-2 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-1 shrink-0">
@@ -147,7 +154,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <MotionButton variant="secondary" onClick={undoLastStroke} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Undo2 size={16} /> 1{F("画","かく")}もどす</MotionButton>
         <MotionButton variant="secondary" onClick={resetPractice} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Trash2 size={16} /> ぜんぶけす</MotionButton>
       </div>
-      <MotionButton variant={currentStroke >= paths.length ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
+      <MotionButton variant={currentStroke >= paths.length && history.length < 2 ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? (history.length < 2 ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'shadow-[0_4px_0_var(--text)]') : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
       <AnimatePresence>{history.length >= 2 && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}><MotionButton variant="success" onClick={onNext} className={`w-full py-3 md:py-4 text-lg md:text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]`}>テストへ{F("進","すす")}む！ <ChevronRight size={24} /></MotionButton></motion.div>)}</AnimatePresence>
     </div>
   );

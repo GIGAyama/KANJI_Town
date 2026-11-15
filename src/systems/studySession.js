@@ -139,7 +139,10 @@ function tick(s) {
 /** 既存の学習レポートを ext（拡張層）へ転用する（§3.3 / §8.2）。 */
 function buildStudyExt() {
   try {
-    const report = buildLearningReport(StorageAPI.getStats());
+    // getStats は放置のペナルティを当てて保存まで行うので、ここでは書きこまない読み方をする
+    const stats = StorageAPI.peekStats();
+    if (!stats) return {};
+    const report = buildLearningReport(stats);
     return {
       skills: report.mastery,
       srs: {

@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <!-- このページは何も読みこまない。インラインの <style> だけを許す -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#ef4444" />
@@ -34,14 +36,15 @@
     .emoji { font-size: 64px; margin-bottom: 16px; }
     h1 { font-size: clamp(20px, 5vw, 24px); margin-bottom: 8px; line-height: 1.5; }
     p { font-size: clamp(13px, 3.5vw, 15px); opacity: 0.6; margin-bottom: 20px; line-height: 1.8; }
-    button {
+    .retry {
+      display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
       background: #ef4444; color: #fff; border: 3px solid #292f36; border-radius: 12px;
       min-height: 44px; padding: 12px 24px; font-family: inherit; font-weight: 900;
       font-size: 15px; cursor: pointer; box-shadow: 3px 3px 0 #292f36;
       touch-action: manipulation;
     }
-    button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #292f36; }
-    button:focus-visible { outline: 3px solid #292f36; outline-offset: 3px; }
+    .retry:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #292f36; }
+    .retry:focus-visible { outline: 3px solid #292f36; outline-offset: 3px; }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .01ms !important;
@@ -51,7 +54,7 @@
     }
     /* ハイコントラストモードで背景色が無効化されても押せると分かるように */
     @media (forced-colors: active) {
-      .card, button { border: 3px solid ButtonText; }
+      .card, .retry { border: 3px solid ButtonText; }
     }
   </style>
 </head>
@@ -60,7 +63,8 @@
     <div class="emoji" role="img" aria-label="アンテナ">📡</div>
     <h1>オフラインです</h1>
     <p>インターネットに接続できません。<br>接続を確認してもう一度やり直してください。</p>
-    <button type="button" onclick="location.reload()">もう一度ためす</button>
+    <!-- CSP の下ではインラインの onclick が動かないので、アプリの入口へのリンクにしている -->
+    <a class="retry" href="./">もう一度ためす</a>
   </div>
 </body>
 </html>

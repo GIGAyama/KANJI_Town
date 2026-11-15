@@ -6,8 +6,46 @@ import {
   getWeakestSkill,
   normalizeSkillMastery,
   recordSkillEvidence,
+  writingSkillEvidence,
 } from '../src/systems/mastery.js';
 import { migrateCard } from '../src/systems/srs.js';
+import { gradeStrokes } from '../src/systems/strokeGrader.js';
+
+// 「三」の3本の横画（上→中→下）
+const SAN_MODEL = [0.25, 0.5, 0.75].map((y) => {
+  const points = Array.from({ length: 25 }, (_, i) => ({ x: 0.2 + 0.6 * i / 24, y }));
+  return { s: points[0], e: points[24], points, endingType: 'tome' };
+});
+const sanStroke = (y, reverse = false) => {
+  const points = Array.from({ length: 25 }, (_, i) => ({ x: (0.2 + 0.6 * i / 24) * 300, y: y * 300, time: i * 20 }));
+  return reverse ? points.reverse().map((p, i) => ({ ...p, time: i * 20 })) : points;
+};
+const evidenceOf = (updates) => Object.fromEntries(updates.map(({ skill, evidence }) => [skill, evidence]));
+
+test('書き順だけがちがう字は、書字は保ったまま筆順だけを again にする', () => {
+  // 以前は書字と筆順に同じ評価を記録していて、筆順だけの弱さが見えなかった
+  const wrongOrder = gradeStrokes([sanStroke(0.75), sanStroke(0.5), sanStroke(0.25)], SAN_MODEL, 300);
+  assert.equal(wrongOrder.orderMatch, false);
+  assert.deepEqual(evidenceOf(writingSkillEvidence(wrongOrder, 'hard')), { writing: 'hard', stroke: 'again' });
+
+  const clean = gradeStrokes([sanStroke(0.25), sanStroke(0.5), sanStroke(0.75)], SAN_MODEL, 300);
+  assert.deepEqual(evidenceOf(writingSkillEvidence(clean, 'easy')), { writing: 'easy', stroke: 'easy' });
+});
+
+test('書く向きが逆の画があると筆順は hard まで。児童がつけた評価より上にはしない', () => {
+  const reversed = gradeStrokes([sanStroke(0.25), sanStroke(0.5, true), sanStroke(0.75)], SAN_MODEL, 300);
+  assert.equal(evidenceOf(writingSkillEvidence(reversed, 'good')).stroke, 'hard');
+  const clean = gradeStrokes([sanStroke(0.25), sanStroke(0.5), sanStroke(0.75)], SAN_MODEL, 300);
+  // 自分に厳しく「むずかしい」とつけたら、両方とも hard まで
+  assert.deepEqual(evidenceOf(writingSkillEvidence(clean, 'hard')), { writing: 'hard', stroke: 'hard' });
+});
+
+test('採点できなかったとき（画数ちがい・採点結果なし）は、両方に評価をそのまま使う', () => {
+  const tooFew = gradeStrokes([sanStroke(0.25)], SAN_MODEL, 300);
+  assert.deepEqual(evidenceOf(writingSkillEvidence(tooFew, 'again')), { writing: 'again', stroke: 'again' });
+  assert.deepEqual(evidenceOf(writingSkillEvidence(null, 'good')), { writing: 'good', stroke: 'good' });
+  assert.deepEqual(writingSkillEvidence(null, 'unknown'), []);
+});
 
 test('既存カードは現在の習得状態から4技能を安全に補完する', () => {
   const migrated = migrateCard({
@@ -64,6 +102,20 @@ test('新出漢字と技能別の弱点に合わせて開始モードを選ぶ',
     status: 'learning',
     skillMastery: { ...strong, stroke: { ...strong.stroke, score: 20 } },
   }), 'watch');
+});
+
+test('意味（見た回数しか記録していない）の点では、練習を音読から始めない', () => {
+  // 以前は意味が 50 点を超えるまで（新出から7回見るまで）、復習のたびに音読から始まっていた
+  const strong = normalizeSkillMastery(null, { status: 'mastered' });
+  assert.equal(getRecommendedPracticeMode({
+    status: 'review',
+    skillMastery: { ...strong, meaning: { ...strong.meaning, score: 16 } },
+  }), 'test');
+  // 読みが弱いときは、これまでどおり音読から
+  assert.equal(getRecommendedPracticeMode({
+    status: 'review',
+    skillMastery: { ...strong, reading: { ...strong.reading, score: 16 } },
+  }), 'read');
 });
 
 test('学習済み漢字の4技能平均と証拠数を集計する', () => {
