@@ -65,6 +65,13 @@ function findTownItem(id) {
 }
 
 let _saveDebounceTimer = null;
+/** デバウンス中でまだ書いていない stats（タブを止める前・離れる前に書き出すため） */
+let _pendingStats = null;
+/**
+ * このタブが記録を書いてよいか。ほかのタブが「このタブで使う」と名乗ったら false にする
+ * （古いタブがあとから全体を書いて、新しいタブの記録を消さないようにする。tab-coordinator.js）。
+ */
+let _writable = true;
 
 /** @type {boolean} 前回の保存が容量不足で失敗したか */
 let _lastSaveFailed = false;
@@ -258,11 +265,37 @@ const StorageAPI = {
    * @param {object} stats
    */
   saveStats: (stats) => {
+    if (!_writable) return;
     if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
+    _pendingStats = stats;
     _saveDebounceTimer = setTimeout(() => {
+      _saveDebounceTimer = null;
+      _pendingStats = null;
       StorageAPI.safeSet(STORAGE_KEY, stats);
     }, DEBOUNCE.SAVE);
   },
+
+  /**
+   * デバウンス中の保存があれば、すぐに書く。
+   * @returns {boolean} 書き出すものがあったか
+   */
+  flushPendingSave: () => {
+    if (!_saveDebounceTimer) return false;
+    clearTimeout(_saveDebounceTimer);
+    _saveDebounceTimer = null;
+    const pending = _pendingStats;
+    _pendingStats = null;
+    if (!pending || !_writable) return false;
+    StorageAPI.safeSet(STORAGE_KEY, pending);
+    return true;
+  },
+
+  /** このタブが記録を書くかどうかを切りかえる（ほかのタブで開かれたら false） */
+  setWritable: (writable) => {
+    _writable = Boolean(writable);
+  },
+
+  isWritable: () => _writable,
 
   /**
    * 即時保存（セッション終了時など、データロスを防ぐ場面で使用）
@@ -274,11 +307,14 @@ const StorageAPI = {
       clearTimeout(_saveDebounceTimer);
       _saveDebounceTimer = null;
     }
+    _pendingStats = null;
+    if (!_writable) return false;
     return StorageAPI.safeSet(STORAGE_KEY, stats);
   },
 
   /** 学習途中の小さなチェックポイントを即時保存する。 */
   saveActiveSession: (checkpoint) => {
+    if (!_writable) return false;
     try {
       window.localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(checkpoint));
       return true;
@@ -294,6 +330,7 @@ const StorageAPI = {
 
   /** 完了・破棄された学習チェックポイントを削除する。 */
   clearActiveSession: () => {
+    if (!_writable) return;
     try {
       window.localStorage.removeItem(ACTIVE_SESSION_KEY);
     } catch (error) {

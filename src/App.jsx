@@ -7,6 +7,7 @@ import { useViewNavigation } from './hooks/useViewNavigation';
 import { EXIT_CONFIRM_WINDOW, isLearningView } from './systems/view-navigation';
 import { usePrefetchKanji } from './hooks/usePrefetchKanji';
 import OfflineBanner from './components/ui/OfflineBanner';
+import OtherTabNotice from './components/ui/OtherTabNotice';
 import StorageErrorBanner from './components/ui/StorageErrorBanner';
 import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
@@ -32,6 +33,7 @@ import { getTodayString } from './utils/date-utils';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
+import { createTabCoordinator } from './systems/tab-coordinator';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
@@ -302,6 +304,42 @@ export default function App() {
         return updated;
       });
     }
+  }, []);
+
+  // 同じ端末で複数のタブに開いたとき、記録を書くのは最後に開いたタブだけにする。
+  // 以前は古いタブがあとから1回保存しただけで、新しいタブで学んだ記録やドリルが消えていた。
+  const [tabInactive, setTabInactive] = useState(false);
+  useEffect(() => {
+    const coordinator = createTabCoordinator({
+      onDeactivate: () => {
+        const flushed = StorageAPI.flushPendingSave();
+        StorageAPI.setWritable(false);
+        audioCtrl.stopBGM();
+        setTabInactive(true);
+        return flushed;
+      },
+      // こちらが開いた直後に、前のタブが保存待ちを書き出したときは読み直す
+      onPeerFlushed: () => {
+        const fresh = StorageAPI.getStats();
+        setStats(fresh);
+        setSeenHints(fresh.seenHints || []);
+        setDailyMissions(fresh.dailyMissions || []);
+      },
+    });
+    coordinator.claim();
+    return () => coordinator.destroy();
+  }, []);
+
+  // 画面を離れる・タブを閉じるときは、保存待ちの変更をすぐに書く（待ち時間のあいだに閉じると消えていた）
+  useEffect(() => {
+    const flush = () => { StorageAPI.flushPendingSave(); };
+    const handleVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   // 初回ロード時
@@ -894,6 +932,9 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* ほかのタブで開かれたとき。「このタブで つづける」で読みなおして、こちらを使うタブにする */}
+      {tabInactive && <OtherTabNotice onResume={() => window.location.reload()} />}
 
       {/* 学習中の戻る操作の確認 */}
       <AnimatePresence>
