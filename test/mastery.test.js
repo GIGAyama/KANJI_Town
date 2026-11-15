@@ -104,6 +104,20 @@ test('新出漢字と技能別の弱点に合わせて開始モードを選ぶ',
   }), 'watch');
 });
 
+test('意味（見た回数しか記録していない）の点では、練習を音読から始めない', () => {
+  // 以前は意味が 50 点を超えるまで（新出から7回見るまで）、復習のたびに音読から始まっていた
+  const strong = normalizeSkillMastery(null, { status: 'mastered' });
+  assert.equal(getRecommendedPracticeMode({
+    status: 'review',
+    skillMastery: { ...strong, meaning: { ...strong.meaning, score: 16 } },
+  }), 'test');
+  // 読みが弱いときは、これまでどおり音読から
+  assert.equal(getRecommendedPracticeMode({
+    status: 'review',
+    skillMastery: { ...strong, reading: { ...strong.reading, score: 16 } },
+  }), 'read');
+});
+
 test('学習済み漢字の4技能平均と証拠数を集計する', () => {
   const summary = getSkillMasterySummary({
     a: { status: 'review', skillMastery: recordSkillEvidence({ status: 'review' }, [{ skill: 'reading', evidence: 'good' }], 1) },

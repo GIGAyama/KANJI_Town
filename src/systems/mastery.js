@@ -2,7 +2,9 @@ export const MASTERY_SKILLS = ['reading', 'meaning', 'writing', 'stroke'];
 
 export const MASTERY_SKILL_DEFINITIONS = {
   reading: { label: '読み', shortLabel: '音読', icon: '📖', mode: 'read' },
-  meaning: { label: '意味', shortLabel: '意味', icon: '💡', mode: 'read' },
+  // 意味を問う問題はまだ無く、記録されるのは「見た」（exposed）だけ（上限60点）。
+  // measured: false の技能は、練習をどこから始めるかの判断に使わない。
+  meaning: { label: '意味', shortLabel: '意味', icon: '💡', mode: 'read', measured: false },
   writing: { label: '書字', shortLabel: 'なぞり', icon: '✍️', mode: 'write' },
   stroke: { label: '筆順', shortLabel: '書き順', icon: '🖌️', mode: 'watch' },
 };
@@ -110,17 +112,24 @@ export function writingSkillEvidence(gradeResult, evaluation) {
   ];
 }
 
-export function getWeakestSkill(card) {
+/** テストや練習で実際に測っている技能（意味は見た回数しか記録していない） */
+export const MEASURED_SKILLS = MASTERY_SKILLS.filter((skill) => MASTERY_SKILL_DEFINITIONS[skill].measured !== false);
+
+export function getWeakestSkill(card, { skills = MASTERY_SKILLS } = {}) {
   const mastery = normalizeSkillMastery(card?.skillMastery, card);
-  return MASTERY_SKILLS
+  return skills
     .map((skill) => ({ skill, ...MASTERY_SKILL_DEFINITIONS[skill], ...mastery[skill] }))
     .reduce((weakest, current) => (current.score < weakest.score ? current : weakest));
 }
 
-/** 新出は基礎から、復習は50点未満の最弱技能から始める。 */
+/**
+ * 新出は基礎から、復習は50点未満の最弱技能から始める。
+ * 意味は見た回数でしか伸びない（7回見るまで50点未満）ので判断に使わない。
+ * 以前は意味の点のせいで、復習のたびに「音読」から始まっていた。
+ */
 export function getRecommendedPracticeMode(card, { isNew = false, threshold = 50 } = {}) {
   if (isNew) return 'read';
-  const weakest = getWeakestSkill(card);
+  const weakest = getWeakestSkill(card, { skills: MEASURED_SKILLS });
   return weakest.score < threshold ? weakest.mode : 'test';
 }
 

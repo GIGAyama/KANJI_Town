@@ -1,5 +1,5 @@
 import { formatDate } from '../utils/date-utils.js';
-import { getWeakestSkill } from './mastery.js';
+import { getWeakestSkill, MEASURED_SKILLS } from './mastery.js';
 
 export const DAILY_GOAL_OPTIONS = [5, 10, 20];
 export const DEFAULT_DAILY_GOAL = 10;
@@ -312,7 +312,7 @@ function buildPracticeTargets({ kanjiData, kanjiStats, selectedGrade, limit }) {
     })
     .map((kanji, index) => {
       const stat = kanjiStats[kanji.id];
-      return { kanji, index, weakest: getWeakestSkill(stat).score, due: Number(stat.nextReview) || 0 };
+      return { kanji, index, weakest: getWeakestSkill(stat, { skills: MEASURED_SKILLS }).score, due: Number(stat.nextReview) || 0 };
     })
     .sort((a, b) => (a.weakest - b.weakest) || (a.due - b.due) || (a.index - b.index))
     .slice(0, Math.max(1, asLimit(limit)))
