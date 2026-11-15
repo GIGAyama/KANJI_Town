@@ -36,6 +36,11 @@ jobs:
       # 実ブラウザで開き、外部への通信・CSP 違反・例外が無いことを確かめる。
       # 静的検査はソースに書いてある URL しか見られないため。ランナーの Chrome を使う。
       - run: npm run smoke
+      # ソースマップ（.map）は配信しない。sourcemap: 'hidden' なので端末は取りに来ないが、
+      # 配信物の約7割（47本・約4.4MB）を占め、ソース全文が決まった URL で公開されてしまう。
+      # SW の版（build-sw.mjs）は .map を数えないので、消しても版は変わらない。
+      - name: ソースマップを配信物から外す
+        run: find dist -name '*.map' -delete
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push'
         with:
