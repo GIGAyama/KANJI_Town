@@ -24,7 +24,7 @@ const COUNT_FIELDS = [
 ];
 
 /** ふつうのオブジェクトを持つ欄 */
-const OBJECT_FIELDS = ['kanjiStats', 'townMap', 'townItems', 'achievements', 'materials', 'daily', 'settings'];
+const OBJECT_FIELDS = ['kanjiStats', 'townMap', 'townItems', 'achievements', 'materials', 'daily', 'dailyArchive', 'settings'];
 
 /** 配列を持つ欄 */
 const ARRAY_FIELDS = ['myDrills', 'villagers', 'unlockedKanji', 'seenHints', 'dailyMissions'];
@@ -36,7 +36,7 @@ const STRING_FIELDS = [
 ];
 
 /** 1日の記録の中の数の欄 */
-const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct'];
+const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct', 'days'];
 
 /** バックアップとして読みこめるファイルの大きさの上限（端末の localStorage より十分大きい） */
 export const IMPORT_MAX_BYTES = 8 * 1024 * 1024;
@@ -142,6 +142,7 @@ export function sanitizeStats(raw) {
   if (stats.materials) stats.materials = filterEntries(stats.materials, toCount);
   if (stats.achievements) stats.achievements = filterEntries(stats.achievements, keepPlainObject);
   if (stats.daily) stats.daily = filterEntries(stats.daily, sanitizeDailyEntry);
+  if (stats.dailyArchive) stats.dailyArchive = filterEntries(stats.dailyArchive, sanitizeDailyEntry);
   if (stats.settings) stats.settings = filterEntries(stats.settings, (value) => value);
   if (stats.villagers) stats.villagers = stats.villagers.filter(isPlainObject);
   if (stats.unlockedKanji) stats.unlockedKanji = stats.unlockedKanji.filter(id => typeof id === 'string');

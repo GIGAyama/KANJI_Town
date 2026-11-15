@@ -5,6 +5,22 @@ import { MotionButton } from '../ui';
 import InstallAppPanel from '../ui/InstallAppPanel';
 import { StorageAPI } from '../../systems/storage';
 import { IMPORT_MAX_BYTES, validateImportedStats } from '../../systems/stats-schema';
+import { loadStudyRecords } from '../../systems/studyStats';
+import { saveStudyRecord } from '../../systems/studyLog';
+import { STUDY_APP_ID } from '../../systems/studySession';
+
+/** このアプリの学習ログのうち、まだ端末に無いものだけを足す（同じ id は足さない）。足した件数を返す */
+function mergeStudyRecords(records) {
+  if (!Array.isArray(records) || records.length === 0) return 0;
+  let existing;
+  try { existing = new Set((JSON.parse(window.localStorage.getItem('study.records.v1') || '[]') || []).map(r => r && r.id)); } catch { existing = new Set(); }
+  let added = 0;
+  records
+    .filter(r => r && typeof r === 'object' && r.schema === 'study.v1' && r.appId === STUDY_APP_ID && typeof r.id === 'string' && !existing.has(r.id))
+    .sort((a, b) => String(a.endedAt || '').localeCompare(String(b.endedAt || '')))
+    .forEach(r => { if (saveStudyRecord(r)) { existing.add(r.id); added++; } });
+  return added;
+}
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
@@ -123,7 +139,10 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   // データエクスポート
   const handleExport = () => {
     audioCtrl.playSE('click');
-    const data = JSON.stringify(stats, null, 2);
+    // 端末の引っ越しに使えるよう、このアプリの学習ログ（さいきんのとりくみ）もいっしょに書き出す
+    const exportedAt = Date.now();
+    const exported = { ...stats, lastExportAt: exportedAt, studyRecords: loadStudyRecords(STUDY_APP_ID).reverse() };
+    const data = JSON.stringify(exported, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -131,6 +150,10 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
     a.download = `kanji-town-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    // 最後に書き出した日を残す（書き出しを勧めるときの目安）
+    const next = { ...stats, lastExportAt: exportedAt };
+    setStats(next);
+    StorageAPI.saveStats(next);
     showToast('データをエクスポートしました');
   };
 
@@ -148,24 +171,29 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       try {
         // このアプリが書き出したバックアップだけを受けつける。以前は {"totalExp":0} のような
         // ファイルでも通り、上書きした直後に記録がすべて消えたり、起動できなくなったりしていた。
-        const checked = validateImportedStats(JSON.parse(ev.target.result));
+        const { studyRecords, ...importedStats } = JSON.parse(ev.target.result) || {};
+        const checked = validateImportedStats(importedStats);
         if (!checked.ok) {
           showToast('マイ漢字タウンのバックアップではないようです');
           return;
         }
         setConfirm({
           title: 'データを復元',
-          message: 'バックアップデータで今のデータを上書きします。この操作は取り消せません。',
+          message: 'バックアップデータで今のデータを上書きします。まちがえたときは「読みこむ前にもどす」でもどせます。',
           danger: true,
           onConfirm: () => {
+            // 読みこむ前の記録を1つ控えておく（まちがえて読みこんだときに取り消せるように）
+            StorageAPI.keepBeforeImportCopy();
             const saved = StorageAPI.saveStatsImmediate(checked.stats);
             setConfirm(null);
             if (!saved) {
               showToast('保存できませんでした。今のデータはそのままです');
               return;
             }
+            const addedRecords = mergeStudyRecords(studyRecords);
             setStats(StorageAPI.getStats());
-            showToast('データを復元しました');
+            setCanUndoImport(StorageAPI.hasBeforeImportCopy());
+            showToast(addedRecords > 0 ? `データを復元しました（学習の記録 ${addedRecords}件）` : 'データを復元しました');
           },
         });
       } catch {
@@ -177,17 +205,36 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   };
 
   // データリセット
+  // 読みこむ前の記録にもどす（まちがえて読みこんだとき）
+  const [canUndoImport, setCanUndoImport] = useState(() => StorageAPI.hasBeforeImportCopy());
+  const handleUndoImport = () => {
+    setConfirm({
+      title: '読みこむ前にもどす',
+      message: 'バックアップを読みこむ前の記録にもどします。',
+      danger: true,
+      onConfirm: () => {
+        const restored = StorageAPI.restoreBeforeImportCopy();
+        setConfirm(null);
+        if (!restored) {
+          showToast('もどせませんでした');
+          return;
+        }
+        setStats(StorageAPI.getStats());
+        setCanUndoImport(false);
+        showToast('読みこむ前の記録にもどしました');
+      },
+    });
+  };
+
   const handleReset = () => {
     setConfirm({
       title: 'データを全て消す',
-      message: 'すべてのセーブデータ（漢字の進捗・まちのデータ・実績など）が消えます。この操作は取り消せません！',
+      message: '町・漢字の進み具合・実績・マイドリルが消えます。学習の記録（さいきんのとりくみ）はほかのアプリと共通のため端末には残りますが、この画面には出さなくなります。この操作は取り消せません！',
       danger: true,
       onConfirm: () => {
-        window.localStorage.removeItem('kanji_town_v7');
-        window.localStorage.removeItem('kanji_mega_builder_final_v6');
-        window.localStorage.removeItem('kanji_mega_builder_final_v5');
-        window.localStorage.removeItem('kanji_town_cloud_owner_v1');
+        StorageAPI.resetAll();
         setStats(StorageAPI.getStats());
+        setCanUndoImport(false);
         setConfirm(null);
         showToast('データをリセットしました');
       },
@@ -373,6 +420,16 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
             </MotionButton>
           </div>
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+          <p className="text-[11px] font-bold text-[var(--text)] opacity-80 leading-relaxed">
+            {stats.lastExportAt
+              ? <>{F("最後","さいご")}に{F("書","か")}き{F("出","だ")}した{F("日","ひ")}: {new Date(stats.lastExportAt).toLocaleDateString('ja-JP')}</>
+              : <>まだ{F("書","か")}き{F("出","だ")}していません。{F("長","なが")}い{F("休","やす")}みの{F("前","まえ")}や、{F("端末","たんまつ")}を{F("変","か")}える{F("前","まえ")}にエクスポートしておくと{F("安心","あんしん")}です。</>}
+          </p>
+          {canUndoImport && (
+            <MotionButton variant="secondary" className="py-3 text-xs border-[3px] border-[var(--text)] shadow-sm" onClick={handleUndoImport}>
+              <RotateCcw size={16} /> {F("読","よ")}みこむ{F("前","まえ")}にもどす
+            </MotionButton>
+          )}
 
           <button onClick={handleReset} className="mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-[3px] border-red-300 text-red-500 font-bold text-xs hover:bg-red-50 transition-colors">
             <Trash2 size={16} /> すべてのデータを{F("消","け")}す

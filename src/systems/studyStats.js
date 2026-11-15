@@ -20,10 +20,35 @@ export function loadStudyRecords(appId) {
     if (!raw) return [];
     const log = JSON.parse(raw);
     if (!Array.isArray(log)) return [];
-    return log.filter((r) => r && r.schema === 'study.v1' && r.appId === appId).reverse();
+    const since = readViewSince();
+    return log
+      .filter((r) => r && r.schema === 'study.v1' && r.appId === appId)
+      .filter((r) => !since || recordTime(r) >= since)
+      .reverse();
   } catch (e) {
     return [];
   }
+}
+
+/**
+ * 「すべてのデータを消す」を押した時刻。これより前の学習ログは画面に出さない。
+ * 学習ログはほかのアプリと共通のキーなので消せない（仕様 §1.1/§1.2）。消したあとも
+ * 前の子の「さいきんのとりくみ」（ドリル名を含む）が見えていたため、表示で区切る。
+ */
+export const STUDY_VIEW_SINCE_KEY = 'kanji_town_study_view_since';
+
+function readViewSince() {
+  try {
+    const value = Number(localStorage.getItem(STUDY_VIEW_SINCE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function recordTime(record) {
+  const time = Date.parse(record.endedAt || record.startedAt || '');
+  return Number.isFinite(time) ? time : 0;
 }
 
 /**

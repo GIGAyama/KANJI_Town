@@ -34,6 +34,7 @@ import { getMotionPreference, shouldReduceMotion } from './utils/motion-preferen
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
 import { createTabCoordinator } from './systems/tab-coordinator';
+import { requestPersistentStorageOnce } from './systems/persistence';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
@@ -353,17 +354,27 @@ export default function App() {
   }, []);
 
   // 日付変更の監視（開きっぱなし対策）
+  // 保存済みのデータ（getStats）ではなく、メモリ上の記録で判定する。以前は getStats が
+  // 保存済みのコピーにだけ放置のペナルティを当てて即時保存し、保存待ちの変更を消していた。
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   useEffect(() => {
+    const checkDate = () => {
+      const current = statsRef.current;
+      const maintained = StorageAPI.applyDailyMaintenance(current);
+      if (maintained !== current) {
+        statsRef.current = maintained;
+        setStats(maintained);
+        StorageAPI.saveStats(maintained);
+      }
+      refreshDailyData(maintained);
+    };
     // 1分ごとに日付変更をチェック
-    const timer = setInterval(() => {
-      refreshDailyData(StorageAPI.getStats());
-    }, DEBOUNCE.DATE_CHECK_INTERVAL);
+    const timer = setInterval(checkDate, DEBOUNCE.DATE_CHECK_INTERVAL);
 
     // タブに戻った時にチェック
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshDailyData(StorageAPI.getStats());
-      }
+      if (document.visibilityState === 'visible') checkDate();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -839,6 +850,8 @@ export default function App() {
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('result');
+    // 学習を1回終えたら、記録をブラウザに消されにくくするよう頼む（iOS の7日消去・容量不足時の削除への備え）
+    requestPersistentStorageOnce();
   };
 
   // テスト結果から、間違えた漢字だけの学習セッションへ移る。
