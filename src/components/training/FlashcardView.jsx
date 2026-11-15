@@ -11,6 +11,9 @@ import { StorageAPI } from '../../systems/storage';
 import { recordSkillEvidence } from '../../systems/mastery';
 import { recordStudyAttempt } from '../../systems/studySession';
 
+/** 回答してからこの時間（ms）の間のタップ・キーは、次のカードを開く操作にしない */
+const ANSWER_GUARD_MS = 400;
+
 const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => {
   const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -19,6 +22,10 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
   const [displayEarned, setDisplayEarned] = useState({ exp: 0, coins: 0 });
   const isDoneRef = useRef(false);
   const touchStartX = useRef(0);
+  // 回答した直後のタップは、次のカードの「読みを表示」として扱わない。
+  // 回答ボタンは押すと消えるので、2回目のタップがカード本体に当たり、
+  // 次のカードの読みを思い出す前に見せてしまっていた（連打しがちな子で起きる）。
+  const lastAnswerAtRef = useRef(0);
 
   // カウントアップタイマー
   useEffect(() => {
@@ -38,6 +45,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
   const kanji = queue[idx];
 
   const handleReveal = useCallback(() => {
+    if (Date.now() - lastAnswerAtRef.current < ANSWER_GUARD_MS) return;
     if (!revealed && kanji) {
       setRevealed(true);
       audioCtrl.playSE('click');
@@ -46,6 +54,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
 
   const handleAnswer = useCallback((isKnown) => {
     if (!kanji || !revealed) return;
+    lastAnswerAtRef.current = Date.now();
     const evaluation = isKnown ? 'good' : 'again';
     recordStudyAttempt(kanji.id, { ok: isKnown, skill: 'reading' });
     earnedRef.current = {
