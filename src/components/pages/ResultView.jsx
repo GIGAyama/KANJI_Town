@@ -147,7 +147,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
             </div>
             <div className="min-w-0">
               <div className="font-black text-[var(--text)]">{dailyProgress.isComplete ? <>きょうの{F("目標","もくひょう")}クリア！</> : <>あと {dailyProgress.remaining}{F("字","じ")}で{F("目標","もくひょう")}クリア</>}</div>
-              <div className="text-xs font-bold text-[var(--text-muted)]">{F("学習","がくしゅう")}した{F("漢字","かんじ")}は{F("毎日","まいにち")}の{F("記録","きろく")}にのこります</div>
+              <div className="mt-0.5 text-xs font-bold leading-loose text-[var(--text-muted)]">{F("学習","がくしゅう")}した{F("漢字","かんじ")}は{F("毎日","まいにち")}の{F("記録","きろく")}にのこります</div>
             </div>
           </div>
           <div className="font-black text-[var(--text)] shrink-0"><span className="text-xl text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs text-[var(--text-muted)]"> / {dailyProgress.goal}字</span></div>
@@ -268,7 +268,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                 {item && <item.svg />}
               </div>
               <div className="font-black text-[var(--text)]">{item?.name}</div>
-              <MotionButton variant="secondary" onClick={() => setGachaPhase('idle')} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-sm mt-1">もう{F("一度","いちど")}ひく</MotionButton>
+              <MotionButton variant="secondary" onClick={() => setGachaPhase('idle')} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-sm mt-1"><span>もう{F("一度","いちど")}ひく</span></MotionButton>
             </motion.div>
           );
         })()}
@@ -278,7 +278,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="flex flex-col gap-3">
         {!dailyProgress.isComplete && onContinueLearning && (
           <MotionButton variant="primary" onClick={onContinueLearning} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">
-            <Target size={24} /> あと{dailyProgress.remaining}{F("字","じ")} {F("学習","がくしゅう")}をつづける
+            <Target size={24} /> <span>あと{dailyProgress.remaining}{F("字","じ")} {F("学習","がくしゅう")}をつづける</span>
           </MotionButton>
         )}
         <MotionButton variant={dailyProgress.isComplete ? "primary" : "secondary"} onClick={() => setView('home')} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_5px_0_var(--text)]">まちに もどる 🏠</MotionButton>
