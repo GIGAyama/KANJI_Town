@@ -183,10 +183,10 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
           </div>
           <div className="flex-1">
             <div className="font-black text-emerald-700 text-base">🎉 {F("新","あたら")}しい{F("住民","じゅうみん")}が{F("誕生","たんじょう")}！</div>
-            <div className="text-sm text-emerald-600 mt-0.5">
+            <div className="text-sm text-emerald-800 mt-0.5">
               「<span className="font-black text-xl" style={{ fontFamily: "'Klee One',serif" }}>{newVillager.kanjiChar}</span>」を{F("習得","しゅうとく")}した{F("住民","じゅうみん")}が{F("街","まち")}にやってきた！
             </div>
-            <div className="text-xs text-emerald-500 mt-1 flex items-center gap-2">
+            <div className="text-xs text-emerald-700 mt-1 flex items-center gap-2">
               <span>{F("現在","げんざい")}の{F("人口","じんこう")}：{stats.population || 0}{F("人","にん")}</span>
               <span className="bg-emerald-200 px-2 py-0.5 rounded-full font-black">{getOccupation(newVillager.occupation).emoji} {getOccupation(newVillager.occupation).name}</span>
             </div>
@@ -205,8 +205,8 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
           <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
             className={`${stat.color} rounded-2xl border-[3px] p-3 text-center shadow-sm`}>
             <div className="text-2xl mb-1">{stat.icon}</div>
-            <div className="text-2xl font-black text-[var(--text)]">{stat.prefix}<AnimatedCounter target={stat.value} duration={1000} /></div>
-            <div className="text-xs font-bold text-[var(--text-muted)]">{stat.label}</div>
+            <div className="text-2xl font-black text-slate-800">{stat.prefix}<AnimatedCounter target={stat.value} duration={1000} /></div>
+            <div className="text-xs font-bold text-slate-600">{stat.label}</div>
           </motion.div>
         ))}
       </div>

@@ -161,11 +161,11 @@ const ReadMode = ({ kanji, paths = [], isLoading = false, onNext, commonSidebar,
       <div className="flex flex-col gap-3">
         <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
           <span className="text-sm font-bold text-[var(--primary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--primary)] shrink-0 flex items-center gap-1">{F("音","おん")}{hasJaVoice && kanji.on.length > 0 && (<button onClick={() => speak(kanji.on.join('、'))} disabled={micActive} aria-label="音読みを読み上げる" className={micActive ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-60'}><Volume2 size={14} /></button>)}</span>
-          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300">{o}</span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20">{o}</span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
         </div>
         <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
           <span className="text-sm font-bold text-[var(--secondary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--secondary)] shrink-0 flex items-center gap-1">{F("訓","くん")}{hasJaVoice && kanji.kun.length > 0 && (<button onClick={() => speak(kanji.kun.map(toKunSpeech).join('、'))} disabled={micActive} aria-label="訓読みを読み上げる" className={micActive ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-60'}><Volume2 size={14} /></button>)}</span>
-          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+          <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
         </div>
       </div>
     </>

@@ -42,9 +42,9 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
         {filtered.map(k => (
           <motion.button key={k.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { audioCtrl.playSE('click'); onSelectKanji(k); }} className={`${getStatusColor(k.id)} rounded-2xl border-[3px] p-3 flex flex-col items-center gap-1 shadow-sm hover:shadow-md transition-shadow`}>
-            <div className="text-4xl font-black text-[var(--text)]" style={{ fontFamily: "'Klee One', serif" }}>{k.char}</div>
-            <div className="text-xs font-bold text-[var(--text-muted)]">{k.on[0] || k.kun[0] || ''}</div>
-            <div className="text-[10px] font-black bg-white/70 px-2 py-0.5 rounded-full border border-current opacity-70">{getStatusLabel(k.id)}</div>
+            <div className="text-4xl font-black text-slate-800" style={{ fontFamily: "'Klee One', serif" }}>{k.char}</div>
+            <div className="text-xs font-bold text-slate-600">{k.on[0] || k.kun[0] || ''}</div>
+            <div className="text-xs font-black text-slate-700 bg-white/80 px-2 py-0.5 rounded-full border border-current">{getStatusLabel(k.id)}</div>
           </motion.button>
         ))}
       </div>

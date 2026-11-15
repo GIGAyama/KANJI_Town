@@ -36,7 +36,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     const isBlindMode = count >= 5;
     paths.forEach((d, i) => {
       const p = new Path2D(d);
-      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.strokeStyle = "rgba(0,0,0,0.05)"; gCtx.stroke(p); }
+      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.save(); gCtx.globalAlpha = 0.12; gCtx.strokeStyle = resolveThemeColor('--text'); gCtx.stroke(p); gCtx.restore(); }
     }); gCtx.restore();
   }, [paths, currentStroke, count, strokeData, canvasSize]);
 
@@ -128,7 +128,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <div className="flex justify-between items-center bg-[var(--bg)] p-2 rounded-xl border-[2px] border-[var(--text)]">
           <span className="text-sm font-bold text-[var(--text)] pl-2">{count < 2 ? <>なぞり{F("書","が")}き</> : count < 5 ? <>{F("手","て")}{F("書","が")}き ({F("手本","てほん")}あり)</> : <>{F("空書","からが")}き ({F("手本","てほん")}なし)</>}</span><div className="text-sm font-black bg-[var(--text)] text-[var(--panel)] px-3 py-1 rounded-lg shadow-sm">{count + 1} {F("回目","かいめ")}</div>
         </div>
-        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-white text-[var(--text)]'}`}>{statusMsg}</div>
+        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-[var(--panel)] text-[var(--text)]'}`}>{statusMsg}</div>
       </div>
       {history.length > 0 && (
         <div className="bg-[var(--panel)] p-2 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-1 shrink-0">

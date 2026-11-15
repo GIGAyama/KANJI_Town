@@ -82,13 +82,13 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
-            { label: <>{F("習得","しゅうとく")}</>, count: mastered, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-            { label: <>{F("学習中","がくしゅうちゅう")}</>, count: learning, color: 'text-sky-600', bg: 'bg-sky-50 border-sky-200' },
-            { label: <>{F("未学習","みがくしゅう")}</>, count: notYet, color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' },
+            { label: <>{F("習得","しゅうとく")}</>, count: mastered, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: <>{F("学習中","がくしゅうちゅう")}</>, count: learning, color: 'text-sky-700', bg: 'bg-sky-50 border-sky-200' },
+            { label: <>{F("未学習","みがくしゅう")}</>, count: notYet, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' },
           ].map((s, i) => (
             <div key={i} className={`${s.bg} border-2 rounded-xl p-2`}>
               <div className={`text-2xl font-black ${s.color}`}>{s.count}</div>
-              <div className="text-xs font-bold text-[var(--text-muted)]">{s.label}</div>
+              <div className="text-xs font-bold text-slate-600">{s.label}</div>
             </div>
           ))}
         </div>
@@ -110,8 +110,8 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
             return (
               <div key={skill} role="listitem" aria-label={`${definition.label} ${score}点`} className={`${colors.panel} rounded-xl border-2 p-2.5`}>
                 <div className="mb-2 flex items-center justify-between gap-1">
-                  <span className="text-xs font-black text-[var(--text)]"><span aria-hidden="true">{definition.icon}</span> {definition.label}</span>
-                  <span className={`text-lg font-black ${colors.text}`}>{score}<span className="text-[9px] opacity-60"> / 100</span></span>
+                  <span className="text-xs font-black text-slate-800"><span aria-hidden="true">{definition.icon}</span> {definition.label}</span>
+                  <span className={`text-lg font-black ${colors.text}`}>{score}<span className="text-[10px] text-slate-600"> / 100</span></span>
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full border border-[var(--text)] bg-white/80" aria-hidden="true">
                   <div className={`h-full rounded-full transition-all ${colors.bar}`} style={{ width: `${score}%` }} />
