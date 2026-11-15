@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildFlashcardQueue,
   buildLearningPlan,
   buildWeakKanjiPlan,
   getDailyGoal,
@@ -18,6 +19,34 @@ const kanjiData = [
   { id: 'c', grade: 1 },
   { id: 'd', grade: 2 },
 ];
+
+test('フラッシュカードは習った字だけから10字を選び、データの先頭にかたよらない', () => {
+  const data = Array.from({ length: 300 }, (_, i) => ({ id: `k${i}`, grade: 1 + Math.floor(i / 50) }));
+  const kanjiStats = Object.fromEntries(data.map((k) => [k.id, { status: 'review' }]));
+  kanjiStats.k299 = { status: 'new' }; // まだ習っていない字は出さない
+  // 決まった乱数で、たくさん選んで数える
+  let seed = 12345;
+  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let head = 0;
+  let tail = 0;
+  const trials = 4000;
+  for (let t = 0; t < trials; t++) {
+    const queue = buildFlashcardQueue({ kanjiData: data, kanjiStats, random });
+    assert.equal(queue.length, 10);
+    assert.equal(new Set(queue).size, 10);
+    assert.ok(!queue.some((k) => k.id === 'k299'));
+    for (const k of queue) {
+      const index = Number(k.id.slice(1));
+      if (index < 30) head++;
+      if (index >= 269 && index < 299) tail++;
+    }
+  }
+  // 先頭30字と末尾30字は、どちらも約10%（以前の並べかえでは 15.8% と 4.7%）
+  const share = (n) => n / (trials * 10);
+  assert.ok(Math.abs(share(head) - 30 / 299) < 0.015, `先頭 ${share(head)}`);
+  assert.ok(Math.abs(share(tail) - 30 / 299) < 0.015, `末尾 ${share(tail)}`);
+  assert.deepEqual(buildFlashcardQueue({ kanjiData: data, kanjiStats: {} }), []);
+});
 
 test('復習と新出漢字を同じセッションへ復習優先で組み込む', () => {
   const plan = buildLearningPlan({

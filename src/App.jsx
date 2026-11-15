@@ -14,7 +14,7 @@ import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
 import { calculateNextReview, isEarlyReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
-import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
+import { buildFlashcardQueue, buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { readSharedDrill } from './systems/drill-share';
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
@@ -564,9 +564,9 @@ export default function App() {
 
   const startFlashcard = () => {
     audioCtrl.init();
-    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
-    if (learned.length === 0) return;
-    const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10);
+    // 習った字から一様に選ぶ（以前の sort(() => Math.random() - 0.5) は1年生の字にかたよっていた）
+    const queue = buildFlashcardQueue({ kanjiData: KANJI_DATA, kanjiStats: stats.kanjiStats || {} });
+    if (queue.length === 0) return;
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('flashcard', { queue, oldExp: stats.totalExp, expMultiplier });
   };

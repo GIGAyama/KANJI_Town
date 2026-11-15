@@ -157,6 +157,22 @@ export function getReviewForecast(kanjiStats = {}, now = new Date(), dayCount = 
   };
 }
 
+export const FLASHCARD_COUNT = 10;
+
+/**
+ * フラッシュカードの出題を、習った字から一様に選ぶ（Fisher–Yates）。
+ * 以前は sort(() => Math.random() - 0.5) で並べかえていて、一様にならなかった。
+ * 習った字はデータの並び（1年→6年）なので、1年生の字ばかりが出て、最近覚えた字が出にくかった
+ * （300字から10字を選ぶと、先頭の30字が選ばれる割合 15.8%、末尾の30字 4.7%。期待値はどちらも10%）。
+ */
+export function buildFlashcardQueue({ kanjiData, kanjiStats = {}, count = FLASHCARD_COUNT, random = Math.random }) {
+  const learned = kanjiData.filter((kanji) => {
+    const stat = kanjiStats[kanji.id];
+    return stat && stat.status !== 'new';
+  });
+  return shuffle(learned, random).slice(0, asLimit(count));
+}
+
 /**
  * 過去につまずいた漢字から、短い集中練習用のキューを作る。
  * 復習期限、ラプス、ミス、連続正解数、容易度の順で優先する。
