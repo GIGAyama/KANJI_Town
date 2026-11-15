@@ -226,6 +226,216 @@ html.presentation [role="button"] {
   }
 }
 
+/* ── 印刷用の漢字テスト（PrintTestView・先生向け） ──
+   マイドリルから作る紙のテスト。教室の漢字テストと同じ縦書きで、A4 縦に 10 問。
+   紙は白なので、色はテーマの変数を使わず固定にする（ダークのテーマでも紙は白い）。
+   大きさは pt と mm だけで書く。rem で書くと、設定の「文字の大きさ」や提示モードで
+   紙面まで伸びて、1 ページに収まらなくなる。
+   書体は同梱のものだけ（src/fonts/）。端末に UD デジタル教科書体があればそれを先に使う
+   （Windows には入っている。名前を並べるだけで、外へは取りにいかない）。
+   Klee One は教育漢字だけを持っているので、かなと記号は Zen Maru Gothic になる。 */
+.pt-sheet {
+  box-sizing: border-box;
+  width: 190mm;
+  /* 紙の高さ 297mm − 上下の余白（@page の 10mm × 2）。ちょうどにすると端数で白紙が 1 枚はさまる */
+  height: 276mm;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  color: #111;
+  font-family: 'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'UD デジタル 教科書体 NK-R', 'UD Digi Kyokasho NK-R', 'Klee One', 'Zen Maru Gothic', serif;
+  font-weight: 500;
+  font-size: 11pt;
+  line-height: 1.5;
+  break-inside: avoid;
+}
+.pt-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+  padding-bottom: 2.5mm;
+  margin-bottom: 4mm;
+  border-bottom: 0.6mm solid #111;
+}
+.pt-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 4mm;
+}
+.pt-title {
+  font-size: 17pt;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.pt-kind {
+  font-size: 13pt;
+}
+.pt-answer-mark {
+  display: inline-block;
+  margin-left: 4mm;
+  padding: 0 2.5mm;
+  border: 0.5mm solid #c00;
+  border-radius: 2mm;
+  color: #c00;
+  font-size: 13pt;
+  line-height: 1.4;
+}
+.pt-page-no {
+  font-size: 10pt;
+  color: #444;
+  white-space: nowrap;
+}
+.pt-drill {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12pt;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.pt-fields {
+  display: flex;
+  gap: 6mm;
+  align-items: flex-end;
+  font-size: 12pt;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+.pt-blank {
+  display: inline-block;
+  height: 1.3em;
+  border-bottom: 0.4mm solid #111;
+  vertical-align: bottom;
+}
+.pt-blank-s {
+  width: 10mm;
+}
+.pt-blank-l {
+  width: 55mm;
+  margin-left: 2mm;
+}
+.pt-instruction {
+  margin: 0;
+  font-size: 12pt;
+  line-height: 1.9;
+}
+/* 問題の列。右から左へ 10 本並ぶ */
+.pt-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  writing-mode: vertical-rl;
+  border: 0.5mm solid #111;
+  overflow: hidden;
+}
+.pt-q {
+  box-sizing: border-box;
+  width: 10%;
+  /* □の右にルビが付くぶん、列の中心を少し左へ寄せる */
+  padding: 5mm 1mm 5mm 0;
+  font-size: 22pt;
+  /* 縦書きの line-height は列の幅。□（13mm）とその右のルビが列の中に収まる幅にする */
+  line-height: 17mm;
+  overflow: hidden;
+}
+.pt-q rt {
+  font-size: 9pt;
+}
+.pt-q:not(:last-child) {
+  border-left: 0.3mm dashed #888;
+}
+/* 読みの列は、傍線の右に答えを書く場所（約 10mm）を空ける */
+.pt-sheet-read .pt-q {
+  padding-right: 8mm;
+  line-height: 10.5mm;
+}
+.pt-no {
+  margin-bottom: 4mm;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #333;
+  text-combine-upright: all;
+}
+.pt-box {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 13mm;
+  height: 13mm;
+  margin: 1mm 0;
+  border: 0.45mm solid #111;
+  background: #fff;
+  font-size: 30pt;
+  line-height: 12.1mm;
+  text-align: center;
+  color: #c00;
+}
+.pt-read {
+  position: relative;
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.4mm;
+  text-underline-position: right;
+  text-underline-offset: 1mm;
+}
+.pt-read-ans {
+  position: absolute;
+  left: calc(100% + 2mm);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11pt;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: #c00;
+}
+/* 画面の見本: A4 の紙の形のまま、幅に合わせて縮める（倍率は PrintTestView が決める） */
+.pt-paper-frame {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #9ca3af, 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+.pt-paper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  padding: 10mm;
+  background: #fff;
+  transform-origin: top left;
+}
+/* 印刷するもの（#root の外に置く）は、印刷のときだけ出す */
+.pt-print-root {
+  display: none;
+}
+@media print {
+  /* アプリの画面（#root）ごと隠し、紙面だけを刷る。
+     #root の中は framer-motion の transform と overflow: hidden の入れ子で、
+     そのまま刷ると縦書きの列と改ページが崩れる */
+  html.print-test-mode,
+  html.print-test-mode body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  html.print-test-mode body > :not(.pt-print-root) {
+    display: none !important;
+  }
+  html.print-test-mode .pt-print-root {
+    display: block;
+  }
+  .pt-print-root .pt-sheet + .pt-sheet {
+    break-before: page;
+  }
+}
+
 /* 印刷用スタイル（複数ページ対応） */
 @media print {
   @page {
