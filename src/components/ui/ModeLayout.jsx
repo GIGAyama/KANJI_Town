@@ -14,8 +14,9 @@
  * タブレット / PC（>= md）:
  *   ┌────────────┬─────────┐
  *   │            │ tabs    │
- *   │  main      │ info    │
- *   │  Content   │ action  │
+ *   │  main      │ info    │  ← ここだけスクロール
+ *   │  Content   ├─────────┤
+ *   │            │ action  │  ← いつも見える
  *   └────────────┴─────────┘
  *
  * 注意: mainContent に canvas + ref を含む場合、同じ要素を2か所に
@@ -48,10 +49,15 @@ const ModeLayout = ({ mainContent, tabsContent, infoContent, actionContent, isSt
       /* アクションボタン — 常に表示 */
       actionContent ? <div className="shrink-0 pt-1 pb-1">{actionContent}</div> : null
     ) : (
-      <div className="w-[clamp(280px,28vw,360px)] flex flex-col shrink-0 h-full overflow-y-auto no-scrollbar">
-        {tabsContent}
-        {infoContent}
-        {actionContent && <div className="mt-auto pt-4 pb-2">{actionContent}</div>}
+      /* 右の列は「タブと情報（スクロール）」と「アクション（いつも見える）」の2段。
+         以前は列ごとスクロールしていたため、高さ 768px でなぞりを2回終えると
+         「テストへ進む！」が画面の下で切れていた（スクロールバーも隠していた）。 */
+      <div className="w-[clamp(280px,28vw,360px)] flex flex-col shrink-0 h-full min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+          {tabsContent}
+          {infoContent}
+        </div>
+        {actionContent && <div className="shrink-0 pt-3 pb-2">{actionContent}</div>}
       </div>
     )}
   </div>
