@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
@@ -64,27 +65,27 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillT
       {/* 削除確認モーダル */}
       <AnimatePresence>
         {confirmDelete !== null && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <ModalDialog labelId="drill-delete-title" onEscape={() => setConfirmDelete(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[8px_8px_0_var(--text)] max-w-sm w-full">
-              <div className="text-3xl text-center mb-3">🗑️</div>
-              <p className="font-black text-[var(--text)] text-center text-lg mb-1">「{drills[confirmDelete]?.name}」</p>
+              <div className="text-3xl text-center mb-3" aria-hidden="true">🗑️</div>
+              <p id="drill-delete-title" className="font-black text-[var(--text)] text-center text-lg mb-1">「{drills[confirmDelete]?.name}」</p>
               <p className="text-sm text-[var(--text-muted)] text-center mb-4">を{F("削除","さくじょ")}してもよいですか？</p>
               <div className="flex gap-3">
-                <MotionButton variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1 py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">キャンセル</MotionButton>
+                <MotionButton variant="secondary" data-autofocus onClick={() => setConfirmDelete(null)} className="flex-1 py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">キャンセル</MotionButton>
                 <MotionButton variant="primary" onClick={() => handleDelete(confirmDelete)} className="flex-1 py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239]">{F("削除","さくじょ")}する</MotionButton>
               </div>
             </motion.div>
-          </motion.div>
+          </ModalDialog>
         )}
       </AnimatePresence>
 
       {/* テスト問題数選択モーダル */}
       <AnimatePresence>
         {testDrill !== null && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <ModalDialog labelId="drill-test-title" onEscape={() => setTestDrill(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-6 shadow-[8px_8px_0_var(--text)] max-w-sm w-full">
-              <div className="text-3xl text-center mb-3">📝</div>
-              <p className="font-black text-[var(--text)] text-center text-lg mb-1">「{testDrill.name}」</p>
+              <div className="text-3xl text-center mb-3" aria-hidden="true">📝</div>
+              <p id="drill-test-title" className="font-black text-[var(--text)] text-center text-lg mb-1">「{testDrill.name}」</p>
               <p className="text-sm text-[var(--text-muted)] text-center mb-4">テスト{F("問題数","もんだいすう")}をえらぼう</p>
               <div className="flex flex-col gap-2 mb-4">
                 {TEST.QUESTION_OPTIONS.filter(n => (testDrill.kanjis?.length || 0) >= n).map(n => (
@@ -98,7 +99,7 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession, startDrillT
               </div>
               <MotionButton variant="secondary" onClick={() => setTestDrill(null)} className="w-full py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">キャンセル</MotionButton>
             </motion.div>
-          </motion.div>
+          </ModalDialog>
         )}
       </AnimatePresence>
     </div>

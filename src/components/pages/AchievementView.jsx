@@ -40,7 +40,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('home')} className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
+        <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
         <div className="flex-1">
           <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> <RubyText text="実績（じっせき）" /></h2>
           <div className="text-xs text-[var(--text-muted)]">{claimedCount}/{totalCount} <RubyText text="達成（たっせい）" /> ({completedCount}<RubyText text="個（こ）受取（うけとり）可能（かのう）" />)</div>

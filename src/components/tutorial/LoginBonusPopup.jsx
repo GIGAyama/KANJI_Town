@@ -3,12 +3,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Gift } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 import { LOGIN_BONUS_CYCLE } from '../../data/login-bonus';
 
 const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
   return (
-    <motion.div
+    <ModalDialog
+      labelId="login-bonus-title"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -29,7 +31,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
           >
             🎁
           </motion.div>
-          <h2 className="text-lg font-black text-[var(--text)] mb-1">ログインボーナス！</h2>
+          <h2 id="login-bonus-title" className="text-lg font-black text-[var(--text)] mb-1">ログインボーナス！</h2>
           <p className="text-xs text-[var(--text-muted)] mb-4">{streak}{F("日","にち")}{F("連続","れんぞく")}ログイン</p>
 
           {/* 7日間サイクル表示 */}
@@ -72,6 +74,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
 
           <MotionButton
             variant="accent"
+            data-autofocus
             onClick={onClaim}
             className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309]"
           >
@@ -79,7 +82,7 @@ const LoginBonusPopup = ({ streak, bonusDay, reward, onClaim }) => {
           </MotionButton>
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

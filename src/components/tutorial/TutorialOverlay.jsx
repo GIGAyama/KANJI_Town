@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, PenTool, Map, Hammer, Users, Star } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 
 const TUTORIAL_STEPS = [
@@ -52,7 +53,9 @@ const TutorialOverlay = ({ onComplete }) => {
   const Icon = current.icon;
 
   return (
-    <motion.div
+    <ModalDialog
+      labelId="tutorial-title"
+      focusKey={step}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -77,8 +80,8 @@ const TutorialOverlay = ({ onComplete }) => {
           </motion.div>
 
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Icon size={20} className="text-[var(--primary)]" />
-            <h2 className="text-xl font-black text-[var(--text)]">{current.title}</h2>
+            <Icon size={20} className="text-[var(--primary)]" aria-hidden="true" />
+            <h2 id="tutorial-title" className="text-xl font-black text-[var(--text)]">{current.title}</h2>
           </div>
 
           <p className="text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-line mb-6">
@@ -109,6 +112,7 @@ const TutorialOverlay = ({ onComplete }) => {
             )}
             <MotionButton
               variant={isLast ? 'primary' : 'accent'}
+              data-autofocus
               onClick={() => {
                 if (isLast) onComplete();
                 else setStep(s => s + 1);
@@ -129,7 +133,7 @@ const TutorialOverlay = ({ onComplete }) => {
           )}
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

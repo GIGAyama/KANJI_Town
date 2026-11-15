@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Users, Coins, TrendingUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 import { MATERIALS } from '../../data/materials';
 
@@ -10,7 +11,9 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
   if (!result) return null;
 
   return (
-    <motion.div
+    <ModalDialog
+      labelId="collection-title"
+      onEscape={onConfirm}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -31,7 +34,7 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
           >
             🏠
           </motion.div>
-          <h2 className="text-lg font-black text-[var(--text)] mb-1">{F("住民","じゅうみん")}がお{F("仕事","しごと")}を{F("終","お")}えました！</h2>
+          <h2 id="collection-title" className="text-lg font-black text-[var(--text)] mb-1">{F("住民","じゅうみん")}がお{F("仕事","しごと")}を{F("終","お")}えました！</h2>
           <p className="text-xs text-[var(--text-muted)] mb-4">{F("今日","きょう")}の{F("収穫","しゅうかく")}を{F("報告","ほうこく")}します</p>
 
           {/* 満足度ステータス */}
@@ -85,7 +88,7 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
           </MotionButton>
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

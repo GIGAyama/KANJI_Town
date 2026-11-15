@@ -26,7 +26,7 @@ const DrillEditorView = ({ setView, stats, setStats }) => {
     <div className="flex flex-col h-full gap-3">
       <div className="flex-shrink-0 flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => setView('myDrills')} className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
+          <button onClick={() => setView('myDrills')} aria-label="マイドリルに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
           <h2 className="text-2xl font-black text-[var(--text)]">ドリルを{F("作","つく")}る</h2>
         </div>
         <input value={drillName} onChange={e => setDrillName(e.target.value)} placeholder="ドリルの名前を入力" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] text-lg" />

@@ -23,7 +23,7 @@ import React from 'react';
  */
 export default function Footer() {
   return (
-    <footer className="flex-shrink-0 h-8 flex flex-nowrap justify-center items-center gap-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[100] transition-colors select-none">
+    <footer className="flex-shrink-0 h-8 flex flex-nowrap justify-center items-center gap-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[40] transition-colors select-none">
       <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-opacity">
         ©2026 マイ漢字タウン{' '}
         <a

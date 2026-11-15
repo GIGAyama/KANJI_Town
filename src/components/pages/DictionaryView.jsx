@@ -26,7 +26,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
   return (
     <div className="flex flex-col gap-3 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
+        <button onClick={onBack} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> {F("漢字","かんじ")}ずかん</h2>
       </div>
       <div className="flex gap-2">

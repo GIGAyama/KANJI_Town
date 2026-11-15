@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity, Smartphone } from 'lucide-react';
 import { MotionButton } from '../ui';
 import InstallAppPanel from '../ui/InstallAppPanel';
+import ModalDialog from '../ui/ModalDialog';
 import { StorageAPI } from '../../systems/storage';
 import { IMPORT_MAX_BYTES, validateImportedStats } from '../../systems/stats-schema';
 import { audioCtrl } from '../../systems/audio';
@@ -75,15 +76,15 @@ const SwitchRow = ({ id, title, desc, checked, onToggle }) => (
 
 // 確認ダイアログ
 const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[999] bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
+  <ModalDialog labelId="confirm-title" onEscape={onCancel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[999] bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
     <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-5 max-w-sm w-full shadow-[6px_6px_0_var(--text)]" onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2 mb-3">
-        {danger && <AlertTriangle size={24} className="text-red-500" />}
-        <h3 className="font-black text-lg text-[var(--text)]">{title}</h3>
+        {danger && <AlertTriangle size={24} className="text-red-600" aria-hidden="true" />}
+        <h3 id="confirm-title" className="font-black text-lg text-[var(--text)]">{title}</h3>
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-4 leading-relaxed">{message}</p>
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm bg-[var(--bg)] text-[var(--text)] hover:opacity-80 transition-opacity flex items-center justify-center gap-1">
+        <button onClick={onCancel} data-autofocus className="flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm bg-[var(--bg)] text-[var(--text)] hover:opacity-80 transition-opacity flex items-center justify-center gap-1">
           <X size={16} /> やめる
         </button>
         <button onClick={onConfirm} className={`flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm transition-opacity hover:opacity-80 flex items-center justify-center gap-1 ${danger ? 'bg-red-700 text-white' : 'bg-[var(--primary)] text-[var(--panel)]'}`}>
@@ -91,7 +92,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
         </button>
       </div>
     </motion.div>
-  </motion.div>
+  </ModalDialog>
 );
 
 // セクションヘッダー
@@ -244,7 +245,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
     <div className="flex flex-col items-center gap-4 pb-6 h-full overflow-y-auto no-scrollbar">
       {/* ヘッダー */}
       <div className="w-full flex items-center gap-3">
-        <button onClick={() => { audioCtrl.playSE('click'); setView('home'); }} className="p-2 rounded-xl border-[3px] border-[var(--text)] bg-[var(--panel)] hover:bg-[var(--bg)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shadow-[2px_2px_0_var(--text)]">
+        <button onClick={() => { audioCtrl.playSE('click'); setView('home'); }} aria-label="ホームに戻る" className="p-2 rounded-xl border-[3px] border-[var(--text)] bg-[var(--panel)] hover:bg-[var(--bg)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shadow-[2px_2px_0_var(--text)]">
           <ArrowLeft size={20} />
         </button>
         <h2 className="text-xl font-black text-[var(--text)]">せってい</h2>
