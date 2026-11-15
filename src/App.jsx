@@ -457,6 +457,9 @@ export default function App() {
   }, [setSessionData]);
 
   const abandonLearningSession = useCallback(() => {
+    // 答えた字ごとの記録（間隔反復・技能点）は残す。ボス・サバイバルなどは記録をすぐ保存していないので、
+    // やめたときに書き出す（ダイアログの「書いた字の記録は のこるよ」のとおりにする）
+    setStats(prev => { StorageAPI.saveStatsImmediate(prev); return prev; });
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('home');
