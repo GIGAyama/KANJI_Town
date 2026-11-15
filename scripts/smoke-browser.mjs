@@ -64,6 +64,20 @@ try {
     document.addEventListener('securitypolicyviolation', (e) => {
       window.__cspViolations = [...(window.__cspViolations || []), `${e.violatedDirective} ${e.blockedURI}`];
     });
+    // 復習の時期が来た字が1つある子として開く（初めての子は「音読」から始まり、
+    // 書くキャンバスまで進むのに4段階かかるため）。チュートリアルとログインボーナスは済ませた扱い。
+    if (!localStorage.getItem('kanji_town_v7')) {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      localStorage.setItem('kanji_town_v7', JSON.stringify({
+        targetGrade: 1, totalExp: 100, coins: 100, streak: 0, lastDate: '', mapSize: 50,
+        tutorialCompleted: true, lastLoginBonusDate: today, dailyMissionsDate: today, dailyMissions: [], lastCollectionDate: today,
+        seenHints: ['achievements', 'craft', 'dictionary', 'readingCheck', 'residents', 'stats'],
+        settings: { readingCheck: false, autoPlay: false, motionPreference: 'reduce' },
+        kanjiStats: { k1_1: { status: 'review', graduated: true, stepIdx: 0, interval: 86400000, nextReview: Date.now() - 1000, ease: 2.5, mistakes: 0 } },
+        townItems: { t_grass: 5, t_road: 5, t_tree: 3, t_house1: 1 }, villagers: [], population: 0,
+      }));
+    }
   });
 
   await page.goto(`${origin}/`);
@@ -81,6 +95,7 @@ try {
     const button = page.locator('button').filter({ hasText: tab }).first();
     if (await button.isEnabled().catch(() => false)) { await button.click(); await page.waitForTimeout(1000); }
   }
+  if (await page.getByText(/よみこみに しっぱい|よみこめませんでした/).count() > 0) problems.push('書き順データを読みこめていない');
   if (await page.locator('canvas').count() === 0) problems.push('学習画面にキャンバスが出ていない');
   const violations = await page.evaluate(() => window.__cspViolations || []);
   if (violations.length) problems.push(`CSP 違反: ${violations.join(' / ')}`);
