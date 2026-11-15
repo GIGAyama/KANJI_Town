@@ -62,16 +62,6 @@
     },
     {
       "rule": "external-runtime-host",
-      "value": "myaccount.google.com",
-      "reason": "利用者が自分で権限を取り消すための案内リンク。プライバシーポリシーの本文中。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "developers.google.com",
-      "reason": "参照している Google のドキュメントへのリンク。プライバシーポリシーの本文中。"
-    },
-    {
-      "rule": "external-runtime-host",
       "value": "kanjivg.tagaini.net",
       "reason": "書き順データ KanjiVG の出典元。CC BY-SA 3.0 は原典の表示を求めるため、画面フッターのクレジットから張っている。実行コードの取得元ではない。"
     },

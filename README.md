@@ -129,6 +129,9 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 サーバーを持たない構成のため、信頼境界は「端末の中」だけで完結する。
 
 - 学習の記録・ドリルはすべて端末の `localStorage` に保存し、外部送信しない。
+  例外は、先生が「4けたの数字で送る」で送るドリル（下記）と、`*.giga-school.com` で開いたときに
+  学習ログ（`study.records.v1`）を記録ボックスへ写すこと（同じ端末の iframe へ postMessage するだけ）。
+  外部との通信の一覧は「制限とクォータ」と `privacy.html` の「5. 外部との通信」にある。
 - ドリルの受け渡しはサーバーに保存しない。リンク配布はURLに内容を埋め込み
   （`src/systems/drill-share.js`）、教室内配布は PeerJS の P2P 通信を使う。
   **受け取ったドリルは外部入力として扱い、取り込み時に検証する。**
@@ -173,6 +176,7 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 |---|---|---|
 | 書き順データ | 同梱（`public/kanjivg/grade-1〜6.json`、計約0.9MB・gzip 約0.36MB） | 外部へは取りに行かない。Service Worker が全学年を先読みするので、一度開いた端末は圏外でも全学年の書き順が出る。それでも読めない字（データ破損など）は、音読だけ字（フォント）で続け、書く段階は「この字は あとで」で飛ばせる（正誤は記録しない。次の学習でまた出る） |
 | 外部への接続（「4けたの数字で送る」だけ） | ライブラリ（PeerJS 1.5.4）は同梱。接続の仲介に PeerJS の公開サーバー `0.peerjs.com`（https / wss）、経路探しに `stun.l.google.com:19302`、直接つながらないときの中継に `eu-0.turn.peerjs.com` / `us-0.turn.peerjs.com`（3478）。値は `src/hooks/usePeerJS.js` の `PEER_OPTIONS` | 校内フィルタでこれらが止められていると送れない。そのときは送る画面に理由と「リンクで配る」ボタンが出る。リンク配布は外部へ通信しないので影響を受けない |
+| 学習ログの写し | `*.giga-school.com` で開いたときだけ、`public/records-hub-client.js` が `https://gamification.giga-school.com/records-hub.html` を見えない iframe で開き、学習ログを postMessage で写す | ハブのページを読む通常のアクセスだけで、学習ログはサーバーへ送らない。止められていても学習には影響しない |
 | QR（表示・読み取り） | `qrcode`（表示）と `jsQR`（カメラ読み取り）を同梱し、使う画面を開いたときに読む | 外部へは取りに行かない。読めなかったときは「URLをコピー」「4けたの数字」を使うよう画面に出る |
 | 書体 | 同梱（`src/fonts/`、woff2 11本・計約1.17MB。`unicode-range` で束に分けてある） | 外部へは取りに行かない。端末は画面に要る束だけを読む。書体に無い字（児童が入力した珍しい字など）は端末の書体で出る（□にはならない） |
 | 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
@@ -183,7 +187,10 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 初回JS | 220KiB（`scripts/check-bundle-budget.mjs`） | 超えるとビルドが落ちる |
 
 外部ホストの許可理由は `quality.config.json` の `securityExceptions` に明記してあり、
-`npm run check` がここに無いホストの追加を検出する。
+`npm run check` がここに無いホストの追加を検出する。ただし検出はソースに書かれた `https://` の
+文字列だけを見る。`stun:` / `turn:` のような URL は見えないので、PeerJS の接続先は
+`src/hooks/usePeerJS.js` の `PEER_OPTIONS` に書き出し、`index.html` の CSP と並べて管理する。
+外へ出る通信を実ブラウザで確かめるときは、ポータルの `standards/web/verify-no-external.mjs` を使う。
 
 ## マイドリルの配り方
 
