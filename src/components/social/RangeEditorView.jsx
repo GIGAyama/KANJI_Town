@@ -327,7 +327,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
         })}
       </ol>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <MotionButton variant="secondary" onClick={addStage} disabled={draft.stages.length >= RANGE_STAGE_MAX} className="min-h-[48px] text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"><Plus size={16} /> だんを{F("足","た")}す</MotionButton>
         <MotionButton variant="secondary" onClick={() => setDrillPicker({ mode: 'stages' })} disabled={drills.length === 0} className="min-h-[48px] text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"><FileText size={16} /> マイドリルから だんを{F("作","つく")}る</MotionButton>
       </div>
