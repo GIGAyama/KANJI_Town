@@ -49,3 +49,23 @@ export function patchHistory(history, patch) {
   if (!patch) return history;
   return history.map((map) => ({ ...map, ...patch }));
 }
+/**
+ * 大きな建物（size を持つもの）の左上のマスを、どのマスからでも引けるようにする。
+ * @returns {Map<string, {anchorKey: string, ax: number, ay: number, item: object}>}
+ */
+export function buildMegaIndex(map, itemMap) {
+  const index = new Map();
+  for (const [key, itemId] of Object.entries(map || {})) {
+    if (key.includes(':')) continue;
+    const item = itemMap.get(itemId);
+    if (!item || !item.size) continue;
+    const [ax, ay] = key.split(',').map(Number);
+    const entry = { anchorKey: key, ax, ay, item };
+    for (let dy = 0; dy < item.size.h; dy++) {
+      for (let dx = 0; dx < item.size.w; dx++) {
+        index.set(`${ax + dx},${ay + dy}`, entry);
+      }
+    }
+  }
+  return index;
+}

@@ -14,7 +14,7 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
 import { getMinLevelForGrade } from '../../utils/level-system';
-import { countMissionBuildings, patchHistory, trackPlacementGain } from '../../systems/town-editing';
+import { buildMegaIndex, countMissionBuildings, countPlacedItems, patchHistory, trackPlacementGain } from '../../systems/town-editing';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -144,14 +144,21 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     setTimeout(() => setPlacementError(null), 2000);
   };
 
-  const availableItems = TOWN_ITEMS.filter(item => {
+  // 置いてある数は、地図が変わったときに 1 回だけ数える（以前は描き直しのたびに
+  // 「アイテムの種類 × 全 2,500 マス」を数え直し、低速な端末で 0.2〜0.3 秒もたついていた）
+  const placedCounts = useMemo(() => countPlacedItems(localMap), [localMap]);
+  const megaIndex = useMemo(() => buildMegaIndex(localMap, TOWN_ITEM_MAP), [localMap]);
+
+  const availableItems = useMemo(() => TOWN_ITEMS.filter(item => {
     if (item.type === 'terrain') return false;
     const count = stats.townItems?.[item.id] || 0;
-    const inMap = Object.values(localMap).filter(v => v === item.id).length;
-    return count > inMap;
-  });
+    return count > (placedCounts[item.id] || 0);
+  }), [stats.townItems, placedCounts]);
 
-  const filteredItems = availableItems.filter(item => filterType === 'all' || item.type === filterType);
+  const filteredItems = useMemo(
+    () => availableItems.filter(item => filterType === 'all' || item.type === filterType),
+    [availableItems, filterType],
+  );
 
   const canPlaceMultiTile = (x, y, w, h) => {
     for (let dy = 0; dy < h; dy++) {
@@ -163,17 +170,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     return true;
   };
 
-  const findMegaAnchor = (x, y) => {
-    for (const [key, itemId] of Object.entries(localMap)) {
-      const item = TOWN_ITEMS.find(i => i.id === itemId);
-      if (!item || !item.size) continue;
-      const [ax, ay] = key.split(',').map(Number);
-      if (x >= ax && x < ax + item.size.w && y >= ay && y < ay + item.size.h) {
-        return { anchorKey: key, ax, ay, item };
-      }
-    }
-    return null;
-  };
+  const findMegaAnchor = (x, y) => megaIndex.get(`${x},${y}`) || null;
 
   const handleCellTap = (x, y) => {
     const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
@@ -183,7 +180,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     const currentTile = localMap[key];
 
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
-      const terrainDef = TOWN_ITEMS.find(i => i.id === currentTile);
+      const terrainDef = TOWN_ITEM_MAP.get(currentTile);
       const cost = terrainDef?.cultivateCost || 5;
       if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}枚必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
@@ -207,7 +204,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         return;
       }
 
-      const item = TOWN_ITEMS.find(i => i.id === currentTile);
+      const item = TOWN_ITEM_MAP.get(currentTile);
       if (item && item.type !== 'terrain') {
         const newMap = { ...localMap };
         if (localMap[`${key}:top`]) {
@@ -223,7 +220,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
     if (!selectedItem) {
       if (currentTile && currentTile !== 't_cleared' && currentTile !== 't_weed') {
-        const itemDef = TOWN_ITEMS.find(i => i.id === currentTile);
+        const itemDef = TOWN_ITEM_MAP.get(currentTile);
         if (itemDef && itemDef.type !== 'terrain') {
           const topItemId = localMap[`${key}:top`];
           if (topItemId) {
@@ -260,8 +257,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     let targetKey = key;
 
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') {
-      const currentDef = TOWN_ITEMS.find(i => i.id === currentTile);
-      const selDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+      const currentDef = TOWN_ITEM_MAP.get(currentTile);
+      const selDef = TOWN_ITEM_MAP.get(selectedItem);
       
       if (currentDef?.isFlat && !selDef?.isFlat && !selDef?.size && !localMap[`${key}:top`]) {
         targetKey = `${key}:top`;
@@ -271,7 +268,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       }
     }
 
-    const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+    const itemDef = TOWN_ITEM_MAP.get(selectedItem);
 
     if (itemDef?.minGrade && playerLevel < getMinLevelForGrade(itemDef.minGrade)) {
       audioCtrl.playSE('stamp_bad');
@@ -281,7 +278,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
 
     const ownedCount = stats.townItems?.[selectedItem] || 0;
-    const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
+    const placedCount = placedCounts[selectedItem] || 0;
     if (ownedCount <= placedCount) {
       audioCtrl.playSE('stamp_bad');
       setSelectedItem(null);
@@ -353,7 +350,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
   const hasUpgradeSource = (recipe) => {
     if (!recipe.requires) return true;
-    return Object.values(stats.townMap || {}).includes(recipe.requires);
+    return (placedCounts[recipe.requires] || 0) > 0;
   };
 
   const craftBonuses = useMemo(() => getCraftBonuses(villagers), [villagers]);
@@ -480,7 +477,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             className="absolute z-40 left-1/2 -translate-x-1/2"
             style={{ bottom: dockOpen ? 'calc(50% + 44px)' : 84 }}>
             <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
+              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEM_MAP.get(selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
           </motion.div>
@@ -517,7 +514,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
                 {dockOpen === 'items' && <ItemsPanel
                   filteredItems={filteredItems} filterType={filterType} setFilterType={setFilterType}
                   selectedItem={selectedItem} setSelectedItem={setSelectedItem}
-                  stats={stats} localMap={localMap} playerLevel={playerLevel}
+                  stats={stats} placedCounts={placedCounts} playerLevel={playerLevel}
                   handleBuy={handleBuy} showError={showError}
                   onSelectClose={() => setDockOpen(null)}
                 />}
@@ -580,7 +577,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 };
 
 // ── Items Panel ──
-const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerLevel, handleBuy, showError, onSelectClose }) => (
+const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, placedCounts, playerLevel, handleBuy, showError, onSelectClose }) => (
   <div className="flex flex-col gap-3">
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
@@ -595,7 +592,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
     {/* Item grid */}
     <div className="grid grid-cols-4 gap-2">
       {filteredItems.map(item => {
-        const count = (stats.townItems?.[item.id] || 0) - Object.values(localMap).filter(v => v === item.id).length;
+        const count = (stats.townItems?.[item.id] || 0) - (placedCounts[item.id] || 0);
         const isSelected = selectedItem === item.id;
         const canAfford = stats.coins >= item.price;
         const owned = count > 0;
@@ -714,7 +711,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
         const currentQty = craftQuantities[recipe.id] || 1;
         const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
         const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
-        const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
+        const townItem = townItemId ? TOWN_ITEM_MAP.get(townItemId) : null;
         const resultMat = recipe.category === 'material' ? MATERIALS[recipe.result.type] : null;
 
         return (

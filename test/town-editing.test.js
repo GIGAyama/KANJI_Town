@@ -5,6 +5,7 @@ import {
   countMissionBuildings,
   trackPlacementGain,
   patchHistory,
+  buildMegaIndex,
 } from '../src/systems/town-editing.js';
 
 const ITEMS = new Map([
@@ -64,4 +65,16 @@ test('開拓は、もとに戻す履歴の全部に書きこむ（戻しても�
   assert.deepEqual(patched.map((m) => m['2,2']), ['t_cleared', 't_house1'], 'ほかのマスはそのまま');
   assert.equal(history[0]['1,1'], 't_roughland', '元の履歴は書きかえない');
   assert.equal(patchHistory(history, undefined), history);
+});
+
+test('大きな建物は、どのマスからでも左上のマスを引ける', () => {
+  const map = { '5,5': 't_temple', '6,5': 't_cleared', '5,6': 't_cleared', '6,6': 't_cleared', '7,7': 't_house1', '8,8': 't_road', '8,8:top': 't_house1' };
+  const index = buildMegaIndex(map, ITEMS);
+  for (const key of ['5,5', '6,5', '5,6', '6,6']) {
+    assert.equal(index.get(key)?.anchorKey, '5,5', key);
+    assert.equal(index.get(key)?.item.id, 't_temple');
+  }
+  assert.equal(index.get('7,7'), undefined, '1 マスの建物は入れない');
+  assert.equal(index.get('7,6'), undefined);
+  assert.equal(index.size, 4);
 });
