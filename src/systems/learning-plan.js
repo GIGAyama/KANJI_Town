@@ -1,4 +1,5 @@
 import { formatDate } from '../utils/date-utils.js';
+import { getWeakestSkill } from './mastery.js';
 
 export const DAILY_GOAL_OPTIONS = [5, 10, 20];
 export const DEFAULT_DAILY_GOAL = 10;
@@ -208,6 +209,11 @@ export function buildWeakKanjiPlan({
  *
  * 新出漢字は、データの並び（学年の中で画数の少ない順）に出す。以前はランダムで、
  * 1年生の初日に「森（12画）」や「校」が出ることがあった。newOrder: 'random' で従来の出し方にできる。
+ *
+ * 選んだ学年の新出が無ければ、それより下の学年でまだ習っていない字を新出にする。
+ * それも無く、期限の来た復習も無いときは、選んだ学年の習った字から
+ * 「いちばん弱い技能の点が低い順 → 次の期限が近い順」に練習を組む（isPractice: true）。
+ * 以前はこの場合、学年の最初の1字（1年なら「一」）だけが毎回出ていた。
  */
 export function buildLearningPlan({
   kanjiData,
@@ -236,10 +242,17 @@ export function buildLearningPlan({
       return dueOrder || (bStat.mistakes || 0) - (aStat.mistakes || 0);
     });
 
-  const newCandidates = kanjiData.filter((kanji) => {
+  const isUnlearned = (kanji) => {
     const stat = kanjiStats[kanji.id];
-    return kanji.grade === selectedGrade && (!stat || stat.status === 'new');
-  });
+    return !stat || stat.status === 'new';
+  };
+  const gradeCandidates = kanjiData.filter((kanji) => kanji.grade === selectedGrade && isUnlearned(kanji));
+  // 選んだ学年をすべて習ったら、下の学年でまだ習っていない字（低い学年から）
+  const newCandidates = gradeCandidates.length > 0
+    ? gradeCandidates
+    : kanjiData
+      .filter((kanji) => kanji.grade < selectedGrade && isUnlearned(kanji))
+      .sort((a, b) => a.grade - b.grade);
 
   const reviewTargets = dueReviews.slice(0, Math.min(reviewLimit, totalLimit));
   const remainingSlots = Math.max(0, totalLimit - reviewTargets.length);
@@ -247,9 +260,16 @@ export function buildLearningPlan({
   const newTargets = orderedNew.slice(0, Math.min(newLimit, remainingSlots));
   const queue = [...reviewTargets, ...newTargets];
 
+  let practiceCount = 0;
   if (queue.length === 0) {
-    const fallback = kanjiData.find((kanji) => kanji.grade === selectedGrade);
-    if (fallback) queue.push(fallback);
+    const practice = buildPracticeTargets({ kanjiData, kanjiStats, selectedGrade, limit: totalLimit || newLimit || 1 });
+    queue.push(...practice);
+    practiceCount = practice.length;
+    // 学年に1字も習った字が無い（データの不整合など）ときだけ、学年の最初の字を出す
+    if (queue.length === 0) {
+      const fallback = kanjiData.find((kanji) => kanji.grade === selectedGrade);
+      if (fallback) queue.push(fallback);
+    }
   }
 
   return {
@@ -258,5 +278,27 @@ export function buildLearningPlan({
     reviewCount: reviewTargets.length,
     newCount: newTargets.length,
     newAvailableCount: newCandidates.length,
+    practiceCount,
+    isPractice: practiceCount > 0,
   };
+}
+
+/**
+ * 期限の来た復習も新出も無いときの練習。選んだ学年の習った字を、
+ * いちばん弱い技能の点が低い順 → 次の期限が近い順に並べる。
+ * 期限前の字なので、間隔反復は伸ばさない（App の handleUpdateStat が期限前の早い復習として扱う）。
+ */
+function buildPracticeTargets({ kanjiData, kanjiStats, selectedGrade, limit }) {
+  return kanjiData
+    .filter((kanji) => {
+      const stat = kanjiStats[kanji.id];
+      return kanji.grade === selectedGrade && stat && stat.status !== 'new';
+    })
+    .map((kanji, index) => {
+      const stat = kanjiStats[kanji.id];
+      return { kanji, index, weakest: getWeakestSkill(stat).score, due: Number(stat.nextReview) || 0 };
+    })
+    .sort((a, b) => (a.weakest - b.weakest) || (a.due - b.due) || (a.index - b.index))
+    .slice(0, Math.max(1, asLimit(limit)))
+    .map(({ kanji }) => kanji);
 }

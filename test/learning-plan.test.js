@@ -51,6 +51,41 @@ test('新出漢字はデータの並び（画数の少ない順）に出し、�
   assert.deepEqual(shuffledPlan.queue.map((kanji) => kanji.id), ['b', 'c', 'a']);
 });
 
+test('学年の字をすべて習い、期限の来た復習も無いときは、弱い字から練習を組む（「一」1字だけにしない）', () => {
+  const skill = (score) => ({ reading: { score }, meaning: { score }, writing: { score }, stroke: { score } });
+  const kanjiStats = {
+    a: { status: 'review', graduated: true, nextReview: 5000, skillMastery: skill(90) },
+    b: { status: 'review', graduated: true, nextReview: 9000, skillMastery: skill(40) },
+    c: { status: 'mastered', graduated: true, nextReview: 3000, skillMastery: skill(40) },
+  };
+  const results = [0, 0.5, 0.99].map((value) => buildLearningPlan({
+    kanjiData, kanjiStats, selectedGrade: 1, limits: { review: 5, new: 2, total: 3 }, now: 200, random: () => value,
+  }));
+  for (const plan of results) {
+    // 弱い技能の点が低い順 → 次の期限が近い順
+    assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['c', 'b', 'a']);
+    assert.equal(plan.isPractice, true);
+    assert.equal(plan.practiceCount, 3);
+    assert.equal(plan.newCount, 0);
+  }
+  // 出題数の上限を守る
+  const short = buildLearningPlan({ kanjiData, kanjiStats, selectedGrade: 1, limits: { review: 1, new: 0, total: 1 }, now: 200 });
+  assert.deepEqual(short.queue.map((kanji) => kanji.id), ['c']);
+});
+
+test('選んだ学年をすべて習ったら、下の学年でまだ習っていない字を新出にする', () => {
+  const data = [...kanjiData, { id: 'e', grade: 2 }];
+  const kanjiStats = {
+    a: { status: 'review', nextReview: 5000 },
+    d: { status: 'review', nextReview: 5000 },
+    e: { status: 'review', nextReview: 5000 },
+  };
+  const plan = buildLearningPlan({ kanjiData: data, kanjiStats, selectedGrade: 2, limits: { review: 5, new: 2 }, now: 200 });
+  assert.deepEqual(plan.queue.map((kanji) => kanji.id), ['b', 'c']);
+  assert.equal(plan.isPractice, false);
+  assert.equal(plan.newCount, 2);
+});
+
 test('学習目標は安全な既定値と当日進捗を返す', () => {
   assert.equal(getDailyGoal({ dailyGoal: 999 }), 10);
   assert.deepEqual(
