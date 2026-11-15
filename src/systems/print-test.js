@@ -39,13 +39,25 @@ const RUBY_SEGMENT = /([^\s（）]+?)（([^）]+)）/g;
 export function parseRubySegments(text) {
   if (typeof text !== 'string' || text === '') return [];
   const out = [];
+  const pushText = (t) => {
+    if (!t) return;
+    const prev = out[out.length - 1];
+    if (prev && 'text' in prev) prev.text += t;
+    else out.push({ text: t });
+  };
   let last = 0;
   for (const m of text.matchAll(RUBY_SEGMENT)) {
-    if (m.index > last) out.push({ text: text.slice(last, m.index) });
-    out.push({ base: m[1], reading: m[2] });
+    pushText(text.slice(last, m.index));
+    // 「供（ども）。提（てい）」のように句点のすぐあとにルビがあると、正規表現は句点まで
+    // ことばに入れてしまう。読みが句点にかかることは無いので、前の文へ戻す
+    // （紙面では傍線が句点にかかり、□の手がかりのルビもずれる）
+    const lead = m[1].match(/^[\p{P}\p{S}]+/u)?.[0] || '';
+    pushText(lead);
+    if (lead.length < m[1].length) out.push({ base: m[1].slice(lead.length), reading: m[2] });
+    else pushText(m[0].slice(lead.length));
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push({ text: text.slice(last) });
+  pushText(text.slice(last));
   return out;
 }
 

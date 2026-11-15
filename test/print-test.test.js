@@ -34,6 +34,15 @@ test('「漢字（よみ）」の文を、ふつうの文字とルビ付きの�
     { base: '乗', reading: 'の' },
     { text: 'る。' },
   ]);
+  // 句点のすぐあとのルビは、句点をことばに入れない（読みが句点にかかることは無い）
+  assert.deepEqual(parseRubySegments('子（こ）供（ども）。提（てい）供（きょう）する。'), [
+    { base: '子', reading: 'こ' },
+    { base: '供', reading: 'ども' },
+    { text: '。' },
+    { base: '提', reading: 'てい' },
+    { base: '供', reading: 'きょう' },
+    { text: 'する。' },
+  ]);
   assert.deepEqual(parseRubySegments(''), []);
   assert.deepEqual(parseRubySegments(null), []);
 });

@@ -31,6 +31,15 @@ const MM = 96 / 25.4;
 const PAPER_W = 210 * MM;
 const PAPER_H = 297 * MM;
 
+/**
+ * 画面の見本に並べる紙の上限。1026 字ぜんぶのドリルだと 400 枚を超えるので、
+ * 多いときは問題のはじめの 4 枚と答えのはじめの 2 枚だけを見せる（印刷はぜんぶ刷る）。
+ */
+const PREVIEW_LIMIT = 12;
+const previewPagesOf = (pages) => (pages.length <= PREVIEW_LIMIT
+  ? pages
+  : [...pages.filter((p) => !p.answer).slice(0, 4), ...pages.filter((p) => p.answer).slice(0, 2)]);
+
 const newSeed = () => (Math.floor(Math.random() * 0xffffffff) >>> 0) || 1;
 
 /** 紙面の文。ルビは設定にかかわらず出す（紙は設定を持ち帰れない） */
@@ -187,12 +196,22 @@ const PrintTestView = ({ setView, drill }) => {
     };
   }, [printTitle]);
 
-  const handlePrint = useCallback(() => {
-    // 書体を読み終わる前に印刷すると、端末の書体で刷られて字の形が変わる
-    const go = () => window.print();
-    if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(go, go);
-    else go();
+  // 書体を読み終わる前に印刷すると、端末の書体で刷られて字の形が変わる。
+  // 刷るほうの紙面は画面では隠れていて、書体の面（unicode-range ごとのファイル）が
+  // 読みこまれないことがあるので、紙面の字を渡して先に読んでおく（同梱のファイルだけ）。
+  const printRootRef = useRef(null);
+  const loadPrintFonts = useCallback(() => {
+    const text = printRootRef.current?.textContent || '';
+    if (!text || typeof document.fonts?.load !== 'function') return Promise.resolve();
+    const faces = ['600 16px "Klee One"', '500 16px "Zen Maru Gothic"', '700 16px "Zen Maru Gothic"'];
+    return Promise.all(faces.map((face) => document.fonts.load(face, text).catch(() => []))).then(() => undefined);
   }, []);
+  useEffect(() => { loadPrintFonts(); }, [test, loadPrintFonts]);
+
+  const handlePrint = useCallback(() => {
+    const go = () => window.print();
+    loadPrintFonts().then(go, go);
+  }, [loadPrintFonts]);
 
   const goBack = () => { audioCtrl.playSE('click'); setView('myDrills'); };
 
@@ -222,6 +241,7 @@ const PrintTestView = ({ setView, drill }) => {
   }
 
   const opts = test.options;
+  const previewPages = previewPagesOf(test.pages);
   const perKind = opts.count === 'all' ? total : opts.count;
 
   return (
@@ -305,9 +325,14 @@ const PrintTestView = ({ setView, drill }) => {
           </div>
         </div>
 
-        <div ref={previewRef} className="min-w-0" role="region" aria-label="印刷の見本">
+        <div ref={previewRef} className="min-w-0 flex flex-col gap-3" role="region" aria-label="印刷の見本">
+          {previewPages.length < test.pages.length && (
+            <p className="text-sm font-bold text-[var(--text-muted)]">
+              {F("見本","みほん")}は{previewPages.length}まいだけです。{F("印刷","いんさつ")}では ぜんぶ（{test.pages.length}まい）{F("刷","す")}ります。
+            </p>
+          )}
           <div className="flex flex-wrap" style={{ gap }}>
-            {test.pages.map((page) => (
+            {previewPages.map((page) => (
               <div key={page.key} className="pt-paper-frame" style={{ width: PAPER_W * scale, height: PAPER_H * scale }}>
                 <div className="pt-paper" style={{ transform: `scale(${scale})` }}>
                   <PrintSheet page={page} title={test.title} />
@@ -319,7 +344,7 @@ const PrintTestView = ({ setView, drill }) => {
       </div>
 
       {createPortal(
-        <div className="pt-print-root" aria-hidden="true">
+        <div ref={printRootRef} className="pt-print-root" aria-hidden="true">
           {test.pages.map((page) => <PrintSheet key={page.key} page={page} title={test.title} />)}
         </div>,
         document.body,

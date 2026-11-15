@@ -336,11 +336,11 @@ html.presentation [role="button"] {
 .pt-q {
   box-sizing: border-box;
   width: 10%;
-  /* □の右にルビが付くぶん、列の中心を少し左へ寄せる */
-  padding: 5mm 1mm 5mm 0;
+  /* □の右にルビ（約 3mm）が付くぶん、列の中心を左へ寄せる。
+     縦書きの line-height は列の幅で、padding-right と足して列の幅（18.9mm）に収める */
+  padding: 5mm 3.9mm 5mm 0;
   font-size: 22pt;
-  /* 縦書きの line-height は列の幅。□（13mm）とその右のルビが列の中に収まる幅にする */
-  line-height: 17mm;
+  line-height: 15mm;
   overflow: hidden;
 }
 .pt-q rt {
