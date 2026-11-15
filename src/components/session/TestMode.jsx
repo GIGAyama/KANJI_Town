@@ -11,6 +11,7 @@ import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { pickPromptExample } from '../../systems/prompt-example';
+import { strokeNormalizedPaths, toNormalizedStroke } from '../../systems/stroke-coords';
 import { describeNextReview, migrateCard } from '../../systems/srs';
 import { SESSION } from '../../constants/gameConfig';
 
@@ -55,11 +56,31 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   // 漢・感・完・官・刊 のどれか決まらず、正しく書いても不正解になっていた。
   const promptExample = useMemo(() => pickPromptExample(kanji, Math.floor(Math.random() * 8)), [kanji]);
 
+  // 書いた線は 0〜1 の比率で持つ（キャンバスの大きさが変わっても描きなおせるように）
+  const userStrokesRef = useRef(userStrokes);
+  userStrokesRef.current = userStrokes;
+
+  // 字が変わったら、書いた線と答え合わせを消して次の問題にする
+  useEffect(() => {
+    setShowAnswer(false); setUserStrokes([]); setGradeResult(null); setRecommendedEval(null);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  }, [kanji]);
+
+  // キャンバスの大きさが変わったとき（画面の回転・ブラウザの枠の伸び縮み）は、大きさを合わせて描きなおすだけにする。
+  // 以前はここで書いた線も答え合わせも消していたので、持ちかえるだけで書きかけのテストが消えていた。
   useEffect(() => {
     // 端末の devicePixelRatio に合わせて鮮明化（上限2）。座標は CSS px のまま。
-    fitSquareCanvas(canvasRef.current, canvasSize);
-    setShowAnswer(false); setUserStrokes([]); setGradeResult(null); setRecommendedEval(null);
-  }, [kanji, canvasSize]);
+    const ctx = fitSquareCanvas(canvasRef.current, canvasSize);
+    // 書いている途中の1画は、大きさが変わると座標が合わなくなるので取りやめる
+    currentPathRef.current = [];
+    setIsDrawing(false);
+    if (ctx) {
+      ctx.strokeStyle = resolveThemeColor('--text'); ctx.lineWidth = canvasSize * 0.06;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      strokeNormalizedPaths(ctx, userStrokesRef.current, canvasSize);
+    }
+  }, [canvasSize]);
 
   const startDrawRef = useRef(null); const drawRef = useRef(null); const stopDrawRef = useRef(null);
 
@@ -96,7 +117,8 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     if (!isDrawing) return;
     setIsDrawing(false);
     if (currentPathRef.current.length > 1) {
-      setUserStrokes(prev => [...prev, [...currentPathRef.current]]);
+      const stroke = toNormalizedStroke(currentPathRef.current, canvasSize);
+      setUserStrokes(prev => [...prev, stroke]);
     }
   };
 
@@ -116,12 +138,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     ctx.clearRect(0, 0, canvasSize, canvasSize);
     ctx.strokeStyle = resolveThemeColor('--text'); ctx.lineWidth = canvasSize * 0.06;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    strokes.forEach(stroke => {
-      if (stroke.length < 2) return;
-      ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
-      for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
-      ctx.stroke();
-    });
+    strokeNormalizedPaths(ctx, strokes, canvasSize);
   };
 
   const clearCanvas = () => {
@@ -146,7 +163,8 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     setShowAnswer(true);
     audioCtrl.playSE('click');
     if (strokeData && strokeData.length > 0) {
-      const result = gradeStrokes(userStrokes, strokeData, canvasSize);
+      // 線は 0〜1 の比率で持っているので、大きさ 1 として採点する
+      const result = gradeStrokes(userStrokes, strokeData, 1);
       setGradeResult(result);
       setRecommendedEval(recommendEvaluation(result));
     }

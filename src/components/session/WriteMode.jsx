@@ -12,6 +12,7 @@ import { describeEndingFeedback } from '../../systems/strokeKind';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
+import { strokeNormalizedPaths, toNormalizedStroke } from '../../systems/stroke-coords';
 
 const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete, canvasSize, commonSidebar, onRecordPerfect, isStacked }) => {
   const guideRef = useRef(null); const inkRef = useRef(null); const writeRef = useRef(null);
@@ -28,7 +29,13 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
   const initCanvases = useCallback(() => { [guideRef, inkRef, writeRef].forEach(ref => { fitSquareCanvas(ref.current, canvasSize); }); }, [canvasSize]);
 
-  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; initCanvases(); }, [paths, canvasSize, initCanvases]);
+  // 字が変わったら、なぞりの回数・書いた線・「これまでに書いた字」をはじめからにする
+  useEffect(() => { setCount(0); setCurrentStroke(0); setUserStrokes([]); setHistory([]); setStatusMsg("１かくめ をかこう！"); setShowConfetti(false); distSum.current = 0; strokeDists.current = []; const w = writeRef.current; w?.getContext('2d')?.clearRect(0, 0, w.width, w.height); }, [paths]);
+  // キャンバスの大きさが変わったとき（画面の回転・ブラウザの枠の伸び縮み）は、大きさを合わせるだけにする。
+  // 以前はここで練習の状態を全部消していたので、2回なぞり終えても持ちかえると「1回目」に戻り、
+  // 「テストへ進む」も消えていた。書いた線は 0〜1 の比率で持っているので、下の描画の effect が描きなおす。
+  // 書いている途中の1画だけは座標が合わなくなるので取りやめる。
+  useEffect(() => { initCanvases(); currentPathRef.current = []; setIsDrawing(false); }, [initCanvases]);
 
   const drawGuide = useCallback(() => {
     const gCtx = guideRef.current?.getContext('2d'); if (!gCtx || !paths.length) return;
@@ -43,7 +50,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
   const drawInk = useCallback(() => {
     const iCtx = inkRef.current?.getContext('2d'); if (!iCtx || !paths.length) return;
     iCtx.clearRect(0, 0, canvasSize, canvasSize);
-    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = canvasSize * 0.08; userStrokes.forEach(stroke => { if (stroke.length === 0) return; iCtx.beginPath(); iCtx.moveTo(stroke[0].x, stroke[0].y); stroke.forEach(pt => iCtx.lineTo(pt.x, pt.y)); iCtx.stroke(); }); iCtx.restore(); }
+    if (count < 2) { iCtx.save(); iCtx.scale(canvasSize / 109, canvasSize / 109); iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = 6; iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; for (let i = 0; i < currentStroke; i++) iCtx.stroke(new Path2D(paths[i])); iCtx.restore(); } else { iCtx.save(); iCtx.lineCap = 'round'; iCtx.lineJoin = 'round'; iCtx.strokeStyle = resolveThemeColor('--text'); iCtx.lineWidth = canvasSize * 0.08; strokeNormalizedPaths(iCtx, userStrokes, canvasSize); iCtx.restore(); }
   }, [paths, currentStroke, count, userStrokes, canvasSize]);
 
   useEffect(() => { drawGuide(); drawInk(); }, [drawGuide, drawInk]);
@@ -82,9 +89,9 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         for (let pastIdx = 0; pastIdx < currentStrokeRef.current; pastIdx++) {
           const pastPoints = userStrokes[pastIdx];
           if (!pastPoints) continue;
-          const pastNormalized = pastPoints.map(p => ({ x: p.x / canvasSize, y: p.y / canvasSize }));
+          // 書いた線はもともと 0〜1 の比率で持っている
           const isExpectedCrossed = crossMatrix[currentStrokeRef.current]?.[pastIdx] ?? false;
-          const verdict = Analyzer.judgeCrossing(isExpectedCrossed, Analyzer.crossingDepth(pastNormalized, normalizedPoints));
+          const verdict = Analyzer.judgeCrossing(isExpectedCrossed, Analyzer.crossingDepth(pastPoints, normalizedPoints));
           if (verdict !== 'ok') { isError = true; errMsg = verdict === 'extra' ? "ちがう画を つきぬけているよ💦" : "ほかの画と まじわっていないよ💦"; break; }
         }
         // 終筆は正解の筆画種と比べて助言する（正解が分からないときは褒めも直しもしない）。
@@ -92,7 +99,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         if (!isError) { const fb = describeEndingFeedback(strokeData[currentStrokeRef.current]?.endingType ?? null, ending.code); addFloatingText(lastPos.current.x, lastPos.current.y - 30, fb.text, fb.ok ? "var(--primary)" : "var(--accent)", 1.0); }
       }
       if (isError) { clearCanvas(writeRef); setStatusMsg(errMsg); audioCtrl.playSE('stamp_bad'); return; }
-      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, [...currentPathRef.current]]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
+      const nextStroke = currentStrokeRef.current + 1; setUserStrokes(prev => [...prev, toNormalizedStroke(currentPathRef.current, canvasSize)]); setCurrentStroke(nextStroke); clearCanvas(writeRef); distSum.current += currentDist; strokeDists.current.push(currentDist);
       if (nextStroke >= paths.length) {
         const avgDist = distSum.current / paths.length; let evalText = "Good!"; let color = "var(--secondary)";
         let skillEvidence = 'guided';
