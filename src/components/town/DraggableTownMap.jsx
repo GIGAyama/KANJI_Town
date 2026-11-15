@@ -312,6 +312,7 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
   }); // 'all' | 'limited' | 'none'
   const onCellTapRef = useRef(onCellTap);
   const isDragging = useRef(false);
+  const suppressClick = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   // ドラッグの移動量は 1 フレームに 1 回だけ反映する
   const pendingMove = useRef({ dx: 0, dy: 0 });
@@ -479,9 +480,18 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
         onCellTapRef.current(grid.x, grid.y);
       }
     }
+    // ずらし終わりの click は「タップ」ではない。ホームでは外側の「まちづくりへ」に
+    // 届かないよう、このあとの click を 1 回だけ止める（マウス・タッチパッドで起きる）
+    if (isDragging.current) suppressClick.current = true;
     lastPos.current = { x: 0, y: 0 };
     setPanning(false);
   }, [zoom, offset.x, offset.y]);
+  const handleClickCapture = useCallback((e) => {
+    if (!suppressClick.current) return;
+    suppressClick.current = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, []);
 
   // ── ズーム ──
   const handleZoomIn = () => setZoom(z => Math.min(2, z + 0.15));
@@ -594,7 +604,8 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onPointerUp={handlePointerUp} onClickCapture={handleClickCapture}
+      onPointerDownCapture={() => { suppressClick.current = false; }}
       onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; setHoveredCell(null); setPanning(false); }}
       className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
       style={{ opacity: initialFitDone ? 1 : 0 }}>

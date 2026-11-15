@@ -120,7 +120,12 @@ const TownMap = memo(({ className = '', isTownEditorUnlocked, onOpenEditor, town
   <div
     className={`relative rounded-2xl overflow-hidden border-[4px] ${isTownEditorUnlocked ? 'border-[var(--text)] cursor-pointer hover:border-[var(--secondary)] transition-colors' : 'border-[var(--text)]'} ${className}`}
     onClick={() => { if (isTownEditorUnlocked) onOpenEditor(); }}
+    onKeyDown={(e) => {
+      if (!isTownEditorUnlocked || e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenEditor(); }
+    }}
     role={isTownEditorUnlocked ? "button" : undefined}
+    tabIndex={isTownEditorUnlocked ? 0 : undefined}
     aria-label={isTownEditorUnlocked ? "まちづくりモードへ" : undefined}
   >
     <Suspense fallback={<TownMapFallback />}>
