@@ -11,6 +11,10 @@
 > - MANUAL.md は `docs/manual/manual.md` に統合した
 > - Service Worker の APP_VERSION は手で上げない。`tools/build-sw.mjs` が配信物の中身から刻む
 > - テストの件数・開発依存の脆弱性の件数・初回JS の大きさは当時の値。いまの値は CI の出力を見る
+> - 「残していること」の CSP・外部フォント・CDN（B1/B6）は 2026-11-15 に解消した。KanjiVG・書体・PeerJS/QR を
+>   同梱し、index.html に CSP を入れた。実行時の外部への通信は、教室での P2P（`0.peerjs.com` と STUN/TURN）と
+>   記録ボックスの iframe（`gamification.giga-school.com`）だけ（「4件に確定」は当時の見込みで、P2P と記録ボックスが抜けていた）。
+>   開発依存の npm audit（B7）も 0 件、iso-svg.jsx（F4）は分割済み
 
 **アプリ型**：**B型（Vite + React）**
 `vite.config.js` あり・`base: '/KANJI_Town/'` 設定済み・`.gs` なし・Chrome拡張 manifest なし。
