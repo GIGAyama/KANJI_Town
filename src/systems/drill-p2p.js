@@ -43,17 +43,17 @@ export function sanitizeDrill(data) {
 
 /**
  * 先生の端末から送るメッセージを作る。
- * 中身はリンクと同じ形（param）にして、受け取る側の検証を1つにする。
- * data は、更新前の版のアプリ（param を知らない）でも受け取れるように残している。
+ * 中身はリンクと同じ形（param）にして、受け取る側の検証を1つにする。宿題（drill.homework）も param に入る。
+ * data は、更新前の版のアプリ（param を知らない）でも受け取れるように残している（宿題は入れない）。
  */
 export function buildDrillMessage(drill) {
   const clean = sanitizeDrill(drill);
-  const param = clean ? encodeDrillParam(clean) : null;
+  const param = clean ? encodeDrillParam({ ...clean, homework: drill.homework }) : null;
   if (!param) return null;
   return JSON.stringify({ type: 'drill', v: DRILL_SHARE_VERSION, param, data: clean });
 }
 
-/** 受け取ったメッセージからドリルを取り出す（大きすぎる・壊れている・形が違うときは null） */
+/** 受け取ったメッセージからドリルを取り出す（大きすぎる・壊れている・形が違うときは null）。宿題があれば homework 付き */
 export function parseDrillMessage(raw) {
   if (typeof raw !== 'string' || raw.length > P2P_MESSAGE_MAX_LENGTH) return null;
   let msg;

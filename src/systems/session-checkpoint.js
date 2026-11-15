@@ -37,6 +37,9 @@ function sanitizeStudyUnit(unit) {
   };
 }
 
+/** 宿題の id（homework.js の HOMEWORK_ID_PATTERN と同じ形）。途中から再開しても宿題として記録するため */
+const asHomeworkId = (value) => (typeof value === 'string' && /^h[0-9a-z]{1,16}$/.test(value) ? value : null);
+
 function getQueueIds(queue) {
   if (!Array.isArray(queue)) return [];
   return queue
@@ -72,6 +75,7 @@ export function createSessionCheckpoint(sessionData, now = Date.now()) {
     queueIds,
     remainingQueueIds,
     studyUnit: sanitizeStudyUnit(sessionData?.studyUnit),
+    homeworkId: asHomeworkId(sessionData?.homeworkId),
     metrics: {
       ...metrics,
       expMultiplier: asMultiplier(sessionData?.expMultiplier),
@@ -126,6 +130,7 @@ export function restoreSessionCheckpoint(checkpoint, kanjiData, now = Date.now()
     queue,
     remainingQueue,
     studyUnit: sanitizeStudyUnit(checkpoint.studyUnit),
+    homeworkId: asHomeworkId(checkpoint.homeworkId),
     ...metrics,
     expMultiplier: asMultiplier(savedMetrics.expMultiplier),
     unlockedItems: Array.isArray(savedMetrics.unlockedItems)
