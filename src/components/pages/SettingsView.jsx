@@ -50,7 +50,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
         {danger && <AlertTriangle size={24} className="text-red-500" />}
         <h3 className="font-black text-lg text-[var(--text)]">{title}</h3>
       </div>
-      <p className="text-sm text-[var(--text)] opacity-70 mb-4 leading-relaxed">{message}</p>
+      <p className="text-sm text-[var(--text-muted)] mb-4 leading-relaxed">{message}</p>
       <div className="flex gap-2">
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm bg-[var(--bg)] text-[var(--text)] hover:opacity-80 transition-opacity flex items-center justify-center gap-1">
           <X size={16} /> やめる
@@ -226,7 +226,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
             return (
               <button key={t.id} onClick={() => handleThemeChange(t.id)} className={`p-3 rounded-xl border-[3px] text-left transition-all ${isActive ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/20 hover:border-[var(--text)]/50'}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  {t.icon ? <t.icon size={16} className={isActive ? 'text-[var(--primary)]' : 'text-[var(--text)] opacity-50'} /> : (
+                  {t.icon ? <t.icon size={16} className={isActive ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'} /> : (
                     <div className="flex gap-0.5">
                       {t.colors.map((c, i) => <div key={i} className="w-3 h-3 rounded-full border border-[var(--text)]/20" style={{ backgroundColor: c }} />)}
                     </div>
@@ -234,7 +234,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                   {isActive && <Check size={14} className="text-[var(--primary)] ml-auto" />}
                 </div>
                 <div className="font-black text-xs text-[var(--text)]">{t.label}</div>
-                <div className="text-[10px] text-[var(--text)] opacity-50">{t.desc}</div>
+                <div className="text-xs text-[var(--text-muted)]">{t.desc}</div>
               </button>
             );
           })}
@@ -258,12 +258,12 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                   {option.label}
                   {isActive && <Check size={13} className="text-[var(--secondary)]" aria-hidden="true" />}
                 </div>
-                <div className="mt-1 text-[9px] font-bold leading-tight text-[var(--text)] opacity-50">{option.desc}</div>
+                <div className="mt-1 text-xs font-bold leading-tight text-[var(--text-muted)]">{option.desc}</div>
               </button>
             );
           })}
         </div>
-        <div className="rounded-xl bg-[var(--bg)] px-3 py-2 text-[10px] font-bold leading-relaxed text-[var(--text)] opacity-60">
+        <div className="rounded-xl bg-[var(--bg)] px-3 py-2 text-xs font-bold leading-relaxed text-[var(--text-muted)]">
           「{F("少","すく")}なめ」はアニメーション・{F("天気","てんき")}・{F("紙吹雪","かみふぶき")}をおさえ、電池も長もちしやすくします。
         </div>
       </Section>
@@ -288,7 +288,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-bold text-[var(--text)]">ふりがなを{F("表示","ひょうじ")}</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">{F("漢字","かんじ")}の{F("上","うえ")}にひらがなを{F("表示","ひょうじ")}する</div>
+              <div className="text-xs text-[var(--text-muted)]">{F("漢字","かんじ")}の{F("上","うえ")}にひらがなを{F("表示","ひょうじ")}する</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ showFurigana: !showFurigana }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${showFurigana ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: showFurigana ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
@@ -298,7 +298,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-bold text-[var(--text)]">{F("自動","じどう")}{F("再生","さいせい")}</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">{F("音読","おんどく")}のとき お{F("手本","てほん")}の{F("音声","おんせい")}を{F("自動","じどう")}で{F("再生","さいせい")}</div>
+              <div className="text-xs text-[var(--text-muted)]">{F("音読","おんどく")}のとき お{F("手本","てほん")}の{F("音声","おんせい")}を{F("自動","じどう")}で{F("再生","さいせい")}</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ autoPlay: !autoPlay }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${autoPlay ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: autoPlay ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
@@ -308,7 +308,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-bold text-[var(--text)]">{F("音読","おんどく")}チャレンジ</div>
-              <div className="text-[10px] text-[var(--text)] opacity-50">マイクで{F("声","こえ")}に{F("出","だ")}して よめたかチェック（ろくおん・そうしんは しない）</div>
+              <div className="text-xs text-[var(--text-muted)]">マイクで{F("声","こえ")}に{F("出","だ")}して よめたかチェック（ろくおん・そうしんは しない）</div>
             </div>
             <button onClick={() => { audioCtrl.playSE('click'); updateSettings({ readingCheck: !readingCheck }); }} className={`w-14 h-8 rounded-full border-[3px] border-[var(--text)] transition-all relative ${readingCheck ? 'bg-[var(--secondary)]' : 'bg-gray-300'}`}>
               <motion.div animate={{ x: readingCheck ? 22 : 2 }} className="absolute top-0.5 w-5 h-5 rounded-full bg-white border-2 border-[var(--text)]" />
@@ -327,7 +327,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                 return (
                   <button key={s.id} onClick={() => { audioCtrl.playSE('click'); updateSettings({ sessionSize: s.id }); }} className={`flex-1 py-2 rounded-xl border-[3px] transition-all text-center ${isActive ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/20'}`}>
                     <div className="text-xs font-black text-[var(--text)]">{s.label}</div>
-                    <div className="text-[9px] text-[var(--text)] opacity-50">{s.desc}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{s.desc}</div>
                   </button>
                 );
               })}
@@ -336,14 +336,14 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
 
           <div>
             <div className="text-sm font-bold text-[var(--text)] mb-1">1{F("日","にち")}の{F("学習","がくしゅう")}{F("目標","もくひょう")}</div>
-            <div className="text-[10px] text-[var(--text)] opacity-50 mb-2">ホームに{F("表示","ひょうじ")}する、むりなく{F("続","つづ")}けるためのめやす</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2">ホームに{F("表示","ひょうじ")}する、むりなく{F("続","つづ")}けるためのめやす</div>
             <div className="grid grid-cols-3 gap-2">
               {DAILY_GOAL_OPTIONS.map((goal) => {
                 const isActive = dailyGoal === goal;
                 return (
                   <button key={goal} onClick={() => { audioCtrl.playSE('click'); updateSettings({ dailyGoal: goal }); }} className={`py-2.5 rounded-xl border-[3px] transition-all text-center ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/20'}`}>
-                    <div className="text-base font-black text-[var(--text)]">{goal}<span className="text-[10px] ml-0.5">字</span></div>
-                    <div className="text-[9px] text-[var(--text)] opacity-50">{goal === 5 ? 'ゆったり' : goal === 10 ? 'おすすめ' : 'しっかり'}</div>
+                    <div className="text-base font-black text-[var(--text)]">{goal}<span className="text-xs ml-0.5">字</span></div>
+                    <div className="text-xs text-[var(--text-muted)]">{goal === 5 ? 'ゆったり' : goal === 10 ? 'おすすめ' : 'しっかり'}</div>
                   </button>
                 );
               })}
@@ -356,15 +356,15 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       <Section icon={Database} title={<>データ{F("管理","かんり")}</>}>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">ストレージ{F("使用量","しようりょう")}</span>
+            <span className="text-xs font-bold text-[var(--text-muted)]">ストレージ{F("使用量","しようりょう")}</span>
             <span className="text-xs font-black text-[var(--text)]">{getStorageSize()}</span>
           </div>
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">{F("覚","おぼ")}えた{F("漢字","かんじ")}</span>
+            <span className="text-xs font-bold text-[var(--text-muted)]">{F("覚","おぼ")}えた{F("漢字","かんじ")}</span>
             <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status === 'mastered').length} {F("字","じ")}</span>
           </div>
           <div className="flex items-center justify-between bg-[var(--bg)] rounded-xl px-3 py-2">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">{F("学習中","がくしゅうちゅう")}の{F("漢字","かんじ")}</span>
+            <span className="text-xs font-bold text-[var(--text-muted)]">{F("学習中","がくしゅうちゅう")}の{F("漢字","かんじ")}</span>
             <span className="text-xs font-black text-[var(--text)]">{Object.values(stats.kanjiStats || {}).filter(s => s.status !== 'new' && s.status !== 'mastered').length} {F("字","じ")}</span>
           </div>
 
@@ -395,7 +395,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       </Section>
 
       {/* バージョン情報 */}
-      <div className="text-center text-[10px] text-[var(--text)] opacity-30 pb-4">
+      <div className="text-center text-xs text-[var(--text-muted)] pb-4">
         マイ漢字タウン v{APP_VERSION} · {BUILD_COMMIT.slice(0, 8)}
       </div>
 

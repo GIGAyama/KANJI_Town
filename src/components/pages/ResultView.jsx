@@ -85,7 +85,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                   <div className="text-6xl font-black text-[var(--accent)] drop-shadow-md">Lv.{levelUpData.newLevel}</div>
                 </div>
                 <div className="bg-[var(--bg)] rounded-xl p-3 border-2 border-[var(--text)] text-left mb-6">
-                  <div className="text-sm font-black mb-2 text-center text-[var(--text)] opacity-80 border-b-2 border-dashed border-[var(--text)] pb-2">ごほうび</div>
+                  <div className="text-sm font-black mb-2 text-center text-[var(--text-muted)] border-b-2 border-dashed border-[var(--text)] pb-2">ごほうび</div>
                   <ul className="space-y-2">
                     {levelUpData.rewards.map((r, i) => r.reward && (
                       <motion.li key={i} initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} transition={{ delay: 0.5 + (i*0.2) }} className="flex items-start gap-2 text-sm font-bold text-[var(--text)]">
@@ -107,10 +107,10 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] relative overflow-hidden">
         <div className="flex justify-between items-end mb-2">
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-black text-[var(--text)] opacity-60">プレイヤー</span>
+            <span className="text-lg font-black text-[var(--text-muted)]">プレイヤー</span>
             <span className="text-3xl font-black text-[var(--primary)]">Lv.{newLevelInfo.level}</span>
           </div>
-          <div className="text-sm font-bold text-[var(--text)] opacity-60">
+          <div className="text-sm font-bold text-[var(--text-muted)]">
             +{earnedExp} EXP
           </div>
         </div>
@@ -125,7 +125,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
           />
         </div>
         {!newLevelInfo.isMaxLevel && (
-          <div className="text-xs font-bold text-right text-[var(--text)] opacity-50 mt-1">
+          <div className="text-xs font-bold text-right text-[var(--text-muted)] mt-1">
             {F("次","つぎ")}の報酬まで あと {newLevelInfo.remainingExp} EXP
           </div>
         )}
@@ -145,10 +145,10 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
             </div>
             <div className="min-w-0">
               <div className="font-black text-[var(--text)]">{dailyProgress.isComplete ? 'きょうの目標クリア！' : `あと ${dailyProgress.remaining}字で目標クリア`}</div>
-              <div className="text-xs font-bold text-[var(--text)] opacity-55">学習した漢字は毎日の記録にのこります</div>
+              <div className="text-xs font-bold text-[var(--text-muted)]">学習した漢字は毎日の記録にのこります</div>
             </div>
           </div>
-          <div className="font-black text-[var(--text)] shrink-0"><span className="text-xl text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs opacity-50"> / {dailyProgress.goal}字</span></div>
+          <div className="font-black text-[var(--text)] shrink-0"><span className="text-xl text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs text-[var(--text-muted)]"> / {dailyProgress.goal}字</span></div>
         </div>
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
           <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
@@ -166,9 +166,9 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] text-center">
         <div className="text-4xl mb-1">{currentStage.emoji}</div>
         <div className="font-black text-[var(--primary)] text-lg">{currentStage.title}</div>
-        <p className="text-xs text-[var(--text)] opacity-60 mt-1 leading-relaxed">{currentStage.desc}</p>
+        <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{currentStage.desc}</p>
         {nextStage && (
-          <div className="mt-2 text-[10px] text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1">
+          <div className="mt-2 text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg px-2 py-1">
             {F("次","つぎ")}のステージ「{nextStage.title}」まで あと{F("レベル","れべる")}{Math.max(0, nextStage.minLevel - newLevelInfo.level)}
           </div>
         )}
@@ -206,7 +206,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
             className={`${stat.color} rounded-2xl border-[3px] p-3 text-center shadow-sm`}>
             <div className="text-2xl mb-1">{stat.icon}</div>
             <div className="text-2xl font-black text-[var(--text)]">{stat.prefix}<AnimatedCounter target={stat.value} duration={1000} /></div>
-            <div className="text-xs font-bold text-[var(--text)] opacity-60">{stat.label}</div>
+            <div className="text-xs font-bold text-[var(--text-muted)]">{stat.label}</div>
           </motion.div>
         ))}
       </div>
@@ -229,7 +229,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
           </div>
           <div className="flex flex-wrap gap-1 justify-center mt-2">
             {[...unlockedItemDefs, ...(rareItemDef ? [rareItemDef] : [])].map((item, i) => (
-              <span key={i} className="text-xs font-bold text-[var(--text)] opacity-60 bg-[var(--bg)] px-2 py-0.5 rounded-full">{item.name}</span>
+              <span key={i} className="text-xs font-bold text-[var(--text-muted)] bg-[var(--bg)] px-2 py-0.5 rounded-full">{item.name}</span>
             ))}
           </div>
         </motion.div>
@@ -247,13 +247,13 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
               className="w-full py-4 text-lg border-[3px] border-[var(--text)] shadow-[0_3px_0_#b45309]">
               <Coins size={18} /> 100コインでひく
             </MotionButton>
-            {(stats.coins || 0) < 100 && <p className="text-xs text-center text-[var(--text)] opacity-40 mt-2">コインが{F("足","た")}りません（{F("現在","げんざい")} {stats.coins || 0}{F("枚","まい")}）</p>}
+            {(stats.coins || 0) < 100 && <p className="text-xs text-center text-[var(--text-muted)] mt-2">コインが{F("足","た")}りません（{F("現在","げんざい")} {stats.coins || 0}{F("枚","まい")}）</p>}
           </div>
         )}
         {gachaPhase === 'spinning' && (
           <div className="text-center py-4">
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.4, ease: 'linear' }} className="text-4xl inline-block">🎲</motion.div>
-            <div className="text-sm font-bold text-[var(--text)] opacity-60 mt-2">ひいています...</div>
+            <div className="text-sm font-bold text-[var(--text-muted)] mt-2">ひいています...</div>
           </div>
         )}
         {gachaPhase === 'reveal' && gachaResult && (() => {

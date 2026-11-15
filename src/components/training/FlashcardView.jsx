@@ -134,11 +134,11 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
       >
         {!revealed ? (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            タップで読みを表示 <span className="text-[10px] opacity-50">Space / Enter</span>
+            タップで読みを表示 <span className="text-xs text-[var(--text-muted)]">Space / Enter</span>
           </div>
         ) : (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            ← 読めなかった ／ 読めた → <span className="text-[10px] opacity-50">矢印キー</span>
+            ← 読めなかった ／ 読めた → <span className="text-xs text-[var(--text-muted)]">矢印キー</span>
           </div>
         )}
 
@@ -178,7 +178,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
         </AnimatePresence>
 
         {!revealed && (
-          <div className="text-xs font-bold text-[var(--text)] opacity-40 flex items-center gap-2">
+          <div className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-2">
             <span className="bg-[var(--bg)] px-2 py-1 rounded">+{displayEarned.exp} EXP</span>
             <span className="bg-[var(--bg)] px-2 py-1 rounded">{displayEarned.coins}</span>
           </div>

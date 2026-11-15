@@ -81,7 +81,7 @@ const TutorialOverlay = ({ onComplete }) => {
             <h2 className="text-xl font-black text-[var(--text)]">{current.title}</h2>
           </div>
 
-          <p className="text-sm text-[var(--text)] opacity-70 leading-relaxed whitespace-pre-line mb-6">
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-line mb-6">
             {current.message}
           </p>
 
@@ -122,7 +122,7 @@ const TutorialOverlay = ({ onComplete }) => {
           {!isLast && (
             <button
               onClick={onComplete}
-              className="mt-3 text-xs text-[var(--text)] opacity-40 hover:opacity-70 transition-opacity"
+              className="mt-3 px-4 text-sm font-bold text-[var(--text-muted)] underline underline-offset-4 hover:text-[var(--text)] transition-colors"
             >
               スキップする
             </button>

@@ -6,7 +6,7 @@ const LazyFallback = () => (
   <div className="flex items-center justify-center h-full" role="status" aria-label="読み込み中">
     <div className="text-center">
       <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" aria-hidden="true" />
-      <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
+      <div className="text-sm font-bold text-[var(--text-muted)]">よみこみ中...</div>
     </div>
   </div>
 );

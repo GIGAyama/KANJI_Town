@@ -24,7 +24,7 @@ import React from 'react';
 export default function Footer() {
   return (
     <footer className="flex-shrink-0 h-8 flex flex-nowrap justify-center items-center gap-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[100] transition-colors select-none">
-      <div className="min-w-0 truncate text-[11px] text-[var(--text)] opacity-40 hover:opacity-100 transition-opacity">
+      <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-opacity">
         ©2026 マイ漢字タウン{' '}
         <a
           href="https://giga-school.com"
@@ -43,7 +43,7 @@ export default function Footer() {
           docs/manual/manual.md に置いたので、属性ごと外して既定に戻した。 */}
       <span data-giga-links />
       {/* KanjiVG の表示はライセンス（CC BY-SA 3.0）の条件。消さない・切らない。 */}
-      <div className="whitespace-nowrap text-[11px] text-[var(--text)] opacity-40 hover:opacity-100 transition-opacity">
+      <div className="whitespace-nowrap text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-opacity">
         書き順データ:{' '}
         <a
           href="https://kanjivg.tagaini.net/"

@@ -32,11 +32,11 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
             🏠
           </motion.div>
           <h2 className="text-lg font-black text-[var(--text)] mb-1">{F("住民","じゅうみん")}がお仕事を終えました！</h2>
-          <p className="text-xs text-[var(--text)] opacity-50 mb-4">今日の収穫を報告します</p>
+          <p className="text-xs text-[var(--text-muted)] mb-4">今日の収穫を報告します</p>
 
           {/* 満足度ステータス */}
           <div className="flex justify-center items-center gap-2 mb-4 bg-[var(--bg)] border-2 border-[var(--text)] rounded-xl py-2 px-4 shadow-sm">
-            <span className="text-xs font-bold text-[var(--text)] opacity-60">町の満足度:</span>
+            <span className="text-xs font-bold text-[var(--text-muted)]">町の満足度:</span>
             <span className="font-black text-sm" style={{ color: satLabel.color }}>{satLabel.emoji} {satLabel.text} ({satisfaction}%)</span>
           </div>
 
@@ -52,7 +52,7 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
                       <span className="text-xl">{mat.icon}</span>
                       <span className="text-xs font-bold text-emerald-800">{mat.name}</span>
                     </div>
-                    <span className="font-black text-emerald-600">+{amount}</span>
+                    <span className="font-black text-emerald-700">+{amount}</span>
                   </div>
                 );
               })}
@@ -62,19 +62,19 @@ const ResidentCollectionPopup = ({ result, satisfaction, satLabel, onConfirm }) 
                     <Coins size={18} className="text-yellow-600" />
                     <span className="text-xs font-bold text-yellow-800">コイン報酬</span>
                   </div>
-                  <span className="font-black text-yellow-600">+{result.coins}</span>
+                  <span className="font-black text-yellow-800">+{result.coins}</span>
                 </div>
               )}
               {result.maintenanceCost > 0 && (
-                <div className="flex items-center justify-between opacity-60 px-3 py-1 border-t border-emerald-200 mt-1">
-                  <span className="text-[10px] font-bold text-emerald-800">建物維持費</span>
-                  <span className="text-[10px] font-bold text-rose-500">-{result.maintenanceCost}</span>
+                <div className="flex items-center justify-between px-3 py-1 border-t border-emerald-200 mt-1">
+                  <span className="text-xs font-bold text-emerald-800">建物維持費</span>
+                  <span className="text-xs font-bold text-rose-700">-{result.maintenanceCost}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <p className="text-[10px] text-[var(--text)] opacity-50 mb-4 italic">※学習をサボると満足度が下がり、収穫が減ります</p>
+          <p className="text-[10px] text-[var(--text-muted)] mb-4 italic">※学習をサボると満足度が下がり、収穫が減ります</p>
 
           <MotionButton
             variant="success"

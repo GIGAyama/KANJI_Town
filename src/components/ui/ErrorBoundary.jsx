@@ -64,7 +64,7 @@ class ErrorBoundary extends React.Component {
           <h2 className="text-xl font-black text-[var(--text)]">
             エラーが発生しました
           </h2>
-          <p className="text-sm text-[var(--text)] opacity-60 max-w-xs">
+          <p className="text-sm text-[var(--text-muted)] max-w-xs">
             {canRetry
               ? '「もう一度ためす」を押してください。くりかえし起こる場合はホームに戻ってください。'
               : '画面を再読み込みするか、ホームに戻ってください。'
@@ -91,7 +91,7 @@ class ErrorBoundary extends React.Component {
           </div>
 
           {/* エラーID（サポート参照用） */}
-          <p className="text-xs text-[var(--text)] opacity-30 select-all" aria-label={`エラーコード ${errorId}`}>
+          <p className="text-xs text-[var(--text-muted)] select-all" aria-label={`エラーコード ${errorId}`}>
             エラーコード: {errorId}
           </p>
 
