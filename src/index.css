@@ -338,10 +338,9 @@ html.presentation [role="button"] {
   width: 10%;
   /* □の右にルビ（約 3mm）が付くぶん、列の中心を左へ寄せる。
      縦書きの line-height は列の幅で、padding-right と足して列の幅（18.9mm）に収める */
-  padding: 5mm 3.9mm 5mm 0;
+  padding: 5mm 2.6mm 5mm 0;
   font-size: 22pt;
   line-height: 15mm;
-  overflow: hidden;
 }
 .pt-q rt {
   font-size: 9pt;
@@ -364,13 +363,13 @@ html.presentation [role="button"] {
 .pt-box {
   display: inline-block;
   box-sizing: border-box;
-  width: 13mm;
-  height: 13mm;
+  width: 12.5mm;
+  height: 12.5mm;
   margin: 1mm 0;
   border: 0.45mm solid #111;
   background: #fff;
-  font-size: 30pt;
-  line-height: 12.1mm;
+  font-size: 28pt;
+  line-height: 11.6mm;
   text-align: center;
   color: #c00;
 }
