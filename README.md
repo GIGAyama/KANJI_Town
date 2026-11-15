@@ -120,8 +120,9 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
   ずれていると `npm run check` が落ちる。**リリースのたびに両方上げる。**
 - 更新は無言で適用せず、`UpdateToast` で児童に確認してから切り替える
   （学習の途中で画面が飛ばないようにするため）。実装は `src/systems/pwa.js`。
-- インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` 最上部で
-  受け取る。**ここより後ろに移すと、通信が遅い端末で取りこぼす。**
+- インストールの合図（`beforeinstallprompt`）は `index.html` の `<head>` の最初に読む
+  `public/install-hook.js` で受け取る（CSP のためインラインには書かない）。**defer / async を付けたり、
+  ほかの読み込みより後ろに移したりすると、通信が遅い端末で取りこぼす。**`npm run check`（C7）が見る。
 
 ## 🔐 セキュリティ設計
 
@@ -150,8 +151,21 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 - `localStorage.clear()` は使わない。`study.records.v1` はアプリ間共有キーであり、
   リセット処理の対象に含めない。
 
-> **CSP は未導入。** 実行時に外部から読み込むものがあるため、
-> 許可リストを確定させたうえで別途投入する（下記「制限とクォータ」を参照）。
+- **CSP（Content-Security-Policy）を `index.html` の `<meta>` に置いている**（GitHub Pages は応答ヘッダを
+  足せないため。`frame-ancestors` と `report-uri` は meta では効かない）。中身は
+  `script-src 'self'`（同梱した JS だけ。インラインの script とイベント属性は動かない）、
+  `connect-src 'self' https://0.peerjs.com wss://0.peerjs.com`（「4けたの数字で送る」の仲介だけ）、
+  `frame-src https://gamification.giga-school.com`（学習ログの写し）、`img-src 'self' data: blob:`、
+  `font-src 'self'`、`object-src 'none'` など。`style-src` だけは React が `<style>` 要素を作る箇所が
+  あるため `'unsafe-inline'` を残している。
+  - `privacy.html` / `terms.html` / `offline.html` は何も読みこまないので `default-src 'none'`。
+    `offline.html` の「もう一度ためす」は、onclick ではなくアプリの入口へのリンク。
+  - インストールの合図の捕捉は `public/install-hook.js` に出してある（インラインの script をなくすため）。
+  - 開発サーバー（`npm run dev`）では `vite.config.js` が CSP を外す（Vite が開発用のインライン script を入れるため）。
+    ビルドした配信物には必ず残り、`npm run check`（B5）が全ページの CSP・`script-src`・インラインの
+    script とイベント属性・`dist/index.html` を見る。
+  - 外部の接続先を足すときは、CSP・`quality.config.json`・`privacy.html`・下の「制限とクォータ」を同時に直す。
+  - `public/records-export.html` は正本の配布物なので、CSP は正本（`standards/records/`）で入れる。
 
 ## ⚠️ 制限とクォータ
 

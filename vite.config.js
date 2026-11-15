@@ -11,6 +11,17 @@ const builtAt = new Date().toISOString();
 /** 通信できるときにしか使わない塊。先読みに入れない（manualChunks を参照） */
 const NETWORK_ONLY_CHUNKS = new Set(['peerjs', 'jsqr']);
 
+// 開発サーバー（npm run dev）でだけ index.html の CSP を外す。
+// @vitejs/plugin-react は開発用のインライン script を差しこみ、HMR は ws://localhost へつなぐので、
+// 配信物と同じ CSP のままでは開発画面が動かない。ビルドした配信物には必ず残る（npm run check が見る）。
+const stripCspInDev = {
+  name: 'strip-csp-in-dev',
+  apply: 'serve',
+  transformIndexHtml(html) {
+    return html.replace(/\s*<meta http-equiv="Content-Security-Policy"[^>]*>/i, '');
+  },
+};
+
 const releaseMetadata = {
   name: 'release-metadata',
   generateBundle() {
@@ -27,7 +38,7 @@ const releaseMetadata = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), releaseMetadata],
+  plugins: [react(), tailwindcss(), releaseMetadata, stripCspInDev],
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
