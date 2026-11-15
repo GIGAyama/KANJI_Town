@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { SvgGhostBoss } from '../../data/town-items';
-import { FormatKun, F } from '../ui/FormatKun';
+import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
+import { pickPromptExample } from '../../systems/prompt-example';
 import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
@@ -519,17 +520,40 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
             </AnimatePresence>
           </div>
 
-          {/* 読みヒント */}
-          <div className="bg-slate-800/80 border-2 border-slate-700 rounded-xl px-4 py-2 text-center w-full max-w-[280px]">
-            <div className="text-[10px] font-bold text-rose-400 mb-1">{F("弱点","じゃくてん")}（よみ）</div>
-            <div className="text-lg md:text-xl font-black text-white leading-tight">
-              {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
-              {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
-              {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
-                <React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>
-              )) : ''}
-            </div>
-          </div>
+          {/* 出題：例文の中の◯を書く。読みの並びはヒント（同じ字が続くときは例文を変える） */}
+          {(() => {
+            const promptExample = pickPromptExample(kanji, Math.floor(idx / queue.length) + idx);
+            const readings = (
+              <>
+                {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
+                {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
+                {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
+                  <React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>
+                )) : ''}
+              </>
+            );
+            return (
+              // 狭い画面ではボスの絵が下に重なるので、問題文を手前に出す（ヒントを押せるように）
+              <div className="relative z-10 bg-slate-800/95 border-2 border-slate-700 rounded-xl px-4 py-2 text-center w-full max-w-[280px]">
+                <div className="text-[10px] font-bold text-rose-400 mb-1">{F("弱点","じゃくてん")}：「◯」の{F("漢字","かんじ")}を {F("書","か")}け！</div>
+                {promptExample ? (
+                  <>
+                    <p className="text-lg md:text-xl font-black text-white ruby-text leading-relaxed" data-testid="boss-prompt">
+                      <SurvivalRubyText text={promptExample} targetChar={kanji.char} />
+                    </p>
+                    <details className="text-slate-300">
+                      <summary className="min-h-[44px] flex items-center justify-center cursor-pointer list-none text-xs font-bold rounded-lg hover:bg-slate-700/60 [&::-webkit-details-marker]:hidden">
+                        💡 ヒント：{F("読","よ")}みかた
+                      </summary>
+                      <div className="text-sm font-black text-white leading-tight pb-1">{readings}</div>
+                    </details>
+                  </>
+                ) : (
+                  <div className="text-lg md:text-xl font-black text-white leading-tight">{readings}</div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 獲得EXP / 情報 */}
           <div className="flex gap-2 w-full max-w-[280px]">

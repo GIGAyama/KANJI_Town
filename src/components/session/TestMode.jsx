@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Eye, RotateCcw, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
-import { FormatKun, F } from '../ui/FormatKun';
+import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
+import { pickPromptExample } from '../../systems/prompt-example';
 
 function getScoreBanner(result) {
   if (!result) return null;
@@ -38,6 +39,9 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
   const lastPosRef = useRef({ x: 0, y: 0 });
   const [gradeResult, setGradeResult] = useState(null);
   const [recommendedEval, setRecommendedEval] = useState(null);
+  // 出題は例文の対象字を◯にした形にする。読みの並び（「カン」）だけでは
+  // 漢・感・完・官・刊 のどれか決まらず、正しく書いても不正解になっていた。
+  const promptExample = useMemo(() => pickPromptExample(kanji, Math.floor(Math.random() * 8)), [kanji]);
 
   useEffect(() => {
     // 端末の devicePixelRatio に合わせて鮮明化（上限2）。座標は CSS px のまま。
@@ -153,14 +157,35 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
     </div>
   );
 
+  const readings = (
+    <>
+      {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
+      {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
+      {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>)) : ''}
+    </>
+  );
+
   const info = (
     <div className="bg-[var(--panel)] rounded-2xl p-3 md:p-4 text-center border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2">
-      <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この{F("漢字","かんじ")}、{F("書","か")}ける？</div>
-      <div className="text-xl md:text-3xl font-black text-[var(--text)] tracking-wider">
-        {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
-        {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
-        {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>)) : ''}
-      </div>
+      {promptExample ? (
+        <>
+          <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">「◯」の{F("漢字","かんじ")}を {F("書","か")}こう</div>
+          <p className="text-xl md:text-2xl font-black text-[var(--text)] ruby-text leading-relaxed" data-testid="test-prompt">
+            <SurvivalRubyText text={promptExample} targetChar={kanji.char} />
+          </p>
+          <details className="text-[var(--text)]">
+            <summary className="min-h-[44px] flex items-center justify-center gap-1 cursor-pointer list-none text-xs md:text-sm font-bold opacity-70 rounded-xl hover:bg-[var(--bg)] [&::-webkit-details-marker]:hidden">
+              💡 ヒント：{F("読","よ")}みかた
+            </summary>
+            <div className="text-base md:text-lg font-black tracking-wider pb-1">{readings}</div>
+          </details>
+        </>
+      ) : (
+        <>
+          <div className="text-xs font-bold text-[var(--panel)] bg-[var(--text)] py-1.5 px-4 rounded-full mx-auto w-max mb-1">この{F("漢字","かんじ")}、{F("書","か")}ける？</div>
+          <div className="text-xl md:text-3xl font-black text-[var(--text)] tracking-wider">{readings}</div>
+        </>
+      )}
     </div>
   );
 
