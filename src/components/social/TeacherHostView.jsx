@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Wifi, ArrowLeft, Copy, Check } from 'lucide-react';
-import { usePeerJSStatus } from '../../hooks/usePeerJS';
+import { usePeerJS, PEER_OPTIONS, PEER_ID_PREFIX } from '../../hooks/usePeerJS';
 import { useQRCode } from '../../hooks/useQRCode';
 import { F } from '../ui/FormatKun';
 import PresentationToggle from '../ui/PresentationToggle';
@@ -12,11 +12,9 @@ const generate4DigitId = () => {
   return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 };
 
-const PEER_ID_PREFIX = 'kanji-town-';
-
 const TeacherHostView = ({ setView, drill }) => {
-  const { isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJSStatus();
-  const isQRLoaded = useQRCode();
+  const { Peer, isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJS();
+  const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
   const [numericId, setNumericId] = useState('');
   const [status, setStatus] = useState('起動中...');
   const [copied, setCopied] = useState(false);
@@ -26,27 +24,25 @@ const TeacherHostView = ({ setView, drill }) => {
 
   // QRコード描画（接続用URLをエンコード）
   const renderQR = useCallback((numId) => {
-    if (!isQRLoaded || !qrCanvasRef.current || !numId) return;
-    try {
-      const url = `${window.location.origin}${window.location.pathname}?connect=${numId}`;
-      window.QRCode.toCanvas(qrCanvasRef.current, url, {
+    if (!QRCode || !qrCanvasRef.current || !numId) return;
+    const url = `${window.location.origin}${window.location.pathname}?connect=${numId}`;
+    Promise.resolve()
+      .then(() => QRCode.toCanvas(qrCanvasRef.current, url, {
         width: 200,
         margin: 2,
         color: { dark: '#292f36', light: '#ffffff' },
-      });
-    } catch (e) {
-      console.error('QR code rendering failed:', e);
-    }
-  }, [isQRLoaded]);
+      }))
+      .catch((e) => console.error('QR code rendering failed:', e));
+  }, [QRCode]);
 
   // Peer接続を開始（IDが衝突した場合はリトライ）
   const initPeer = useCallback(() => {
-    if (!isPeerLoaded || !drill) return;
+    if (!Peer || !drill) return;
     const id4 = generate4DigitId();
     const fullId = PEER_ID_PREFIX + id4;
     try {
       if (peerRef.current) peerRef.current.destroy();
-      const peer = new window.Peer(fullId);
+      const peer = new Peer(fullId, PEER_OPTIONS);
       peerRef.current = peer;
 
       peer.on('open', () => {
@@ -80,7 +76,7 @@ const TeacherHostView = ({ setView, drill }) => {
     } catch (e) {
       setStatus('PeerJS のじゅんびにしっぱいしました');
     }
-  }, [isPeerLoaded, drill, renderQR]);
+  }, [Peer, drill, renderQR]);
 
   useEffect(() => {
     initPeer();
@@ -138,13 +134,21 @@ const TeacherHostView = ({ setView, drill }) => {
               この<span className="font-black text-base text-[var(--primary)]">4けたのすうじ</span>を{F("相手","あいて")}に{F("伝","つた")}えてください
             </p>
 
-            {/* QRコード */}
-            <div className="bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner">
-              <canvas ref={qrCanvasRef} />
-            </div>
-            <p className="text-xs text-[var(--text)] opacity-40 text-center">
-              QRコードをよみとってもつなげます
-            </p>
+            {/* QRコード（読めなければ数字だけで使ってもらう） */}
+            {qrLoadError ? (
+              <p className="text-xs font-bold text-amber-700 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 text-center">
+                QRコードは だせませんでした。4けたの すうじを つたえてください。
+              </p>
+            ) : (
+              <>
+                <div className="bg-white rounded-2xl p-4 border-[3px] border-[var(--text)] shadow-inner">
+                  <canvas ref={qrCanvasRef} />
+                </div>
+                <p className="text-xs text-[var(--text)] opacity-40 text-center">
+                  QRコードをよみとってもつなげます
+                </p>
+              </>
+            )}
           </>
         )}
 

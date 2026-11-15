@@ -146,8 +146,8 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 項目 | 制限 | 影響と対処 |
 |---|---|---|
 | 書き順データ | 同梱（`public/kanjivg/grade-1〜6.json`、計約0.9MB・gzip 約0.36MB） | 外部へは取りに行かない。Service Worker が全学年を先読みするので、一度開いた端末は圏外でも全学年の書き順が出る。それでも読めない字（データ破損など）は、音読だけ字（フォント）で続け、書く段階は「この字は あとで」で飛ばせる（正誤は記録しない。次の学習でまた出る） |
-| 外部依存（P2P） | `cdn.jsdelivr.net` → `unpkg.com` の順に PeerJS を取得 | 両方遮断されると「4けたの数字で送る」が使えない。リンク配布は影響を受けない |
-| 外部依存（QR） | 同じ順で `qrcode`（表示）と `jsQR`（カメラ読み取り）を取得 | 遮断時はQRが出ない・読めない。4けたの数字の入力は使える |
+| 外部への接続（「4けたの数字で送る」だけ） | ライブラリ（PeerJS 1.5.4）は同梱。接続の仲介に PeerJS の公開サーバー `0.peerjs.com`（https / wss）、経路探しに `stun.l.google.com:19302`、直接つながらないときの中継に `eu-0.turn.peerjs.com` / `us-0.turn.peerjs.com`（3478） | 校内フィルタでこれらが止められていると送れない。リンク配布は外部へ通信しないので影響を受けない |
+| QR（表示・読み取り） | `qrcode`（表示）と `jsQR`（カメラ読み取り）を同梱し、使う画面を開いたときに読む | 外部へは取りに行かない。読めなかったときは「URLをコピー」「4けたの数字」を使うよう画面に出る |
 | 書体 | 同梱（`src/fonts/`、woff2 11本・計約1.17MB。`unicode-range` で束に分けてある） | 外部へは取りに行かない。端末は画面に要る束だけを読む。書体に無い字（児童が入力した珍しい字など）は端末の書体で出る（□にはならない） |
 | 共有リンクの長さ | 目安1800字で警告 / QRは1000字まで | 漢字を入れすぎるとURLが長くなる。ドリルを分ける |
 | 共有できるドリル | 名前40字・漢字300字まで（`?drill=` は4000字まで） | 超えた分は取り込み時に切り捨てる |
@@ -237,9 +237,9 @@ GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 | 使っているもの | 用途 | ライセンス |
 | --- | --- | --- |
 | [KanjiVG](https://kanjivg.tagaini.net/) | 漢字の字形と書き順（なぞり書き・お手本・採点） | **CC BY-SA 3.0** © Ulrich Apel / KanjiVG contributors |
-| [jsQR](https://github.com/cozmo/jsQR) | QR コードの読み取り | Apache License 2.0 |
-| [PeerJS](https://peerjs.com/) | 端末どうしの通信 | MIT License |
-| [qrcode](https://github.com/soldair/node-qrcode) | QR コードの生成 | MIT License |
+| [jsQR](https://github.com/cozmo/jsQR) 1.4.0（npm で同梱） | QR コードの読み取り | Apache License 2.0 |
+| [PeerJS](https://peerjs.com/) 1.5.4（npm で同梱） | 端末どうしの通信 | MIT License |
+| [qrcode](https://github.com/soldair/node-qrcode) 1.5.4（npm で同梱） | QR コードの生成 | MIT License |
 | Zen Maru Gothic / Klee One（Google Fonts から取り寄せて同梱） | 画面の書体 | SIL Open Font License 1.1（`public/fonts/OFL.txt`） |
 
 **書き順データについて。** 本アプリは KanjiVG の **`r20260714`（commit `d95a9762`）** から、
@@ -272,6 +272,11 @@ KanjiVG は **クリエイティブ・コモンズ 表示 - 継承 3.0（CC BY-S
   画面に出るのに書体に無い字があれば知らせる。
 - 両書体とも SIL Open Font License 1.1。本文と著作権表示を `public/fonts/OFL.txt` に置いている
   （Reserved Font Name は無い）。
+
+**npm で同梱した部品について。** PeerJS・qrcode・jsQR とそれらが使うパッケージの著作権表示と
+ライセンス本文は `public/licenses/third-party.txt` に置き、配信物にも入れています
+（jsQR の Apache License 2.0 は、配る相手にライセンスの写しを渡すことを求めるため）。
+依存の版を上げたら作り直してください。
 
 このリポジトリの LICENSE（MIT）は、**自作のソースコードにのみ適用されます。**
 上記の第三者の成果物には、それぞれのライセンスが適用されます。

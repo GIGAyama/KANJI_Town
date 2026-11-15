@@ -2,14 +2,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Download, Wifi, Gift, ArrowLeft, Camera, X, Delete } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MotionButton from '../ui/MotionButton';
-import { usePeerJSStatus } from '../../hooks/usePeerJS';
+import { usePeerJS, PEER_OPTIONS, PEER_ID_PREFIX } from '../../hooks/usePeerJS';
 import { useJsQR } from '../../hooks/useQRCode';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
-
-const PEER_ID_PREFIX = 'kanji-town-';
 
 // ソフトウェア数字キーボード
 const NumericKeypad = ({ value, onChange, onSubmit, disabled }) => {
@@ -91,8 +89,15 @@ const QRScanner = ({ onScan, onClose }) => {
   const streamRef = useRef(null);
   const animFrameRef = useRef(null);
   const onScanRef = useRef(onScan);
-  const isJsQRLoaded = useJsQR();
+  const { lib: jsQR, isLoaded: isJsQRLoaded, loadError: jsQRLoadError } = useJsQR();
+  const jsQRRef = useRef(null);
+  jsQRRef.current = jsQR;
   const [error, setError] = useState('');
+
+  // 読み取りの部品を読めなければ、カメラを使わずに数字の入力へ戻ってもらう
+  useEffect(() => {
+    if (jsQRLoadError) setError('QRコードの よみとりが つかえません');
+  }, [jsQRLoadError]);
 
   // onScanの最新値をrefで保持（useEffect/useCallbackの依存に含めない）
   useEffect(() => { onScanRef.current = onScan; }, [onScan]);
@@ -109,7 +114,7 @@ const QRScanner = ({ onScan, onClose }) => {
   // スキャンループ（依存が安定しているため、カメラのuseEffectが不要に再実行されない）
   const startScanLoop = useCallback(() => {
     const tick = () => {
-      if (!videoRef.current || !canvasRef.current || !window.jsQR) return;
+      if (!videoRef.current || !canvasRef.current || !jsQRRef.current) return;
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
@@ -121,7 +126,7 @@ const QRScanner = ({ onScan, onClose }) => {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = window.jsQR(imageData.data, canvas.width, canvas.height);
+      const code = jsQRRef.current(imageData.data, canvas.width, canvas.height);
       if (code && code.data) {
         // URL形式（?connect=XXXX）、kanji-town-プレフィックス、または4桁の数字を検出
         let peerId = code.data;
@@ -207,7 +212,7 @@ const QRScanner = ({ onScan, onClose }) => {
 };
 
 const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
-  const { isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJSStatus();
+  const { Peer, isLoaded: isPeerLoaded, loadError: peerLoadError } = usePeerJS();
   const [hostId, setHostId] = useState(initialConnectId || '');
   const [status, setStatus] = useState('');
   const [receivedDrill, setReceivedDrill] = useState(null);
@@ -220,11 +225,11 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
   }, []);
 
   const handleConnect = useCallback(() => {
-    if (!isPeerLoaded || hostId.length !== 4) return;
+    if (!Peer || hostId.length !== 4) return;
     const fullId = PEER_ID_PREFIX + hostId;
     try {
       if (peerRef.current) peerRef.current.destroy();
-      const peer = new window.Peer();
+      const peer = new Peer(PEER_OPTIONS);
       peerRef.current = peer;
       setStatus('つないでいます...');
       peer.on('open', () => {
@@ -244,7 +249,7 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
       });
       peer.on('error', () => setStatus('つなげませんでした。IDをかくにんしてください'));
     } catch (e) { setStatus('PeerJS のじゅんびにしっぱいしました'); }
-  }, [isPeerLoaded, hostId]);
+  }, [Peer, hostId]);
 
   // 4桁入力完了で自動接続
   useEffect(() => {

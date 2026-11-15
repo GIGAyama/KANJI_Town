@@ -40,16 +40,6 @@
   },
   "securityExceptions": [
     {
-      "rule": "external-runtime-host",
-      "value": "cdn.jsdelivr.net",
-      "reason": "PeerJS の取得元。書き順データ(KanjiVG)は public/kanjivg/ に同梱したので、ここからは取らない。"
-    },
-    {
-      "rule": "external-runtime-host",
-      "value": "unpkg.com",
-      "reason": "PeerJS / qrcode / jsQR の予備の取得元。jsdelivr が校内フィルタで遮断された場合の代替。"
-    },
-    {
       "rule": "no-csp",
       "value": "index.html",
       "reason": "上記4ホストへの許可リストを確定させたうえで別PRで投入する。未検証のまま入れると通信が全て落ちるため、ここでは意図的に見送っている。"

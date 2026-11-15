@@ -1,54 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useLazyModule } from './useLazyModule';
 
-// CDNロードのヘルパー（フォールバック付き）
-const loadScript = (urls, onLoad, onError) => {
-  let idx = 0;
-  const tryLoad = () => {
-    if (idx >= urls.length) { onError(); return; }
-    const script = document.createElement('script');
-    script.src = urls[idx];
-    script.onload = onLoad;
-    script.onerror = () => { idx++; script.remove(); tryLoad(); };
-    document.body.appendChild(script);
-  };
-  tryLoad();
+// QR コードの生成（qrcode）と読み取り（jsQR）。どちらも npm の依存を動的 import する。
+// 初回の JS には入らず、QR を出す・読む画面を開いたときに初めて読む。
+
+/** CommonJS の部品は、読み方によって default が二重になることがあるので中身の関数を取り出す */
+const pick = (mod, name) => {
+  if (typeof mod === 'function') return mod;
+  if (typeof mod?.[name] === 'function') return mod;
+  if (mod?.default) return pick(mod.default, name);
+  return mod;
 };
 
-// QRコード生成ライブラリをCDNから動的ロード
-//
-// 版を 1.4.4 に固定している。qrcode は 1.5.0 で build/ を公開物から外したため、
-// 1.5.x の build/qrcode.min.js は CDN に存在せず 404 になる。
-// 気づきにくいのは、その場合でも予備の unpkg（1.4.4）が読み込まれて画面は動くこと。
-// 見た目が正常なまま、校内フィルタリングで許可すべきアドレスだけが増える。
-export const useQRCode = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  useEffect(() => {
-    if (window.QRCode) { setIsLoaded(true); return; }
-    loadScript(
-      [
-        "https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js",
-        "https://unpkg.com/qrcode@1.4.4/build/qrcode.min.js",
-      ],
-      () => setIsLoaded(true),
-      () => console.error('QRCode library failed to load')
-    );
-  }, []);
-  return isLoaded;
-};
+const importQRCode = () => import('qrcode').then((m) => pick(m, 'toCanvas'));
+const importJsQR = () => import('jsqr').then((m) => pick(m));
 
-// QRコードスキャナーライブラリをCDNから動的ロード (jsQR)
-export const useJsQR = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  useEffect(() => {
-    if (window.jsQR) { setIsLoaded(true); return; }
-    loadScript(
-      [
-        "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
-        "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js",
-      ],
-      () => setIsLoaded(true),
-      () => console.error('jsQR library failed to load')
-    );
-  }, []);
-  return isLoaded;
-};
+/**
+ * QR コード生成ライブラリ（qrcode）。lib.toCanvas(canvas, text, options) で描く。
+ * @returns {{ lib: { toCanvas: Function }|null, isLoaded: boolean, loadError: boolean }}
+ */
+export const useQRCode = () => useLazyModule('qrcode', importQRCode);
+
+/**
+ * QR コード読み取りライブラリ（jsQR）。lib(imageData, width, height) で読む。
+ * 読み取りは「4けたの数字で送る」の相手を見つけるためだけに使うので、通信できるときだけ読む。
+ * @returns {{ lib: Function|null, isLoaded: boolean, loadError: boolean }}
+ */
+export const useJsQR = () => useLazyModule('jsqr', importJsQR, { requiresNetwork: true });
