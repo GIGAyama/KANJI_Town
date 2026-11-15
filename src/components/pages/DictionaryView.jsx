@@ -2,16 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Library, ArrowLeft } from 'lucide-react';
 import { KANJI_DATA } from '../../data/kanji-data';
+import { filterKanji } from '../../utils/kanji-search';
 import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
   const [search, setSearch] = useState(''); const [filterGrade, setFilterGrade] = useState(0);
-  const filtered = KANJI_DATA.filter(k => {
-    const matchGrade = filterGrade === 0 || k.grade === filterGrade;
-    const matchSearch = search === '' || k.char.includes(search) || k.on.some(o => o.includes(search.toUpperCase())) || k.kun.some(ku => ku.includes(search));
-    return matchGrade && matchSearch;
-  });
+  // ひらがな・カタカナ・送りがな付きの読みでも見つかるよう、そろえてから比べる（utils/kanji-search.js）
+  const filtered = filterKanji(KANJI_DATA, { query: search, grade: filterGrade });
   const getStatusColor = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return 'bg-emerald-100 border-emerald-400'; if (s === 'review') return 'bg-violet-100 border-violet-400'; if (s === 'learning') return 'bg-sky-100 border-sky-400'; return 'bg-gray-100 border-gray-300'; };
   const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return <>{F("習得","しゅうとく")}</>; if (s === 'review') return <>{F("復習中","ふくしゅうちゅう")}</>; if (s === 'learning') return <>{F("学習中","がくしゅうちゅう")}</>; return <>{F("未学習","みがくしゅう")}</>; };
 
@@ -30,7 +28,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> {F("漢字","かんじ")}ずかん</h2>
       </div>
       <div className="flex gap-2">
-        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="かんじ・よみで さがす" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]" /></div>
+        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} type="search" aria-label="かんじ・よみで さがす" placeholder="かんじ・よみで さがす" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]" /></div>
       </div>
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
         {[0, 1, 2, 3, 4, 5, 6].map(g => (
