@@ -132,17 +132,17 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
         </div>
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">⚡</div>
-          <div className="text-3xl font-black text-amber-500">{(stats.totalExp || 0).toLocaleString()}</div>
+          <div className="text-3xl font-black text-amber-600">{(stats.totalExp || 0).toLocaleString()}</div>
           <div className="text-xs font-bold text-[var(--text-muted)]">{F("累計","るいけい")}EXP</div>
         </div>
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">🎯</div>
-          <div className="text-3xl font-black text-emerald-500">{weeklySummary.goalDays}<span className="text-base text-[var(--text-muted)]"> / 7</span></div>
+          <div className="text-3xl font-black text-emerald-600">{weeklySummary.goalDays}<span className="text-base text-[var(--text-muted)]"> / 7</span></div>
           <div className="text-xs font-bold text-[var(--text-muted)]">{F("今週","こんしゅう")}の{F("目標","もくひょう")}{F("達成","たっせい")}</div>
         </div>
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">✍️</div>
-          <div className="text-3xl font-black text-sky-500">{weeklySummary.accuracy === null ? '—' : `${weeklySummary.accuracy}%`}</div>
+          <div className="text-3xl font-black text-sky-600">{weeklySummary.accuracy === null ? '—' : `${weeklySummary.accuracy}%`}</div>
           <div className="text-xs font-bold text-[var(--text-muted)]">7{F("日","にち")}の{F("正答率","せいとうりつ")}</div>
         </div>
       </div>

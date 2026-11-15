@@ -104,8 +104,8 @@ const AchievementView = ({ setView, stats, setStats }) => {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <div className="flex flex-col items-end">
-                    {a.reward > 0 && <div className="flex items-center gap-1 text-xs font-black text-amber-600"><Coins size={12} />{a.reward}</div>}
-                    {a.rewardExp > 0 && <div className="flex items-center gap-1 text-[10px] font-black text-blue-500">⚡+{a.rewardExp} EXP</div>}
+                    {a.reward > 0 && <div className="flex items-center gap-1 text-xs font-black text-[var(--text)]"><Coins size={12} className="text-amber-600" aria-hidden="true" />{a.reward}</div>}
+                    {a.rewardExp > 0 && <div className="flex items-center gap-1 text-xs font-black text-[var(--text-muted)]">⚡+{a.rewardExp} EXP</div>}
                   </div>
                   {rewardItemDef && <div className={`w-10 h-10 ${rewardItemDef.bg} rounded-lg border-2 border-[var(--text)] flex items-center justify-center`}><rewardItemDef.svg /></div>}
                   {canClaim && (<MotionButton variant="accent" onClick={() => handleClaim(a)} className="px-3 py-1.5 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] mt-1"><RubyText text="受（う）けとる！" /></MotionButton>)}
