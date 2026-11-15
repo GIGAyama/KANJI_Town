@@ -301,13 +301,33 @@ const ResultSummary = ({ wave, waveProgress, bestCombo, perfectCount, okCount, m
 );
 
 // --- メインのサバイバルビュー ---
-const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
+const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave, paused = false, sessionEarnedExp = 0 }) => {
   const [currentQueue, setCurrentQueue] = useState(() => shuffled(queue));
   const [idx, setIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const timeLeftRef = useRef(INITIAL_TIME);
   const timerRef = useRef(null);
   const isDoneRef = useRef(false);
+  // 演出のタイマー（setTimeout）は画面を離れたら止める。以前は離れたあとも動き、
+  // やめたはずの問題の記録（again）が入ったり、結果画面へ飛んだりしていた。
+  const pendingTimeoutsRef = useRef(new Set());
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => { pendingTimeoutsRef.current.delete(id); fn(); }, ms);
+    pendingTimeoutsRef.current.add(id);
+    return id;
+  }, []);
+  // タブが見えていないあいだは制限時間を進めない
+  const [pageHidden, setPageHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const onVisibility = () => setPageHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      pendingTimeoutsRef.current.forEach(clearTimeout);
+      pendingTimeoutsRef.current.clear();
+      clearInterval(timerRef.current);
+    };
+  }, []);
   // 画面回転にも追従する。サイズ変更時は SurvivalCanvas 側で書きかけの画が消える(通常モードと同じ挙動)
   const { canvasSize } = useLearningViewport('survival');
 
@@ -338,10 +358,13 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
 
   const kanji = currentQueue[idx % currentQueue.length];
 
-  // タイマー
+  // タイマー（下の isTimerRunning のときだけ進める。書き順データを読んでいる間・読めなかった間・
+  // 「やめる？」の確認中・タブが見えていない間は止める。以前は phase だけを見ていて、それらの間も減っていた）
+  const [fetchError, setFetchError] = useState(null);
+  const isTimerRunning = phase === 'writing' && !isDoneRef.current && !isLoading && !fetchError
+    && strokeData.length > 0 && !paused && !pageHidden;
   useEffect(() => {
-    if (phase === 'finished' || isDoneRef.current) return;
-    if (phase !== 'writing') return;
+    if (!isTimerRunning) return undefined;
 
     timerRef.current = setInterval(() => {
       timeLeftRef.current -= 1;
@@ -356,7 +379,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
     }, 1000);
 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase]);
+  }, [isTimerRunning]);
 
   // 終了時にonFinish
   useEffect(() => {
@@ -368,7 +391,6 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
     }
   }, [phase, onFinish]);
 
-  const [fetchError, setFetchError] = useState(null);
 
   // KanjiVGデータ取得（リトライ・キャッシュ付き）
   useEffect(() => {
@@ -459,12 +481,12 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
       onUpdateStat(kanji, isOrderMistake(result) ? recommendEvaluation(result) : 'again', WRITING_SKILLS);
       // ミスフラッシュ
       setMissFlash(true);
-      setTimeout(() => setMissFlash(false), 400);
+      later(() => setMissFlash(false), 400);
     }
 
     // タイムアウトチェック
     if (timeLeftRef.current <= 0) {
-      setTimeout(() => {
+      later(() => {
         if (!isDoneRef.current) {
           isDoneRef.current = true;
           setPhase('finished');
@@ -476,7 +498,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
     // ウェーブ進行
     const newWaveProgress = waveProgress + 1;
     if (newWaveProgress >= WAVE_SIZE) {
-      setTimeout(() => {
+      later(() => {
         setShowWaveClear(true);
         audioCtrl.playSE('success');
         earnedRef.current = { ...earnedRef.current, exp: earnedRef.current.exp + 30 };
@@ -484,7 +506,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
         timeLeftRef.current = Math.min(MAX_TIME, timeLeftRef.current + 5);
         setTimeLeft(timeLeftRef.current);
 
-        setTimeout(() => {
+        later(() => {
           setShowWaveClear(false);
           setWave(w => w + 1);
           setWaveProgress(0);
@@ -495,7 +517,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
       }, 700);
     } else {
       setWaveProgress(newWaveProgress);
-      setTimeout(() => {
+      later(() => {
         setJudgeInfo(null);
         advanceToNext();
         setPhase('writing');
@@ -611,7 +633,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
             perfectCount={perfectCount}
             okCount={okCount}
             missCount={missCount}
-            earned={earnedRef.current}
+            earned={{ ...earnedRef.current, exp: sessionEarnedExp + waveBonusExpRef.current }}
           />
         ) : (
           <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">

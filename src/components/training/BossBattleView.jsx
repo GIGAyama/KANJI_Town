@@ -157,7 +157,7 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
 };
 
 // --- メインのボスバトルビュー ---
-const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequestLeave }) => {
+const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequestLeave, paused = false, sessionEarnedExp = 0 }) => {
   const [idx, setIdx] = useState(0);
   const [bossHp, setBossHp] = useState(BOSS_MAX_HP);
   const bossHpRef = useRef(BOSS_MAX_HP);
@@ -187,6 +187,26 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef(null);
   const timeLeftRef = useRef(0);
+  // 演出のタイマー（setTimeout）は画面を離れたら止める。以前は離れたあとも動き、
+  // やめたはずの問題の記録（again）が入ったり、結果画面へ飛んだりしていた。
+  const pendingTimeoutsRef = useRef(new Set());
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => { pendingTimeoutsRef.current.delete(id); fn(); }, ms);
+    pendingTimeoutsRef.current.add(id);
+    return id;
+  }, []);
+  // タブが見えていないあいだは制限時間を進めない
+  const [pageHidden, setPageHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const onVisibility = () => setPageHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      pendingTimeoutsRef.current.forEach(clearTimeout);
+      pendingTimeoutsRef.current.clear();
+      clearInterval(timerRef.current);
+    };
+  }, []);
 
   const kanji = queue[idx % queue.length];
 
@@ -225,13 +245,20 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
     return Math.min(45, Math.max(15, strokeData.length * 3));
   }, [strokeData]);
 
-  // タイマー開始
+  // 新しい問題（またはやりなおし）の制限時間を決める
   useEffect(() => {
     if (phase !== 'writing' || isLoading || !strokeData.length) return;
     const limit = calcTimeLimit();
     setTimeLeft(limit);
     timeLeftRef.current = limit;
-    if (timerRef.current) clearInterval(timerRef.current);
+  }, [phase, isLoading, strokeData, idx, retryKanji]);
+
+  // 時間を進める。「やめる？」の確認中・タブが見えていない間は止める
+  // （以前は確認中も進み、時間切れでボスの強攻撃と「忘れた」の記録が入っていた）
+  const isTimerRunning = phase === 'writing' && !isLoading && strokeData.length > 0 && !paused && !pageHidden;
+  useEffect(() => {
+    if (!isTimerRunning) return undefined;
+    clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       timeLeftRef.current -= 1;
       setTimeLeft(timeLeftRef.current);
@@ -240,8 +267,8 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
         handleTimeout();
       }
     }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase, isLoading, strokeData, idx, retryKanji]);
+    return () => clearInterval(timerRef.current);
+  }, [isTimerRunning, idx, retryKanji]);
 
   // タイムアウト処理
   const handleTimeout = () => {
@@ -253,7 +280,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
     setGradeResult({ total: 0, strokeCountMatch: false, crossMatch: false, details: ['時間切れ！書けなかった…'] });
 
     // ボスからの強攻撃（2ダメージ）
-    setTimeout(() => {
+    later(() => {
       doBossAttack(2, 'タイムアウト！ボスの強攻撃！');
       // 復習リスト入り
       addToFailedKanji(kanji);
@@ -270,7 +297,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
     const result = gradeStrokes(userStrokes, strokeData, canvasSize);
     setGradeResult(result);
 
-    setTimeout(() => {
+    later(() => {
       if (!result.strokeCountMatch) {
         // 画数違い → 一撃アウト（0点）、ボス強攻撃2ダメージ
         setBattleMessage('画数がちがう！一撃アウト！');
@@ -337,7 +364,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
   const doBossHit = (damage, isCritical) => {
     setPhase(isCritical ? 'result_hit' : 'result_hit');
     setIsShaking(true);
-    setTimeout(() => setIsShaking(false), 600);
+    later(() => setIsShaking(false), 600);
 
     const newHp = Math.max(0, bossHpRef.current - damage);
     bossHpRef.current = newHp;
@@ -345,18 +372,18 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
 
     if (newHp <= 0 && !isDoneRef.current) {
       isDoneRef.current = true;
-      setTimeout(() => {
+      later(() => {
         setPhase('victory');
         audioCtrl.playSE('rare');
       }, 1000);
-      setTimeout(() => {
+      later(() => {
         onFinish({ coins: earnedRef.current.coins, perfectCount: earnedRef.current.perfectCount, rareDrop: 't_gold_castle' });
       }, 3000);
       return;
     }
 
     // 次の漢字へ
-    setTimeout(() => {
+    later(() => {
       setRetryKanji(false);
       advanceToNext();
     }, 2000);
@@ -368,7 +395,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
     setBossAttackAnim(true);
     audioCtrl.playSE('boss_hit');
 
-    setTimeout(() => {
+    later(() => {
       setBossAttackAnim(false);
       setPlayerDamageFlash(true);
       audioCtrl.playSE('stamp_bad');
@@ -378,15 +405,15 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
       playerHpRef.current = newHp;
       setPlayerHp(newHp);
 
-      setTimeout(() => setPlayerDamageFlash(false), 500);
+      later(() => setPlayerDamageFlash(false), 500);
 
       if (newHp <= 0 && !isDoneRef.current) {
         isDoneRef.current = true;
-        setTimeout(() => {
+        later(() => {
           setPhase('defeated');
           audioCtrl.playSE('stamp_bad');
         }, 800);
-        setTimeout(() => {
+        later(() => {
           onBossDefeat({
             coins: Math.floor(earnedRef.current.coins / 2),
             perfectCount: earnedRef.current.perfectCount,
@@ -397,7 +424,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
       }
 
       // 次の漢字へ
-      setTimeout(() => {
+      later(() => {
         setRetryKanji(false);
         advanceToNext();
       }, 1500);
@@ -535,7 +562,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
           <div className="flex gap-2 w-full max-w-[280px]">
             <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
               <div className="text-[9px] font-bold text-slate-500">EXP</div>
-              <div className="text-sm font-black text-yellow-400">+{earnedRef.current.exp}</div>
+              <div className="text-sm font-black text-yellow-400">+{sessionEarnedExp}</div>
             </div>
             <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
               <div className="text-[9px] font-bold text-slate-500">{F("問目","もんめ")}</div>
@@ -574,7 +601,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
               <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(kanji.char).then(({ paths: p, strokeData: data }) => { setPaths(p); setStrokeData(data); setIsLoading(false); }).catch(() => { setFetchError(true); setIsLoading(false); }); }} className="bg-rose-600 text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-rose-800 shadow-[3px_3px_0_#1e293b] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど ためす</button>
             </div>
           ) : phase === 'victory' ? (
-            <VictoryScreen bossHp={bossHp} earned={earnedRef.current} />
+            <VictoryScreen bossHp={bossHp} earned={{ ...earnedRef.current, exp: sessionEarnedExp }} />
           ) : phase === 'defeated' ? (
             <DefeatScreen playerHp={playerHp} failedKanji={failedKanjiRef.current} />
           ) : (

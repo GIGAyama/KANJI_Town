@@ -674,6 +674,20 @@ const StorageAPI = {
   },
 
   /**
+   * 実績の進み具合を、いまの記録から数え直す（stats.achievements を書きかえて、同じ stats を返す）。
+   * 以前は起動時とセッション終了時にしか数えず、クラフト・建物・コインの実績はすぐ受け取れず、
+   * セッション回数の実績は1回遅れていた。
+   * @param {object} stats
+   * @returns {object}
+   */
+  refreshAchievements: (stats) => {
+    if (!stats) return stats;
+    stats.achievements = JSON.parse(JSON.stringify(stats.achievements || {}));
+    StorageAPI._updateAchievements(stats);
+    return stats;
+  },
+
+  /**
    * サボり日数に応じたペナルティを適用する
    * @param {object} stats - 直接変更される
    */

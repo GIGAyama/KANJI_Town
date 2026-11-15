@@ -491,6 +491,17 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [exitHintAt]);
 
+  // 実績の画面を開いたときは、いまの記録で進み具合を数え直す（クラフト・建物・コインをすぐ反映する）
+  useEffect(() => {
+    if (view !== 'achievements') return;
+    setStats(prev => {
+      const next = StorageAPI.refreshAchievements({ ...prev });
+      if (JSON.stringify(next.achievements) === JSON.stringify(prev.achievements)) return prev;
+      StorageAPI.saveStats(next);
+      return next;
+    });
+  }, [view]);
+
   // 学習画面の「やめる」ボタン。戻る操作と同じ確認ダイアログを出す
   const requestLeaveLearning = useCallback(() => setShowLeaveConfirm(true), []);
 
@@ -795,6 +806,8 @@ export default function App() {
       ...activeSession,
       finalized: true,
       earnedExp: totalExp, 
+      // 結果画面に出すコインは、実際に足す量（EXP からの換算＋ボス・サバイバルの報酬＋レベルアップ）
+      earnedCoins,
       rareDrop, 
       perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),
       reviewedCount: activeSession.reviewedCount + (additionalResults.reviewedCount || 0),
@@ -814,6 +827,8 @@ export default function App() {
       if (addedRadius > 0) newStats.exploredRadius = Math.max(newStats.exploredRadius || 3, addedRadius);
       // セッション数カウント更新
       newStats.sessionCount = (newStats.sessionCount || 0) + 1;
+      // 実績の進み具合は、セッション数とコインを足したあとで数え直す（以前は1回遅れていた）
+      StorageAPI.refreshAchievements(newStats);
 
       // learningフェーズの漢字がセッション直後にお化けとして出ないよう、
       // nextReviewに猶予を持たせる
@@ -882,7 +897,9 @@ export default function App() {
         const newKanjiStats = { ...s.kanjiStats };
         defeatResults.failedKanji.forEach(k => {
           if (newKanjiStats[k.id]) {
-            newKanjiStats[k.id] = { ...newKanjiStats[k.id], nextReview: Date.now(), mistakes: (newKanjiStats[k.id].mistakes || 0) + 1 };
+            // ミスの数は、失敗したときの onUpdateStat('again') ですでに数えている。
+            // ここでも足すと、負けたときだけ二重に数えていた（勝ったときは1回）。復習の前倒しだけにする。
+            newKanjiStats[k.id] = { ...newKanjiStats[k.id], nextReview: Date.now() };
           }
         });
         const ns = { ...s, kanjiStats: newKanjiStats };
@@ -1021,8 +1038,8 @@ export default function App() {
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
           {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
-          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'drillTest' && <FullScreenWrapper key="drillTest"><ErrorBoundary onReset={() => setView('home')}><DrillTestView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onReviewMistakes={startMistakeReview} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'result' && <PageWrapper key="result"><ErrorBoundary onReset={() => setView('home')}><ResultView sessionMetrics={sessionData} oldExp={sessionData.oldExp} setView={setView} stats={stats} setStats={setStats} onContinueLearning={() => startSession(stats.targetGrade || 1)} /></ErrorBoundary></PageWrapper>}
         </AnimatePresence>
