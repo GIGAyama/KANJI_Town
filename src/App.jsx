@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { PenTool, Volume2, VolumeX, Settings, Users } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -73,9 +73,10 @@ const DrillShareView = lazy(() => import('./components/social/DrillShareView'));
 const DrillImportView = lazy(() => import('./components/social/DrillImportView'));
 
 // Tutorial & Phase 7
-import TutorialOverlay from './components/tutorial/TutorialOverlay';
-import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
-import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
+// 初回・1日1回だけ出る案内は、出すときに読む（初回JSの予算 220KiB を空けるため）
+const TutorialOverlay = lazy(() => import('./components/tutorial/TutorialOverlay'));
+const LoginBonusPopup = lazy(() => import('./components/tutorial/LoginBonusPopup'));
+const ResidentCollectionPopup = lazy(() => import('./components/tutorial/ResidentCollectionPopup'));
 import FeatureHint from './components/tutorial/FeatureHint';
 
 // テーマ別CSS変数。色の正本は constants/themes.js（テストが全テーマのコントラストを確かめる）
@@ -918,7 +919,8 @@ export default function App() {
       {/* 新しい版が用意できたときの案内（押したときだけ切り替わる） */}
       <UpdateToast />
 
-      {/* Phase 5: チュートリアルオーバーレイ */}
+      {/* Phase 5: チュートリアルオーバーレイ（下の2つのポップアップも、読みこみ中は何も出さない） */}
+      <Suspense fallback={null}>
       <AnimatePresence>
         {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
       </AnimatePresence>
@@ -948,6 +950,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+      </Suspense>
 
       {/* ほかのタブで開かれたとき。「このタブで つづける」で読みなおして、こちらを使うタブにする */}
       {tabInactive && <OtherTabNotice onResume={() => window.location.reload()} />}
