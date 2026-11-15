@@ -30,7 +30,7 @@ export const dueLabel = (due, today) => {
   if (days === null) return '';
   if (days === 0) return 'きょうまで';
   if (days === 1) return 'あしたまで';
-  if (days < 0) return <>{formatMonthDay(due)}まで（すぎたけど、いまからでも できるよ）</>;
+  if (days < 0) return <>{formatMonthDay(due)}まで（まだ できるよ）</>;
   return <>{formatMonthDay(due)}まで（あと{days}{F("日","にち")}）</>;
 };
 

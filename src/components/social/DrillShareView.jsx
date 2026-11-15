@@ -17,12 +17,12 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 const weekdayOf = (key) => (isValidDateKey(key) ? WEEKDAYS[new Date(`${key}T12:00:00`).getDay()] : '');
 
 /** えらぶボタン（宿題の決まり） */
-const Choice = ({ active, onClick, children }) => (
+const Choice = ({ active, onClick, children, className = '' }) => (
   <button
     type="button"
     aria-pressed={active}
     onClick={() => { audioCtrl.playSE('click'); onClick(); }}
-    className={`min-h-[48px] px-3 rounded-xl border-[3px] text-sm font-black transition-all ${active ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--text)] shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/25 text-[var(--text)] hover:border-[var(--text)]'}`}
+    className={`min-h-[48px] px-2 rounded-xl border-[3px] text-sm font-black whitespace-nowrap transition-all ${className} ${active ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--text)] shadow-[2px_2px_0_var(--primary)]' : 'border-[var(--text)]/25 text-[var(--text)] hover:border-[var(--text)]'}`}
   >
     {children}
   </button>
@@ -149,9 +149,9 @@ const DrillShareView = ({ setView, drill, setHostDrill }) => {
                   <>
                     <div className="flex flex-col gap-1">
                       <div id="homework-count" className="text-sm font-black text-[var(--text)]">テストの{F("問題数","もんだいすう")}</div>
-                      <div className="grid grid-cols-4 gap-2" role="group" aria-labelledby="homework-count">
+                      <div className="flex flex-wrap gap-2" role="group" aria-labelledby="homework-count">
                         {countOptions.map(n => (
-                          <Choice key={n} active={count === n} onClick={() => setCount(n)}>
+                          <Choice key={n} active={count === n} onClick={() => setCount(n)} className="min-w-[72px] px-3">
                             {n === 0 ? <>ぜんぶ<span className="text-xs">（{kanjiCount}）</span></> : <>{n}{F("問","もん")}</>}
                           </Choice>
                         ))}
