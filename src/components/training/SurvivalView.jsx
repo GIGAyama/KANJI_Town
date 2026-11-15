@@ -6,6 +6,7 @@ import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
 import { appendRound, shuffled } from '../../systems/question-queue';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -300,7 +301,7 @@ const ResultSummary = ({ wave, waveProgress, bestCombo, perfectCount, okCount, m
 );
 
 // --- メインのサバイバルビュー ---
-const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
+const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave }) => {
   const [currentQueue, setCurrentQueue] = useState(() => shuffled(queue));
   const [idx, setIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
@@ -537,6 +538,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
       <div className="flex-shrink-0 px-3 py-2 md:px-4 md:py-2 z-10 bg-[var(--panel)] border-b-[3px] border-[var(--text)]">
         {/* 1段目: ウェーブ + スコア + タイマー */}
         <div className="flex items-center gap-2 mb-1.5">
+          {phase !== 'finished' && <LeaveLearningButton onClick={onRequestLeave} />}
           {/* ウェーブバッジ */}
           <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-400 rounded-full px-2.5 py-0.5 shrink-0">
             <Flame size={14} className="text-amber-500" />

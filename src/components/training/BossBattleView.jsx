@@ -10,6 +10,7 @@ import { RefreshCw, Swords, Shield } from 'lucide-react';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 
 const PLAYER_MAX_HP = 3;
 const BOSS_MAX_HP = 10;
@@ -156,7 +157,7 @@ const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled })
 };
 
 // --- メインのボスバトルビュー ---
-const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
+const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequestLeave }) => {
   const [idx, setIdx] = useState(0);
   const [bossHp, setBossHp] = useState(BOSS_MAX_HP);
   const bossHpRef = useRef(BOSS_MAX_HP);
@@ -443,6 +444,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
       <div className="flex-shrink-0 px-3 py-2 md:px-6 md:py-3 flex flex-col gap-2 z-10">
         {/* プレイヤーHP */}
         <div className="flex items-center gap-2">
+          {phase !== 'victory' && phase !== 'defeated' && <LeaveLearningButton onClick={onRequestLeave} tone="dark" />}
           <div className="text-xs font-bold text-slate-400 w-16 shrink-0">
             <Shield size={14} className="inline mr-1" />じぶん
           </div>

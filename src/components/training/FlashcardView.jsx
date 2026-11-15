@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
@@ -10,7 +11,7 @@ import { StorageAPI } from '../../systems/storage';
 import { recordSkillEvidence } from '../../systems/mastery';
 import { recordStudyAttempt } from '../../systems/studySession';
 
-const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
+const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => {
   const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -115,7 +116,8 @@ const FlashcardView = ({ queue, stats, setStats, onFinish }) => {
 
   return (
     <div className="flex flex-col h-[85vh] items-center justify-center p-4 relative w-full max-w-md mx-auto">
-      <div className="absolute top-0 w-full flex justify-between items-center p-4">
+      <div className="absolute top-0 w-full flex justify-between items-center gap-2 p-4">
+        <LeaveLearningButton onClick={onRequestLeave} />
         <span className="font-bold flex items-center gap-1 text-[var(--text)] bg-[var(--panel)] px-3 py-1 rounded-full border-[3px] border-[var(--text)] shadow-sm">
           <Timer size={16} /> {formatTime(elapsed)}
         </span>

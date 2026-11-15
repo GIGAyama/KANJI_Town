@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, RefreshCw, CheckCircle, XCircle, RotateCcw, LogOut, X, Search, Pencil } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
 import KanjiGlyph from '../ui/KanjiGlyph';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
@@ -491,7 +492,7 @@ const AnswerDetailSheet = ({ answer, index, total, onPrev, onNext, onClose, onPr
 };
 
 // --- メインのテストビュー ---
-const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
+const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequestLeave }) => {
   const [phase, setPhase] = useState('testing'); // 'testing' | 'results'
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
@@ -622,6 +623,7 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
         {/* ヘッダー */}
         <div className="flex-shrink-0 px-3 py-2 md:px-4 md:py-3 z-10 bg-[var(--panel)] border-b-[3px] border-[var(--text)]">
           <div className="flex items-center gap-2 mb-1.5">
+            <LeaveLearningButton onClick={onRequestLeave} />
             <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 rounded-full px-2.5 py-0.5 shrink-0">
               <span className="text-xs font-black text-blue-600">テスト</span>
             </div>
