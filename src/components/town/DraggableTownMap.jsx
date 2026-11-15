@@ -1,28 +1,24 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react';
+import React, { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, CloudRain, Snowflake, ZoomIn, ZoomOut, Users } from 'lucide-react';
-import { TOWN_ITEMS } from '../../data/town-items';
+import { TOWN_ITEM_MAP } from '../../data/town-items';
 import VillagerDot from './VillagerDot';
 import WeatherOverlay from './WeatherOverlay';
 import { audioCtrl } from '../../systems/audio';
 import { isVillagerInViewRange } from '../../systems/town-animation';
+import {
+  TILE_W, TILE_H, GRID_SIZE, C, toIsoX, toIsoY, fromIso,
+  computeViewRange, fogFieldBounds, isExplored, isFogRing, buildLayeredFogKeys, buildPointsOfInterest,
+} from '../../systems/town-map-view';
 
-// ── アイソメトリック定数 ──
-const TILE_W = 64;
-const TILE_H = 32;
-export const GRID_SIZE = 50;
-export const C = 25; // マップ中心
+export { GRID_SIZE, C };
 
 // 開拓可能な地形
 const CULTIVATABLE_TERRAIN = new Set(['t_roughland', 't_grassland', 't_forest_floor', 't_sand', 't_highland']);
 
-// ── 座標変換 ──
-const toIsoX = (gx, gy) => (gx - gy) * (TILE_W / 2);
-const toIsoY = (gx, gy) => (gx + gy) * (TILE_H / 2);
-const fromIso = (sx, sy) => ({
-  x: Math.floor((sx / (TILE_W / 2) + sy / (TILE_H / 2)) / 2),
-  y: Math.floor((sy / (TILE_H / 2) - sx / (TILE_W / 2)) / 2),
-});
+/** mapData が無いときに毎回新しい {} を作ると、全マスの計算が毎回やり直しになる */
+const EMPTY_MAP = Object.freeze({});
+const FOG_COLOR = '#0f172a';
 
 // ── 地形ダイヤモンドタイル色 ──
 const TERRAIN_COLORS = {
@@ -61,8 +57,241 @@ const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivate
   );
 });
 
+// ── 1 マス分の描画 ──
+// 値の props だけを受け取って memo する。ドラッグで表示範囲が変わっても、
+// 地図や時間帯が変わらないマスは描き直さない。
+const TownCell = memo(({ x, y, baseItemId, topItemId, isEditing, isDanger, timeOfDay, hasGhost }) => {
+  // 表示したあとに置いた建物だけ「ぽん」と出す。開いたときや、ずらして画面に入ったマスは出さない
+  const mountedRef = useRef(false);
+  useEffect(() => { mountedRef.current = true; }, []);
+  const appear = mountedRef.current;
+
+  const key = `${x},${y}`;
+  const depth = Math.floor((x + y) * 100);
+  const item = baseItemId ? TOWN_ITEM_MAP.get(baseItemId) || null : null;
+  const topItem = topItemId ? TOWN_ITEM_MAP.get(topItemId) || null : null;
+  const isTerrain = item && item.type === 'terrain';
+
+  // --- バリアント計算 ---
+  // (x * 13 + y * 7) のようなシンプルなハッシュで決定論的なシードを得る
+  const seedVal = (x * 13 + y * 7) % 100;
+  const isFlipped = item?.hasVariants ? (seedVal % 2 === 0) : false;
+
+  // 色相の変化(-15deg ~ +15deg程度)。自然物は大きめ、人工物は小さめにブレさせる
+  let hueShift = 0;
+  if (item?.hasVariants && !item?.disableHue) {
+    const shiftAmount = (seedVal % 31) - 15; // -15 to +15
+    hueShift = item.type === 'nature' ? shiftAmount : shiftAmount * 0.5;
+  }
+
+  // 夜間発光・影の計算
+  let nightFilter = '';
+  if (timeOfDay === 'night' && (item?.type === 'building' || item?.type === 'mega' || item?.type === 'rare')) {
+    // 夜の建物は、窓が光っているように疑似的に輝度コントラストを上げる
+    nightFilter = 'brightness(1.2) contrast(1.1) drop-shadow(0 0 4px rgba(253, 224, 71, 0.3))';
+  } else if (timeOfDay === 'evening' && item?.type === 'nature') {
+    nightFilter = 'saturate(1.2)';
+  }
+  // 色ずれも夜の光も無い建物には filter を付けない（hue-rotate(0deg) でも合成の手間がかかる）
+  const itemFilter = [hueShift ? `hue-rotate(${hueShift}deg)` : '', nightFilter].filter(Boolean).join(' ') || undefined;
+
+  const isoX = toIsoX(x, y);
+  const isoY = toIsoY(x, y);
+  const isoHeight = item?.isoHeight || 0;
+
+  const tileStyle = {
+    position: 'absolute',
+    left: isoX - TILE_W / 2,
+    top: isoY - isoHeight,
+    width: TILE_W,
+    zIndex: depth,
+  };
+
+  // 岩盤
+  if (baseItemId === 't_bedrock') {
+    return (
+      <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
+        <GroundDiamond colors={TERRAIN_COLORS.t_bedrock} isEditing={false} />
+      </div>
+    );
+  }
+
+  // メガ建築のアンカーセル（size を持つ建物は、左上のマスに 1 つだけ描く）
+  if (item?.size) {
+    const mw = item.size.w;
+    const mh = item.size.h;
+    const megaH = item.isoHeight || 48;
+    const megaCenterX = toIsoX(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
+    const megaCenterY = toIsoY(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
+    const megaZIndex = depth + (mw + mh - 2) * 100 + 140; // １マスの建物(+140)と基準を揃え、最前面のタイルの奥側に判定を置く
+    const megaStyle = {
+      position: 'absolute',
+      left: megaCenterX - TILE_W * mw / 2,
+      top: megaCenterY - megaH,
+      width: TILE_W * mw,
+      height: TILE_H * mh + megaH,
+      zIndex: megaZIndex,
+    };
+    return (
+      <div key={`${key}-mega`} style={megaStyle}
+        className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
+        <item.svg seed={seedVal} />
+      </div>
+    );
+  }
+
+  // 開拓可能な地形
+  const terrainColors = isTerrain ? (TERRAIN_COLORS[baseItemId] || TERRAIN_COLORS.t_roughland) : null;
+
+  if (CULTIVATABLE_TERRAIN.has(baseItemId)) {
+    return (
+      <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
+        className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
+        <GroundDiamond colors={terrainColors} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
+        {isEditing && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+            <span className="text-[8px] font-black text-white bg-amber-600/80 px-1.5 py-0.5 rounded-full whitespace-nowrap">開拓 -{item?.cultivateCost || 5}💰</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 浅瀬
+  if (baseItemId === 't_shallow_water') {
+    return (
+      <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}>
+        <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} isEditing={false} />
+      </div>
+    );
+  }
+
+  // 通常セル（更地・建物・雑草）
+  const groundColors = isTerrain ? terrainColors : TERRAIN_COLORS.t_cleared;
+  const dimmed = isDanger && !isEditing ? 'brightness-75' : '';
+  const objZIndex = item?.isFlat ? depth + 10 : depth + 140; // 平面（道路など）は足元（10）、立体物は奥（140）
+  const topZIndex = depth + 140; // 立体物と同じ基準
+  const topIsoHeight = topItem?.isoHeight || 0;
+  const combinedIsoHeight = isoHeight + topIsoHeight;
+  const popIn = appear ? { scale: 0.3, y: -60, opacity: 0 } : false;
+  const popTransition = { type: 'spring', stiffness: 600, damping: 12, mass: 0.8 };
+
+  return (
+    <>
+      {/* 1. 地面レイヤー（足元） */}
+      <div key={`${key}-ground`} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
+        className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${dimmed}`}>
+        <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
+      </div>
+
+      {/* 2. 建物・オブジェクトレイヤー（立体物） */}
+      {((item && !isTerrain) || (item && item.id === 't_weed') || hasGhost) && (
+        <div key={`${key}-obj`} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2, zIndex: objZIndex }}
+          className={`select-none pointer-events-none ${dimmed}`}>
+          {/* 建物SVG */}
+          <AnimatePresence mode="popLayout">
+            {item && !isTerrain ? (
+              <motion.div key={baseItemId} initial={popIn} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
+                transition={popTransition}
+                className="absolute inset-0 flex items-end justify-center"
+                style={{ bottom: 2 }}>
+                <div style={{
+                  width: TILE_W,
+                  height: Math.max(TILE_W, TILE_H + isoHeight),
+                  transform: isFlipped ? 'scaleX(-1)' : 'none',
+                  filter: itemFilter,
+                }}>
+                  <item.svg seed={seedVal} />
+                </div>
+              </motion.div>
+            ) : item && item.id === 't_weed' ? (
+              <motion.div key="weed" initial={appear ? { scale: 0 } : false} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                className="absolute inset-0 flex items-end justify-center" style={{ bottom: 4 }}>
+                <div style={{ width: TILE_W * 0.7, height: TILE_H * 0.7 }}>
+                  <item.svg seed={seedVal} />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+          {/* ゴースト */}
+          {hasGhost && (
+            <motion.div animate={{ y: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 2 }}
+              className="absolute z-60 text-2xl drop-shadow-lg pointer-events-none select-none"
+              style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
+          )}
+        </div>
+      )}
+
+      {/* 3. 上乗せレイヤー（標識やベンチなど） */}
+      {topItem && (
+        <div key={`${key}-top`} style={{ ...tileStyle, top: isoY - combinedIsoHeight, height: TILE_H + combinedIsoHeight + 2, zIndex: topZIndex }}
+          className={`select-none pointer-events-none ${dimmed}`}>
+          <AnimatePresence mode="popLayout">
+            <motion.div key={topItemId} initial={popIn} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
+              transition={popTransition}
+              className="absolute inset-0 flex items-end justify-center"
+              style={{ bottom: 2 }}>
+              <div style={{
+                width: TILE_W,
+                height: Math.max(TILE_W, TILE_H + topIsoHeight),
+                filter: itemFilter,
+              }}>
+                <topItem.svg seed={seedVal} />
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
+    </>
+  );
+});
+
+// ── 霧（未探索） ──
+// 探索範囲のすぐ外の 1 周と、大きな建物のまわりだけは、手前のマスの地面の厚みや
+// 建物の端を隠すため、これまでどおり奥行き（z-index）つきで 1 マスずつ描く。
+const FogTile = memo(({ x, y }) => {
+  const isoX = toIsoX(x, y);
+  const isoY = toIsoY(x, y);
+  return (
+    <div style={{ position: 'absolute', left: isoX - TILE_W / 2, top: isoY, width: TILE_W, height: TILE_H, zIndex: Math.floor((x + y) * 100) }}>
+      <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H} style={{ display: 'block' }}>
+        <polygon points="32,0 64,16 32,32 0,16" fill={FOG_COLOR} />
+      </svg>
+    </div>
+  );
+});
+
+// それより外の霧は、1 枚の SVG の中に 1 マスずつのひし形を並べる（div と svg をマスごとに
+// 作らない）。マスの境目にうっすら出る線も、これまでの見た目のまま残る。
+const FogField = memo(({ startX, startY, endX, endY, exploredRadius, skip, layered }) => {
+  const shape = fogFieldBounds();
+  const polygons = [];
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (isExplored(x, y, exploredRadius) || isFogRing(x, y, exploredRadius)) continue;
+      const key = `${x},${y}`;
+      if (skip.has(key) || layered.has(key)) continue;
+      const ix = toIsoX(x, y);
+      const iy = toIsoY(x, y);
+      polygons.push(
+        <polygon key={key} points={`${ix},${iy} ${ix + 32},${iy + 16} ${ix},${iy + 32} ${ix - 32},${iy + 16}`} />
+      );
+    }
+  }
+  if (polygons.length === 0) return null;
+  return (
+    <svg aria-hidden="true" width={shape.width} height={shape.height} viewBox={`${shape.left} ${shape.top} ${shape.width} ${shape.height}`}
+      style={{ position: 'absolute', left: shape.left, top: shape.top, zIndex: 0, pointerEvents: 'none', display: 'block', overflow: 'visible' }}
+      fill={FOG_COLOR}>
+      {polygons}
+    </svg>
+  );
+});
+
 // ── メインコンポーネント ──
-const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount, villagers = [], exploredRadius = 3 }) => {
+const NO_VILLAGERS = Object.freeze([]);
+
+const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, reviewCount, villagers = NO_VILLAGERS, exploredRadius = 3 }) => {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 }); // 初期値を0に設定
   const [zoom, setZoom] = useState(1);
@@ -71,6 +300,9 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
   const [timeOfDay, setTimeOfDay] = useState('day'); // 'day' | 'evening' | 'night'
   const [currentWeather, setCurrentWeather] = useState('clear'); // 'clear' | 'rain' | 'snow' | 'sakura'
   const [hoveredCell, setHoveredCell] = useState(null);
+  // ドラッグ中だけ町のレイヤーを合成レイヤーにし、ずらすたびに町全体を描き直さない。
+  // ずっと付けておくと、拡大率を変えたときに描き直されず絵がぼやけるため、離したら外す
+  const [panning, setPanning] = useState(false);
   const [residentDisplayMode, setResidentDisplayMode] = useState(() => {
     try {
       return localStorage.getItem('kanji_town_resident_mode') || 'limited';
@@ -80,7 +312,12 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
   }); // 'all' | 'limited' | 'none'
   const onCellTapRef = useRef(onCellTap);
   const isDragging = useRef(false);
+  const suppressClick = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
+  // ドラッグの移動量は 1 フレームに 1 回だけ反映する
+  const pendingMove = useRef({ dx: 0, dy: 0 });
+  const moveFrame = useRef(0);
+  useEffect(() => () => { if (moveFrame.current) cancelAnimationFrame(moveFrame.current); }, []);
   
   useEffect(() => { onCellTapRef.current = onCellTap; }, [onCellTap]);
 
@@ -186,7 +423,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     setInitialFitDone(true);
   }, [containerSize, exploredRadius, initialFitDone, isEditing]);
 
-  const safeMapData = mapData || {};
+  const safeMapData = mapData || EMPTY_MAP;
 
   // ── ドラッグ操作 ──
   const handlePointerDown = (e) => {
@@ -199,9 +436,18 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
     const dx = clientX - lastPos.current.x;
     const dy = clientY - lastPos.current.y;
-    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) isDragging.current = true;
+    if (!isDragging.current && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) { isDragging.current = true; setPanning(true); }
     if (isDragging.current) {
-      setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      pendingMove.current.dx += dx;
+      pendingMove.current.dy += dy;
+      if (!moveFrame.current) {
+        moveFrame.current = requestAnimationFrame(() => {
+          moveFrame.current = 0;
+          const { dx: mx, dy: my } = pendingMove.current;
+          pendingMove.current = { dx: 0, dy: 0 };
+          setOffset(prev => ({ x: prev.x + mx, y: prev.y + my }));
+        });
+      }
       lastPos.current = { x: clientX, y: clientY };
       setHoveredCell(null);
     } else {
@@ -211,7 +457,8 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       const mapY = (clientY - rect.top - offset.y) / zoom;
       const grid = fromIso(mapX, mapY);
       if (grid.x >= 0 && grid.x < GRID_SIZE && grid.y >= 0 && grid.y < GRID_SIZE) {
-        setHoveredCell(grid);
+        // 同じマスの上で動いただけなら描き直さない
+        setHoveredCell(prev => (prev && prev.x === grid.x && prev.y === grid.y ? prev : grid));
       } else {
         setHoveredCell(null);
       }
@@ -233,8 +480,18 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         onCellTapRef.current(grid.x, grid.y);
       }
     }
+    // ずらし終わりの click は「タップ」ではない。ホームでは外側の「まちづくりへ」に
+    // 届かないよう、このあとの click を 1 回だけ止める（マウス・タッチパッドで起きる）
+    if (isDragging.current) suppressClick.current = true;
     lastPos.current = { x: 0, y: 0 };
+    setPanning(false);
   }, [zoom, offset.x, offset.y]);
+  const handleClickCapture = useCallback((e) => {
+    if (!suppressClick.current) return;
+    suppressClick.current = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, []);
 
   // ── ズーム ──
   const handleZoomIn = () => setZoom(z => Math.min(2, z + 0.15));
@@ -264,39 +521,26 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
   }, [villagers, residentDisplayMode]);
 
   // ── ビューポートカリング ──
-  const viewRange = useMemo(() => {
-    const margin = 4;
-    const vl = -offset.x / zoom - TILE_W;
-    const vt = -offset.y / zoom - 100;
-    const vr = (-offset.x + containerSize.w) / zoom + TILE_W;
-    const vb = (-offset.y + containerSize.h) / zoom + 100;
-    const corners = [fromIso(vl, vt), fromIso(vr, vt), fromIso(vl, vb), fromIso(vr, vb)];
-    const xs = corners.map(c => c.x);
-    const ys = corners.map(c => c.y);
-    return {
-      startX: Math.max(0, Math.min(...xs) - margin),
-      startY: Math.max(0, Math.min(...ys) - margin),
-      endX: Math.min(GRID_SIZE - 1, Math.max(...xs) + margin),
-      endY: Math.min(GRID_SIZE - 1, Math.max(...ys) + margin),
-    };
-  }, [offset.x, offset.y, containerSize.w, containerSize.h, zoom]);
+  // 範囲は整数 4 つ。ドラッグ中でも境目をまたぐまでは同じなので、全マスを作り直さない
+  const range = computeViewRange({ offsetX: offset.x, offsetY: offset.y, zoom, width: containerSize.w, height: containerSize.h });
+  const viewRange = useMemo(() => range, [range.startX, range.startY, range.endX, range.endY]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderedVillagers = useMemo(
     () => visibleVillagers.filter((villager) => isVillagerInViewRange(villager, viewRange)),
     [visibleVillagers, viewRange],
   );
 
-  // ── メガ建築アンカー ──
-  const megaAnchors = useMemo(() => {
-    const anchors = {};
+  // ── メガ建築の、左上以外のマス（描かない） ──
+  const { megaSubCells, megaAnchors } = useMemo(() => {
     const subCells = new Set();
+    const anchors = [];
     for (const [key, itemId] of Object.entries(safeMapData)) {
       if (!itemId || typeof itemId !== 'string') continue;
       if (key.includes(':top')) continue;
-      const item = TOWN_ITEMS.find(i => i.id === itemId);
+      const item = TOWN_ITEM_MAP.get(itemId);
       if (item && item.size) {
         const [ax, ay] = key.split(',').map(Number);
-        anchors[key] = { item, ax, ay, w: item.size.w, h: item.size.h };
+        anchors.push({ x: ax, y: ay, w: item.size.w, h: item.size.h });
         for (let dy = 0; dy < item.size.h; dy++) {
           for (let dx = 0; dx < item.size.w; dx++) {
             if (dx === 0 && dy === 0) continue;
@@ -305,8 +549,12 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         }
       }
     }
-    return { anchors, subCells };
+    return { megaSubCells: subCells, megaAnchors: anchors };
   }, [safeMapData]);
+  const layeredFogKeys = useMemo(() => buildLayeredFogKeys(megaAnchors, exploredRadius), [megaAnchors, exploredRadius]);
+
+  // 住民の行き先の候補は、地図が変わったときだけ作る
+  const pointsOfInterest = useMemo(() => buildPointsOfInterest(safeMapData, TOWN_ITEM_MAP), [safeMapData]);
 
   // ── ゴースト（レビュー未完了時の演出） ──
   const ghosts = useMemo(() => {
@@ -323,12 +571,12 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
       const [x, y] = k.split(',').map(Number); return { x, y };
     });
   }, [isDanger, isEditing, reviewCount, exploredRadius, safeMapData]);
+  const ghostKeys = useMemo(() => new Set(ghosts.map(g => `${g.x},${g.y}`)), [ghosts]);
 
-  // ── セル描画（深度データ付き） ──
-  const cellsWithDepth = useMemo(() => {
-    const result = [];
+  // ── セル描画 ──
+  // 奥から手前の順に並べる（重なりは z-index で決まるが、同じ高さのときは並び順で決まる）
+  const cells = useMemo(() => {
     const { startX, startY, endX, endY } = viewRange;
-    // Y+X順でソート（奥から手前へ描画）
     const cellList = [];
     for (let y = startY; y <= endY; y++) {
       for (let x = startX; x <= endX; x++) {
@@ -337,232 +585,28 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
     }
     cellList.sort((a, b) => a.depth - b.depth);
 
-    for (const { x, y, depth } of cellList) {
+    const result = [];
+    for (const { x, y } of cellList) {
       const key = `${x},${y}`;
-      const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
-      const isVisible = dist <= exploredRadius;
-      const baseItemId = safeMapData[key];
-      const topItemId = safeMapData[`${key}:top`];
-      const item = baseItemId ? TOWN_ITEMS.find(i => i.id === baseItemId) : null;
-      const topItem = topItemId ? TOWN_ITEMS.find(i => i.id === topItemId) : null;
-      const hasGhost = ghosts.some(g => g.x === x && g.y === y);
-      const isTerrain = item && item.type === 'terrain';
-
-      // --- バリアント計算 ---
-      // (x * 13 + y * 7) のようなシンプルなハッシュで決定論的なシードを得る
-      const seedVal = (x * 13 + y * 7) % 100;
-      const isFlipped = item?.hasVariants ? (seedVal % 2 === 0) : false;
-      
-      // 色相の変化(-15deg ~ +15deg程度)。自然物は大きめ、人工物は小さめにブレさせる
-      let hueShift = 0;
-      let brightnessAdjust = 1;
-      
-      if (item?.hasVariants && !item?.disableHue) {
-         const shiftAmount = (seedVal % 31) - 15; // -15 to +15
-         hueShift = item.type === 'nature' ? shiftAmount : shiftAmount * 0.5;
-         
-         // 「夜」かつ「建物」の場合は、発光（brightness増加・少し黄色っぽく）させるなど
-         // ここではシンプルに、夜間の建物全体が完全に暗くならないよう輝度を底上げする
-      }
-
-      // 夜間発光・影の計算
-      const isNight = timeOfDay === 'night';
-      const isEvening = timeOfDay === 'evening';
-      let nightFilter = '';
-      if (isNight && (item?.type === 'building' || item?.type === 'mega' || item?.type === 'rare')) {
-         // 夜の建物は、窓が光っているように疑似的に輝度コントラストを上げる
-         nightFilter = 'brightness(1.2) contrast(1.1) drop-shadow(0 0 4px rgba(253, 224, 71, 0.3))';
-      } else if (isEvening && item?.type === 'nature') {
-        nightFilter = 'saturate(1.2)';
-      }
-      // --------------------
-
-      if (megaAnchors.subCells.has(key)) continue;
-
-      const isoX = toIsoX(x, y);
-      const isoY = toIsoY(x, y);
-      const isoHeight = item?.isoHeight || 0;
-
-      const tileStyle = {
-        position: 'absolute',
-        left: isoX - TILE_W / 2,
-        top: isoY - isoHeight,
-        width: TILE_W,
-        zIndex: depth,
-      };
-
-      // フォグ（未探索）
-      if (!isVisible) {
-        result.push({ depth, element:
-          <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
-            <svg viewBox="0 0 64 32" width={TILE_W} height={TILE_H} style={{ display: 'block' }}>
-              <polygon points="32,0 64,16 32,32 0,16" fill="#0f172a" />
-            </svg>
-          </div>
-        });
+      if (megaSubCells.has(key)) continue;
+      if (!isExplored(x, y, exploredRadius)) {
+        if (isFogRing(x, y, exploredRadius) || layeredFogKeys.has(key)) result.push(<FogTile key={key} x={x} y={y} />);
         continue;
       }
-
-      // 岩盤
-      if (baseItemId === 't_bedrock') {
-        result.push({ depth, element:
-          <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H }}>
-            <GroundDiamond colors={TERRAIN_COLORS.t_bedrock} tint={null} isEditing={false} />
-          </div>
-        });
-        continue;
-      }
-
-      // メガ建築のアンカーセル
-      const megaInfo = megaAnchors.anchors[key];
-      if (megaInfo) {
-        const mw = megaInfo.w;
-        const mh = megaInfo.h;
-        const megaH = megaInfo.item.isoHeight || 48;
-        const megaCenterX = toIsoX(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
-        const megaCenterY = toIsoY(x + mw / 2 - 0.5, y + mh / 2 - 0.5);
-        const megaZIndex = depth + (mw + mh - 2) * 100 + 140; // １マスの建物(+140)と基準を揃え、最前面のタイルの奥側に判定を置く
-        const megaStyle = {
-          position: 'absolute',
-          left: megaCenterX - TILE_W * mw / 2,
-          top: megaCenterY - megaH,
-          width: TILE_W * mw,
-          height: TILE_H * mh + megaH,
-          zIndex: megaZIndex,
-        };
-        result.push({ depth: megaZIndex, element:
-          <div key={`${key}-mega`} style={megaStyle}
-            className={`flex items-center justify-center select-none ${isEditing ? 'cursor-pointer' : ''}`}>
-            <megaInfo.item.svg seed={seedVal} />
-          </div>
-        });
-        continue;
-      }
-
-      // 開拓可能な地形
-      const terrainColors = isTerrain ? (TERRAIN_COLORS[baseItemId] || TERRAIN_COLORS.t_roughland) : null;
-
-      if (CULTIVATABLE_TERRAIN.has(baseItemId)) {
-        result.push({ depth, element:
-          <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
-            className={`select-none group ${isEditing ? 'cursor-pointer' : ''}`}>
-            <GroundDiamond colors={terrainColors} isEditing={isEditing} isCultivatable={true} cultivateCost={item?.cultivateCost || 5} />
-            {isEditing && (
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
-                <span className="text-[8px] font-black text-white bg-amber-600/80 px-1.5 py-0.5 rounded-full whitespace-nowrap">開拓 -{item?.cultivateCost || 5}💰</span>
-              </div>
-            )}
-          </div>
-        });
-        continue;
-      }
-
-      // 浅瀬
-      if (baseItemId === 't_shallow_water') {
-        result.push({ depth, element:
-          <div key={key} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}>
-            <GroundDiamond colors={TERRAIN_COLORS.t_shallow_water} isEditing={false} />
-          </div>
-        });
-        continue;
-      }
-
-      // 通常セル（更地・建物・雑草）
-      const groundColors = isTerrain ? terrainColors : TERRAIN_COLORS.t_cleared;
-
-      // ======================================
-      // 1. 地面レイヤー（足元）
-      // ======================================
-      result.push({ depth, element:
-        <div key={`${key}-ground`} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
-          className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
-          <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
-        </div>
-      });
-
-      // ======================================
-      // 2. 建物・オブジェクトレイヤー（立体物）
-      // ======================================
-      if ((item && !isTerrain) || (item && item.id === 't_weed') || hasGhost) {
-        const objZIndex = item?.isFlat ? depth + 10 : depth + 140; // 平面（道路など）は足元（10）、立体物は奥（140）
-        
-        result.push({ depth: objZIndex, element:
-          <div key={`${key}-obj`} style={{ ...tileStyle, top: isoY - isoHeight, height: TILE_H + isoHeight + 2, zIndex: objZIndex }}
-            className={`select-none pointer-events-none ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
-            {/* 建物SVG */}
-            <AnimatePresence mode="popLayout">
-              {item && !isTerrain ? (
-                <motion.div key={baseItemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
-                  transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
-                  className="absolute inset-0 flex items-end justify-center"
-                  style={{ bottom: 2 }}>
-                  <div style={{
-                    width: TILE_W,
-                    height: Math.max(TILE_W, TILE_H + isoHeight),
-                    transform: isFlipped ? 'scaleX(-1)' : 'none',
-                    filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
-                  }}>
-                    <item.svg seed={seedVal} />
-                  </div>
-                </motion.div>
-              ) : item && item.id === 't_weed' ? (
-                <motion.div key="weed" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  className="absolute inset-0 flex items-end justify-center" style={{ bottom: 4 }}>
-                  <div style={{ width: TILE_W * 0.7, height: TILE_H * 0.7 }}>
-                    <item.svg seed={seedVal} />
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-            {/* ゴースト */}
-            {hasGhost && (
-              <motion.div animate={{ y: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute z-60 text-2xl drop-shadow-lg pointer-events-none select-none"
-                style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}>👻</motion.div>
-            )}
-          </div>
-        });
-      }
-
-      // ======================================
-      // 3. 上乗せレイヤー（標識やベンチなど）
-      // ======================================
-      if (topItem) {
-        const topZIndex = depth + 140; //立体物と同じ基準
-        const topIsoHeight = topItem.isoHeight || 0;
-        const combinedIsoHeight = isoHeight + topIsoHeight;
-        
-        result.push({ depth: topZIndex, element:
-          <div key={`${key}-top`} style={{ ...tileStyle, top: isoY - combinedIsoHeight, height: TILE_H + combinedIsoHeight + 2, zIndex: topZIndex }}
-            className={`select-none pointer-events-none ${isDanger && !isEditing ? 'brightness-75' : ''}`}>
-            <AnimatePresence mode="popLayout">
-              <motion.div key={topItemId} initial={{ scale: 0.3, y: -60, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0 }}
-                  transition={{ type: 'spring', stiffness: 600, damping: 12, mass: 0.8 }}
-                  className="absolute inset-0 flex items-end justify-center"
-                  style={{ bottom: 2 }}>
-                  <div style={{
-                    width: TILE_W,
-                    height: Math.max(TILE_W, TILE_H + topIsoHeight),
-                    filter: `hue-rotate(${hueShift}deg) ${nightFilter}`.trim()
-                  }}>
-                    <topItem.svg seed={seedVal} />
-                  </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        });
-      }
+      result.push(
+        <TownCell key={key} x={x} y={y}
+          baseItemId={safeMapData[key]} topItemId={safeMapData[`${key}:top`]}
+          isEditing={isEditing} isDanger={isDanger} timeOfDay={timeOfDay} hasGhost={ghostKeys.has(key)} />
+      );
     }
     return result;
-  }, [safeMapData, ghosts, isDanger, isEditing, exploredRadius, viewRange, megaAnchors, timeOfDay]);
-
-  // セル要素のみ抽出（z-indexで深度制御するため、ソート不要）
-  const cells = useMemo(() => cellsWithDepth.map(c => c.element), [cellsWithDepth]);
+  }, [safeMapData, ghostKeys, isDanger, isEditing, exploredRadius, viewRange, megaSubCells, layeredFogKeys, timeOfDay]);
 
   return (
       <div ref={containerRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; setHoveredCell(null); }}
+      onPointerUp={handlePointerUp} onClickCapture={handleClickCapture}
+      onPointerDownCapture={() => { suppressClick.current = false; }}
+      onPointerLeave={() => { lastPos.current = { x: 0, y: 0 }; setHoveredCell(null); setPanning(false); }}
       className={`w-full h-full rounded-[16px] overflow-hidden transition-all duration-1000 ${isDanger && !isEditing ? 'bg-slate-900' : 'bg-sky-200'} border-[3px] border-[var(--text)] shadow-inner relative touch-none`}
       style={{ opacity: initialFitDone ? 1 : 0 }}>
       {/* --- 時間帯レイヤー（オーバーレイ） --- */}
@@ -608,14 +652,15 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
         onPointerUp={(e) => e.stopPropagation()}>
         {isEditing && (
           <>
-            <button onClick={handleZoomIn} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
-            <button onClick={handleZoomOut} className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
+            <button onClick={handleZoomIn} aria-label="町を大きく見る" className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomIn size={18} /></button>
+            <button onClick={handleZoomOut} aria-label="町を小さく見る" className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex items-center justify-center font-black text-lg shadow-md hover:scale-110 transition-transform"><ZoomOut size={18} /></button>
           </>
         )}
         {!isEditing && (
           <button 
             onClick={toggleResidentMode} 
             title={`住民表示: ${residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '非表示'}`}
+            aria-label={`住民の表示を切りかえる（いまは ${residentDisplayMode === 'all' ? '全員' : residentDisplayMode === 'limited' ? '10人' : '表示しない'}）`}
             className="w-10 h-10 bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl flex flex-col items-center justify-center shadow-md hover:scale-110 transition-transform relative group"
           >
             <Users size={18} className={residentDisplayMode === 'none' ? 'opacity-30' : 'opacity-100'} />
@@ -629,13 +674,21 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           </button>
         )}
       </div>
-      {/* アイソメトリックマップ */}
+      {/* アイソメトリックマップ。ずらす（外側）と拡大縮小（内側）を分けておき、ドラッグ中は
+          外側だけを合成レイヤーにする（拡大縮小まで合成に回すと、絵が粗く描かれる） */}
       <div style={{
         position: 'absolute', top: 0, left: '50%',
-        transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+        transform: `translate(${offset.x}px, ${offset.y}px)`,
+        willChange: panning ? 'transform' : undefined,
+      }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0,
+        transform: `scale(${zoom})`,
         transformOrigin: '0 0',
         isolation: 'isolate',
       }}>
+        <FogField startX={viewRange.startX} startY={viewRange.startY} endX={viewRange.endX} endY={viewRange.endY}
+          exploredRadius={exploredRadius} skip={megaSubCells} layered={layeredFogKeys} />
         {cells}
         {/* 住民（セルと同じtransformコンテナ内でz-indexによる深度制御） */}
         {renderedVillagers.map(v => (
@@ -643,6 +696,7 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
             key={v.id}
             villager={v}
             mapData={safeMapData}
+            pointsOfInterest={pointsOfInterest}
           />
         ))}
         {/* ホバーハイライト */}
@@ -662,9 +716,10 @@ const DraggableTownMap = ({ mapData, isDanger, isEditing, onCellTap, reviewCount
           </div>
         )}
       </div>
+      </div>
     </div>
   );
-};
+});
 
 export { CULTIVATABLE_TERRAIN };
 export default DraggableTownMap;

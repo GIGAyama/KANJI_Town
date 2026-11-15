@@ -2,12 +2,23 @@ export const TOWN_ANIMATION_INTERVAL_MS = 50;
 export const TOWN_ANIMATION_MAX_DELTA_SECONDS = 0.1;
 
 /**
- * 複数の住民が1本のrequestAnimationFrameを共有するスケジューラー。
+ * 時計で次の刻みを予約する（requestAnimationFrame は使わない）。
+ * rAF を毎フレーム予約していると、何も描き変えなくてもブラウザが毎フレーム
+ * 画面の更新を走らせ、そのたびに町マップ全体の合成をやり直していた（重い町では
+ * 1 回 10〜20ms）。住民の移動は CSS の transition に任せているので、ここは
+ * 行動を決める刻みだけがあればよい。
+ */
+const now = () => (globalThis.performance?.now ? globalThis.performance.now() : Date.now());
+const requestTimerFrame = (callback, delayMs) => globalThis.setTimeout(() => callback(now()), delayMs);
+const cancelTimerFrame = (frameId) => globalThis.clearTimeout(frameId);
+
+/**
+ * 複数の住民が1本の刻みを共有するスケジューラー。
  * 20fpsへ間引き、非表示タブや購読者がいない間は完全に停止する。
  */
 export function createTownAnimationScheduler({
-  requestFrame = (callback) => globalThis.requestAnimationFrame(callback),
-  cancelFrame = (frameId) => globalThis.cancelAnimationFrame(frameId),
+  requestFrame = (callback) => requestTimerFrame(callback, TOWN_ANIMATION_INTERVAL_MS),
+  cancelFrame = cancelTimerFrame,
   intervalMs = TOWN_ANIMATION_INTERVAL_MS,
   maxDeltaSeconds = TOWN_ANIMATION_MAX_DELTA_SECONDS,
 } = {}) {

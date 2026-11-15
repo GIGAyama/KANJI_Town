@@ -1,12 +1,13 @@
-import { lazy } from 'react';
+import { lazy, memo } from 'react';
 
 /**
  * 建物SVGはタウンが実際に描画されるまで読み込まない。
  * 全アイテムが同じ dynamic import を共有するため、ネットワーク要求は1 chunkにまとまる。
+ * memo で包み、町マップを描き直しても同じ建物の図形を計算しなおさない。
  */
 const lazySvg = (exportName) => lazy(async () => {
   const components = await import('./iso-svg');
-  return { default: components[exportName] };
+  return { default: memo(components[exportName]) };
 });
 
 // ResultView / BossBattleView が利用する互換エクスポート。
@@ -157,4 +158,7 @@ const TOWN_ITEMS = [
   { id: 't_dirt',       svg: lazySvg('SvgDirt'),       name: '土', price: 10, pros: 1, type: 'nature', bg: 'bg-[#78350f]', isFlat: true, isoHeight: 2 },
 ];
 
-export { TOWN_ITEMS };
+/** id から引く（TOWN_ITEMS.find の線形探索を、描画の内側で繰り返さないため） */
+const TOWN_ITEM_MAP = new Map(TOWN_ITEMS.map((item) => [item.id, item]));
+
+export { TOWN_ITEMS, TOWN_ITEM_MAP };

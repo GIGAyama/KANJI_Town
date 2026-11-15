@@ -166,6 +166,16 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
 
   if (!currentKanji) return null;
 
+  // まだ進めないタブを押したときの理由（以前は disabled で押しても何も起きず、
+  // title の説明もタッチでは出なかったので、1年生には理由がわからなかった）
+  const [lockedHint, setLockedHint] = useState(null);
+  useEffect(() => {
+    if (!lockedHint) return undefined;
+    const timer = setTimeout(() => setLockedHint(null), 2600);
+    return () => clearTimeout(timer);
+  }, [lockedHint]);
+  const STEP_LABELS = { read: <>{F("音","おん")}{F("読","どく")}</>, watch: <>{F("書","か")}き{F("順","じゅん")}</>, write: 'なぞる', test: 'テスト' };
+
   const commonSidebarTop = (
     <div className="flex flex-col gap-2 md:gap-3 shrink-0 mb-1 md:mb-4">
       <div className={`grid ${isStacked ? 'grid-cols-4' : 'grid-cols-2'} gap-1.5 md:gap-2`}>
@@ -175,8 +185,16 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
           return (
             <button
               key={t.id}
-              onClick={() => { if (isDisabled) { audioCtrl.playSE('stamp_bad'); return; } audioCtrl.playSE('click'); setMode(t.id); }}
-              disabled={isDisabled}
+              onClick={() => {
+                if (isDisabled) {
+                  audioCtrl.playSE('stamp_bad');
+                  setLockedHint(isUnavailable
+                    ? <>この{F("字","じ")}の{F("書","か")}き{F("順","じゅん")}を よみこめないので、いまは {F("音","おん")}{F("読","どく")}だけ できるよ</>
+                    : <>まずは「{STEP_LABELS[MODES[reachedStep]]}」を やってみよう</>);
+                  return;
+                }
+                audioCtrl.playSE('click'); setMode(t.id);
+              }}
               aria-current={mode === t.id ? 'step' : undefined}
               aria-disabled={isDisabled || undefined}
               title={isUnavailable ? 'この字の書き順を よみこめないので、いまは 音読だけ できます' : isDisabled ? `まずは「${MODES[reachedStep] === 'read' ? '音読' : MODES[reachedStep] === 'watch' ? '書き順' : MODES[reachedStep] === 'write' ? 'なぞる' : 'テスト'}」をやってみよう` : undefined}
@@ -187,6 +205,11 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
           );
         })}
       </div>
+      {lockedHint && (
+        <div role="status" className="text-xs font-bold text-[var(--text)] bg-[var(--accent)] border-2 border-[var(--text)] rounded-xl px-3 py-1.5 text-center">
+          {lockedHint}
+        </div>
+      )}
     </div>
   );
 
