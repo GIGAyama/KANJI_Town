@@ -82,6 +82,22 @@ function boundsCenter(strokes) {
  * @param {number[][]} cost - cost[i][j] = ユーザーi画目を正解j画目に当てる費用
  * @returns {number[]} assignment[i] = 対応する正解の画index
  */
+const UNREACHABLE_COST = 1e6;
+
+const isFinitePoint = (p) => Boolean(p) && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+/** お手本の画から、数でない座標を除く（壊れたキャッシュでも採点が NaN にならないように） */
+function sanitizeTarget(target) {
+  const points = (Array.isArray(target?.points) ? target.points : []).filter(isFinitePoint);
+  const fallback = { x: 0.5, y: 0.5 };
+  return {
+    ...target,
+    points,
+    s: isFinitePoint(target?.s) ? target.s : (points[0] ?? fallback),
+    e: isFinitePoint(target?.e) ? target.e : (points[points.length - 1] ?? fallback),
+  };
+}
+
 function solveAssignment(cost) {
   const n = cost.length;
   if (n === 0) return [];
@@ -102,7 +118,9 @@ function solveAssignment(cost) {
       let j1 = 0;
       for (let j = 1; j <= n; j++) {
         if (used[j]) continue;
-        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        // 費用が NaN だと比較が成り立たず、j1 が 0 のまま抜けられなくなる（タブが固まる）
+        const raw = cost[i0 - 1][j - 1];
+        const cur = (Number.isFinite(raw) ? raw : UNREACHABLE_COST) - u[i0] - v[j];
         if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
         if (minv[j] < delta) { delta = minv[j]; j1 = j; }
       }
@@ -155,12 +173,15 @@ function shapeComment(ratio) {
  */
 export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   const details = [];
-  const expected = Array.isArray(strokeData) ? strokeData : [];
+  const expected = Array.isArray(strokeData) ? strokeData.map(sanitizeTarget) : [];
   const expectedCount = expected.length;
   const actualCount = Array.isArray(userStrokes) ? userStrokes.length : 0;
 
   if (expectedCount === 0) {
     return emptyResult(['おてほんを よみこめませんでした']);
+  }
+  if (!(Number.isFinite(canvasSize) && canvasSize > 0)) {
+    return emptyResult(['うまく よみとれなかったよ。もういちど 書いてね']);
   }
 
   // ── 画数チェック ──
@@ -177,11 +198,14 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   // ── 正規化と字全体の位置ずれ補正 ──
   // 字全体が少しずれただけで全画が減点されるのを防ぐ。
   // ただし補正量には上限を設け、大きなずれは減点として残す。
-  const scaled = userStrokes.map(stroke => (stroke ?? []).map(p => ({
-    x: p.x / canvasSize,
-    y: p.y / canvasSize,
-    time: p.time,
-  })));
+  // 座標が数でない点（キャンバスの幅が 0 のときなど）は捨てる。1点でも混ざると採点が止まらなくなっていた
+  const scaled = userStrokes.map(stroke => (Array.isArray(stroke) ? stroke : [])
+    .filter(isFinitePoint)
+    .map(p => ({
+      x: p.x / canvasSize,
+      y: p.y / canvasSize,
+      time: Number.isFinite(p.time) ? p.time : 0,
+    })));
   const userCenter = boundsCenter(scaled);
   const expectedCenter = boundsCenter(expected.map(s => s.points));
   let shiftX = 0;

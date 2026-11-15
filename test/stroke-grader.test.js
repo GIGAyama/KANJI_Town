@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Worker } from 'node:worker_threads';
 import { allowedEvaluations, gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
@@ -307,4 +308,48 @@ test('自己評価は、おすすめより1段上までしか選べない（厳�
 test('採点できないとき（おすすめが無いとき）だけ、自己評価をすべて選べる', () => {
   assert.deepEqual(allowedEvaluations(null), ['again', 'hard', 'good', 'easy']);
   assert.deepEqual(allowedEvaluations(undefined), ['again', 'hard', 'good', 'easy']);
+});
+
+/**
+ * 採点を別スレッドで走らせ、時間内に終わるかを見る。
+ * 無限ループは同じスレッドでは止められないので、Worker を止めて「固まった」と判定する。
+ */
+function gradeInWorker(caseName, timeoutMs = 3000) {
+  const graderUrl = new URL('../src/systems/strokeGrader.js', import.meta.url).href;
+  const source = `
+    const { parentPort, workerData } = await import('node:worker_threads');
+    const { gradeStrokes } = await import(workerData.graderUrl);
+    const C = 300;
+    const line = (y) => Array.from({ length: 25 }, (_, i) => ({ x: (0.2 + 0.6 * i / 24) * C, y: y * C, time: i * 20 }));
+    const model = [0.25, 0.5, 0.75].map((y) => {
+      const points = Array.from({ length: 25 }, (_, i) => ({ x: 0.2 + 0.6 * i / 24, y }));
+      return { s: points[0], e: points[24], points, endingType: 'tome' };
+    });
+    const user = [line(0.25), line(0.5), line(0.75)];
+    const cases = {
+      zeroCanvas: () => gradeStrokes(user, model, 0),
+      nanCanvas: () => gradeStrokes(user, model, NaN),
+      nanPoint: () => { user[1][3] = { x: NaN, y: 10, time: 0 }; return gradeStrokes(user, model, C); },
+      infinitePoint: () => { user[0][0] = { x: Infinity, y: -Infinity, time: 0 }; return gradeStrokes(user, model, C); },
+      nanModel: () => { model[2].points[4] = { x: NaN, y: NaN }; return gradeStrokes(user, model, C); },
+    };
+    const result = cases[workerData.caseName]();
+    parentPort.postMessage({ total: result.total, strokeCountMatch: result.strokeCountMatch });
+  `;
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(source, { eval: true, workerData: { graderUrl, caseName } });
+    const timer = setTimeout(() => { worker.terminate(); reject(new Error(`${caseName}: ${timeoutMs}ms で終わらない（固まった）`)); }, timeoutMs);
+    worker.once('message', (message) => { clearTimeout(timer); worker.terminate(); resolve(message); });
+    worker.once('error', (error) => { clearTimeout(timer); reject(error); });
+  });
+}
+
+test('座標やキャンバスの大きさに NaN・Infinity・0 が混ざっても、採点は固まらずに終わる', async () => {
+  // 以前は割り当て問題の費用が NaN になると while を抜けられず、タブが固まっていた
+  for (const caseName of ['zeroCanvas', 'nanCanvas', 'nanPoint', 'infinitePoint', 'nanModel']) {
+    const result = await gradeInWorker(caseName);
+    assert.ok(Number.isFinite(result.total), `${caseName}: ${result.total}`);
+  }
+  // 大きさが分からないときは採点しない（0点で、合格扱いにしない）
+  assert.equal((await gradeInWorker('zeroCanvas')).total, 0);
 });
