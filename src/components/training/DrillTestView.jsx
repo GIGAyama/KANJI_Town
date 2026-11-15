@@ -670,6 +670,8 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
               {/* 右: キャンバス */}
               <div className="w-full lg:w-auto flex flex-col items-center">
                 <TestCanvas
+                  // 問題ごとに作り直す（前の問題の線を次の問題へ持ちこまない）
+                  key={currentIdx}
                   strokeData={strokeData}
                   canvasSize={canvasSize}
                   onSubmit={handleSubmitStrokes}

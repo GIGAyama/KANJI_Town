@@ -31,6 +31,7 @@ import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/l
 import { getTodayString } from './utils/date-utils';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
+import { fillQueue, shuffled } from './systems/question-queue';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
@@ -538,7 +539,7 @@ export default function App() {
     audioCtrl.init();
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
     if (learned.length === 0) return;
-    const queue = [...learned].sort(() => Math.random() - 0.5);
+    const queue = shuffled(learned);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('survival', { queue, oldExp: stats.totalExp, expMultiplier });
   };
@@ -547,13 +548,11 @@ export default function App() {
     audioCtrl.init();
     const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
     if (learned.length === 0) return;
-    const queue = [...learned]
+    const weakest = [...learned]
       .sort((a, b) => (stats.kanjiStats?.[b.id]?.mistakes || 0) - (stats.kanjiStats?.[a.id]?.mistakes || 0))
       .slice(0, 10);
-    // 10問に満たない場合はランダムに複製して埋める
-    while (queue.length > 0 && queue.length < 10) {
-      queue.push(queue[Math.floor(Math.random() * queue.length)]);
-    }
+    // 10問に満たない場合は複製して埋める。同じ字は、ほかに選べる限りとなりに並べない
+    const queue = fillQueue(weakest, 10);
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('boss', { queue, oldExp: stats.totalExp, expMultiplier });
   };

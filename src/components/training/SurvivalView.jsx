@@ -5,6 +5,7 @@ import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
+import { appendRound, shuffled } from '../../systems/question-queue';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -300,7 +301,7 @@ const ResultSummary = ({ wave, waveProgress, bestCombo, perfectCount, okCount, m
 
 // --- メインのサバイバルビュー ---
 const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
-  const [currentQueue, setCurrentQueue] = useState([...queue].sort(() => Math.random() - 0.5));
+  const [currentQueue, setCurrentQueue] = useState(() => shuffled(queue));
   const [idx, setIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const timeLeftRef = useRef(INITIAL_TIME);
@@ -504,7 +505,9 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
   const advanceToNext = () => {
     const nextIdx = idx + 1;
     if (nextIdx >= currentQueue.length) {
-      setCurrentQueue(prev => [...prev, ...queue].sort(() => Math.random() - 0.5));
+      // 出しおわった並びは変えずに、つなぎ目で同じ字が続かない1周ぶんを足す。
+      // 以前は全体を並べかえていたので、直前と同じ字が次に来ることがあった。
+      setCurrentQueue(prev => appendRound(prev, queue));
     }
     setIdx(nextIdx);
   };
@@ -679,6 +682,8 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish }) => {
                 </div>
               ) : (
                 <SurvivalCanvas
+                  // 問題ごとに作り直す。同じ字が続くと strokeData が変わらず、前の問題の線が残っていた
+                  key={idx}
                   strokeData={strokeData}
                   canvasSize={canvasSize}
                   onSubmit={handleSubmitStrokes}

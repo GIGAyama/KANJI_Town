@@ -578,6 +578,9 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat }) => {
           ) : (
             <>
               <BossBattleCanvas
+                // 問題ごとに作り直す。同じ字が続くと strokeData が変わらず、前の問題の線が
+                // キャンバスに残って「画数ちがい」と誤って採点されていた
+                key={idx}
                 strokeData={strokeData}
                 paths={paths}
                 canvasSize={canvasSize}
