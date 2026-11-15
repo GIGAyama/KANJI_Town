@@ -179,7 +179,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
         <canvas ref={canvasRef} className="absolute inset-0 z-10 cursor-crosshair w-full h-full touch-none" />
-        <div className="absolute top-3 left-3 bg-[var(--text)] text-[var(--panel)] text-[10px] md:text-xs font-bold px-3 py-1 rounded-full opacity-50 pointer-events-none">かくところ</div>
+        <div className="absolute top-3 left-3 bg-[var(--text-muted)] text-[var(--panel)] text-xs font-bold px-3 py-1 rounded-full pointer-events-none">かくところ</div>
       </div>
       {showAnswer && (
         <div className="relative border-[4px] border-[var(--primary)] rounded-[20px] bg-[var(--bg)] overflow-hidden flex items-center justify-center transition-all duration-200 shadow-[4px_4px_0_var(--primary)] md:shadow-[8px_8px_0_var(--primary)] animate-in fade-in slide-in-from-left-4 shrink-0" style={{ width: canvasSize, maxWidth: 'calc(50% - 16px)', maxHeight: '100%', aspectRatio: '1/1' }}>
