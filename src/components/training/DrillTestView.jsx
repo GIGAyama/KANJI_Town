@@ -569,24 +569,33 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
     }
   };
 
-  // 結果: 終了
-  const handleFinish = () => {
-    onFinish();
+  // 結果画面のボタンは、どれか1つを1回だけ受けつける。
+  // 2回押すと報酬が2回入り、セッション数やミッションも余分に進んでいた。
+  const leavingRef = useRef(false);
+  const leaveOnce = (action) => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    action();
   };
+
+  // 結果: 終了
+  const handleFinish = () => leaveOnce(() => onFinish());
 
   // 結果: 間違えた漢字だけを学習モードで復習する
   const handleReview = () => {
     const failedKanjis = answers.filter(a => !a.passed).map(a => a.kanji);
     if (failedKanjis.length === 0) return;
-    audioCtrl.playSE('click');
-    onReviewMistakes(failedKanjis);
+    leaveOnce(() => {
+      audioCtrl.playSE('click');
+      onReviewMistakes(failedKanjis);
+    });
   };
 
   // 詳細から: この漢字1文字だけを学習モードで練習する
-  const handlePracticeOne = (kanji) => {
+  const handlePracticeOne = (kanji) => leaveOnce(() => {
     audioCtrl.playSE('click');
     onReviewMistakes([kanji]);
-  };
+  });
 
   const ex = kanji?.examples?.[Math.floor(Math.random() * (kanji?.examples?.length || 1))];
   // exをrefで固定して再レンダー時に変わらないようにする

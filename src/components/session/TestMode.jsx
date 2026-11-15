@@ -29,7 +29,7 @@ const EVAL_BUTTONS = [
   { key: 'again', variant: 'danger', label: '忘れた💦', hint: 'もう一度', shadow: 'shadow-[0_4px_0_#334155]' },
 ];
 
-const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate, canvasSize, commonSidebar, isStacked }) => {
+const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -212,6 +212,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
                   <MotionButton
                     variant={btn.variant}
                     onClick={() => onEvaluate(btn.key)}
+                    disabled={evaluationLocked}
                     className={`w-full font-black border-[var(--text)] ${
                       isRecommended
                         ? `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`

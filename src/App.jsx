@@ -697,10 +697,13 @@ export default function App() {
   }, []);
 
   const handleFinishSession = (additionalResults = {}) => {
-    // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
-    markStudySessionCompleted();
     // setSessionData はrefも同期更新するため、最後の回答直後でも最新集計を確定できる。
     const activeSession = sessionDataRef.current;
+    // 1つのセッションは1回だけ確定する。二重に呼ばれると EXP・コイン・セッション数・
+    // ミッションが二重に入っていた（ボタンの連打や、画面切り替え中のタップ）。
+    if (activeSession.finalized) return;
+    // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
+    markStudySessionCompleted();
     const totalExp = activeSession.earnedExp + (additionalResults.exp || 0);
     const coinBonus = Math.floor(totalExp / ECONOMY.EXP_TO_COIN_DIVISOR) + (additionalResults.coins || 0);
     const rareChance = RARE_DROP.BASE_CHANCE + (stats.streak * RARE_DROP.STREAK_BONUS);
@@ -733,6 +736,7 @@ export default function App() {
 
     const finalSessionData = { 
       ...activeSession,
+      finalized: true,
       earnedExp: totalExp, 
       rareDrop, 
       perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),

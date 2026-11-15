@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, PlayCircle, Pencil, CheckCircle2, Star, ChevronRight } from 'lucide-react';
 import StampEffect from '../ui/StampEffect';
@@ -83,13 +83,23 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, MODES, isNew, reachedStep]);
 
+  // 評価は1字につき1回だけ受けつける。スタンプの演出中もボタンは押せるため、
+  // 2回押すとタイマーが2本走り、EXP・コイン・住民が2〜3倍に記録されていた。
+  const evaluatingRef = useRef(false);
+  const evaluationTimerRef = useRef(null);
+  useEffect(() => { evaluatingRef.current = false; }, [currentKanji]);
+  // 画面を離れたあとに onFinish が動いて結果画面へ飛ばないよう、タイマーを止める
+  useEffect(() => () => clearTimeout(evaluationTimerRef.current), []);
+
   const handleEvaluation = (evalType) => {
+    if (evaluatingRef.current) return;
+    evaluatingRef.current = true;
     if (evalType === 'easy') onRecordEasy();
     if (evalType === 'easy' || evalType === 'good') { const newC = combo + 1; setCombo(newC); }
     else { setCombo(0); }
     audioCtrl.playSE(evalType === 'again' ? 'stamp_bad' : evalType === 'easy' ? 'stamp_perfect' : evalType === 'hard' ? 'click' : 'stamp_good');
     setActiveStamp(evalType === 'hard' ? 'good' : evalType); // hard は good スタンプで表示
-    setTimeout(() => {
+    evaluationTimerRef.current = setTimeout(() => {
       setActiveStamp(null);
       const success = onUpdateStat(currentKanji, evalType, WRITING_SKILLS);
       if (success) {
@@ -102,6 +112,8 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
         onProgress?.(nextQueue);
         setQueue(nextQueue);
         setMode('watch');
+        // 同じ字を先送りにしただけなら currentKanji が変わらないこともあるので、ここで戻す
+        if (nextQueue[0] === currentKanji) evaluatingRef.current = false;
       }
     }, evalType === 'again' ? 1500 : 900); // again以外は短めに
   };
@@ -198,7 +210,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             {mode === 'read' && <ReadMode kanji={currentKanji} paths={paths} isLoading={isLoading} settings={settings} challengeCleared={voicedKanjiIds.has(currentKanji.id)} onChallengeClear={handleChallengeClear} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => { recordSkills([{ skill: 'stroke', evidence: 'exposed' }]); setMode('write'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} onPracticeComplete={(evidence) => recordSkills([{ skill: 'writing', evidence }, { skill: 'stroke', evidence }])} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
-            {mode === 'test' && <TestMode kanji={currentKanji} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
           </>
         )}
       </div>
