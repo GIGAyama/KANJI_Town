@@ -175,6 +175,28 @@ class AudioController {
     this._volume = 1;
     /** @type {GainNode|null} マスター音量用ゲインノード */
     this.masterGain = null;
+    /** @type {string|null} 別のタブへ移ったときに止めたBGM（戻ったら再開する） */
+    this._pausedBGM = null;
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => this._handleVisibility());
+    }
+  }
+
+  /**
+   * 別のタブ・アプリへ移ったら BGM を止めて AudioContext も休ませ、戻ったら再開する。
+   * 以前は Classroom などへ移っても、音を出しているタブとしてタイマーが間引かれず鳴り続けた。
+   */
+  _handleVisibility() {
+    if (document.hidden) {
+      this._pausedBGM = this._currentBGM;
+      this._clearBGMTimer();
+      if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
+      return;
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    const paused = this._pausedBGM;
+    this._pausedBGM = null;
+    if (paused && !this.muted) this.playBGM(paused);
   }
 
   /**
@@ -357,6 +379,8 @@ class AudioController {
    */
   playBGM(type) {
     if (this.muted) return;
+    // 隠れている間に画面が切りかわったときは、戻ったときに鳴らす
+    if (typeof document !== 'undefined' && document.hidden) { this._pausedBGM = type; return; }
     // 同じBGMが再生中なら何もしない
     if (this._currentBGM === type && this.bgmInterval) return;
 
@@ -395,6 +419,12 @@ class AudioController {
    * BGMを停止する
    */
   stopBGM() {
+    this._clearBGMTimer();
+    // 止めると決めたら、タブに戻っても再開しない（ほかのタブで開いたときなど）
+    this._pausedBGM = null;
+  }
+
+  _clearBGMTimer() {
     if (this.bgmInterval) {
       clearInterval(this.bgmInterval);
       this.bgmInterval = null;
