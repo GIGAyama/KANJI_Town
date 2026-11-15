@@ -21,49 +21,61 @@ import React from 'react';
  *    幅が足りないときは、クレジットだけを … で切る。KanjiVG の表示は
  *    ライセンスの条件なので切らない。
  */
-export default function Footer() {
+export default function Footer({ compact = false }) {
+  // 学習中は、リンクの無い 1 行にする。学習画面の操作ボタンのすぐ下にリンクがあると、
+  // 押しそこねたときに学習の途中で別のタブ（校内フィルタの下ではブロック画面）へ飛んでいた。
+  // KanjiVG の表示（ライセンスの条件）は、リンクが無くても表記として残す。
+  // 正本の部品の置き場所（data-giga-links）は消さずに隠す。消すと部品が画面の
+  // いちばん下へ出しなおしてしまう（public/giga-app-links.js の見張り）。
+  const linkClass = 'font-normal text-inherit underline underline-offset-2 py-1';
   return (
     <footer className="flex-shrink-0 h-8 flex flex-nowrap justify-center items-center gap-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[40] transition-colors select-none">
-      <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-opacity">
-        ©2026 マイ漢字タウン{' '}
-        <a
-          href="https://giga-school.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-normal text-inherit cursor-default decoration-transparent no-underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          GIGA山
-        </a>
-      </div>
+      {!compact && (
+        <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)]">
+          ©2026 マイ漢字タウン{' '}
+          <a
+            href="https://giga-school.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+            onClick={(e) => e.stopPropagation()}
+          >
+            GIGA山
+          </a>
+        </div>
+      )}
       {/* ⚠️ 行き先のリンクを手で書かないこと。中身は正本の部品が出す。
           ⚠️ <div> にしないこと。そこで改行が入って h-8 に収まらなくなる。
           data-links で「つかいかた」を外していたのは、docs/manual/ が無く、
           既定のまま出すと行き止まりのリンクになったため。マニュアルを
           docs/manual/manual.md に置いたので、属性ごと外して既定に戻した。 */}
-      <span data-giga-links />
+      <span data-giga-links hidden={compact} />
       {/* KanjiVG の表示はライセンス（CC BY-SA 3.0）の条件。消さない・切らない。 */}
-      <div className="whitespace-nowrap text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-opacity">
+      <div className="whitespace-nowrap text-[11px] text-[var(--text-muted)]">
         書き順データ:{' '}
-        <a
-          href="https://kanjivg.tagaini.net/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-normal text-inherit no-underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          KanjiVG
-        </a>{' '}
+        {compact ? 'KanjiVG' : (
+          <a
+            href="https://kanjivg.tagaini.net/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+            onClick={(e) => e.stopPropagation()}
+          >
+            KanjiVG
+          </a>
+        )}{' '}
         (
-        <a
-          href="https://creativecommons.org/licenses/by-sa/3.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-normal text-inherit no-underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          CC BY-SA 3.0
-        </a>
+        {compact ? 'CC BY-SA 3.0' : (
+          <a
+            href="https://creativecommons.org/licenses/by-sa/3.0/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+            onClick={(e) => e.stopPropagation()}
+          >
+            CC BY-SA 3.0
+          </a>
+        )}
         ) © Ulrich Apel
       </div>
     </footer>

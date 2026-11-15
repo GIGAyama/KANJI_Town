@@ -1042,7 +1042,8 @@ export default function App() {
           isTownEditorUnlocked={levelInfo.level >= 1}
         />
       )}
-      <Footer />
+      {/* 学習中はリンクの無い 1 行にする（押しそこねて学習の途中で別のタブへ飛ばないように） */}
+      <Footer compact={isLearningView(view)} />
       </div>
       </FuriganaContext.Provider>
     </MotionConfig>
