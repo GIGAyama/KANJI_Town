@@ -73,7 +73,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         {showLevelUpModal && levelUpData && (
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-[var(--panel)] w-full max-w-sm rounded-3xl border-[4px] border-[var(--primary)] shadow-[0_8px_0_var(--primary)] overflow-hidden">
-              <div className="bg-[var(--primary)] text-white text-center py-4 relative">
+              <div className="bg-[var(--primary)] text-[var(--panel)] text-center py-4 relative">
                 <div className="text-3xl font-black tracking-widest">{F("昇","しょう")}{F("格","かく")}！</div>
                 <div className="absolute top-0 right-0 left-0 bottom-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTExIDEwaDJ2NGgtem0wLThoMnY0aC0yem0wIDEyaDJ2NGgtMnpNNCAxMHYyaDQtMnYtem0tNCAwaDJ2Mkgwem0xNiAwaDZWMTBoLTZ6Ii8+PC9zdmc+')] bg-repeat" />
               </div>

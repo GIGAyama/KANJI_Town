@@ -75,7 +75,7 @@ class ErrorBoundary extends React.Component {
             {canRetry && (
               <button
                 onClick={this.handleRetry}
-                className="bg-[var(--secondary)] text-white px-5 py-3 rounded-2xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)] active:translate-y-1 active:shadow-none transition-all min-w-[44px] min-h-[44px]"
+                className="bg-[var(--secondary)] text-[var(--panel)] px-5 py-3 rounded-2xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)] active:translate-y-1 active:shadow-none transition-all min-w-[44px] min-h-[44px]"
                 aria-label="もう一度ためす"
               >
                 もう一度ためす

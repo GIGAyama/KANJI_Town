@@ -12,15 +12,19 @@ import { getMotionPreference } from '../../utils/motion-preference';
 import { isReadingCheckEnabled } from '../../utils/reading-preference';
 import SystemStatusPanel from '../settings/SystemStatusPanel';
 import { APP_VERSION, BUILD_COMMIT } from '../../systems/diagnostics';
+import { THEMES } from '../../constants/themes';
+
+// テーマの見本の色（3つの丸）は、実際のテーマ色から取る
+const themeSwatch = (name) => ['--primary', '--secondary', '--accent'].map((v) => THEMES[name][v]);
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
   { id: 'auto', label: 'じどう', desc: 'レベルに合わせて変わる', icon: Sparkles },
-  { id: 'default', label: 'ベーシック', desc: '赤×緑のスタンダード', colors: ['#ef4444', '#10b981', '#fbbf24'] },
-  { id: 'sakura', label: 'さくら', desc: 'やさしいピンク', colors: ['#d946ef', '#f472b6', '#fbcfe8'] },
-  { id: 'ocean', label: 'うみ', desc: 'さわやかなブルー', colors: ['#0284c7', '#38bdf8', '#7dd3fc'] },
-  { id: 'sunset', label: 'ゆうやけ', desc: 'あたたかいオレンジ', colors: ['#ea580c', '#f97316', '#fcd34d'] },
-  { id: 'gold', label: 'おうごん', desc: 'きらめくゴールド', colors: ['#b45309', '#eab308', '#fef08a'] },
+  { id: 'default', label: 'ベーシック', desc: '赤×緑のスタンダード', colors: themeSwatch('default') },
+  { id: 'sakura', label: 'さくら', desc: 'やさしいピンク', colors: themeSwatch('sakura') },
+  { id: 'ocean', label: 'うみ', desc: 'さわやかなブルー', colors: themeSwatch('ocean') },
+  { id: 'sunset', label: 'ゆうやけ', desc: 'あたたかいオレンジ', colors: themeSwatch('sunset') },
+  { id: 'gold', label: 'おうごん', desc: 'きらめくゴールド', colors: themeSwatch('gold') },
   { id: 'dark', label: 'ダーク', desc: '目にやさしい暗い色', icon: Moon },
 ];
 
@@ -51,7 +55,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm bg-[var(--bg)] text-[var(--text)] hover:opacity-80 transition-opacity flex items-center justify-center gap-1">
           <X size={16} /> やめる
         </button>
-        <button onClick={onConfirm} className={`flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm text-white transition-opacity hover:opacity-80 flex items-center justify-center gap-1 ${danger ? 'bg-red-500' : 'bg-[var(--primary)]'}`}>
+        <button onClick={onConfirm} className={`flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm transition-opacity hover:opacity-80 flex items-center justify-center gap-1 ${danger ? 'bg-red-700 text-white' : 'bg-[var(--primary)] text-[var(--panel)]'}`}>
           <Check size={16} /> {F("実行","じっこう")}する
         </button>
       </div>
@@ -270,7 +274,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           {VOLUME_LEVELS.map(vol => {
             const isActive = volumeLevel === vol.id;
             return (
-              <button key={vol.id} onClick={() => handleVolumeChange(vol)} className={`flex-1 py-3 rounded-xl border-[3px] font-bold text-sm transition-all ${isActive ? 'border-[var(--primary)] bg-[var(--primary)] text-white shadow-[2px_2px_0_var(--text)]' : 'border-[var(--text)]/20 text-[var(--text)] hover:border-[var(--text)]/50'}`}>
+              <button key={vol.id} onClick={() => handleVolumeChange(vol)} className={`flex-1 py-3 rounded-xl border-[3px] font-bold text-sm transition-all ${isActive ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--panel)] shadow-[2px_2px_0_var(--text)]' : 'border-[var(--text)]/20 text-[var(--text)] hover:border-[var(--text)]/50'}`}>
                 {vol.label}
               </button>
             );

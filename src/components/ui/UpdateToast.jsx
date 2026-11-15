@@ -30,7 +30,7 @@ export default function UpdateToast() {
         type="button"
         onClick={() => { setApplying(true); applyUpdate(); }}
         disabled={applying}
-        className="shrink-0 min-h-[44px] min-w-[44px] px-4 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-white font-black text-sm shadow-[2px_2px_0_var(--text)] disabled:opacity-60 flex items-center gap-1.5"
+        className="shrink-0 min-h-[44px] min-w-[44px] px-4 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-[var(--panel)] font-black text-sm shadow-[2px_2px_0_var(--text)] disabled:opacity-60 flex items-center gap-1.5"
       >
         <RefreshCw size={16} strokeWidth={3} className={applying ? 'animate-spin' : ''} />
         {applying ? 'よみこみちゅう' : 'さいしんに する'}

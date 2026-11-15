@@ -50,7 +50,7 @@ export default function InstallAppPanel() {
             if (outcome === 'dismissed') setResult('またあとで えらべるよ');
             if (outcome === 'unavailable') setResult('いまは いれられません');
           }}
-          className="flex items-center justify-center gap-2 min-h-[44px] py-3 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-white font-black text-sm shadow-[2px_2px_0_var(--text)] hover:opacity-90 transition-opacity"
+          className="flex items-center justify-center gap-2 min-h-[44px] py-3 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-[var(--panel)] font-black text-sm shadow-[2px_2px_0_var(--text)] hover:opacity-90 transition-opacity"
         >
           <Smartphone size={18} strokeWidth={3} /> ホームに{F("入","い")}れる
         </button>

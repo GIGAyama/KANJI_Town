@@ -33,6 +33,7 @@ import { getTodayString } from './utils/date-utils';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
+import { THEMES, themeCssVars } from './constants/themes';
 import { createTabCoordinator } from './systems/tab-coordinator';
 
 // UI
@@ -76,15 +77,8 @@ import LoginBonusPopup from './components/tutorial/LoginBonusPopup';
 import ResidentCollectionPopup from './components/tutorial/ResidentCollectionPopup';
 import FeatureHint from './components/tutorial/FeatureHint';
 
-// テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
-const THEME_VARS = {
-  default: `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`,
-  dark: `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`,
-  sakura: `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`,
-  ocean: `--bg: #f0f9ff; --primary: #0284c7; --secondary: #38bdf8; --accent: #7dd3fc; --text: #0c4a6e; --panel: #ffffff;`,
-  sunset: `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`,
-  gold: `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`,
-};
+// テーマ別CSS変数。色の正本は constants/themes.js（テストが全テーマのコントラストを確かめる）
+const THEME_VARS = Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeCssVars(name)]));
 
 const GlobalStyle = ({ themeName, reducedMotion }) => {
   const tv = THEME_VARS[themeName] || THEME_VARS.default;

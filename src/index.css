@@ -4,12 +4,22 @@
   /* 端末の強制ダークモード（自動暗色化）を無効化。
      暗色化されるとキャンバスの手書き線やSVGの書き順線が背景に沈んで見えなくなる */
   color-scheme: only light;
+  /* 既定テーマの色。正本は src/constants/themes.js（App.jsx が起動後にテーマごとに上書きする）。
+     ここは JS が動くまでの最初の 1 枚のためにある。値は themes.js の default と同じにすること。 */
   --bg: #fdfbf7;
-  --primary: #ef4444;
-  --secondary: #10b981;
+  --primary: #dc2626;
+  --secondary: #047857;
   --accent: #fbbf24;
   --text: #292f36;
+  /* 補足の文字。opacity で薄くすると 4.5:1 を割るので、薄く見せたい文字はこれを使う */
+  --text-muted: #5b6470;
   --panel: #ffffff;
+  /* 町の満足度（systems/residents.js）。白い地の上で 4.5:1 以上。ダークは themes.js で上書き */
+  --sat-4: #15803d;
+  --sat-3: #4d7c0f;
+  --sat-2: #a16207;
+  --sat-1: #c2410c;
+  --sat-0: #b91c1c;
 
   /* 画面幅に応じて伸び縮みする文字サイズ。
      メディアクエリを何段も書かずに、320px のスマホから電子黒板まで面倒を見る。 */
