@@ -40,6 +40,7 @@ import { createTabCoordinator } from './systems/tab-coordinator';
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
 import { F, FuriganaContext } from './components/ui/FormatKun';
 import { buildGradeLookup, getFuriganaMode } from './utils/furigana';
+import { getFontScale } from './utils/text-size';
 
 // Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
@@ -217,6 +218,11 @@ export default function App() {
     gradeLookupPromise.then((lookup) => { if (alive && lookup) setGradeLookup(lookup); });
     return () => { alive = false; };
   }, [gradeLookup]);
+  // 文字の大きさ（設定）。rem の基準になる html に倍率を置く（index.css の html の font-size）
+  const fontScale = getFontScale(stats.settings);
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', String(fontScale));
+  }, [fontScale]);
   const furiganaMode = getFuriganaMode(stats.settings);
   const furiganaValue = useMemo(
     () => ({ mode: furiganaMode, grade: stats.targetGrade || 1, gradeLookup }),

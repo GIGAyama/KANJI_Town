@@ -49,13 +49,21 @@ html {
   /* 端末の文字サイズ設定で勝手に拡大されると、狭い画面で枠から溢れる */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* 文字の大きさ。Tailwind の text-* と余白は rem なので、html に掛けないと大きくならない。
+     --font-scale は設定の「文字の大きさ」（App が html に置く）、
+     --presentation-scale は提示モード（html.presentation）。 */
+  font-size: calc(100% * var(--font-scale, 1) * var(--presentation-scale, 1));
+}
+html.presentation {
+  --presentation-scale: 1.5;
 }
 
 body {
   font-family: 'Zen Maru Gothic', sans-serif;
   background-color: var(--bg);
   color: var(--text);
-  font-size: var(--fs-body);
+  /* --fs-body は px なので、html の倍率とは別に同じ倍率を掛ける */
+  font-size: calc(var(--fs-body) * var(--font-scale, 1) * var(--presentation-scale, 1));
   touch-action: manipulation;
   transition: background-color 0.3s ease;
   margin: 0;
@@ -177,13 +185,12 @@ ruby.survival-blank rt {
 }
 
 /* ── 提示モード（電子黒板・一斉授業） ──
-   教員が「大きく表示」を押すと <body> に .presentation が付く。
-   教室のいちばん後ろの席から読めることが要件。 */
-.presentation {
-  font-size: 150%;
-}
-.presentation button,
-.presentation [role="button"] {
+   教員が「大きく表示」を押すと <html> に .presentation が付き、文字が 150% になる
+   （倍率は上の html の font-size）。教室のいちばん後ろの席から読めることが要件。
+   ⚠️ 以前は <body> に font-size: 150% を付けていたが、Tailwind の文字は html 基準の
+      rem なので、4けたの数字も QR の説明も大きくならなかった。 */
+html.presentation button,
+html.presentation [role="button"] {
   min-height: 64px;
 }
 /* 大画面では余白を活かして主役の漢字をさらに大きく */

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity, Smartphone } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Palette, GraduationCap, Database, Download, Upload, Trash2, RotateCcw, Sun, Moon, Sparkles, ChevronRight, AlertTriangle, Check, X, Accessibility, Activity, Smartphone, Type } from 'lucide-react';
 import { MotionButton } from '../ui';
 import InstallAppPanel from '../ui/InstallAppPanel';
 import ModalDialog from '../ui/ModalDialog';
@@ -9,6 +9,7 @@ import { IMPORT_MAX_BYTES, validateImportedStats } from '../../systems/stats-sch
 import { audioCtrl } from '../../systems/audio';
 import { F, Ruby } from '../ui/FormatKun';
 import { getFuriganaMode } from '../../utils/furigana';
+import { getFontScaleId } from '../../utils/text-size';
 import { DAILY_GOAL_OPTIONS, getDailyGoal } from '../../systems/learning-plan';
 import { getMotionPreference } from '../../utils/motion-preference';
 import { isReadingCheckEnabled } from '../../utils/reading-preference';
@@ -42,6 +43,13 @@ const MOTION_OPTIONS = [
   { id: 'system', label: 'じどう', desc: <>{F("端末","たんまつ")}の{F("設定","せってい")}に{F("合","あ")}わせる</> },
   { id: 'full', label: <>{F("標準","ひょうじゅん")}</>, desc: <>{F("演出","えんしゅつ")}を{F("楽","たの")}しむ</> },
   { id: 'reduced', label: <>{F("少","すく")}なめ</>, desc: <>{F("動","うご")}きをおさえる</> },
+];
+
+// 文字の大きさ（utils/text-size.js）。画面全体の文字と余白が大きくなる
+const FONT_SCALE_OPTIONS = [
+  { id: 'normal', label: 'ふつう', sample: 'text-base' },
+  { id: 'large', label: <><Ruby base="大" reading="おお" always />きめ</>, sample: 'text-lg' },
+  { id: 'xlarge', label: <>とても<Ruby base="大" reading="おお" always />きい</>, sample: 'text-xl' },
 ];
 
 // ふりがなの出し方（utils/furigana.js）。えらぶ文字は、設定にかかわらずふりがなを付ける
@@ -123,6 +131,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const sessionSize = settings.sessionSize || 'normal';
   const dailyGoal = getDailyGoal(settings);
   const motionPreference = getMotionPreference(settings);
+  const fontScaleId = getFontScaleId(settings);
 
   const updateSettings = (patch) => {
     const newSettings = { ...settings, ...patch };
@@ -300,6 +309,30 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
         </div>
         <div className="rounded-xl bg-[var(--bg)] px-3 py-2 text-xs font-bold leading-relaxed text-[var(--text-muted)]">
           「{F("少","すく")}なめ」はアニメーション・{F("天気","てんき")}・{F("紙吹雪","かみふぶき")}をおさえ、{F("電池","でんち")}も{F("長","なが")}もちしやすくします。
+        </div>
+      </Section>
+
+      {/* 文字の大きさ */}
+      <Section icon={Type} title={<><Ruby base="文字" reading="もじ" always />の<Ruby base="大" reading="おお" always />きさ</>}>
+        <div className="grid grid-cols-3 gap-2" role="group" aria-label="文字の大きさ">
+          {FONT_SCALE_OPTIONS.map((option) => {
+            const isActive = fontScaleId === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => { audioCtrl.playSE('click'); updateSettings({ fontScale: option.id }); }}
+                className={`min-h-[56px] rounded-xl border-[3px] p-2 text-center transition-all ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/25 hover:border-[var(--text)]'}`}
+              >
+                <div className={`font-black leading-none text-[var(--text)] ${option.sample}`} aria-hidden="true">あ</div>
+                <div className="mt-1 flex items-center justify-center gap-1 text-xs font-black text-[var(--text)]">
+                  <span>{option.label}</span>
+                  {isActive && <Check size={13} className="shrink-0 text-[var(--secondary)]" aria-hidden="true" />}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </Section>
 
