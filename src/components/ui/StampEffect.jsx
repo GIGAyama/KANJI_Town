@@ -34,7 +34,7 @@ const StampEffect = ({ stamp }) => {
       <div className={`text-[150px] md:text-[200px] leading-none drop-shadow-2xl filter ${config.color}`} style={typeof config.text === 'string' ? { textShadow: '4px 4px 0 #fff, -4px -4px 0 #fff, 4px -4px 0 #fff, -4px 4px 0 #fff' } : {}}>
         {config.text}
       </div>
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="mt-4 bg-white/90 backdrop-blur px-6 py-2 rounded-full border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] text-3xl font-black text-[var(--text)]">{config.label}</motion.div>
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="mt-4 bg-[var(--panel)]/90 backdrop-blur px-6 py-2 rounded-full border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] text-3xl font-black text-[var(--text)]">{config.label}</motion.div>
     </motion.div>
   );
 };

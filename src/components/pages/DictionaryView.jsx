@@ -2,16 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Library, ArrowLeft } from 'lucide-react';
 import { KANJI_DATA } from '../../data/kanji-data';
+import { filterKanji } from '../../utils/kanji-search';
 import { F } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 
 const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
   const [search, setSearch] = useState(''); const [filterGrade, setFilterGrade] = useState(0);
-  const filtered = KANJI_DATA.filter(k => {
-    const matchGrade = filterGrade === 0 || k.grade === filterGrade;
-    const matchSearch = search === '' || k.char.includes(search) || k.on.some(o => o.includes(search.toUpperCase())) || k.kun.some(ku => ku.includes(search));
-    return matchGrade && matchSearch;
-  });
+  // ひらがな・カタカナ・送りがな付きの読みでも見つかるよう、そろえてから比べる（utils/kanji-search.js）
+  const filtered = filterKanji(KANJI_DATA, { query: search, grade: filterGrade });
   const getStatusColor = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return 'bg-emerald-100 border-emerald-400'; if (s === 'review') return 'bg-violet-100 border-violet-400'; if (s === 'learning') return 'bg-sky-100 border-sky-400'; return 'bg-gray-100 border-gray-300'; };
   const getStatusLabel = (id) => { const s = kanjiStats?.[id]?.status; if (s === 'mastered') return <>{F("習得","しゅうとく")}</>; if (s === 'review') return <>{F("復習中","ふくしゅうちゅう")}</>; if (s === 'learning') return <>{F("学習中","がくしゅうちゅう")}</>; return <>{F("未学習","みがくしゅう")}</>; };
 
@@ -26,29 +24,29 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
   return (
     <div className="flex flex-col gap-3 pb-8">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="text-[var(--text)] opacity-60 hover:opacity-100 p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
+        <button onClick={onBack} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> {F("漢字","かんじ")}ずかん</h2>
       </div>
       <div className="flex gap-2">
-        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="漢字・読みで検索" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:opacity-40 focus:outline-none focus:border-[var(--primary)]" /></div>
+        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} type="search" aria-label="かんじ・よみで さがす" placeholder="かんじ・よみで さがす" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]" /></div>
       </div>
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
         {[0, 1, 2, 3, 4, 5, 6].map(g => (
-          <button key={g} onClick={() => setFilterGrade(g)} className={`px-4 py-2 rounded-full text-sm font-black whitespace-nowrap border-[2px] transition-all flex items-center gap-1.5 ${filterGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--panel)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
-            {g === 0 ? 'すべて' : <>{g}年 <span className="text-[10px] opacity-70">{gradeCounts[g].learned}/{gradeCounts[g].total}</span></>}
+          <button key={g} onClick={() => setFilterGrade(g)} className={`px-4 py-2 rounded-full text-sm font-black whitespace-nowrap border-[2px] transition-all flex items-center gap-1.5 ${filterGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--panel)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'}`}>
+            {g === 0 ? 'すべて' : <>{g}年 <span className="text-xs font-bold">{gradeCounts[g].learned}/{gradeCounts[g].total}</span></>}
           </button>
         ))}
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
         {filtered.map(k => (
           <motion.button key={k.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { audioCtrl.playSE('click'); onSelectKanji(k); }} className={`${getStatusColor(k.id)} rounded-2xl border-[3px] p-3 flex flex-col items-center gap-1 shadow-sm hover:shadow-md transition-shadow`}>
-            <div className="text-4xl font-black text-[var(--text)]" style={{ fontFamily: "'Klee One', serif" }}>{k.char}</div>
-            <div className="text-xs font-bold text-[var(--text)] opacity-60">{k.on[0] || k.kun[0] || ''}</div>
-            <div className="text-[10px] font-black bg-white/70 px-2 py-0.5 rounded-full border border-current opacity-70">{getStatusLabel(k.id)}</div>
+            <div className="text-4xl font-black text-slate-800" style={{ fontFamily: "'Klee One', serif" }}>{k.char}</div>
+            <div className="text-xs font-bold text-slate-600">{k.on[0] || k.kun[0] || ''}</div>
+            <div className="text-xs font-black text-slate-700 bg-white/80 px-2 py-0.5 rounded-full border border-current">{getStatusLabel(k.id)}</div>
           </motion.button>
         ))}
       </div>
-      {filtered.length === 0 && <div className="text-center py-12 text-[var(--text)] opacity-40 font-bold text-lg">{F("見","み")}つかりませんでした</div>}
+      {filtered.length === 0 && <div className="text-center py-12 text-[var(--text-muted)] font-bold text-lg">{F("見","み")}つかりませんでした</div>}
     </div>
   );
 };

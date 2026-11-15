@@ -34,12 +34,15 @@ import { getEffectiveStreak } from './systems/habit';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
+import { THEMES, themeCssVars } from './constants/themes';
 import { createTabCoordinator } from './systems/tab-coordinator';
 import { requestPersistentStorageOnce } from './systems/persistence';
 
 // UI
 import { PageWrapper, FullScreenWrapper, ErrorBoundary, Footer, BackExitHint, LeaveLearningDialog } from './components/ui';
-import { F } from './components/ui/FormatKun';
+import { F, FuriganaContext } from './components/ui/FormatKun';
+import { buildGradeLookup, getFuriganaMode } from './utils/furigana';
+import { getFontScale } from './utils/text-size';
 
 // Pages - HomeViewは常にロード、他はlazy
 import HomeView from './components/pages/HomeView';
@@ -79,15 +82,8 @@ const LoginBonusPopup = lazy(() => import('./components/tutorial/LoginBonusPopup
 const ResidentCollectionPopup = lazy(() => import('./components/tutorial/ResidentCollectionPopup'));
 import FeatureHint from './components/tutorial/FeatureHint';
 
-// テーマ別CSS変数（コンポーネント外に定義して再マウントを防ぐ）
-const THEME_VARS = {
-  default: `--bg: #fdfbf7; --primary: #ef4444; --secondary: #10b981; --accent: #fbbf24; --text: #292f36; --panel: #ffffff;`,
-  dark: `--bg: #0f172a; --primary: #f43f5e; --secondary: #3b82f6; --accent: #f59e0b; --text: #e2e8f0; --panel: #1e293b;`,
-  sakura: `--bg: #fdf2f8; --primary: #d946ef; --secondary: #f472b6; --accent: #fbcfe8; --text: #831843; --panel: #ffffff;`,
-  ocean: `--bg: #f0f9ff; --primary: #0284c7; --secondary: #38bdf8; --accent: #7dd3fc; --text: #0c4a6e; --panel: #ffffff;`,
-  sunset: `--bg: #fff7ed; --primary: #ea580c; --secondary: #f97316; --accent: #fcd34d; --text: #7c2d12; --panel: #ffffff;`,
-  gold: `--bg: #fefce8; --primary: #b45309; --secondary: #eab308; --accent: #fef08a; --text: #713f12; --panel: #ffffff;`,
-};
+// テーマ別CSS変数。色の正本は constants/themes.js（テストが全テーマのコントラストを確かめる）
+const THEME_VARS = Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeCssVars(name)]));
 
 const GlobalStyle = ({ themeName, reducedMotion }) => {
   const tv = THEME_VARS[themeName] || THEME_VARS.default;
@@ -98,6 +94,13 @@ const GlobalStyle = ({ themeName, reducedMotion }) => {
     <style>{`:root { ${tv} } body { font-family: 'Zen Maru Gothic', sans-serif; background-color: var(--bg); color: var(--text); touch-action: manipulation; transition: background-color 0.3s ease; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } ::selection { background-color: var(--accent); color: var(--text); } ruby { ruby-align: center; ruby-position: over; vertical-align: baseline; } ruby rt { font-size: 0.5em; font-weight: 500; letter-spacing: 0; line-height: 1; } ruby rt:empty { display: inline-block; height: 0; overflow: hidden; } .ruby-text { line-height: 2.5; } ${reducedMotionStyle}`}</style>
   );
 };
+
+// ふりがなの「学年より上の字だけ」で使う、字 → 学年 の表。
+// 字の一覧（約3KB）は初回のJSに入れず、起動と同時に別に読む。読めるまではすべてに出す。
+let gradeLookupCache = null;
+const gradeLookupPromise = import('./data/kanji-grades')
+  .then(({ KANJI_BY_GRADE }) => { gradeLookupCache = buildGradeLookup(KANJI_BY_GRADE); return gradeLookupCache; })
+  .catch(() => null);
 
 /** 設定の音量レベルID → 実音量値 */
 const VOLUME_VALUES = { off: 0, low: 0.3, mid: 0.6, high: 1.0 };
@@ -209,6 +212,24 @@ export default function App() {
       : false
   ));
   const motionPreference = getMotionPreference(stats.settings);
+  // ふりがなの設定を画面へ渡す（F()・RubyText が読む）
+  const [gradeLookup, setGradeLookup] = useState(gradeLookupCache);
+  useEffect(() => {
+    if (gradeLookup) return undefined;
+    let alive = true;
+    gradeLookupPromise.then((lookup) => { if (alive && lookup) setGradeLookup(lookup); });
+    return () => { alive = false; };
+  }, [gradeLookup]);
+  // 文字の大きさ（設定）。rem の基準になる html に倍率を置く（index.css の html の font-size）
+  const fontScale = getFontScale(stats.settings);
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', String(fontScale));
+  }, [fontScale]);
+  const furiganaMode = getFuriganaMode(stats.settings);
+  const furiganaValue = useMemo(
+    () => ({ mode: furiganaMode, grade: stats.targetGrade || 1, gradeLookup }),
+    [furiganaMode, stats.targetGrade, gradeLookup],
+  );
   const isReducedMotion = shouldReduceMotion(motionPreference, systemPrefersReducedMotion);
 
   useEffect(() => {
@@ -357,10 +378,16 @@ export default function App() {
   // 初回ロード時
   useEffect(() => {
     refreshDailyData(stats, true);
-    // 保存済みの音量設定を適用
+    // 保存済みの音量設定を適用。「小・中・大」を選んでいたら音ありで始める
+    // （以前は音量だけ戻して毎回消音で始まり、設定画面の表示と食い違っていた）。
+    // 何も選んでいなければ、学校で急に鳴らないよう今までどおり消音で始める。
     const savedLevel = stats.settings?.volumeLevel;
     if (savedLevel && VOLUME_VALUES[savedLevel] !== undefined) {
       audioCtrl.volume = VOLUME_VALUES[savedLevel];
+      if (savedLevel !== 'off' && audioCtrl.muted) {
+        audioCtrl.muted = false;
+        setIsMuted(false);
+      }
     }
   }, []);
 
@@ -945,6 +972,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={isReducedMotion ? 'always' : 'never'}>
+      <FuriganaContext.Provider value={furiganaValue}>
       <div data-reduced-motion={isReducedMotion ? 'true' : 'false'} className="flex flex-col h-[100dvh] w-full bg-[var(--bg)] relative overflow-hidden transition-colors duration-500">
       <GlobalStyle themeName={activeThemeName} reducedMotion={isReducedMotion} />
 
@@ -957,7 +985,8 @@ export default function App() {
       {/* 新しい版が用意できたときの案内（押したときだけ切り替わる） */}
       <UpdateToast />
 
-      {/* Phase 5: チュートリアルオーバーレイ */}
+      {/* Phase 5: チュートリアルオーバーレイ（重ね画面は、それぞれの Suspense で読みこみ中は何も出さない。
+          AnimatePresence の外を Suspense で包むと、退場の追跡が壊れることがある。PageWrapper.jsx 参照） */}
       <AnimatePresence>
         {showTutorial && <Suspense key="tutorial" fallback={null}><TutorialOverlay onComplete={handleTutorialComplete} /></Suspense>}
       </AnimatePresence>
@@ -1082,8 +1111,10 @@ export default function App() {
           isTownEditorUnlocked={levelInfo.level >= 1}
         />
       )}
-      <Footer />
+      {/* 学習中はリンクの無い 1 行にする（押しそこねて学習の途中で別のタブへ飛ばないように） */}
+      <Footer compact={isLearningView(view)} />
       </div>
+      </FuriganaContext.Provider>
     </MotionConfig>
   );
 }

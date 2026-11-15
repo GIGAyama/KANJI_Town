@@ -43,7 +43,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
     const isBlindMode = count >= 5;
     paths.forEach((d, i) => {
       const p = new Path2D(d);
-      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.strokeStyle = "rgba(0,0,0,0.05)"; gCtx.stroke(p); }
+      if (i === currentStroke) { gCtx.strokeStyle = isBlindMode ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.5)"; gCtx.stroke(p); if (strokeData[i]) { gCtx.fillStyle = isBlindMode ? "rgba(255, 107, 107, 0.2)" : "rgba(255, 107, 107, 0.8)"; gCtx.beginPath(); gCtx.arc(strokeData[i].s.x * 109, strokeData[i].s.y * 109, 4, 0, Math.PI * 2); gCtx.fill(); } } else if (i > currentStroke && !isBlindMode) { gCtx.save(); gCtx.globalAlpha = 0.12; gCtx.strokeStyle = resolveThemeColor('--text'); gCtx.stroke(p); gCtx.restore(); }
     }); gCtx.restore();
   }, [paths, currentStroke, count, strokeData, canvasSize]);
 
@@ -135,7 +135,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <div className="flex justify-between items-center bg-[var(--bg)] p-2 rounded-xl border-[2px] border-[var(--text)]">
           <span className="text-sm font-bold text-[var(--text)] pl-2">{count < 2 ? <>なぞり{F("書","が")}き</> : count < 5 ? <>{F("手","て")}{F("書","が")}き ({F("手本","てほん")}あり)</> : <>{F("空書","からが")}き ({F("手本","てほん")}なし)</>}</span><div className="text-sm font-black bg-[var(--text)] text-[var(--panel)] px-3 py-1 rounded-lg shadow-sm">{count + 1} {F("回目","かいめ")}</div>
         </div>
-        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-white text-[var(--text)]'}`}>{statusMsg}</div>
+        <div className={`text-sm font-black px-3 py-2 rounded-xl border-[2px] border-[var(--text)] text-center shadow-sm transition-colors ${statusMsg.includes('💦') ? 'bg-[var(--primary)] text-[var(--panel)]' : statusMsg.includes('💮') ? 'bg-[var(--secondary)] text-[var(--panel)]' : 'bg-[var(--panel)] text-[var(--text)]'}`}>{statusMsg}</div>
       </div>
       {history.length > 0 && (
         <div className="bg-[var(--panel)] p-2 rounded-2xl border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-1 shrink-0">
@@ -154,7 +154,7 @@ const WriteMode = ({ paths, strokeData, crossMatrix, onNext, onPracticeComplete,
         <MotionButton variant="secondary" onClick={undoLastStroke} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Undo2 size={16} /> 1{F("画","かく")}もどす</MotionButton>
         <MotionButton variant="secondary" onClick={resetPractice} disabled={currentStroke <= 0 || isDrawing} className={`py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] ${currentStroke <= 0 ? 'opacity-40' : ''}`}><Trash2 size={16} /> ぜんぶけす</MotionButton>
       </div>
-      <MotionButton variant={currentStroke >= paths.length ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
+      <MotionButton variant={currentStroke >= paths.length && history.length < 2 ? "primary" : "secondary"} disabled={currentStroke < paths.length} onClick={handleNextTry} className={`w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] ${currentStroke >= paths.length ? (history.length < 2 ? 'shadow-[0_6px_0_#9f1239] animate-pulse' : 'shadow-[0_4px_0_var(--text)]') : 'opacity-50'}`}><Pencil size={24} /> もう1{F("回","かい")}{F("書","か")}く！</MotionButton>
       <AnimatePresence>{history.length >= 2 && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}><MotionButton variant="success" onClick={onNext} className={`w-full py-3 md:py-4 text-lg md:text-xl font-black border-[4px] border-[var(--text)] shadow-[0_4px_0_#065f46]`}>テストへ{F("進","すす")}む！ <ChevronRight size={24} /></MotionButton></motion.div>)}</AnimatePresence>
     </div>
   );

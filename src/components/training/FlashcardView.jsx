@@ -11,6 +11,9 @@ import { StorageAPI } from '../../systems/storage';
 import { recordSkillEvidence } from '../../systems/mastery';
 import { recordStudyAttempt } from '../../systems/studySession';
 
+/** 回答してからこの時間（ms）の間のタップ・キーは、次のカードを開く操作にしない */
+const ANSWER_GUARD_MS = 400;
+
 const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => {
   const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -19,6 +22,10 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
   const [displayEarned, setDisplayEarned] = useState({ exp: 0, coins: 0 });
   const isDoneRef = useRef(false);
   const touchStartX = useRef(0);
+  // 回答した直後のタップは、次のカードの「読みを表示」として扱わない。
+  // 回答ボタンは押すと消えるので、2回目のタップがカード本体に当たり、
+  // 次のカードの読みを思い出す前に見せてしまっていた（連打しがちな子で起きる）。
+  const lastAnswerAtRef = useRef(0);
 
   // カウントアップタイマー
   useEffect(() => {
@@ -38,6 +45,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
   const kanji = queue[idx];
 
   const handleReveal = useCallback(() => {
+    if (Date.now() - lastAnswerAtRef.current < ANSWER_GUARD_MS) return;
     if (!revealed && kanji) {
       setRevealed(true);
       audioCtrl.playSE('click');
@@ -46,6 +54,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
 
   const handleAnswer = useCallback((isKnown) => {
     if (!kanji || !revealed) return;
+    lastAnswerAtRef.current = Date.now();
     const evaluation = isKnown ? 'good' : 'again';
     recordStudyAttempt(kanji.id, { ok: isKnown, skill: 'reading' });
     earnedRef.current = {
@@ -115,7 +124,7 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
   if (!kanji) return null;
 
   return (
-    <div className="flex flex-col h-[85vh] items-center justify-center p-4 relative w-full max-w-md mx-auto">
+    <div className="flex flex-col h-[85vh] items-center justify-center p-4 pt-16 relative w-full max-w-md mx-auto">
       <div className="absolute top-0 w-full flex justify-between items-center gap-2 p-4">
         <LeaveLearningButton onClick={onRequestLeave} />
         <span className="font-bold flex items-center gap-1 text-[var(--text)] bg-[var(--panel)] px-3 py-1 rounded-full border-[3px] border-[var(--text)] shadow-sm">
@@ -134,11 +143,11 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
       >
         {!revealed ? (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            タップで読みを表示 <span className="text-[10px] opacity-50">Space / Enter</span>
+            <span>タップで{F("読","よ")}みを{F("表示","ひょうじ")}</span> <span className="hidden sm:inline text-xs text-[var(--text-muted)]">Space / Enter</span>
           </div>
         ) : (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            ← 読めなかった ／ 読めた → <span className="text-[10px] opacity-50">矢印キー</span>
+            <span>← {F("読","よ")}めなかった ／ {F("読","よ")}めた →</span> <span className="hidden sm:inline text-xs text-[var(--text-muted)]">{F("矢印","やじるし")}キー</span>
           </div>
         )}
 
@@ -167,18 +176,18 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
             >
               <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
                 <span className="text-sm font-bold text-[var(--primary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--primary)] shrink-0">{F("音","おん")}</span>
-                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300">{o}</span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.on.length > 0 ? kanji.on.map((o, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20">{o}</span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
               </div>
               <div className="bg-[var(--panel)] rounded-xl px-4 py-3 border-[3px] border-[var(--text)] shadow-sm flex items-start justify-between gap-4">
                 <span className="text-sm font-bold text-[var(--secondary)] bg-[var(--bg)] px-3 py-1 rounded-lg border-2 border-[var(--secondary)] shrink-0">{F("訓","くん")}</span>
-                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-gray-100 px-2 py-0.5 rounded-md border border-gray-300"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-gray-400">-</span>}</div>
+                <div className="flex flex-wrap gap-1.5 justify-end">{kanji.kun.length > 0 ? kanji.kun.map((k, i) => (<span key={i} className="font-black text-xl text-[var(--text)] bg-[var(--bg)] px-2 py-0.5 rounded-md border border-[var(--text)]/20"><FormatKun text={k} /></span>)) : <span className="font-black text-xl text-[var(--text-muted)]">-</span>}</div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {!revealed && (
-          <div className="text-xs font-bold text-[var(--text)] opacity-40 flex items-center gap-2">
+          <div className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-2">
             <span className="bg-[var(--bg)] px-2 py-1 rounded">+{displayEarned.exp} EXP</span>
             <span className="bg-[var(--bg)] px-2 py-1 rounded">{displayEarned.coins}</span>
           </div>
@@ -186,8 +195,8 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
 
         {revealed && (
           <div className="flex w-full gap-4 mt-2">
-            <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]">読めなかった</MotionButton>
-            <MotionButton variant="success" onClick={() => handleAnswer(true)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">読めた！</MotionButton>
+            <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]"><span>{F("読","よ")}めなかった</span></MotionButton>
+            <MotionButton variant="success" onClick={() => handleAnswer(true)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]"><span>{F("読","よ")}めた！</span></MotionButton>
           </div>
         )}
       </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, PenTool, Map, Hammer, Users, Star } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import ModalDialog from '../ui/ModalDialog';
 import { F } from '../ui/FormatKun';
 
 const TUTORIAL_STEPS = [
@@ -15,7 +16,9 @@ const TUTORIAL_STEPS = [
   },
   {
     title: <>{F("漢字","かんじ")}を{F("覚","おぼ")}えよう</>,
-    message: <>{F("学年","がくねん")}をえらんで「{F("漢字","かんじ")}を{F("覚","おぼ")}える」ボタンをおそう。{'\n'}{F("見","み")}る→{F("書","か")}く→テストの3ステップで{F("練習","れんしゅう")}するよ。</>,
+    // ボタンの名前と手順の数は、ホームと学習画面の実物に合わせる（以前は「漢字を覚える」
+    // ボタン・3ステップと書いてあり、1年生が言われたボタンを見つけられなかった）
+    message: <>{F("学年","がくねん")}をえらんで「きょうの○{F("字","じ")}」のボタンをおそう。{'\n'}{F("音読","おんどく")}→{F("書","か")}き{F("順","じゅん")}→なぞる→テストの4つのステップで{F("練習","れんしゅう")}するよ。</>,
     emoji: '✏️',
     icon: PenTool,
   },
@@ -52,7 +55,9 @@ const TutorialOverlay = ({ onComplete }) => {
   const Icon = current.icon;
 
   return (
-    <motion.div
+    <ModalDialog
+      labelId="tutorial-title"
+      focusKey={step}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -77,11 +82,11 @@ const TutorialOverlay = ({ onComplete }) => {
           </motion.div>
 
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Icon size={20} className="text-[var(--primary)]" />
-            <h2 className="text-xl font-black text-[var(--text)]">{current.title}</h2>
+            <Icon size={20} className="text-[var(--primary)]" aria-hidden="true" />
+            <h2 id="tutorial-title" className="text-xl font-black text-[var(--text)]">{current.title}</h2>
           </div>
 
-          <p className="text-sm text-[var(--text)] opacity-70 leading-relaxed whitespace-pre-line mb-6">
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-line mb-6">
             {current.message}
           </p>
 
@@ -109,6 +114,7 @@ const TutorialOverlay = ({ onComplete }) => {
             )}
             <MotionButton
               variant={isLast ? 'primary' : 'accent'}
+              data-autofocus
               onClick={() => {
                 if (isLast) onComplete();
                 else setStep(s => s + 1);
@@ -122,14 +128,14 @@ const TutorialOverlay = ({ onComplete }) => {
           {!isLast && (
             <button
               onClick={onComplete}
-              className="mt-3 text-xs text-[var(--text)] opacity-40 hover:opacity-70 transition-opacity"
+              className="mt-3 px-4 text-sm font-bold text-[var(--text-muted)] underline underline-offset-4 hover:text-[var(--text)] transition-colors"
             >
               スキップする
             </button>
           )}
         </div>
       </motion.div>
-    </motion.div>
+    </ModalDialog>
   );
 };
 

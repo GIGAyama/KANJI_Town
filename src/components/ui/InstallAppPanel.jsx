@@ -39,7 +39,7 @@ export default function InstallAppPanel() {
   if (state.canInstall) {
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-bold text-[var(--text)] opacity-60 leading-relaxed">
+        <p className="text-xs font-bold text-[var(--text-muted)] leading-relaxed">
           ホーム{F("画面","がめん")}に{F("入","い")}れると、アプリのように すぐ ひらけて
           ネットが なくても つかえるよ。
         </p>
@@ -50,12 +50,12 @@ export default function InstallAppPanel() {
             if (outcome === 'dismissed') setResult('またあとで えらべるよ');
             if (outcome === 'unavailable') setResult('いまは いれられません');
           }}
-          className="flex items-center justify-center gap-2 min-h-[44px] py-3 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-white font-black text-sm shadow-[2px_2px_0_var(--text)] hover:opacity-90 transition-opacity"
+          className="flex items-center justify-center gap-2 min-h-[44px] py-3 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-[var(--panel)] font-black text-sm shadow-[2px_2px_0_var(--text)] hover:opacity-90 transition-opacity"
         >
           <Smartphone size={18} strokeWidth={3} /> ホームに{F("入","い")}れる
         </button>
         {result && (
-          <p role="status" aria-live="polite" className="text-[11px] font-bold text-[var(--text)] opacity-50 text-center">
+          <p role="status" aria-live="polite" className="text-xs font-bold text-[var(--text-muted)] text-center">
             {result}
           </p>
         )}
@@ -72,7 +72,7 @@ export default function InstallAppPanel() {
             iPad・iPhone で ホームに{F("入","い")}れる{F("方法","ほうほう")}
           </span>
         </div>
-        <ol className="text-[11px] font-bold text-[var(--text)] opacity-60 leading-relaxed list-decimal pl-5">
+        <ol className="text-xs font-bold text-[var(--text-muted)] leading-relaxed list-decimal pl-5">
           <li>{F("画面","がめん")}の した（または{F("右上","みぎうえ")}）の きょうゆうボタン <Share size={11} className="inline" /> を おす</li>
           <li>メニューを 下に スクロールする</li>
           <li>「ホーム{F("画面","がめん")}に{F("追加","ついか")}」を おす</li>
@@ -82,7 +82,7 @@ export default function InstallAppPanel() {
   }
 
   return (
-    <p className="text-xs font-bold text-[var(--text)] opacity-50 leading-relaxed">
+    <p className="text-xs font-bold text-[var(--text-muted)] leading-relaxed">
       この ブラウザーでは ホーム{F("画面","がめん")}に{F("入","い")}れられません。
       Chrome か Safari で ひらいてね。
     </p>

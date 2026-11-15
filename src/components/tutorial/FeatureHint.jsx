@@ -53,7 +53,8 @@ const FeatureHint = ({ featureKey, seenHints, onDismiss }) => {
           </div>
           <button
             onClick={handleDismiss}
-            className="shrink-0 text-blue-400 hover:text-blue-600 p-1 rounded-full transition-colors"
+            aria-label="ヒントをとじる"
+            className="shrink-0 text-blue-700 hover:text-blue-600 p-1 rounded-full transition-colors"
           >
             <X size={14} />
           </button>

@@ -5,7 +5,7 @@ import { Maximize2, Minimize2 } from 'lucide-react';
  * 提示モード（電子黒板・一斉授業）の切り替え。
  *
  * 教室のいちばん後ろの席から 4けたの数字や QR が読めないと、一斉授業では使えない。
- * 押すと <body> に .presentation が付いて全体が 150% になり、あわせて
+ * 押すと <html> に .presentation が付いて文字が 150% になり（Tailwind の rem も大きくなる）、あわせて
  * 画面をフルスクリーンにしてブラウザーのタブやアドレスバーを隠す。
  *
  * フルスクリーンは端末やブラウザーによって拒否されることがあるため、
@@ -16,14 +16,14 @@ export default function PresentationToggle({ className = '' }) {
 
   // 別画面へ移ったあとも .presentation が残ると児童画面まで巨大になるため、
   // このボタンが消えるときに必ず外す。
-  useEffect(() => () => document.body.classList.remove('presentation'), []);
+  useEffect(() => () => document.documentElement.classList.remove('presentation'), []);
 
   // Esc などでフルスクリーンだけ解除されたとき、表示状態と食い違わないよう合わせる
   useEffect(() => {
     const sync = () => {
       if (!document.fullscreenElement && on) {
         setOn(false);
-        document.body.classList.remove('presentation');
+        document.documentElement.classList.remove('presentation');
       }
     };
     document.addEventListener('fullscreenchange', sync);
@@ -33,7 +33,7 @@ export default function PresentationToggle({ className = '' }) {
   const toggle = useCallback(async () => {
     const next = !on;
     setOn(next);
-    document.body.classList.toggle('presentation', next);
+    document.documentElement.classList.toggle('presentation', next);
     try {
       if (next) await document.documentElement.requestFullscreen?.();
       else if (document.fullscreenElement) await document.exitFullscreen?.();

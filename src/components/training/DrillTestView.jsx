@@ -205,11 +205,14 @@ const StrokeReplay = ({ userStrokes, canvasSize, displaySize = 80, feedback = nu
       if (!stroke || stroke.length === 0) return;
       const fb = feedback?.[i];
       ctx.strokeStyle = fb ? STROKE_COLORS[strokeTone(fb.shape)] : inkColor;
+      // 「なおそう」の画は破線にする（色だけでは、赤と緑の見分けにくい子に伝わらない）
+      ctx.setLineDash(fb && strokeTone(fb.shape) === 'poor' ? [displaySize * 0.05, displaySize * 0.045] : []);
       ctx.beginPath();
       ctx.moveTo(stroke[0].x * scale, stroke[0].y * scale);
       stroke.forEach(pt => ctx.lineTo(pt.x * scale, pt.y * scale));
       ctx.stroke();
     });
+    ctx.setLineDash([]);
     if (!showNumbers) return;
     const r = displaySize * 0.085;
     ctx.font = `900 ${displaySize * 0.1}px sans-serif`;
@@ -226,7 +229,9 @@ const StrokeReplay = ({ userStrokes, canvasSize, displaySize = 80, feedback = nu
       ctx.fill();
       ctx.lineWidth = Math.max(1.5, displaySize * 0.012);
       ctx.strokeStyle = fb && !fb.inOrder ? STROKE_COLORS.poor : inkColor;
+      ctx.setLineDash(fb && !fb.inOrder ? [r * 0.45, r * 0.35] : []);
       ctx.stroke();
+      ctx.setLineDash([]);
       ctx.fillStyle = fb && !fb.inOrder ? STROKE_COLORS.poor : inkColor;
       ctx.fillText(String(i + 1), x, y + displaySize * 0.005);
     });
@@ -409,7 +414,7 @@ const AnswerDetailSheet = ({ answer, index, total, onPrev, onNext, onClose, onPr
           <div className="flex items-center justify-center gap-3 text-[10px] font-bold text-[var(--text)] opacity-60">
             <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: STROKE_COLORS.good }} />よい</span>
             <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: STROKE_COLORS.fair }} />もうすこし</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: STROKE_COLORS.poor }} />なおそう</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-0 inline-block border-t-[3px] border-dashed" style={{ borderColor: STROKE_COLORS.poor }} />なおそう</span>
             <span>①＝{F('書', 'か')}いた じゅんばん</span>
           </div>
 
@@ -634,7 +639,8 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequ
           </div>
           <div className="flex gap-0.5">
             {[...Array(total)].map((_, i) => (
-              <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i < currentIdx ? (answers[i]?.passed ? 'bg-emerald-400' : 'bg-rose-400') : i === currentIdx ? 'bg-blue-400/60' : 'bg-[var(--text)] opacity-10'}`} />
+              // 合否は色だけでなく ✓ / × の印でも示す（2型色覚では緑と赤の差がほぼ消える）
+              <div key={i} aria-hidden="true" className={`h-4 flex-1 rounded-full transition-all duration-300 flex items-center justify-center text-[10px] font-black leading-none text-white ${i < currentIdx ? (answers[i]?.passed ? 'bg-emerald-600' : 'bg-rose-600') : i === currentIdx ? 'bg-blue-400/60' : 'bg-[var(--text)] opacity-10'}`}>{i < currentIdx ? (answers[i]?.passed ? '✓' : '×') : ''}</div>
             ))}
           </div>
         </div>

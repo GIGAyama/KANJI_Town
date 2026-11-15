@@ -43,14 +43,14 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
             <div
               key={m.id}
               className={`flex items-center gap-2 bg-[var(--bg)] rounded-xl px-3 py-2 border-[2px] transition-all ${
-                m.claimed ? 'border-emerald-300 opacity-60' : canClaim ? 'border-amber-400' : 'border-transparent'
+                m.claimed ? 'border-emerald-300' : canClaim ? 'border-amber-400' : 'border-transparent'
               }`}
             >
               <span className="text-lg shrink-0">{MISSION_ICONS[m.type] || '📋'}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-xs font-bold text-[var(--text)] truncate"><RubyText text={m.name} /></span>
-                  <span className="text-[10px] text-[var(--text)] opacity-50 shrink-0">
+                  <span className="text-xs font-bold text-[var(--text-muted)] shrink-0">
                     {m.current || 0}/{m.target}
                   </span>
                 </div>
@@ -67,7 +67,7 @@ const DailyMissionsPanel = ({ missions, onClaim }) => {
                   className="shrink-0 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-lg border-2 border-amber-600 shadow-[0_1px_0_#92400e] active:shadow-none active:translate-y-[1px] transition-all flex flex-col items-center"
                 >
                   <div className="flex items-center gap-0.5"><Coins size={10} />{m.reward}</div>
-                  {m.rewardExp && <div className="text-[8px] opacity-70">⚡+{m.rewardExp}</div>}
+                  {m.rewardExp && <div className="text-[10px]">⚡+{m.rewardExp}</div>}
                 </button>
               )}
               {m.claimed && <Check size={14} className="shrink-0 text-emerald-500" />}

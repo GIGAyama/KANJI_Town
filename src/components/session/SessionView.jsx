@@ -165,7 +165,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             role="status"
             className="absolute top-14 md:top-16 left-1/2 z-40 whitespace-nowrap rounded-full border-[3px] border-[var(--text)] bg-emerald-100 px-4 py-2 text-xs md:text-sm font-black text-emerald-800 shadow-[3px_3px_0_var(--text)]"
           >
-            ✓ つづきから再開しました
+            ✓ つづきから{F("再開","さいかい")}しました
           </motion.div>
         )}
       </AnimatePresence>
@@ -176,9 +176,9 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
           <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
         </div>
         <div className="flex gap-2">
-          {voicedCount > 0 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-emerald-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-emerald-400 shadow-sm flex items-center gap-1">🎤 ×{voicedCount}</motion.div>}
+          {voicedCount > 0 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-slate-800 font-black text-xs md:text-sm bg-emerald-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-emerald-400 shadow-sm flex items-center gap-1">🎤 ×{voicedCount}</motion.div>}
           {combo > 1 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[var(--text)] font-black text-xs md:text-sm bg-[var(--accent)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1">{combo} COMBO 🔥</motion.div>}
-          {!isNew && focusMode !== 'test' && <div className="text-[var(--text)] font-black text-[10px] md:text-xs bg-sky-100 px-2.5 md:px-3 py-1.5 md:py-2 rounded-full border-[3px] border-sky-400 shadow-sm">おすすめ：{MODE_LABELS[focusMode]}から</div>}
+          {!isNew && focusMode !== 'test' && <div className="text-slate-800 font-black text-[10px] md:text-xs bg-sky-100 px-2.5 md:px-3 py-1.5 md:py-2 rounded-full border-[3px] border-sky-400 shadow-sm">おすすめ：{MODE_LABELS[focusMode]}から</div>}
           {isNew && <div className="text-[var(--panel)] font-bold text-xs md:text-sm bg-[var(--primary)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full flex items-center gap-1 border-[3px] border-[var(--text)] shadow-sm"><Star size={15} /> {F("新出","しんしゅつ")}</div>}
         </div>
       </div>
