@@ -62,3 +62,25 @@ test('画面外の住民を移動余白込みでカリングする', () => {
   assert.equal(isVillagerInViewRange({ x: 3, y: 15 }, viewRange), false);
   assert.equal(isVillagerInViewRange({ x: 15, y: 27 }, viewRange), false);
 });
+
+test('既定では requestAnimationFrame を使わず、時計で刻む（毎フレームの画面更新を起こさない）', async () => {
+  const original = globalThis.requestAnimationFrame;
+  let rafCalls = 0;
+  globalThis.requestAnimationFrame = () => { rafCalls++; return 0; };
+  try {
+    const scheduler = createTownAnimationScheduler();
+    const ticks = [];
+    const unsubscribe = scheduler.subscribe((_now, delta) => ticks.push(delta));
+    await new Promise((resolve) => setTimeout(resolve, TOWN_ANIMATION_INTERVAL_MS * 4));
+    unsubscribe();
+    assert.equal(rafCalls, 0);
+    assert.ok(ticks.length >= 1, `刻みが来ていない（${ticks.length}）`);
+    assert.ok(ticks.every((delta) => delta > 0 && delta <= 0.1));
+    const after = ticks.length;
+    await new Promise((resolve) => setTimeout(resolve, TOWN_ANIMATION_INTERVAL_MS * 2));
+    assert.equal(ticks.length, after, '購読をやめたら止まる');
+  } finally {
+    if (original === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = original;
+  }
+});

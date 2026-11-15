@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import { TOWN_ITEMS } from '../../data/town-items';
+import { TOWN_ITEMS, TOWN_ITEM_MAP } from '../../data/town-items';
 import { MATERIALS } from '../../data/materials';
 import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
 import { OCCUPATIONS } from '../../data/residents';
@@ -14,6 +14,7 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
 import { getMinLevelForGrade } from '../../utils/level-system';
+import { applyUpgrade, buildMegaIndex, countMissionBuildings, countPlacedItems, patchHistory, trackPlacementGain } from '../../systems/town-editing';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
@@ -94,16 +95,48 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   const isCraftUnlocked = playerLevel >= 3;
   const isResidentsUnlocked = (stats.population || 0) >= 1;
 
-  const pushHistory = (newMap) => {
-    const trimmed = history.slice(0, historyIdx + 1);
+  const pushHistory = (newMap, permanentPatch) => {
+    const trimmed = patchHistory(history.slice(0, historyIdx + 1), permanentPatch);
     const next = [...trimmed, { ...newMap }].slice(-20);
     setHistory(next); setHistoryIdx(next.length - 1);
   };
 
+  // 置いた建物は、そのたびに保存する（ほかの画面と同じく自動保存）。
+  // 以前は「保存」を押さずに ← や端末の戻るで出ると、並べた建物が確認なしに消えていた。
+  // しかも開拓したときだけは、その時点の配置がまるごと保存されていた
+  const persistMap = (newMap, statsPatch) => {
+    setStats(s => {
+      const next = { ...s, ...(statsPatch ? statsPatch(s) : null), townMap: newMap };
+      StorageAPI.saveStats(next);
+      return next;
+    });
+  };
+
+  // 「建物を配置」のミッションは、開いてからの最多の数を超えたときだけ数える
+  // （動かす・もとに戻してから置きなおす、では増えない）
+  const placedHighWater = useRef(null);
+  if (placedHighWater.current === null) {
+    placedHighWater.current = countMissionBuildings(stats.townMap || {}, TOWN_ITEM_MAP);
+  }
+  const countPlacement = (newMap) => {
+    const { gained, highWater } = trackPlacementGain(placedHighWater.current, newMap, TOWN_ITEM_MAP);
+    placedHighWater.current = highWater;
+    if (onPlace) for (let i = 0; i < gained; i++) onPlace();
+  };
+
+  /** 地図を変えたら、表示・もとに戻す履歴・保存・ミッションをまとめて進める */
+  const commitMap = (newMap, { permanentPatch, statsPatch } = {}) => {
+    setLocalMap(newMap);
+    pushHistory(newMap, permanentPatch);
+    persistMap(newMap, statsPatch);
+    countPlacement(newMap);
+  };
+
   const handleUndo = () => {
     if (historyIdx <= 0) return;
-    const prev = history[historyIdx - 1];
-    setLocalMap({ ...prev }); setHistoryIdx(historyIdx - 1); audioCtrl.playSE('click');
+    const prev = { ...history[historyIdx - 1] };
+    setLocalMap(prev); setHistoryIdx(historyIdx - 1); audioCtrl.playSE('click');
+    persistMap(prev);
   };
 
   const showError = (msg) => {
@@ -111,14 +144,21 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     setTimeout(() => setPlacementError(null), 2000);
   };
 
-  const availableItems = TOWN_ITEMS.filter(item => {
+  // 置いてある数は、地図が変わったときに 1 回だけ数える（以前は描き直しのたびに
+  // 「アイテムの種類 × 全 2,500 マス」を数え直し、低速な端末で 0.2〜0.3 秒もたついていた）
+  const placedCounts = useMemo(() => countPlacedItems(localMap), [localMap]);
+  const megaIndex = useMemo(() => buildMegaIndex(localMap, TOWN_ITEM_MAP), [localMap]);
+
+  const availableItems = useMemo(() => TOWN_ITEMS.filter(item => {
     if (item.type === 'terrain') return false;
     const count = stats.townItems?.[item.id] || 0;
-    const inMap = Object.values(localMap).filter(v => v === item.id).length;
-    return count > inMap;
-  });
+    return count > (placedCounts[item.id] || 0);
+  }), [stats.townItems, placedCounts]);
 
-  const filteredItems = availableItems.filter(item => filterType === 'all' || item.type === filterType);
+  const filteredItems = useMemo(
+    () => availableItems.filter(item => filterType === 'all' || item.type === filterType),
+    [availableItems, filterType],
+  );
 
   const canPlaceMultiTile = (x, y, w, h) => {
     for (let dy = 0; dy < h; dy++) {
@@ -130,17 +170,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     return true;
   };
 
-  const findMegaAnchor = (x, y) => {
-    for (const [key, itemId] of Object.entries(localMap)) {
-      const item = TOWN_ITEMS.find(i => i.id === itemId);
-      if (!item || !item.size) continue;
-      const [ax, ay] = key.split(',').map(Number);
-      if (x >= ax && x < ax + item.size.w && y >= ay && y < ay + item.size.h) {
-        return { anchorKey: key, ax, ay, item };
-      }
-    }
-    return null;
-  };
+  const findMegaAnchor = (x, y) => megaIndex.get(`${x},${y}`) || null;
 
   const handleCellTap = (x, y) => {
     const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
@@ -150,13 +180,12 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     const currentTile = localMap[key];
 
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
-      const terrainDef = TOWN_ITEMS.find(i => i.id === currentTile);
+      const terrainDef = TOWN_ITEM_MAP.get(currentTile);
       const cost = terrainDef?.cultivateCost || 5;
       if ((stats.coins || 0) < cost) { audioCtrl.playSE('stamp_bad'); showError(`コインが足りません（${cost}枚必要）`); return; }
       const newMap = { ...localMap, [key]: 't_cleared' };
-      setLocalMap(newMap); pushHistory(newMap);
-      const newStats = { ...stats, coins: stats.coins - cost, townMap: newMap };
-      setStats(newStats); StorageAPI.saveStats(newStats);
+      // 開拓はコインを払うので、もとに戻すで荒れ地へ戻らないよう履歴にも書きこむ
+      commitMap(newMap, { permanentPatch: { [key]: 't_cleared' }, statsPatch: (s) => ({ coins: (s.coins || 0) - cost }) });
       audioCtrl.playSE('place'); spawnDust(); return;
     }
 
@@ -170,12 +199,12 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
           }
         }
-        setLocalMap(newMap); pushHistory(newMap);
+        commitMap(newMap);
         audioCtrl.playSE('click');
         return;
       }
 
-      const item = TOWN_ITEMS.find(i => i.id === currentTile);
+      const item = TOWN_ITEM_MAP.get(currentTile);
       if (item && item.type !== 'terrain') {
         const newMap = { ...localMap };
         if (localMap[`${key}:top`]) {
@@ -183,7 +212,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         } else {
           newMap[key] = 't_cleared';
         }
-        setLocalMap(newMap); pushHistory(newMap);
+        commitMap(newMap);
         audioCtrl.playSE('click');
       }
       return;
@@ -191,13 +220,13 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
     if (!selectedItem) {
       if (currentTile && currentTile !== 't_cleared' && currentTile !== 't_weed') {
-        const itemDef = TOWN_ITEMS.find(i => i.id === currentTile);
+        const itemDef = TOWN_ITEM_MAP.get(currentTile);
         if (itemDef && itemDef.type !== 'terrain') {
           const topItemId = localMap[`${key}:top`];
           if (topItemId) {
             const newMap = { ...localMap };
             delete newMap[`${key}:top`];
-            setLocalMap(newMap); pushHistory(newMap);
+            commitMap(newMap);
             setSelectedItem(topItemId);
             audioCtrl.playSE('click');
             return;
@@ -211,13 +240,13 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
                 newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
               }
             }
-            setLocalMap(newMap); pushHistory(newMap);
+            commitMap(newMap);
             setSelectedItem(item.id);
             audioCtrl.playSE('click');
             return;
           }
           const newMap = { ...localMap, [key]: 't_cleared' };
-          setLocalMap(newMap); pushHistory(newMap);
+          commitMap(newMap);
           setSelectedItem(itemDef.id);
           audioCtrl.playSE('click');
         }
@@ -228,8 +257,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     let targetKey = key;
 
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') {
-      const currentDef = TOWN_ITEMS.find(i => i.id === currentTile);
-      const selDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+      const currentDef = TOWN_ITEM_MAP.get(currentTile);
+      const selDef = TOWN_ITEM_MAP.get(selectedItem);
       
       if (currentDef?.isFlat && !selDef?.isFlat && !selDef?.size && !localMap[`${key}:top`]) {
         targetKey = `${key}:top`;
@@ -239,7 +268,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       }
     }
 
-    const itemDef = TOWN_ITEMS.find(i => i.id === selectedItem);
+    const itemDef = TOWN_ITEM_MAP.get(selectedItem);
 
     if (itemDef?.minGrade && playerLevel < getMinLevelForGrade(itemDef.minGrade)) {
       audioCtrl.playSE('stamp_bad');
@@ -249,7 +278,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
 
     const ownedCount = stats.townItems?.[selectedItem] || 0;
-    const placedCount = Object.values(localMap).filter(v => v === selectedItem).length;
+    const placedCount = placedCounts[selectedItem] || 0;
     if (ownedCount <= placedCount) {
       audioCtrl.playSE('stamp_bad');
       setSelectedItem(null);
@@ -271,19 +300,15 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           newMap[`${x + dx},${y + dy}`] = 't_cleared';
         }
       }
-      setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
+      commitMap(newMap); audioCtrl.playSE('place');
       return;
     }
 
     const newMap = { ...localMap, [targetKey]: selectedItem };
-    setLocalMap(newMap); pushHistory(newMap); audioCtrl.playSE('place');
-
-    // デイリーミッション進捗更新
-    if (onPlace && itemDef && ['building', 'special', 'mega', 'rare'].includes(itemDef.type)) {
-      onPlace(itemDef);
-    }
+    commitMap(newMap); audioCtrl.playSE('place');
   };
 
+  // 配置はそのたびに保存してある。「保存」は、書き出しを待たずに確定してホームへ戻る
   const handleSave = () => {
     const newStats = { ...stats, townMap: localMap }; setStats(newStats); StorageAPI.saveStatsImmediate(newStats);
     audioCtrl.playSE('success'); setView('home');
@@ -325,7 +350,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 
   const hasUpgradeSource = (recipe) => {
     if (!recipe.requires) return true;
-    return Object.values(stats.townMap || {}).includes(recipe.requires);
+    return (placedCounts[recipe.requires] || 0) > 0;
   };
 
   const craftBonuses = useMemo(() => getCraftBonuses(villagers), [villagers]);
@@ -356,12 +381,25 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       newStats.materials[result.result.type] = (newStats.materials[result.result.type] || 0) + result.result.amount;
     } else {
       const townItemId = getResultTownItemId(result.result.type);
-      if (townItemId) {
+      if (recipe.category === 'upgrade' && recipe.requires && townItemId) {
+        // 強化は元の建物を使う。もちものだけでなく地図の上の元の建物も減らし、収まるなら
+        // その場で上位の建物に置きかえる（以前はもちものだけ減らしていたので、次に起動
+        // すると地図の建物の数に合わせて元の建物が戻っていた）
+        const upgraded = applyUpgrade(
+          { townMap: localMap, townItems: newStats.townItems },
+          { requires: recipe.requires, quantity, resultItemId: townItemId, resultAmount: result.result.amount },
+          TOWN_ITEM_MAP,
+        );
+        newStats.townItems = upgraded.townItems;
+        newStats.townMap = upgraded.townMap;
+        if (upgraded.replacedOnMap + upgraded.clearedOnMap > 0) {
+          // 強化はもとに戻せない（素材とコインを使った）。履歴はここから始めなおす
+          setLocalMap(upgraded.townMap);
+          setHistory([{ ...upgraded.townMap }]); setHistoryIdx(0);
+          placedHighWater.current = countMissionBuildings(upgraded.townMap, TOWN_ITEM_MAP);
+        }
+      } else if (townItemId) {
         newStats.townItems = { ...newStats.townItems, [townItemId]: (newStats.townItems?.[townItemId] || 0) + result.result.amount };
-      }
-      if (recipe.category === 'upgrade' && recipe.requires) {
-        const oldCount = newStats.townItems?.[recipe.requires] || 0;
-        newStats.townItems = { ...newStats.townItems, [recipe.requires]: Math.max(0, oldCount - quantity) };
       }
     }
 
@@ -452,7 +490,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             className="absolute z-40 left-1/2 -translate-x-1/2"
             style={{ bottom: dockOpen ? 'calc(50% + 44px)' : 84 }}>
             <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEMS.find(i => i.id === selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
+              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEM_MAP.get(selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
           </motion.div>
@@ -489,7 +527,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
                 {dockOpen === 'items' && <ItemsPanel
                   filteredItems={filteredItems} filterType={filterType} setFilterType={setFilterType}
                   selectedItem={selectedItem} setSelectedItem={setSelectedItem}
-                  stats={stats} localMap={localMap} playerLevel={playerLevel}
+                  stats={stats} placedCounts={placedCounts} playerLevel={playerLevel}
                   handleBuy={handleBuy} showError={showError}
                   onSelectClose={() => setDockOpen(null)}
                 />}
@@ -552,7 +590,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
 };
 
 // ── Items Panel ──
-const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, localMap, playerLevel, handleBuy, showError, onSelectClose }) => (
+const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, setSelectedItem, stats, placedCounts, playerLevel, handleBuy, showError, onSelectClose }) => (
   <div className="flex flex-col gap-3">
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
@@ -567,7 +605,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
     {/* Item grid */}
     <div className="grid grid-cols-4 gap-2">
       {filteredItems.map(item => {
-        const count = (stats.townItems?.[item.id] || 0) - Object.values(localMap).filter(v => v === item.id).length;
+        const count = (stats.townItems?.[item.id] || 0) - (placedCounts[item.id] || 0);
         const isSelected = selectedItem === item.id;
         const canAfford = stats.coins >= item.price;
         const owned = count > 0;
@@ -686,7 +724,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
         const currentQty = craftQuantities[recipe.id] || 1;
         const craftable = isUnlocked && canCraft(materials, displayIngredients, coinCost, stats.coins || 0, currentQty);
         const townItemId = recipe.category !== 'material' ? getResultTownItemId(recipe.result.type) : null;
-        const townItem = townItemId ? TOWN_ITEMS.find(i => i.id === townItemId) : null;
+        const townItem = townItemId ? TOWN_ITEM_MAP.get(townItemId) : null;
         const resultMat = recipe.category === 'material' ? MATERIALS[recipe.result.type] : null;
 
         return (

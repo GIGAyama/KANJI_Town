@@ -52,7 +52,6 @@ const StatsView = lazy(() => import('./components/pages/StatsView'));
 const ResultView = lazy(() => import('./components/pages/ResultView'));
 const MyDrillsView = lazy(() => import('./components/pages/MyDrillsView'));
 const DrillEditorView = lazy(() => import('./components/pages/DrillEditorView'));
-const CraftView = lazy(() => import('./components/pages/CraftView'));
 const SettingsView = lazy(() => import('./components/pages/SettingsView'));
 
 // Town
@@ -1088,13 +1087,6 @@ export default function App() {
                 });
               }} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="residents" seenHints={seenHints} onDismiss={handleDismissHint} /><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
-          {view === 'craft' && <PageWrapper key="craft"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="craft" seenHints={seenHints} onDismiss={handleDismissHint} /><CraftView stats={stats} setStats={setStats} setView={setView} onCraft={() => {
-                setDailyMissions(prev => {
-                  const updated = updateMissionProgress(prev, 'craft', 1);
-                  setStats(s => { const ns = { ...s, dailyMissions: updated }; StorageAPI.saveStats(ns); return ns; });
-                  return updated;
-                });
-              }} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
           {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
