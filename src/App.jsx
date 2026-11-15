@@ -30,6 +30,7 @@ import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
+import { getEffectiveStreak } from './systems/habit';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
@@ -271,11 +272,19 @@ export default function App() {
       setDailyMissions(currentStats.dailyMissions || []);
     }
 
-    // ログインボーナス受取
-    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && (currentStats.streak || 0) >= 1) {
-      const bonusDay = getLoginBonusDay(currentStats.streak);
+    // 連続学習日数は学習した日にしか更新されないので、休みが続いて途切れていたら、
+    // 起動したとき（と日付が変わったとき）に 0 へ直す。以前は2週間休んでも「6日連続」のまま、
+    // ホーム・満足度（EXP倍率）・レアドロップ・先生向けの記録に使われていた。
+    const effectiveStreak = getEffectiveStreak(currentStats, today);
+    const streakBroken = effectiveStreak !== (Number(currentStats.streak) || 0);
+    if (streakBroken) needsSave = true;
+
+    // ログインボーナス受取（休みのあとに戻ってきた日は1日目として受けとる）
+    const bonusStreak = currentStats.lastDate ? Math.max(1, effectiveStreak) : effectiveStreak;
+    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && bonusStreak >= 1) {
+      const bonusDay = getLoginBonusDay(bonusStreak);
       const reward = getLoginBonusReward(bonusDay);
-      setLoginBonusReward({ ...reward, bonusDay, streak: currentStats.streak });
+      setLoginBonusReward({ ...reward, bonusDay, streak: bonusStreak });
       setShowLoginBonus(true);
     }
 
@@ -284,6 +293,7 @@ export default function App() {
     if (needsSave || willCollect) {
       setStats(prev => {
         let updated = { ...prev };
+        if (streakBroken) updated.streak = getEffectiveStreak(updated, today);
         if (missionsToSet) {
           updated.dailyMissions = missionsToSet;
           updated.dailyMissionsDate = today;
