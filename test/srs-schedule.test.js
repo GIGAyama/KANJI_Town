@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calculateNextReview,
+  describeNextReview,
   dueAtLocalDay,
   isEarlyReview,
   DEFAULT_EASE,
@@ -127,4 +128,19 @@ test('容易度には上限があり、卒業後の good で既定値まで少�
 test('復習間隔は1年を超えない', () => {
   const next = calculateNextReview(reviewCard(300, { ease: MAX_EASE }), 'easy', at(16, 10, 0));
   assert.equal(next.interval, MAX_INTERVAL);
+});
+
+test('評価ボタンの「次回」は、実際の間隔と同じ言いかえになる', () => {
+  const now = at(16, 10, 0);
+  // 新出字の good は 10 分後。セッションのあとに出すまでの最短 30 分を入れると 30 分後
+  assert.deepEqual(describeNextReview(newCard(), 'good', now), { unit: 'minutes', value: 10 });
+  assert.deepEqual(describeNextReview(newCard(), 'good', now, { minLearningDelay: 30 * 60_000 }), { unit: 'minutes', value: 30 });
+  // 新出字の easy は 4 日後
+  assert.deepEqual(describeNextReview(newCard(), 'easy', now), { unit: 'days', value: 4 });
+  // 卒業の good は あした
+  assert.deepEqual(describeNextReview({ ...newCard(), stepIdx: 1 }, 'good', now), { unit: 'days', value: 1 });
+  // 10日間隔の hard は 12 日後（以前は「まもなく」と出ていた）
+  assert.deepEqual(describeNextReview(reviewCard(10), 'hard', now), { unit: 'days', value: 12 });
+  // 期限前の早い復習は、いまの予定のまま
+  assert.deepEqual(describeNextReview(reviewCard(3, { nextReview: at(19, 3, 0) }), 'good', now), { unit: 'days', value: 3 });
 });

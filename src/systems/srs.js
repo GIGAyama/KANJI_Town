@@ -248,6 +248,29 @@ export const calculateNextReview = (card, evaluation, now = Date.now()) => {
   }
 };
 
+/**
+ * 評価ボタンに「次回」をそのまま出せるよう、評価したあとの次の復習を言いかえる。
+ * 以前は「書けた：翌日〜」のように固定の文言で、新出字の good（実際は 10 分後、
+ * セッションのあとは 30 分後）や卒業後の hard（10 日なら 12 日後）と合っていなかった。
+ * @param {CardState} card
+ * @param {Evaluation} evaluation
+ * @param {number} [now]
+ * @param {{ minLearningDelay?: number }} [options] - 学習中の字をセッションのあとに出すまでの最短の待ち時間
+ * @returns {{ unit: 'minutes'|'days', value: number }}
+ */
+export function describeNextReview(card, evaluation, now = Date.now(), { minLearningDelay = 0 } = {}) {
+  const next = calculateNextReview(card, evaluation, now);
+  let dueAt = next.nextReview;
+  if (!next.graduated) dueAt = Math.max(dueAt, now + minLearningDelay);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(dueAt);
+  dueDay.setHours(0, 0, 0, 0);
+  const days = Math.round((dueDay.getTime() - today.getTime()) / DAY_MS);
+  if (days <= 0) return { unit: 'minutes', value: Math.max(1, Math.round((dueAt - now) / 60000)) };
+  return { unit: 'days', value: days };
+}
+
 /** nextReview の妥当範囲（クライアント時刻ズレ対策） */
 const MAX_FUTURE_MS = MAX_INTERVAL + DAY_MS; // 1年（朝3時にそろえた分の余裕を含む）
 const MAX_PAST_MS = 365 * 24 * 60 * 60 * 1000; // 1年前まで許容

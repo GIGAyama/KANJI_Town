@@ -11,6 +11,8 @@ import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { pickPromptExample } from '../../systems/prompt-example';
+import { describeNextReview, migrateCard } from '../../systems/srs';
+import { SESSION } from '../../constants/gameConfig';
 
 function getScoreBanner(result) {
   if (!result) return null;
@@ -24,13 +26,23 @@ function getScoreBanner(result) {
 }
 
 const EVAL_BUTTONS = [
-  { key: 'easy', variant: 'primary', label: 'よくできた！✨', hint: '4日後〜', shadow: 'shadow-[0_6px_0_#9f1239]' },
-  { key: 'good', variant: 'success', label: '書けた👍', hint: '翌日〜', shadow: 'shadow-[0_6px_0_#065f46]' },
-  { key: 'hard', variant: 'warning', label: 'むずかしい😓', hint: 'まもなく', shadow: 'shadow-[0_4px_0_#92400e]' },
-  { key: 'again', variant: 'danger', label: '忘れた💦', hint: 'もう一度', shadow: 'shadow-[0_4px_0_#334155]' },
+  { key: 'easy', variant: 'primary', label: 'よくできた！✨', shadow: 'shadow-[0_6px_0_#9f1239]' },
+  { key: 'good', variant: 'success', label: '書けた👍', shadow: 'shadow-[0_6px_0_#065f46]' },
+  { key: 'hard', variant: 'warning', label: 'むずかしい😓', shadow: 'shadow-[0_4px_0_#92400e]' },
+  { key: 'again', variant: 'danger', label: '忘れた💦', shadow: 'shadow-[0_4px_0_#334155]' },
 ];
 
-const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked }) => {
+/** 評価したあとの次の復習を、子ども向けのことばにする（実際の間隔と同じ計算） */
+function nextReviewText(card, evaluation, isPractice) {
+  if (evaluation === 'again') return <>もう{F("一度","いちど")}</>;
+  // 特訓・ドリルは間隔反復を進めない練習なので、日付は出さない
+  if (isPractice) return 'れんしゅう';
+  const { unit, value } = describeNextReview(migrateCard(card), evaluation, Date.now(), { minLearningDelay: SESSION.GRACE_PERIOD });
+  if (unit === 'minutes') return value >= 60 ? `${Math.round(value / 60)}じかんご` : `${value}ぷんご`;
+  return value === 1 ? 'あした' : `${value}にちご`;
+}
+
+const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -259,10 +271,7 @@ const TestMode = ({ kanji, paths = [], isLoading = false, strokeData, onEvaluate
                   >
                     {btn.key === 'good' ? <>{F("書","か")}けた👍</> : btn.key === 'again' ? <>{F("忘","わす")}れた💦</> : btn.label}
                     <span className="text-[10px] md:text-sm font-bold opacity-70 ml-1">
-                      （{btn.key === 'easy' ? <>{F("次回","じかい")}：4{F("日後","にちご")}〜</> :
-                        btn.key === 'good' ? <>{F("次回","じかい")}：{F("翌日","よくじつ")}〜</> :
-                        btn.key === 'hard' ? <>{F("次回","じかい")}：まもなく</> :
-                        <>もう{F("一度","いちど")}</>}）
+                      （{btn.key === 'again' || isPractice ? null : <>{F("次回","じかい")}：</>}{nextReviewText(card, btn.key, isPractice)}）
                     </span>
                   </MotionButton>
                 </div>
