@@ -114,11 +114,12 @@ export function getSatisfactionMultiplier(satisfaction) {
 export function getSatisfactionLabel(satisfaction) {
   // 色は文字にも使うので、テーマの地の上で 4.5:1 以上になる CSS 変数にする
   // （値は index.css と constants/themes.js）。以前の #84cc16 などは白い地に 2:1 前後で読めなかった。
-  if (satisfaction >= 80) return { text: 'とても幸せ', emoji: '😄', color: 'var(--sat-4)' };
-  if (satisfaction >= 60) return { text: '満足', emoji: '😊', color: 'var(--sat-3)' };
+  // ラベルは文字列のまま何か所かで出すので、低学年も読めるようにひらがなで書く
+  if (satisfaction >= 80) return { text: 'とても しあわせ', emoji: '😄', color: 'var(--sat-4)' };
+  if (satisfaction >= 60) return { text: 'まんぞく', emoji: '😊', color: 'var(--sat-3)' };
   if (satisfaction >= 40) return { text: 'ふつう', emoji: '😐', color: 'var(--sat-2)' };
-  if (satisfaction >= 20) return { text: '不満', emoji: '😟', color: 'var(--sat-1)' };
-  return { text: 'とても不満', emoji: '😢', color: 'var(--sat-0)' };
+  if (satisfaction >= 20) return { text: 'ふまん', emoji: '😟', color: 'var(--sat-1)' };
+  return { text: 'とても ふまん', emoji: '😢', color: 'var(--sat-0)' };
 }
 
 // ── 自動素材収集 ──

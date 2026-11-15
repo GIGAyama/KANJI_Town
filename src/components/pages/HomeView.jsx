@@ -27,7 +27,7 @@ const TownMapFallback = () => (
   >
     <div className="flex items-center gap-2 rounded-full border-2 border-[var(--text)] bg-[var(--panel)]/90 px-4 py-2 text-xs font-black text-[var(--text)] shadow-sm">
       <span className="h-3 w-3 animate-pulse rounded-full bg-[var(--secondary)]" aria-hidden="true" />
-      まちを準備しています...
+      まちを{F("準備","じゅんび")}しています...
     </div>
   </div>
 );
@@ -40,13 +40,14 @@ const TownMapFallback = () => (
 const StatusBar = ({ levelInfo: { badge, title, level }, stage, population, satLabel, coins, prosperity }) => (
   <div className="flex items-center justify-between shrink-0 px-1">
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-      <span className="text-xs md:text-sm font-bold text-[var(--text)] opacity-60 truncate">{badge} {title}</span>
+      <span className="text-xs md:text-sm font-bold text-[var(--text-muted)] truncate">{badge} {title}</span>
       <span className="text-base md:text-lg font-black text-[var(--text)]">Lv.{level}</span>
-      <span className="hidden sm:inline text-xs font-bold text-[var(--text)] opacity-50">{stage.emoji} {stage.title}</span>
+      <span className="hidden sm:inline text-xs font-bold text-[var(--text-muted)]">{stage.emoji} {stage.title}</span>
     </div>
     <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-      <span className="text-[10px] md:text-xs font-bold text-[var(--text)] opacity-60 flex items-center gap-0.5"><Users size={12} />{population || 0}{F("人","にん")}</span>
-      <span className="text-[10px] md:text-xs font-bold flex items-center gap-0.5" style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>
+      <span className="text-[10px] md:text-xs font-bold text-[var(--text-muted)] flex items-center gap-0.5"><Users size={12} />{population || 0}{F("人","にん")}</span>
+      {/* 住民がまだいないときは満足度を出さない（初回から「😢とても ふまん」と出ていた） */}
+      {(population || 0) > 0 && <span className="text-[10px] md:text-xs font-bold flex items-center gap-0.5" style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>}
       <span className="flex items-center gap-1 bg-[var(--accent)] px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-xs md:text-sm shadow-sm"><Coins size={14} />{coins}</span>
       <span className="hidden sm:flex text-xs font-bold text-[var(--primary)] items-center gap-1"><TrendingUp size={12} />{prosperity}</span>
     </div>
@@ -63,7 +64,7 @@ const ExpBar = ({ levelInfo: { progress, isMaxLevel, remainingExp, level, target
       <div className="text-[10px] font-black text-right text-[var(--accent)] tracking-widest px-1">✨ MAX LEVEL!</div>
     ) : (
       <div className="flex justify-between items-center px-1">
-        <span className="text-[10px] font-bold text-[var(--text)] opacity-60">
+        <span className="text-[10px] font-bold text-[var(--text-muted)]">
           あと <strong className="text-[var(--text)] text-xs">{remainingExp || 0}</strong> EXP で Lv.{(level || 1) + 1}
         </span>
         {targetReward && (
@@ -85,28 +86,28 @@ const DailyGoalCard = ({ dailyProgress, habitStatus, streak, nextReviewHint }) =
           {dailyProgress.isComplete ? <CheckCircle2 size={18} /> : <Target size={18} />}
         </div>
         <div className="min-w-0">
-          <div className="text-xs md:text-sm font-black text-[var(--text)] truncate">{dailyProgress.isComplete ? 'きょうの目標クリア！' : 'きょうの学習目標'}</div>
+          <div className="text-xs md:text-sm font-black text-[var(--text)] truncate">{dailyProgress.isComplete ? <>きょうの{F("目標","もくひょう")}クリア！</> : <>きょうの{F("学習","がくしゅう")}{F("目標","もくひょう")}</>}</div>
           <div className="text-[10px] font-bold text-[var(--text)] opacity-55">
-            🔥 {streak || 0}日 ・ 🛡️ {habitStatus.canProtectToday
-              ? 'きょう自動で守ります'
+            🔥 {streak || 0}{F("日","にち")} ・ 🛡️ {habitStatus.canProtectToday
+              ? <>きょう{F("自動","じどう")}で{F("守","まも")}ります</>
               : habitStatus.restPassAvailable
                 ? 'おやすみパスあり'
-                : `あと${habitStatus.rechargeRemaining}日でパス`}
+                : <>あと{habitStatus.rechargeRemaining}{F("日","にち")}でパス</>}
           </div>
         </div>
       </div>
-      <div className="font-black text-[var(--text)] shrink-0"><span className="text-lg text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs opacity-50"> / {dailyProgress.goal}字</span></div>
+      <div className="font-black text-[var(--text)] shrink-0"><span className="text-lg text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs text-[var(--text-muted)]"> / {dailyProgress.goal}{F("字","じ")}</span></div>
     </div>
     <div className="h-3 bg-gray-200 rounded-full overflow-hidden border-2 border-[var(--text)]" role="progressbar" aria-label="今日の学習目標" aria-valuemin="0" aria-valuemax={dailyProgress.goal} aria-valuenow={Math.min(dailyProgress.reviewed, dailyProgress.goal)}>
       <motion.div initial={{ width: 0 }} animate={{ width: `${dailyProgress.percent}%` }} className={`h-full ${dailyProgress.isComplete ? 'bg-emerald-400' : 'bg-[var(--primary)]'}`} />
     </div>
     {/* 背の低いスマホでは、学習を始めるボタンを最初の画面に入れるため、この行を省く */}
-    <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text)] opacity-60 max-md:[@media(max-height:620px)]:hidden">
+    <div className="flex justify-between mt-1.5 text-[10px] font-bold text-[var(--text-muted)] max-md:[@media(max-height:620px)]:hidden">
       <span>{habitStatus.canProtectToday
-        ? 'きょう学ぶと連続記録を守れます'
+        ? <>きょう{F("学","まな")}ぶと{F("連続","れんぞく")}{F("記録","きろく")}を{F("守","まも")}れます</>
         : dailyProgress.isComplete
           ? 'よくがんばりました！'
-          : `あと ${dailyProgress.remaining}字でクリア`}</span>
+          : <>あと {dailyProgress.remaining}{F("字","じ")}でクリア</>}</span>
       <span>{nextReviewHint}</span>
     </div>
   </div>
@@ -151,7 +152,7 @@ const GradeAndAction = ({ selectedGrade, onGradeChange, onStart, isReviewNeeded,
   <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-2.5 md:p-3 flex flex-col gap-2 shadow-[2px_2px_0_var(--text)] shrink-0">
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5, 6].map(g => (
-        <button key={g} onClick={() => { audioCtrl.playSE('click'); onGradeChange(g); }} className={`flex-1 py-1.5 md:py-2 font-black text-sm md:text-base rounded-xl border-[2px] transition-all ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{g}年</button>
+        <button key={g} onClick={() => { audioCtrl.playSE('click'); onGradeChange(g); }} className={`flex-1 py-1.5 md:py-2 font-black text-sm md:text-base rounded-xl border-[2px] transition-all ${selectedGrade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'}`} aria-pressed={selectedGrade === g}>{g}{F("年","ねん")}</button>
       ))}
     </div>
     <MotionButton variant={isReviewNeeded ? "danger" : "primary"} className="w-full py-3 md:py-4 text-sm sm:text-base lg:text-lg font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_rgba(0,0,0,0.3)]" onClick={() => onStart(selectedGrade)}>
@@ -208,12 +209,12 @@ const NavButtons = ({ setView }) => (
 const UnlockHints = ({ isTownEditorUnlocked, isCraftUnlocked }) => (
   <>
     {!isTownEditorUnlocked && (
-      <div className="text-xs text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
+      <div className="text-xs text-center text-[var(--text-muted)] bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
         {F("漢字","かんじ")}を1つ{F("覚","おぼ")}えると「まちづくり」が{F("使","つか")}えるよ
       </div>
     )}
     {isTownEditorUnlocked && !isCraftUnlocked && (
-      <div className="text-xs text-center text-[var(--text)] opacity-40 bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
+      <div className="text-xs text-center text-[var(--text-muted)] bg-[var(--bg)] rounded-lg px-2 py-1 shrink-0">
         {F("漢字","かんじ")}を3つ{F("覚","おぼ")}えると「クラフト」が{F("使","つか")}えるよ
       </div>
     )}
@@ -273,17 +274,18 @@ const HomeView = ({ setView, stats, setStats, startSession, startFlashcard, star
     [stats.kanjiStats],
   );
   const nextForecastDay = reviewForecast.days.slice(2).find((day) => day.count > 0);
+  // 低学年も読めるように、漢字にはルビを付ける（ふりがなの設定に従う）
   const nextReviewHint = reviewTargetsCount > 0
-    ? `復習 ${reviewTargetsCount}字`
+    ? <>{F("復習","ふくしゅう")} {reviewTargetsCount}{F("字","じ")}</>
     : reviewForecast.todayCount > 0
-      ? `きょう後で ${reviewForecast.todayCount}字`
+      ? <>きょう{F("後","あと")}で {reviewForecast.todayCount}{F("字","じ")}</>
       : reviewForecast.tomorrowCount > 0
-        ? `あした 復習${reviewForecast.tomorrowCount}字`
+        ? <>あした {F("復習","ふくしゅう")}{reviewForecast.tomorrowCount}{F("字","じ")}</>
         : nextForecastDay
-          ? `${nextForecastDay.date.getMonth() + 1}/${nextForecastDay.date.getDate()} 復習${nextForecastDay.count}字`
+          ? <>{nextForecastDay.date.getMonth() + 1}/{nextForecastDay.date.getDate()} {F("復習","ふくしゅう")}{nextForecastDay.count}{F("字","じ")}</>
           : reviewForecast.nextReviewAt
-            ? `次は ${new Date(reviewForecast.nextReviewAt).getMonth() + 1}/${new Date(reviewForecast.nextReviewAt).getDate()}`
-            : '復習は完了';
+            ? <>{F("次","つぎ")}は {new Date(reviewForecast.nextReviewAt).getMonth() + 1}/{new Date(reviewForecast.nextReviewAt).getDate()}</>
+            : <>{F("復習","ふくしゅう")}は かんりょう</>;
   const prosperity = calculateProsperity(stats.townMap, reviewTargetsCount);
   const learnedCount = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new').length;
   const isSpecialTrainingUnlocked = learnedCount > 0;
