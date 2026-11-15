@@ -113,7 +113,9 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
 
   const settings = stats.settings || {};
   const themeOverride = settings.themeOverride || 'auto';
-  const volumeLevel = settings.volumeLevel ?? (isMuted ? 'off' : 'high');
+  // いま実際に鳴っているかを見せる（ヘッダーのスピーカーで消したときは「オフ」）
+  const savedVolume = settings.volumeLevel && settings.volumeLevel !== 'off' ? settings.volumeLevel : 'high';
+  const volumeLevel = isMuted ? 'off' : savedVolume;
   const autoPlay = settings.autoPlay !== false;
   const readingCheck = isReadingCheckEnabled(settings);
   const furiganaMode = getFuriganaMode(settings);

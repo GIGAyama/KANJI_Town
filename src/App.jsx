@@ -361,10 +361,16 @@ export default function App() {
   // 初回ロード時
   useEffect(() => {
     refreshDailyData(stats, true);
-    // 保存済みの音量設定を適用
+    // 保存済みの音量設定を適用。「小・中・大」を選んでいたら音ありで始める
+    // （以前は音量だけ戻して毎回消音で始まり、設定画面の表示と食い違っていた）。
+    // 何も選んでいなければ、学校で急に鳴らないよう今までどおり消音で始める。
     const savedLevel = stats.settings?.volumeLevel;
     if (savedLevel && VOLUME_VALUES[savedLevel] !== undefined) {
       audioCtrl.volume = VOLUME_VALUES[savedLevel];
+      if (savedLevel !== 'off' && audioCtrl.muted) {
+        audioCtrl.muted = false;
+        setIsMuted(false);
+      }
     }
   }, []);
 

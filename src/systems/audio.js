@@ -194,7 +194,27 @@ class AudioController {
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
+      this._resumeOnGesture();
     }
+  }
+
+  /**
+   * 押す操作の前に作った AudioContext は、ブラウザが止めた状態（suspended）で始まる。
+   * 保存した音量で音ありで起動したときは、最初に画面にふれたときに鳴らしはじめる。
+   */
+  _resumeOnGesture() {
+    if (this._gestureHooked || typeof document === 'undefined') return;
+    this._gestureHooked = true;
+    const events = ['pointerdown', 'keydown', 'touchend'];
+    const resume = () => {
+      if (!this.ctx || this.ctx.state !== 'suspended') {
+        events.forEach((type) => document.removeEventListener(type, resume, true));
+        this._gestureHooked = false;
+        return;
+      }
+      if (!document.hidden) this.ctx.resume().catch(() => {});
+    };
+    events.forEach((type) => document.addEventListener(type, resume, true));
   }
 
   /** マスター音量(0-1)。設定画面から audioCtrl.volume = 0.6 の形で変更される */
@@ -350,7 +370,8 @@ class AudioController {
     this._currentBGM = type;
 
     this.bgmInterval = setInterval(() => {
-      if (this.muted || !this.ctx) return;
+      // 止まっている AudioContext に予約すると、動き出した瞬間にたまった音が一度に鳴る
+      if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
       try {
         const t = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
