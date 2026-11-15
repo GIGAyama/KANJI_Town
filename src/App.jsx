@@ -13,8 +13,8 @@ import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
-import { calculateNextReview, migrateCard, recordPracticeAttempt } from './systems/srs';
-import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
+import { calculateNextReview, isEarlyReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
+import { buildFlashcardQueue, buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { readSharedDrill } from './systems/drill-share';
 import { beginStudySession, buildDrillStudyUnit, buildStudyMeta, finishStudySession, markStudySessionCompleted, recordStudyAttempt } from './systems/studySession';
@@ -30,6 +30,7 @@ import { calculateMaterialDrops } from './systems/crafting';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
+import { getEffectiveStreak } from './systems/habit';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
 import { fillQueue, shuffled } from './systems/question-queue';
@@ -272,11 +273,19 @@ export default function App() {
       setDailyMissions(currentStats.dailyMissions || []);
     }
 
-    // ログインボーナス受取
-    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && (currentStats.streak || 0) >= 1) {
-      const bonusDay = getLoginBonusDay(currentStats.streak);
+    // 連続学習日数は学習した日にしか更新されないので、休みが続いて途切れていたら、
+    // 起動したとき（と日付が変わったとき）に 0 へ直す。以前は2週間休んでも「6日連続」のまま、
+    // ホーム・満足度（EXP倍率）・レアドロップ・先生向けの記録に使われていた。
+    const effectiveStreak = getEffectiveStreak(currentStats, today);
+    const streakBroken = effectiveStreak !== (Number(currentStats.streak) || 0);
+    if (streakBroken) needsSave = true;
+
+    // ログインボーナス受取（休みのあとに戻ってきた日は1日目として受けとる）
+    const bonusStreak = currentStats.lastDate ? Math.max(1, effectiveStreak) : effectiveStreak;
+    if (currentStats.tutorialCompleted && currentStats.lastLoginBonusDate !== today && bonusStreak >= 1) {
+      const bonusDay = getLoginBonusDay(bonusStreak);
       const reward = getLoginBonusReward(bonusDay);
-      setLoginBonusReward({ ...reward, bonusDay, streak: currentStats.streak });
+      setLoginBonusReward({ ...reward, bonusDay, streak: bonusStreak });
       setShowLoginBonus(true);
     }
 
@@ -285,6 +294,7 @@ export default function App() {
     if (needsSave || willCollect) {
       setStats(prev => {
         let updated = { ...prev };
+        if (streakBroken) updated.streak = getEffectiveStreak(updated, today);
         if (missionsToSet) {
           updated.dailyMissions = missionsToSet;
           updated.dailyMissionsDate = today;
@@ -458,6 +468,9 @@ export default function App() {
   }, [setSessionData]);
 
   const abandonLearningSession = useCallback(() => {
+    // 答えた字ごとの記録（間隔反復・技能点）は残す。ボス・サバイバルなどは記録をすぐ保存していないので、
+    // やめたときに書き出す（ダイアログの「書いた字の記録は のこるよ」のとおりにする）
+    setStats(prev => { StorageAPI.saveStatsImmediate(prev); return prev; });
     StorageAPI.clearActiveSession();
     setIsResumedSession(false);
     setView('home');
@@ -576,9 +589,9 @@ export default function App() {
 
   const startFlashcard = () => {
     audioCtrl.init();
-    const learned = KANJI_DATA.filter(k => stats.kanjiStats?.[k.id] && stats.kanjiStats[k.id].status !== 'new');
-    if (learned.length === 0) return;
-    const queue = [...learned].sort(() => Math.random() - 0.5).slice(0, 10);
+    // 習った字から一様に選ぶ（以前の sort(() => Math.random() - 0.5) は1年生の字にかたよっていた）
+    const queue = buildFlashcardQueue({ kanjiData: KANJI_DATA, kanjiStats: stats.kanjiStats || {} });
+    if (queue.length === 0) return;
     const expMultiplier = getSatisfactionMultiplier(calculateSatisfaction(stats));
     beginSession('flashcard', { queue, oldExp: stats.totalExp, expMultiplier });
   };
@@ -640,18 +653,27 @@ export default function App() {
     });
   }, []);
 
-  const handleUpdateStat = (kanjiObj, evalType, { skills = [] } = {}) => {
+  const handleUpdateStat = (kanjiObj, evalType, { skills = [], selfReport = false, skillEvidence = null } = {}) => {
     const id = kanjiObj.id;
     recordStudyAttempt(id, { ok: evalType !== 'again', skill: skills[0] });
+    // 技能ごとの証拠（毎日のテストでは書字と筆順を採点結果から別々に決める）。無ければ全技能に同じ評価
+    const skillUpdates = Array.isArray(skillEvidence) && skillEvidence.length > 0
+      ? skillEvidence
+      : skills.map(skill => ({ skill, evidence: evalType }));
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    const curWithMastery = skills.length > 0
-      ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
+    const curWithMastery = skillUpdates.length > 0
+      ? { ...cur, skillMastery: recordSkillEvidence(cur, skillUpdates) }
       : cur;
-    if (sessionData.isDrill) {
+    // 期限前の早い復習（ボス・サバイバル・1字の練習で、期限の来ていない字）は、特訓と同じく
+    // 練習の記録だけにする。以前は正解のたびに間隔を掛け算で伸ばし、数分で何百日も先になっていた。
+    // 忘れていた（again）ときは、期限前でも間隔反復に記録する。
+    const now = Date.now();
+    const practiceOnly = sessionData.isDrill || (evalType !== 'again' && isEarlyReview(cur, now));
+    if (practiceOnly) {
       setStats(s => {
         const latest = migrateCard(s.kanjiStats?.[id]);
-        const latestWithMastery = skills.length > 0
-          ? { ...latest, skillMastery: recordSkillEvidence(latest, skills.map(skill => ({ skill, evidence: evalType }))) }
+        const latestWithMastery = skillUpdates.length > 0
+          ? { ...latest, skillMastery: recordSkillEvidence(latest, skillUpdates) }
           : latest;
         return {
           ...s,
@@ -660,6 +682,7 @@ export default function App() {
             [id]: {
               ...latestWithMastery,
               ...recordPracticeAttempt(latestWithMastery, evalType),
+              ...recordSelfReport(latestWithMastery, selfReport),
             },
           },
         };
@@ -674,7 +697,7 @@ export default function App() {
       return evalType !== 'again';
     }
 
-    const next = calculateNextReview(curWithMastery, evalType);
+    const next = calculateNextReview(curWithMastery, evalType, now);
     const wasNew = curWithMastery.status === 'new';
     const isMastering = next.graduated && next.interval >= 7 * 24 * 60 * 60 * 1000;
     const newStatus = isMastering ? 'mastered' : next.graduated ? 'review' : 'learning';
@@ -728,6 +751,7 @@ export default function App() {
           status: newStatus,
           mistakes: evalType === 'again' ? (curWithMastery.mistakes || 0) + 1 : (curWithMastery.mistakes || 0),
           ...recordPracticeAttempt(curWithMastery, evalType),
+          ...recordSelfReport(curWithMastery, selfReport),
         },
       },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
@@ -1036,7 +1060,7 @@ export default function App() {
           {view === 'drillShare' && <PageWrapper key="drillShare"><ErrorBoundary onReset={() => setView('myDrills')}><DrillShareView setView={setView} drill={hostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillImport' && <PageWrapper key="drillImport"><ErrorBoundary onReset={() => setView('home')}><DrillImportView setView={setView} stats={stats} setStats={setStats} sharedDrill={launchParams.sharedDrill} startDrillSession={startDrillSession} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}

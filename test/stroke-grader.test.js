@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
+import { Worker } from 'node:worker_threads';
+import { allowedEvaluations, gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
 
@@ -292,4 +293,157 @@ test('画数ちがい・採点できない結果は、書き順のまちがい�
   assert.equal(isOrderMistake(noModel), false);
   assert.equal(recommendEvaluation(noModel), 'again');
   assert.equal(recommendEvaluation(null), 'again');
+});
+
+// ── 字の大きさ ──
+/** 「三」を、字の中心（0.5, 0.5）から k 倍の大きさで書く */
+const sanScaled = (k, order = [0, 1, 2]) => order.map(i => {
+  const s = SAN[i];
+  const at = (p) => ({ x: (p.x - 0.5) * k + 0.5, y: (p.y - 0.5) * k + 0.5 });
+  return userStroke(at(s.s), at(s.e));
+});
+
+test('形も書き順も正しければ、小さく（大きく）書いても合格点（70点以上）になる', () => {
+  // 以前は大きさをそろえず、0.6 倍で 62 点・0.5 倍で 57 点になり、ドリルテストで不合格になっていた
+  for (const k of [0.6, 0.7, 1.3]) {
+    const result = gradeStrokes(sanScaled(k), SAN, CANVAS);
+    assert.ok(result.total >= 70, `${k}倍: ${result.total}`);
+    assert.equal(result.orderMatch, true);
+  }
+});
+
+test('大きさの差は講評で伝える（「ていねいに」ではなく「大きく／小さく」）', () => {
+  assert.ok(gradeStrokes(sanScaled(0.6), SAN, CANVAS).details.includes('字を もうすこし 大きく 書こう'));
+  assert.ok(gradeStrokes(sanScaled(1.4), SAN, CANVAS).details.includes('字を もうすこし 小さく 書こう'));
+  const normal = gradeStrokes(sanScaled(1), SAN, CANVAS).details;
+  assert.ok(!normal.some(d => /大きく|小さく/.test(d)), normal.join(' / '));
+});
+
+test('大きさの補正には上限があり、極端に小さい字は減点のまま。書き順ちがいの上限も変わらない', () => {
+  assert.ok(gradeStrokes(sanScaled(0.3), SAN, CANVAS).total < 30);
+  const reversed = gradeStrokes(sanScaled(0.6, [2, 1, 0]), SAN, CANVAS);
+  assert.equal(reversed.orderMatch, false);
+  assert.ok(reversed.total <= 69, `${reversed.total}`);
+});
+
+// ── 計算量 ──
+test('20画の字をペンでゆっくり書いても（1画600点）、採点はすぐ終わる', () => {
+  // 以前は全画の組で点の数どうしの掛け算をしていて、20画×600点で 0.4 秒ほど固まった
+  const model = Array.from({ length: 20 }, (_, k) => {
+    const y = 0.05 + k * 0.045;
+    return expectedStroke({ x: 0.1 + (k % 3) * 0.05, y }, { x: 0.9 - (k % 2) * 0.1, y: y + (k % 4 === 0 ? 0.3 : 0) }, 'tome');
+  });
+  const strokes = model.map(s => userStroke(s.s, s.e, { steps: 600, msPerPoint: 5 }));
+  gradeStrokes(strokes, model, CANVAS); // 1回目（お手本の交差表を作る）
+  const started = performance.now();
+  const result = gradeStrokes(strokes, model, CANVAS);
+  const elapsed = performance.now() - started;
+  assert.equal(result.strokeCountMatch, true);
+  assert.ok(elapsed < 150, `${elapsed.toFixed(1)}ms`);
+});
+
+test('お手本の交差表を渡しても、渡さなくても、同じ採点になる', () => {
+  const strokes = [userStroke(TSUCHI[0].s, TSUCHI[0].e), userStroke({ x: 0.5, y: 0.15 }, { x: 0.5, y: 0.8 }), userStroke(TSUCHI[2].s, TSUCHI[2].e)];
+  const matrix = TSUCHI.map(() => TSUCHI.map(() => false)); // 「土」はどの画も突き抜けない
+  const withMatrix = gradeStrokes(strokes, TSUCHI, CANVAS, { expectedCross: matrix });
+  const without = gradeStrokes(strokes, TSUCHI, CANVAS);
+  assert.equal(withMatrix.total, without.total);
+  assert.equal(withMatrix.crossMatch, without.crossMatch);
+});
+
+// ── でたらめな入力 ──
+const dotAt = (x, y) => [{ x: x * CANVAS, y: y * CANVAS, time: 0 }, { x: x * CANVAS + 1, y: y * CANVAS + 1, time: 30 }];
+const ICHI = [expectedStroke({ x: 0.15, y: 0.5 }, { x: 0.85, y: 0.5 }, 'tome')];
+
+test('点を打っただけの入力は 30 点未満で、書き順・とめの点も入らない', () => {
+  // 以前は「一」に点を1つ打つと 45 点（書き順 28 ＋ とめ 17）で、おすすめが「むずかしい」（合格扱い）になった
+  for (const [label, strokes, model] of [
+    ['一に右下の点', [dotAt(0.8, 0.8)], ICHI],
+    ['三に中央の点3つ', [dotAt(0.5, 0.5), dotAt(0.5, 0.5), dotAt(0.5, 0.5)], SAN],
+  ]) {
+    const result = gradeStrokes(strokes, model, CANVAS);
+    assert.ok(result.total < 30, `${label}: ${result.total}`);
+    assert.equal(result.order, 0, `${label}: 書き順 ${result.order}`);
+    assert.equal(result.ending, 0, `${label}: とめ ${result.ending}`);
+    assert.equal(recommendEvaluation(result), 'again', label);
+    assert.ok(!result.details.includes('書き順：ぜんぶ正しい ✓'), label);
+    assert.ok(result.details.some(d => d.includes('おてほんを よく見よう')), label);
+  }
+});
+
+test('お手本とちがう向きの線（「一」に縦線）も 30 点未満になる', () => {
+  const result = gradeStrokes([userStroke({ x: 0.5, y: 0.15 }, { x: 0.5, y: 0.85 })], ICHI, CANVAS);
+  assert.ok(result.total < 30, `${result.total}`);
+  assert.equal(recommendEvaluation(result), 'again');
+  // 形の分からない画は、書き順のまちがいとも数えない（ボス・サバイバルの「書き順ちがい」にしない）
+  assert.equal(isOrderMistake(result), false);
+});
+
+test('形の取れた字では、書き順・とめの点はこれまでどおり入る', () => {
+  const clean = gradeStrokes(sanUser(), SAN, CANVAS);
+  assert.ok(clean.order >= 25, `${clean.order}`);
+  // 少しずつずれた字（各画を 0.03 ずらす）でも書き順は満点
+  const shifted = SAN.map((s, i) => userStroke(s.s, s.e, { offset: { x: (i - 1) * 0.03, y: 0.02 } }));
+  const result = gradeStrokes(shifted, SAN, CANVAS);
+  assert.equal(result.orderMatch, true);
+  assert.equal(result.order, clean.order);
+});
+
+test('自己評価は、おすすめより1段上までしか選べない（厳しくつける方向は自由）', () => {
+  assert.deepEqual(allowedEvaluations('again'), ['again', 'hard']);
+  assert.deepEqual(allowedEvaluations('hard'), ['again', 'hard', 'good']);
+  assert.deepEqual(allowedEvaluations('good'), ['again', 'hard', 'good', 'easy']);
+  assert.deepEqual(allowedEvaluations('easy'), ['again', 'hard', 'good', 'easy']);
+  // 画数ちがいは again がおすすめになり、「よくできた」「書けた」は選べない
+  const wrongCount = gradeStrokes(sanUser([0, 1]), SAN, CANVAS);
+  assert.deepEqual(allowedEvaluations(recommendEvaluation(wrongCount)), ['again', 'hard']);
+});
+
+test('採点できないとき（おすすめが無いとき）だけ、自己評価をすべて選べる', () => {
+  assert.deepEqual(allowedEvaluations(null), ['again', 'hard', 'good', 'easy']);
+  assert.deepEqual(allowedEvaluations(undefined), ['again', 'hard', 'good', 'easy']);
+});
+
+/**
+ * 採点を別スレッドで走らせ、時間内に終わるかを見る。
+ * 無限ループは同じスレッドでは止められないので、Worker を止めて「固まった」と判定する。
+ */
+function gradeInWorker(caseName, timeoutMs = 3000) {
+  const graderUrl = new URL('../src/systems/strokeGrader.js', import.meta.url).href;
+  const source = `
+    const { parentPort, workerData } = await import('node:worker_threads');
+    const { gradeStrokes } = await import(workerData.graderUrl);
+    const C = 300;
+    const line = (y) => Array.from({ length: 25 }, (_, i) => ({ x: (0.2 + 0.6 * i / 24) * C, y: y * C, time: i * 20 }));
+    const model = [0.25, 0.5, 0.75].map((y) => {
+      const points = Array.from({ length: 25 }, (_, i) => ({ x: 0.2 + 0.6 * i / 24, y }));
+      return { s: points[0], e: points[24], points, endingType: 'tome' };
+    });
+    const user = [line(0.25), line(0.5), line(0.75)];
+    const cases = {
+      zeroCanvas: () => gradeStrokes(user, model, 0),
+      nanCanvas: () => gradeStrokes(user, model, NaN),
+      nanPoint: () => { user[1][3] = { x: NaN, y: 10, time: 0 }; return gradeStrokes(user, model, C); },
+      infinitePoint: () => { user[0][0] = { x: Infinity, y: -Infinity, time: 0 }; return gradeStrokes(user, model, C); },
+      nanModel: () => { model[2].points[4] = { x: NaN, y: NaN }; return gradeStrokes(user, model, C); },
+    };
+    const result = cases[workerData.caseName]();
+    parentPort.postMessage({ total: result.total, strokeCountMatch: result.strokeCountMatch });
+  `;
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(source, { eval: true, workerData: { graderUrl, caseName } });
+    const timer = setTimeout(() => { worker.terminate(); reject(new Error(`${caseName}: ${timeoutMs}ms で終わらない（固まった）`)); }, timeoutMs);
+    worker.once('message', (message) => { clearTimeout(timer); worker.terminate(); resolve(message); });
+    worker.once('error', (error) => { clearTimeout(timer); reject(error); });
+  });
+}
+
+test('座標やキャンバスの大きさに NaN・Infinity・0 が混ざっても、採点は固まらずに終わる', async () => {
+  // 以前は割り当て問題の費用が NaN になると while を抜けられず、タブが固まっていた
+  for (const caseName of ['zeroCanvas', 'nanCanvas', 'nanPoint', 'infinitePoint', 'nanModel']) {
+    const result = await gradeInWorker(caseName);
+    assert.ok(Number.isFinite(result.total), `${caseName}: ${result.total}`);
+  }
+  // 大きさが分からないときは採点しない（0点で、合格扱いにしない）
+  assert.equal((await gradeInWorker('zeroCanvas')).total, 0);
 });

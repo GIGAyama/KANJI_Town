@@ -24,8 +24,11 @@ const LeaveLearningDialog = ({ onCancel, onLeave }) => (
     >
       <div className="text-5xl mb-3" aria-hidden="true">🤔</div>
       <h2 className="text-lg font-black text-[var(--text)] mb-1">{F("学習", "がくしゅう")}をやめる？</h2>
-      <p className="text-xs text-[var(--text)] opacity-60 mb-5">
-        いまの{F("問題", "もんだい")}のとちゅうまでは{F("記録", "きろく")}されるよ。
+      {/* やめたときに残るのは、答えた字ごとの記録だけ。EXP・きょうの目標・連続日数は最後までやったときに入る。
+          以前は「とちゅうまでは記録されるよ」とあり、EXP なども入るように読めた。 */}
+      <p className="text-xs text-[var(--text)] opacity-70 mb-5 leading-relaxed">
+        ここまでに {F("書", "か")}いた{F("字", "じ")}の {F("記録", "きろく")}は のこるよ。<br />
+        EXP と れんぞく{F("日数", "にっすう")}は、さいごまで やると もらえるよ。
       </p>
       <div className="flex flex-col gap-2">
         <MotionButton variant="primary" onClick={onCancel} className="w-full py-3 text-base border-[3px] border-[var(--text)]">

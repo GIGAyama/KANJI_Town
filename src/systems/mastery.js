@@ -2,7 +2,9 @@ export const MASTERY_SKILLS = ['reading', 'meaning', 'writing', 'stroke'];
 
 export const MASTERY_SKILL_DEFINITIONS = {
   reading: { label: '読み', shortLabel: '音読', icon: '📖', mode: 'read' },
-  meaning: { label: '意味', shortLabel: '意味', icon: '💡', mode: 'read' },
+  // 意味を問う問題はまだ無く、記録されるのは「見た」（exposed）だけ（上限60点）。
+  // measured: false の技能は、練習をどこから始めるかの判断に使わない。
+  meaning: { label: '意味', shortLabel: '意味', icon: '💡', mode: 'read', measured: false },
   writing: { label: '書字', shortLabel: 'なぞり', icon: '✍️', mode: 'write' },
   stroke: { label: '筆順', shortLabel: '書き順', icon: '🖌️', mode: 'watch' },
 };
@@ -71,17 +73,63 @@ export function recordSkillEvidence(card, updates, now = Date.now()) {
   return mastery;
 }
 
-export function getWeakestSkill(card) {
+const EVALUATION_RANK = { again: 0, hard: 1, good: 2, easy: 3 };
+const lowerEvaluation = (a, b) => (EVALUATION_RANK[a] <= EVALUATION_RANK[b] ? a : b);
+
+/** 字形の点の割合から、書字の証拠を決める（講評の「字の形」と同じ区切り） */
+function shapeEvidence(ratio) {
+  if (ratio >= 0.85) return 'easy';
+  if (ratio >= 0.6) return 'good';
+  if (ratio >= 0.35) return 'hard';
+  return 'again';
+}
+
+/**
+ * 書き取りの採点結果から、書字（writing）と筆順（stroke）の証拠を別々に決める。
+ * 以前は両方に同じ自己評価を記録していたので、「形は取れるが書き順が怪しい」を
+ * 切り分けられず、筆順だけが弱い字で「書き順」から始める練習が提案されなかった。
+ * - 筆順: 書き順がちがえば again、書く向きが逆の画があれば hard まで
+ * - 書字: 点画の交差がちがえば again、それ以外は字形の点の割合で決める
+ * どちらも、児童がつけた評価より上にはしない（自分に厳しくつけた評価はそのまま使う）。
+ * 採点できなかったとき（画数ちがい・お手本なし）は、両方に評価をそのまま使う。
+ * @param {object|null} gradeResult - gradeStrokes の結果
+ * @param {'again'|'hard'|'good'|'easy'} evaluation - 間隔反復に使う評価
+ * @returns {Array<{skill: 'writing'|'stroke', evidence: string}>}
+ */
+export function writingSkillEvidence(gradeResult, evaluation) {
+  if (!(evaluation in EVALUATION_RANK)) return [];
+  if (!gradeResult || gradeResult.strokeCountMatch !== true) {
+    return [{ skill: 'writing', evidence: evaluation }, { skill: 'stroke', evidence: evaluation }];
+  }
+  const shape = (gradeResult.breakdown || []).find((item) => item.key === 'shape');
+  const shapeRatio = shape && shape.max > 0 ? shape.points / shape.max : 0;
+  const writing = gradeResult.crossMatch === false ? 'again' : shapeEvidence(shapeRatio);
+  const reversed = (gradeResult.strokeFeedback || []).some((item) => item.reversed);
+  const stroke = gradeResult.orderMatch === false ? 'again' : reversed ? 'hard' : evaluation;
+  return [
+    { skill: 'writing', evidence: lowerEvaluation(writing, evaluation) },
+    { skill: 'stroke', evidence: lowerEvaluation(stroke, evaluation) },
+  ];
+}
+
+/** テストや練習で実際に測っている技能（意味は見た回数しか記録していない） */
+export const MEASURED_SKILLS = MASTERY_SKILLS.filter((skill) => MASTERY_SKILL_DEFINITIONS[skill].measured !== false);
+
+export function getWeakestSkill(card, { skills = MASTERY_SKILLS } = {}) {
   const mastery = normalizeSkillMastery(card?.skillMastery, card);
-  return MASTERY_SKILLS
+  return skills
     .map((skill) => ({ skill, ...MASTERY_SKILL_DEFINITIONS[skill], ...mastery[skill] }))
     .reduce((weakest, current) => (current.score < weakest.score ? current : weakest));
 }
 
-/** 新出は基礎から、復習は50点未満の最弱技能から始める。 */
+/**
+ * 新出は基礎から、復習は50点未満の最弱技能から始める。
+ * 意味は見た回数でしか伸びない（7回見るまで50点未満）ので判断に使わない。
+ * 以前は意味の点のせいで、復習のたびに「音読」から始まっていた。
+ */
 export function getRecommendedPracticeMode(card, { isNew = false, threshold = 50 } = {}) {
   if (isNew) return 'read';
-  const weakest = getWeakestSkill(card);
+  const weakest = getWeakestSkill(card, { skills: MEASURED_SKILLS });
   return weakest.score < threshold ? weakest.mode : 'test';
 }
 

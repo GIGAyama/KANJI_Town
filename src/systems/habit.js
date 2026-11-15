@@ -73,6 +73,22 @@ export function getHabitStatus(stats, today) {
 }
 
 /**
+ * きょうの時点で続いている連続学習日数を返す。
+ * 保存している streak は学習した日にしか更新されないので、何日も休んだあとも古い値のまま
+ * 残る（2週間休んでも「6日連続」と出て、満足度・レアドロップ・先生向けの記録にも使われていた）。
+ * 最後に学んだ日が きのう・きょう、または おととい でおやすみパスが使えるなら保存値、
+ * それ以外は 0 を返す。時計が過去へ戻っているときは保存値のまま（減らさない）。
+ */
+export function getEffectiveStreak(stats, today) {
+  const streak = Math.max(0, Math.floor(Number(stats?.streak) || 0));
+  const difference = getDayDifference(stats?.lastDate, today);
+  if (difference === null) return 0;
+  if (difference <= 1) return streak;
+  if (difference === 2 && normalizeHabitState(stats).restPassAvailable) return streak;
+  return 0;
+}
+
+/**
  * 新しい学習日をストリークへ反映する。
  * 1日だけ休んだ場合はパスを自動使用し、学習5日で再獲得する。
  */
@@ -81,6 +97,15 @@ export function applyLearningDayHabit(stats, today) {
   const difference = getDayDifference(stats?.lastDate, today);
 
   if (difference === 0) return { ...habit, streak: Math.max(0, Number(stats?.streak) || 0), lastDate: today };
+  // 端末の時計が過去へ戻ったとき（共用の Chromebook を初期化したあとなど）は、
+  // 連続記録を1日目に戻さず、最後に学んだ日も巻き戻さない
+  if (difference !== null && difference < 0) {
+    return {
+      ...habit,
+      streak: Math.max(1, Number(stats?.streak) || 0),
+      lastDate: stats.lastDate,
+    };
+  }
 
   const currentStreak = Math.max(0, Number(stats?.streak) || 0);
   const isConsecutive = difference === 1;
