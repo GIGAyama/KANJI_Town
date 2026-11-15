@@ -32,6 +32,7 @@ import { isReadingCheckEnabled } from '../../utils/reading-preference';
 import SystemStatusPanel from '../settings/SystemStatusPanel';
 import { APP_VERSION, BUILD_COMMIT } from '../../systems/diagnostics';
 import { THEMES } from '../../constants/themes';
+import { sanitizeLearningRange } from '../../systems/learning-range';
 
 // テーマの見本の色（3つの丸）は、実際のテーマ色から取る
 const themeSwatch = (name) => ['--primary', '--secondary', '--accent'].map((v) => THEMES[name][v]);
@@ -148,6 +149,8 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
   const dailyGoal = getDailyGoal(settings);
   const motionPreference = getMotionPreference(settings);
   const fontScaleId = getFontScaleId(settings);
+  // 先生が配った「ならった範囲」（あれば、新出はその字だけから出る）
+  const learningRange = sanitizeLearningRange(settings.learningRange);
 
   const updateSettings = (patch) => {
     const newSettings = { ...settings, ...patch };
@@ -285,6 +288,22 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
         setCanUndoImport(false);
         setConfirm(null);
         showToast('データをリセットしました');
+      },
+    });
+  };
+
+  // ならった範囲をやめる（新出は学年の字に戻る。習った字の記録は消えない）
+  const handleStopRange = () => {
+    setConfirm({
+      title: 'ならった範囲をやめる',
+      message: `「${learningRange?.name || ''}」をやめると、毎日の学習の新出は、えらんだ学年の字から出るようになります。習った字の記録は消えません。先生から新しいリンクをもらえば、また使えます。`,
+      onConfirm: () => {
+        const { learningRange: _removed, ...rest } = settings;
+        const newStats = { ...stats, settings: rest };
+        setStats(newStats);
+        StorageAPI.saveStatsImmediate(newStats);
+        setConfirm(null);
+        showToast('ならった範囲をやめました');
       },
     });
   };
@@ -476,6 +495,18 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
               })}
             </div>
           </div>
+
+          {learningRange && (
+            <div>
+              <div className="text-sm font-bold text-[var(--text)] mb-1">ならった{F("範囲","はんい")}（{F("先生","せんせい")}から）</div>
+              <div className="text-xs text-[var(--text-muted)] mb-2">
+                「{learningRange.name}」（{learningRange.stages.length}だん・{learningRange.stages.reduce((n, stage) => n + stage.kanjis.length, 0)}{F("字","じ")}）の{F("字","じ")}だけが、{F("新出","しんしゅつ")}に でます
+              </div>
+              <button type="button" onClick={() => { audioCtrl.playSE('click'); handleStopRange(); }} className="w-full min-h-[48px] rounded-xl border-[3px] border-[var(--text)] bg-[var(--bg)] text-sm font-black text-[var(--text)] flex items-center justify-center gap-1 hover:opacity-80">
+                <X size={16} aria-hidden="true" /> {F("範囲","はんい")}を やめる
+              </button>
+            </div>
+          )}
         </div>
       </Section>
 

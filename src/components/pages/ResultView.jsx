@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Sparkles, Coins, Map, ChevronRight, Target, CheckCircle2 } from 'lucide-react';
+import { Gift, Sparkles, Coins, Map, ChevronRight, Target, CheckCircle2, NotebookPen, Presentation } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModalDialog from '../ui/ModalDialog';
 import AnimatedCounter from '../ui/AnimatedCounter';
@@ -18,6 +18,7 @@ import { getTodayString } from '../../utils/date-utils';
 import { getHabitStatus } from '../../systems/habit';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
+import { ShowTeacherOverlay } from '../social/HomeworkParts';
 
 const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContinueLearning }) => {
   const { earnedExp, perfectCount, voicedCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
@@ -25,6 +26,9 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
   const [gachaPhase, setGachaPhase] = useState('idle');
+  // 宿題を終えたとき: 「先生に見せる」（ドリルの名前・点数・できた日を大きく出す）
+  const homeworkReport = sessionMetrics.homeworkReport;
+  const [showTeacher, setShowTeacher] = useState(false);
   // 実際に足したコイン（App が sessionData.earnedCoins に入れる）があれば、それを出す
   const coinBonus = Number.isFinite(sessionMetrics.earnedCoins) ? sessionMetrics.earnedCoins : Math.floor(earnedExp / 4);
   const today = getTodayString();
@@ -104,6 +108,32 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
           </ModalDialog>
         )}
       </AnimatePresence>
+
+      {/* 先生に見せる（宿題のときだけ） */}
+      <AnimatePresence>
+        {showTeacher && homeworkReport && <ShowTeacherOverlay report={homeworkReport} onClose={() => setShowTeacher(false)} />}
+      </AnimatePresence>
+      {homeworkReport && (
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--panel)] border-[4px] border-[var(--primary)] rounded-2xl p-4 shadow-[4px_4px_0_var(--primary)] flex flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <NotebookPen size={24} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />
+            <div className="min-w-0">
+              <div className="text-xs font-black text-[var(--text-muted)]">{F("宿題","しゅくだい")}</div>
+              <div className="font-black text-[var(--text)] text-lg break-all">{homeworkReport.name}</div>
+              <div className="font-black text-[var(--text)]">
+                {homeworkReport.mode === 'test'
+                  ? (homeworkReport.passed
+                    ? <>テスト {homeworkReport.score}{F("点","てん")}・{F("合格","ごうかく")}！ できたよ 🎉</>
+                    : <>テスト {homeworkReport.score}{F("点","てん")}。{homeworkReport.pass}{F("点","てん")}で {F("合格","ごうかく")}だよ。もう{F("一度","いちど")} ちょうせんできるよ</>)
+                  : <>{F("練習","れんしゅう")} できたよ 🎉</>}
+              </div>
+            </div>
+          </div>
+          <MotionButton variant="primary" onClick={() => setShowTeacher(true)} className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#9f1239]">
+            <Presentation size={22} /> {F("先生","せんせい")}に{F("見","み")}せる
+          </MotionButton>
+        </motion.div>
+      )}
 
       {/* 新EXPゲージ（ストーリーナレーションの前に配置） */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] relative overflow-hidden">
