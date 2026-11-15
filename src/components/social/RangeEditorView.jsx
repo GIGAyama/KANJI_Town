@@ -362,7 +362,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
             totalCount={totalCount}
             onToggle={toggleKanji}
             onClose={() => setPicker(null)}
-            initialGrade={KANJI_BY_ID.get(draft.stages[picker].kanjis.at(-1))?.grade || stats.targetGrade || 1}
+            initialGrade={KANJI_BY_ID.get(draft.stages[picker].kanjis[draft.stages[picker].kanjis.length - 1])?.grade || stats.targetGrade || 1}
           />
         )}
         {drillPicker && <DrillPicker mode={drillPicker.mode} drills={drills} onPick={handlePickDrills} onClose={() => setDrillPicker(null)} />}
