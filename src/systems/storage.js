@@ -13,6 +13,7 @@ import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js
 import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
 import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
 import { recordDiagnosticEvent } from './diagnostics.js';
+import { sanitizeStats } from './stats-schema.js';
 
 // ── 内部エラーログ（直近20件を保持、デバッグ用） ──
 const _errorLog = [];
@@ -46,6 +47,8 @@ function logStorageError(context, error) {
 const STORAGE_KEY = 'kanji_town_v7';
 const ACTIVE_SESSION_KEY = 'kanji_town_active_session_v1';
 const LEGACY_KEYS = ['kanji_mega_builder_final_v6', 'kanji_mega_builder_final_v5'];
+/** 読めなかった記録を、新しく作りなおす前に退避しておく場所（1つだけ持つ） */
+const BROKEN_COPY_KEY = 'kanji_town_v7_broken';
 
 // ── TOWN_ITEMSのルックアップマップ（O(1)検索用） ──
 const _townItemMap = new Map(TOWN_ITEMS.map(i => [i.id, i]));
@@ -196,6 +199,7 @@ const StorageAPI = {
         if (!KEEP.has(k) && (
           k.startsWith('kanji_town_errors')
           || k === 'kanji_town_diagnostics_v1'
+          || k === BROKEN_COPY_KEY
           || k.startsWith('kanji_vg_cache')
         )) {
           removable.push(k);
@@ -357,7 +361,29 @@ const StorageAPI = {
    * ゲームデータを読み込む（マイグレーション・整合性チェック付き）
    * @returns {object} stats
    */
+  /**
+   * 読めなかった保存データの原文を退避する。新しいデータで上書きする前に呼ぶ。
+   * 壊れた JSON を空から作りなおすと、原文がどこにも残らず取り戻せなかった。
+   * @param {string} rawText
+   */
+  _keepBrokenCopy: (rawText) => {
+    try {
+      if (window.localStorage.getItem(BROKEN_COPY_KEY) === rawText) return;
+      window.localStorage.setItem(BROKEN_COPY_KEY, rawText);
+      recordDiagnosticEvent({
+        severity: 'error',
+        source: 'storage',
+        code: 'stats-unreadable',
+        message: `Unreadable saved data was kept in ${BROKEN_COPY_KEY} before starting fresh.`,
+      });
+    } catch (e) {
+      logStorageError('keepBrokenCopy', e);
+    }
+  },
+
   getStats: () => {
+    let rawText = null;
+    try { rawText = window.localStorage.getItem(STORAGE_KEY); } catch { rawText = null; }
     let stats = StorageAPI.safeGet(STORAGE_KEY, null);
 
     // レガシーキーからの復元
@@ -368,8 +394,23 @@ const StorageAPI = {
       }
     }
 
+    // 型の違う欄は、その欄だけを捨てて既定値で埋めなおす（全体は捨てない）。
+    // ここを通さないと、型の違う欄が1つあるだけで起動のたびに例外が出て真っ白になっていた。
+    const checked = sanitizeStats(stats);
+    stats = checked ? checked.stats : null;
+    if (checked && checked.repaired.length > 0) {
+      recordDiagnosticEvent({
+        severity: 'warning',
+        source: 'storage',
+        code: 'stats-repaired',
+        message: `Saved data had unexpected types: ${checked.repaired.join(', ')}`,
+      });
+    }
+
     // 新規データ生成
     if (!stats || !stats.targetGrade) {
+      // 中身のある記録を読めなかったときは、作りなおす前に原文を残す
+      if (rawText) StorageAPI._keepBrokenCopy(rawText);
       const { map } = StorageAPI.buildInitialMap();
       stats = {
         totalExp: 0,
