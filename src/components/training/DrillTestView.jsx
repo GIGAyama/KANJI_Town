@@ -503,6 +503,9 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
   const [strokeData, setStrokeData] = useState([]);
   const [paths, setPaths] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // 書き順データを読めなかった（校内フィルタ・オフライン）。採点できないので、書かせない。
+  const [fetchError, setFetchError] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
 
   const total = queue.length;
   const kanji = queue[currentIdx];
@@ -513,21 +516,24 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
     let cancelled = false;
     const load = async () => {
       setIsLoading(true);
+      setFetchError(false);
       try {
         const { strokeData: data, paths: p } = await fetchKanjiVg(kanji.char);
         if (cancelled) return;
         setStrokeData(data);
         setPaths(p);
+        setFetchError(!Array.isArray(data) || data.length === 0);
       } catch {
         if (cancelled) return;
         setStrokeData([]);
         setPaths([]);
+        setFetchError(true);
       }
       setIsLoading(false);
     };
     load();
     return () => { cancelled = true; };
-  }, [kanji, phase]);
+  }, [kanji, phase, reloadCount]);
 
   // 次の問題をプリフェッチ
   useEffect(() => {
@@ -539,6 +545,9 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
   // ストローク提出
   const handleSubmitStrokes = (userStrokes) => {
     if (phase !== 'testing') return;
+    // お手本が無いと gradeStrokes は0点を返す。正しく書いた子を「不正解」と記録しないよう、
+    // 採点も記録もしない（以前は全問0点・習熟度が下がった記録が残っていた）。
+    if (!Array.isArray(strokeData) || strokeData.length === 0) return;
     const result = gradeStrokes(userStrokes, strokeData, canvasSize);
     const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch && result.crossMatch !== false;
 
@@ -634,6 +643,17 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes }) => {
             <div className="text-center">
               <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <div className="text-sm font-bold text-[var(--text)] opacity-50">よみこみ中...</div>
+            </div>
+          ) : fetchError ? (
+            <div role="alert" className="flex flex-col items-center justify-center gap-4 p-6 text-center max-w-sm">
+              <div className="text-5xl" aria-hidden="true">😢</div>
+              <p className="text-[var(--text)] font-bold text-base leading-relaxed">
+                {F("書","か")}き{F("順","じゅん")}の データを よみこめませんでした。<br />
+                インターネットに つないでから ためしてね。
+              </p>
+              <MotionButton variant="primary" onClick={() => setReloadCount(c => c + 1)} className="min-h-[48px] px-6 py-3 text-base font-black border-[3px] border-[var(--text)]">
+                🔄 もういちど ためす
+              </MotionButton>
             </div>
           ) : (
             <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 lg:gap-6">
