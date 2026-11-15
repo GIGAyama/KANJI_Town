@@ -333,8 +333,8 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                     className={`min-h-[64px] rounded-xl border-[3px] p-2 text-center transition-all ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/25 hover:border-[var(--text)]'}`}
                   >
                     <div className="flex items-center justify-center gap-1 text-xs font-black text-[var(--text)]">
-                      {option.label}
-                      {isActive && <Check size={13} className="text-[var(--secondary)]" aria-hidden="true" />}
+                      <span>{option.label}</span>
+                      {isActive && <Check size={13} className="shrink-0 text-[var(--secondary)]" aria-hidden="true" />}
                     </div>
                     <div className="mt-1 text-xs font-bold leading-tight text-[var(--text-muted)]">{option.id === 'aboveGrade' ? <>いま {currentGrade}<Ruby base="年" reading="ねん" always /></> : option.desc}</div>
                   </button>
