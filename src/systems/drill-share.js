@@ -5,8 +5,16 @@
 //
 // URL例: https://kanji-town.giga-school.com/?drill=eyJ2IjoxLCJuIjoi...
 //
+// 中身（JSON を base64url にしたもの）:
+//   { v: 1, n: ドリル名, k: 畳んだ漢字ID, h?: 宿題 }
+//   h（任意）: { d: 'YYYYMMDD' しめきり, m: 'p' れんしゅう | 't' テスト, c?: 問題数(0=ぜんぶ), p?: 合格の目安(%) }
+// 宿題は版を上げずに任意の欄として足した。更新前のアプリは知らない欄を読まないので、
+// 宿題のリンクも「ふつうのドリル」として受け取れる（壊れたリンク扱いにならない）。
+//
 // 副作用を持たない純粋ロジックだけを置き、DOM・React・KANJI_DATA には依存しない。
 // （存在しない漢字IDの除外は、表示側でKANJI_DATAと突き合わせて行う）
+
+import { HOMEWORK_TEST_COUNTS, isValidDateKey, sanitizeHomework } from './homework.js';
 
 /** 共有URLのクエリパラメータ名 */
 export const DRILL_SHARE_PARAM = 'drill';
@@ -49,7 +57,8 @@ export function normalizeDrillName(name) {
   return cleaned.slice(0, DRILL_NAME_MAX_LENGTH);
 }
 
-function bytesToBase64Url(bytes) {
+/** バイト列を base64url にする（ならった範囲のリンク learning-range.js でも使う） */
+export function bytesToBase64Url(bytes) {
   let binary = '';
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {
@@ -58,7 +67,8 @@ function bytesToBase64Url(bytes) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function base64UrlToBytes(text) {
+/** base64url をバイト列に戻す（壊れていれば atob が例外を投げる） */
+export function base64UrlToBytes(text) {
   const base64 = text.replace(/-/g, '+').replace(/_/g, '/')
     + '='.repeat((4 - (text.length % 4)) % 4);
   const binary = atob(base64);
@@ -118,15 +128,47 @@ export function decodeKanjiSpec(spec) {
   return ids;
 }
 
+// ── 日付・宿題 ──
+// 宿題のしめきり・ならった範囲の「この日から」は、端末のローカル日付（date-utils の
+// getTodayString と同じ YYYY-MM-DD）で持ち、リンクの中では - を抜いた8けたにする。
+// 日付と宿題の決まりの検証は homework.js に置く（宿題の記録の確定で起動時に読むため。
+// このファイルは起動時には読まない）。ここからも同じものを出す。
+export { HOMEWORK_TEST_COUNTS, isValidDateKey, sanitizeHomework };
+
+/** リンクの中の8けたの日付（YYYYMMDD）を YYYY-MM-DD に戻す（だめなら null） */
+export function unpackDate(text) {
+  if (typeof text !== 'string' || !/^\d{8}$/.test(text)) return null;
+  const key = `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6)}`;
+  return isValidDateKey(key) ? key : null;
+}
+
+function packHomework(value) {
+  const hw = sanitizeHomework(value);
+  if (!hw) return null;
+  const d = hw.due.replace(/-/g, '');
+  return hw.mode === 'practice' ? { d, m: 'p' } : { d, m: 't', c: hw.count, p: hw.pass };
+}
+
+function unpackHomework(h) {
+  if (!h || typeof h !== 'object') return null;
+  return sanitizeHomework({
+    due: unpackDate(h.d),
+    mode: h.m === 'p' ? 'practice' : h.m === 't' ? 'test' : null,
+    count: h.c,
+    pass: h.p,
+  });
+}
+
 // ── ドリル本体のエンコード / デコード ──
 
-/** ドリルを共有URL用の文字列にする（共有できない場合はnull） */
+/** ドリルを共有URL用の文字列にする（共有できない場合はnull）。drill.homework があれば宿題も入れる */
 export function encodeDrillParam(drill) {
   const name = normalizeDrillName(drill?.name);
   const kanjis = Array.isArray(drill?.kanjis) ? drill.kanjis.slice(0, DRILL_KANJI_MAX_COUNT) : [];
   const spec = encodeKanjiIds(kanjis);
   if (!name || !spec) return null;
-  const payload = JSON.stringify({ v: DRILL_SHARE_VERSION, n: name, k: spec });
+  const h = packHomework(drill?.homework);
+  const payload = JSON.stringify({ v: DRILL_SHARE_VERSION, n: name, k: spec, ...(h ? { h } : {}) });
   try {
     return bytesToBase64Url(new TextEncoder().encode(payload));
   } catch {
@@ -134,7 +176,10 @@ export function encodeDrillParam(drill) {
   }
 }
 
-/** 共有URLの文字列をドリルに戻す（壊れている・形式が違う場合はnull） */
+/**
+ * 共有URLの文字列をドリルに戻す（壊れている・形式が違う場合はnull）。
+ * 宿題（h）が正しければ homework を付ける。宿題の欄だけが壊れているときは、宿題を捨ててドリルとして受け取る。
+ */
 export function decodeDrillParam(param) {
   if (typeof param !== 'string') return null;
   const trimmed = param.trim();
@@ -154,7 +199,9 @@ export function decodeDrillParam(param) {
   const name = normalizeDrillName(parsed.n);
   const kanjis = decodeKanjiSpec(parsed.k);
   if (!name || !kanjis || kanjis.length === 0) return null;
-  return { name, kanjis: kanjis.slice(0, DRILL_KANJI_MAX_COUNT) };
+  const drill = { name, kanjis: kanjis.slice(0, DRILL_KANJI_MAX_COUNT) };
+  const homework = unpackHomework(parsed.h);
+  return homework ? { ...drill, homework } : drill;
 }
 
 // ── URLの組み立て / 読み取り ──

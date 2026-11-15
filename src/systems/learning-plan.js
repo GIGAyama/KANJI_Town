@@ -220,6 +220,30 @@ export function buildWeakKanjiPlan({
 }
 
 /**
+ * 「ならった範囲」（learning-range.js。stats.settings.learningRange）から出す新出の候補。
+ * 日付（端末のローカル日付 YYYY-MM-DD）が来た段の、まだ習っていない字を、段の順・段の中の順に返す。
+ * 日付が来た段の字をすべて習っても、まだ日付の来ていない段に習っていない字があれば [] を返す
+ * （次の段の日まで新出は出さない）。範囲が無い・範囲の字をすべて習ったときは null（学年の字に戻す）。
+ * 範囲は受け取るときに確かめてあるので、ここでは形の崩れた段を飛ばすだけにする。
+ */
+export function getRangeNewCandidates(range, kanjiData, isUnlearned, today) {
+  if (!Array.isArray(range?.stages)) return null;
+  const byId = new Map(kanjiData.map((kanji) => [kanji.id, kanji]));
+  const seen = new Set();
+  const started = [];
+  let waiting = false;
+  for (const stage of range.stages) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(stage?.from) || !Array.isArray(stage.kanjis)) continue;
+    const unlearned = stage.kanjis
+      .map((id) => byId.get(id))
+      .filter((kanji) => kanji && !seen.has(kanji.id) && seen.add(kanji.id) && isUnlearned(kanji));
+    if (stage.from <= today) started.push(...unlearned);
+    else if (unlearned.length > 0) waiting = true;
+  }
+  return started.length > 0 || waiting ? started : null;
+}
+
+/**
  * 復習を最優先しつつ、設定された新出漢字も同じセッションに加える。
  * 既存UIの「復習N＋新出N」という表示と実際の出題数を一致させる。
  *
@@ -230,6 +254,10 @@ export function buildWeakKanjiPlan({
  * それも無く、期限の来た復習も無いときは、選んだ学年の習った字から
  * 「いちばん弱い技能の点が低い順 → 次の期限が近い順」に練習を組む（isPractice: true）。
  * 以前はこの場合、学年の最初の1字（1年なら「一」）だけが毎回出ていた。
+ *
+ * 先生の配った「ならった範囲」（range）があるときは、新出を範囲の日付が来た段の字だけから
+ * 段の順に出す（getRangeNewCandidates）。復習は今までどおりすべての字から。練習も範囲の字から組む。
+ * 範囲の字をすべて習ったら、今までどおり学年の字に戻す（rangeActive: false）。
  */
 export function buildLearningPlan({
   kanjiData,
@@ -239,6 +267,8 @@ export function buildLearningPlan({
   now = Date.now(),
   random = Math.random,
   newOrder = 'data',
+  range = null,
+  today = formatDate(new Date(now)),
 }) {
   const reviewLimit = asLimit(limits?.review);
   const newLimit = asLimit(limits?.new);
@@ -262,13 +292,14 @@ export function buildLearningPlan({
     const stat = kanjiStats[kanji.id];
     return !stat || stat.status === 'new';
   };
+  const rangeCandidates = range ? getRangeNewCandidates(range, kanjiData, isUnlearned, today) : null;
   const gradeCandidates = kanjiData.filter((kanji) => kanji.grade === selectedGrade && isUnlearned(kanji));
   // 選んだ学年をすべて習ったら、下の学年でまだ習っていない字（低い学年から）
-  const newCandidates = gradeCandidates.length > 0
+  const newCandidates = rangeCandidates || (gradeCandidates.length > 0
     ? gradeCandidates
     : kanjiData
       .filter((kanji) => kanji.grade < selectedGrade && isUnlearned(kanji))
-      .sort((a, b) => a.grade - b.grade);
+      .sort((a, b) => a.grade - b.grade));
 
   const reviewTargets = dueReviews.slice(0, Math.min(reviewLimit, totalLimit));
   const remainingSlots = Math.max(0, totalLimit - reviewTargets.length);
@@ -278,7 +309,11 @@ export function buildLearningPlan({
 
   let practiceCount = 0;
   if (queue.length === 0) {
-    const practice = buildPracticeTargets({ kanjiData, kanjiStats, selectedGrade, limit: totalLimit || newLimit || 1 });
+    // 範囲があれば、日付が来た段の習った字から練習する（無ければ学年の字から）
+    const rangeIds = rangeCandidates ? new Set(range.stages.filter((stage) => stage?.from <= today).flatMap((stage) => stage.kanjis)) : null;
+    const limit = totalLimit || newLimit || 1;
+    let practice = rangeIds ? buildPracticeTargets({ kanjiData, kanjiStats, inPool: (kanji) => rangeIds.has(kanji.id), limit }) : [];
+    if (practice.length === 0) practice = buildPracticeTargets({ kanjiData, kanjiStats, inPool: (kanji) => kanji.grade === selectedGrade, limit });
     queue.push(...practice);
     practiceCount = practice.length;
     // 学年に1字も習った字が無い（データの不整合など）ときだけ、学年の最初の字を出す
@@ -296,19 +331,20 @@ export function buildLearningPlan({
     newAvailableCount: newCandidates.length,
     practiceCount,
     isPractice: practiceCount > 0,
+    rangeActive: Boolean(rangeCandidates),
   };
 }
 
 /**
- * 期限の来た復習も新出も無いときの練習。選んだ学年の習った字を、
+ * 期限の来た復習も新出も無いときの練習。選んだ学年（inPool）の習った字を、
  * いちばん弱い技能の点が低い順 → 次の期限が近い順に並べる。
  * 期限前の字なので、間隔反復は伸ばさない（App の handleUpdateStat が期限前の早い復習として扱う）。
  */
-function buildPracticeTargets({ kanjiData, kanjiStats, selectedGrade, limit }) {
+function buildPracticeTargets({ kanjiData, kanjiStats, inPool, limit }) {
   return kanjiData
     .filter((kanji) => {
       const stat = kanjiStats[kanji.id];
-      return kanji.grade === selectedGrade && stat && stat.status !== 'new';
+      return inPool(kanji) && stat && stat.status !== 'new';
     })
     .map((kanji, index) => {
       const stat = kanjiStats[kanji.id];

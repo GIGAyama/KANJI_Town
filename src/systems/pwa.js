@@ -113,7 +113,10 @@ export function registerServiceWorker({ onError } = {}) {
     window.location.reload();
   });
 
-  window.addEventListener('load', async () => {
+  // load を待つだけだと、load のあとに呼ばれたとき（遅い読みこみ・動的 import）に
+  // リスナが二度と発火せず、エラーも出ないまま SW が登録されない（艦隊の手引き app-hardening.md）。
+  // すでに読みこみが終わっていれば、すぐに登録する。
+  const register = async () => {
     try {
       const reg = await navigator.serviceWorker.register(swUrl());
 
@@ -135,5 +138,7 @@ export function registerServiceWorker({ onError } = {}) {
     } catch (e) {
       onError?.(e);
     }
-  });
+  };
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
 }
