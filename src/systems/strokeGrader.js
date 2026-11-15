@@ -62,11 +62,11 @@ function emptyResult(details, flags = {}) {
 }
 
 /**
- * ポイント群の外接枠の中心を返す（サンプリング密度に影響されない基準点）
+ * ポイント群の外接枠の中心と大きさを返す（サンプリング密度に影響されない基準）
  * @param {Array<Array<{x: number, y: number}>>} strokes
- * @returns {{x: number, y: number}|null}
+ * @returns {{x: number, y: number, side: number}|null} side は幅と高さの大きい方（「一」のように高さ0の字があるため）
  */
-function boundsCenter(strokes) {
+function boundsOf(strokes) {
   let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
   for (const stroke of strokes) {
     for (const p of stroke) {
@@ -77,7 +77,7 @@ function boundsCenter(strokes) {
     }
   }
   if (minX === Infinity) return null;
-  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, side: Math.max(maxX - minX, maxY - minY) };
 }
 
 /**
@@ -90,6 +90,8 @@ function boundsCenter(strokes) {
  * @returns {number[]} assignment[i] = 対応する正解の画index
  */
 const UNREACHABLE_COST = 1e6;
+/** これより小さい字の外接枠は、大きさをそろえる基準にしない（点1つなど） */
+const SIZE_EPSILON = 0.02;
 
 const isFinitePoint = (p) => Boolean(p) && Number.isFinite(p.x) && Number.isFinite(p.y);
 
@@ -213,8 +215,28 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
       y: p.y / canvasSize,
       time: Number.isFinite(p.time) ? p.time : 0,
     })));
-  const userCenter = boundsCenter(scaled);
-  const expectedCenter = boundsCenter(expected.map(s => s.points));
+  // ── 字全体の大きさをそろえる ──
+  // マスの中に小さく書く・大きくはみ出すと、形も書き順も正しいのに全画が減点されていた
+  // （「三」を 0.6 倍で書くと 62 点、0.5 倍で 57 点）。お手本の外接枠の大きい方の辺に合わせて、
+  // 字の中心を基準に拡大・縮小する。補正には上限を設け、大きすぎる差は講評で伝える。
+  const rawBounds = boundsOf(scaled);
+  const expectedBounds = boundsOf(expected.map(s => s.points));
+  let sizeRatio = 1; // 児童の字の大きさ ÷ お手本の大きさ
+  if (rawBounds && expectedBounds && rawBounds.side > SIZE_EPSILON && expectedBounds.side > SIZE_EPSILON) {
+    sizeRatio = rawBounds.side / expectedBounds.side;
+  }
+  const sizeScale = Math.max(STROKE_THRESHOLDS.SIZE_SCALE_MIN, Math.min(STROKE_THRESHOLDS.SIZE_SCALE_MAX, 1 / sizeRatio));
+  const resized = rawBounds
+    ? scaled.map(stroke => stroke.map(p => ({
+      x: rawBounds.x + (p.x - rawBounds.x) * sizeScale,
+      y: rawBounds.y + (p.y - rawBounds.y) * sizeScale,
+      time: p.time,
+    })))
+    : scaled;
+
+  // 拡大・縮小は中心を基準にしているので、中心は変わらない
+  const userCenter = rawBounds;
+  const expectedCenter = expectedBounds;
   let shiftX = 0;
   let shiftY = 0;
   if (userCenter && expectedCenter) {
@@ -226,7 +248,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
     shiftX = dx * factor;
     shiftY = dy * factor;
   }
-  const user = scaled.map(stroke => stroke.map(p => ({
+  const user = resized.map(stroke => stroke.map(p => ({
     x: p.x + shiftX,
     y: p.y + shiftY,
     time: p.time,
@@ -381,6 +403,11 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
 
   // ── フィードバック文言 ──
   details.push(shapeComment(meanShape));
+  // 大きさの講評は、形がお手本と合っているときだけ（形がちがうときは形を直すのが先）
+  if (meanShape >= GRADING.SHAPE_FAIL_RATIO) {
+    if (sizeRatio < STROKE_THRESHOLDS.SIZE_SMALL) details.push('字を もうすこし 大きく 書こう');
+    else if (sizeRatio > STROKE_THRESHOLDS.SIZE_LARGE) details.push('字を もうすこし 小さく 書こう');
+  }
 
   if (orderMatch) {
     // 形の分からない画があるときは、書き順が正しいとは言わない

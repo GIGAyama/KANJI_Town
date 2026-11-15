@@ -295,6 +295,37 @@ test('画数ちがい・採点できない結果は、書き順のまちがい�
   assert.equal(recommendEvaluation(null), 'again');
 });
 
+// ── 字の大きさ ──
+/** 「三」を、字の中心（0.5, 0.5）から k 倍の大きさで書く */
+const sanScaled = (k, order = [0, 1, 2]) => order.map(i => {
+  const s = SAN[i];
+  const at = (p) => ({ x: (p.x - 0.5) * k + 0.5, y: (p.y - 0.5) * k + 0.5 });
+  return userStroke(at(s.s), at(s.e));
+});
+
+test('形も書き順も正しければ、小さく（大きく）書いても合格点（70点以上）になる', () => {
+  // 以前は大きさをそろえず、0.6 倍で 62 点・0.5 倍で 57 点になり、ドリルテストで不合格になっていた
+  for (const k of [0.6, 0.7, 1.3]) {
+    const result = gradeStrokes(sanScaled(k), SAN, CANVAS);
+    assert.ok(result.total >= 70, `${k}倍: ${result.total}`);
+    assert.equal(result.orderMatch, true);
+  }
+});
+
+test('大きさの差は講評で伝える（「ていねいに」ではなく「大きく／小さく」）', () => {
+  assert.ok(gradeStrokes(sanScaled(0.6), SAN, CANVAS).details.includes('字を もうすこし 大きく 書こう'));
+  assert.ok(gradeStrokes(sanScaled(1.4), SAN, CANVAS).details.includes('字を もうすこし 小さく 書こう'));
+  const normal = gradeStrokes(sanScaled(1), SAN, CANVAS).details;
+  assert.ok(!normal.some(d => /大きく|小さく/.test(d)), normal.join(' / '));
+});
+
+test('大きさの補正には上限があり、極端に小さい字は減点のまま。書き順ちがいの上限も変わらない', () => {
+  assert.ok(gradeStrokes(sanScaled(0.3), SAN, CANVAS).total < 30);
+  const reversed = gradeStrokes(sanScaled(0.6, [2, 1, 0]), SAN, CANVAS);
+  assert.equal(reversed.orderMatch, false);
+  assert.ok(reversed.total <= 69, `${reversed.total}`);
+});
+
 // ── でたらめな入力 ──
 const dotAt = (x, y) => [{ x: x * CANVAS, y: y * CANVAS, time: 0 }, { x: x * CANVAS + 1, y: y * CANVAS + 1, time: 30 }];
 const ICHI = [expectedStroke({ x: 0.15, y: 0.5 }, { x: 0.85, y: 0.5 }, 'tome')];
