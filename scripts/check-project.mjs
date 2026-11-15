@@ -17,7 +17,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const config = JSON.parse(await readFile(join(ROOT, 'quality.config.json'), 'utf8'));
-const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
 
 const failures = [];
 const warnings = [];

@@ -2,8 +2,15 @@
 
 実施日：2026-08-03 / 対象コミット：`847d2f5` / 判定はすべて **実測値** に基づく。
 
-> **この文書は「着手前」の診断結果です。** 以降の P0〜P4 で対応した結果は
-> 末尾の「対応後の状態」を参照してください。
+> **この文書は 2026-08-03 時点の記録です。いまの状態は README.md と `npm run check` を見てください。**
+> 着手前の診断結果と、その日の対応後の状態（末尾）を、当時のまま残しています。
+>
+> その後に変わったこと（2026-11-15 時点）:
+> - 独自ドメイン（kanji-town.giga-school.com）へ移ったため、manifest の `id`/`scope`/`start_url` は `/`、
+>   vite の `base` は `./` になった（本文の `/KANJI_Town/` は当時の値）
+> - MANUAL.md は `docs/manual/manual.md` に統合した
+> - Service Worker の APP_VERSION は手で上げない。`tools/build-sw.mjs` が配信物の中身から刻む
+> - テストの件数・開発依存の脆弱性の件数・初回JS の大きさは当時の値。いまの値は CI の出力を見る
 
 **アプリ型**：**B型（Vite + React）**
 `vite.config.js` あり・`base: '/KANJI_Town/'` 設定済み・`.gs` なし・Chrome拡張 manifest なし。
