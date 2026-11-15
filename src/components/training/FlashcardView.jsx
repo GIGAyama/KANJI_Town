@@ -134,11 +134,11 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
       >
         {!revealed ? (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            タップで読みを表示 <span className="text-xs text-[var(--text-muted)]">Space / Enter</span>
+            タップで{F("読","よ")}みを{F("表示","ひょうじ")} <span className="text-xs text-[var(--text-muted)]">Space / Enter</span>
           </div>
         ) : (
           <div className="text-sm font-bold bg-[var(--bg)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] flex items-center gap-2">
-            ← 読めなかった ／ 読めた → <span className="text-xs text-[var(--text-muted)]">矢印キー</span>
+            ← {F("読","よ")}めなかった ／ {F("読","よ")}めた → <span className="text-xs text-[var(--text-muted)]">{F("矢印","やじるし")}キー</span>
           </div>
         )}
 
@@ -186,8 +186,8 @@ const FlashcardView = ({ queue, stats, setStats, onFinish, onRequestLeave }) => 
 
         {revealed && (
           <div className="flex w-full gap-4 mt-2">
-            <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]">読めなかった</MotionButton>
-            <MotionButton variant="success" onClick={() => handleAnswer(true)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">読めた！</MotionButton>
+            <MotionButton variant="danger" onClick={() => handleAnswer(false)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#334155]">{F("読","よ")}めなかった</MotionButton>
+            <MotionButton variant="success" onClick={() => handleAnswer(true)} className="flex-1 py-6 text-xl border-[4px] border-[var(--text)] shadow-[0_6px_0_#065f46]">{F("読","よ")}めた！</MotionButton>
           </div>
         )}
       </div>

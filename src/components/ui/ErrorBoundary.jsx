@@ -1,5 +1,6 @@
 import React from 'react';
 import { recordAppError } from '../../systems/diagnostics';
+import { F } from './FormatKun';
 
 /**
  * エラーバウンダリ（商用グレード）
@@ -62,12 +63,12 @@ class ErrorBoundary extends React.Component {
         >
           <div className="text-5xl" aria-hidden="true">⚠️</div>
           <h2 className="text-xl font-black text-[var(--text)]">
-            エラーが発生しました
+            エラーが{F("発生","はっせい")}しました
           </h2>
           <p className="text-sm text-[var(--text-muted)] max-w-xs">
             {canRetry
-              ? '「もう一度ためす」を押してください。くりかえし起こる場合はホームに戻ってください。'
-              : '画面を再読み込みするか、ホームに戻ってください。'
+              ? <>「もう{F("一度","いちど")}ためす」を{F("押","お")}してください。くりかえし{F("起","お")}こる{F("場合","ばあい")}はホームに{F("戻","もど")}ってください。</>
+              : <>{F("画面","がめん")}を{F("再読","さいよ")}み{F("込","こ")}みするか、ホームに{F("戻","もど")}ってください。</>
             }
           </p>
 
@@ -78,7 +79,7 @@ class ErrorBoundary extends React.Component {
                 className="bg-[var(--secondary)] text-[var(--panel)] px-5 py-3 rounded-2xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)] active:translate-y-1 active:shadow-none transition-all min-w-[44px] min-h-[44px]"
                 aria-label="もう一度ためす"
               >
-                もう一度ためす
+                もう{F("一度","いちど")}ためす
               </button>
             )}
             <button
@@ -86,7 +87,7 @@ class ErrorBoundary extends React.Component {
               className="bg-[var(--primary)] text-[var(--panel)] px-5 py-3 rounded-2xl font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_var(--text)] active:translate-y-1 active:shadow-none transition-all min-w-[44px] min-h-[44px]"
               aria-label="ホームに戻る"
             >
-              ホームに戻る
+              ホームに{F("戻","もど")}る
             </button>
           </div>
 

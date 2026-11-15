@@ -30,7 +30,7 @@ const DictionaryView = ({ kanjiStats, onBack, onSelectKanji }) => {
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Library size={24} className="text-[var(--secondary)]" /> {F("漢字","かんじ")}ずかん</h2>
       </div>
       <div className="flex gap-2">
-        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="漢字・読みで検索" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]" /></div>
+        <div className="flex-1 relative"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="かんじ・よみで さがす" className="w-full bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-xl px-4 py-3 font-bold text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]" /></div>
       </div>
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
         {[0, 1, 2, 3, 4, 5, 6].map(g => (

@@ -24,7 +24,8 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
   const [gachaPhase, setGachaPhase] = useState('idle');
-  const coinBonus = Math.floor(earnedExp / 4);
+  // 実際に足したコイン（App が sessionData.earnedCoins に入れる）があれば、それを出す
+  const coinBonus = Number.isFinite(sessionMetrics.earnedCoins) ? sessionMetrics.earnedCoins : Math.floor(earnedExp / 4);
   const today = getTodayString();
   const dailyProgress = getDailyLearningProgress(stats, today);
   const habitStatus = getHabitStatus(stats, today);
@@ -89,7 +90,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                   <ul className="space-y-2">
                     {levelUpData.rewards.map((r, i) => r.reward && (
                       <motion.li key={i} initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} transition={{ delay: 0.5 + (i*0.2) }} className="flex items-start gap-2 text-sm font-bold text-[var(--text)]">
-                        <span className="shrink-0 text-[var(--primary)]">🎁</span> {r.reward.text || 'アイテム解放！'}
+                        <span className="shrink-0 text-[var(--primary)]">🎁</span> {r.reward.text || <>アイテム{F("解放","かいほう")}！</>}
                       </motion.li>
                     ))}
                   </ul>
@@ -144,8 +145,8 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
               {dailyProgress.isComplete ? <CheckCircle2 size={22} /> : <Target size={22} />}
             </div>
             <div className="min-w-0">
-              <div className="font-black text-[var(--text)]">{dailyProgress.isComplete ? 'きょうの目標クリア！' : `あと ${dailyProgress.remaining}字で目標クリア`}</div>
-              <div className="text-xs font-bold text-[var(--text-muted)]">学習した漢字は毎日の記録にのこります</div>
+              <div className="font-black text-[var(--text)]">{dailyProgress.isComplete ? <>きょうの{F("目標","もくひょう")}クリア！</> : <>あと {dailyProgress.remaining}{F("字","じ")}で{F("目標","もくひょう")}クリア</>}</div>
+              <div className="text-xs font-bold text-[var(--text-muted)]">{F("学習","がくしゅう")}した{F("漢字","かんじ")}は{F("毎日","まいにち")}の{F("記録","きろく")}にのこります</div>
             </div>
           </div>
           <div className="font-black text-[var(--text)] shrink-0"><span className="text-xl text-[var(--primary)]">{dailyProgress.reviewed}</span><span className="text-xs text-[var(--text-muted)]"> / {dailyProgress.goal}字</span></div>
@@ -156,8 +157,8 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         {habitStatus.event && (
           <div className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-50 px-3 py-2 text-center text-xs font-black text-sky-700" role="status">
             {habitStatus.event.type === 'rest_protected'
-              ? '🛡️ おやすみパスで、休んだ日も連続記録を守りました！'
-              : '🛡️ 5日間の学習で、おやすみパスがもどりました！'}
+              ? <>🛡️ おやすみパスで、{F("休","やす")}んだ{F("日","ひ")}も{F("連続","れんぞく")}{F("記録","きろく")}を{F("守","まも")}りました！</>
+              : <>🛡️ 5{F("日間","にちかん")}の{F("学習","がくしゅう")}で、おやすみパスがもどりました！</>}
           </div>
         )}
       </motion.div>
@@ -266,7 +267,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                 {item && <item.svg />}
               </div>
               <div className="font-black text-[var(--text)]">{item?.name}</div>
-              <MotionButton variant="secondary" onClick={() => setGachaPhase('idle')} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-sm mt-1">もう一度ひく</MotionButton>
+              <MotionButton variant="secondary" onClick={() => setGachaPhase('idle')} className="px-4 py-2 text-sm border-[2px] border-[var(--text)] shadow-sm mt-1">もう{F("一度","いちど")}ひく</MotionButton>
             </motion.div>
           );
         })()}
@@ -276,7 +277,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="flex flex-col gap-3">
         {!dailyProgress.isComplete && onContinueLearning && (
           <MotionButton variant="primary" onClick={onContinueLearning} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]">
-            <Target size={24} /> あと{dailyProgress.remaining}字 学習をつづける
+            <Target size={24} /> あと{dailyProgress.remaining}{F("字","じ")} {F("学習","がくしゅう")}をつづける
           </MotionButton>
         )}
         <MotionButton variant={dailyProgress.isComplete ? "primary" : "secondary"} onClick={() => setView('home')} className="w-full py-5 text-xl font-black border-[4px] border-[var(--text)] shadow-[0_5px_0_var(--text)]">まちに もどる 🏠</MotionButton>

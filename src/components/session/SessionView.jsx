@@ -164,7 +164,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             role="status"
             className="absolute top-14 md:top-16 left-1/2 z-40 whitespace-nowrap rounded-full border-[3px] border-[var(--text)] bg-emerald-100 px-4 py-2 text-xs md:text-sm font-black text-emerald-800 shadow-[3px_3px_0_var(--text)]"
           >
-            ✓ つづきから再開しました
+            ✓ つづきから{F("再開","さいかい")}しました
           </motion.div>
         )}
       </AnimatePresence>

@@ -20,13 +20,13 @@ const themeSwatch = (name) => ['--primary', '--secondary', '--accent'].map((v) =
 
 // 手動テーマ選択肢
 const THEME_OPTIONS = [
-  { id: 'auto', label: 'じどう', desc: 'レベルに合わせて変わる', icon: Sparkles },
-  { id: 'default', label: 'ベーシック', desc: '赤×緑のスタンダード', colors: themeSwatch('default') },
+  { id: 'auto', label: 'じどう', desc: <>レベルに{F("合","あ")}わせて{F("変","か")}わる</>, icon: Sparkles },
+  { id: 'default', label: 'ベーシック', desc: <>{F("赤","あか")}×{F("緑","みどり")}のスタンダード</>, colors: themeSwatch('default') },
   { id: 'sakura', label: 'さくら', desc: 'やさしいピンク', colors: themeSwatch('sakura') },
   { id: 'ocean', label: 'うみ', desc: 'さわやかなブルー', colors: themeSwatch('ocean') },
   { id: 'sunset', label: 'ゆうやけ', desc: 'あたたかいオレンジ', colors: themeSwatch('sunset') },
   { id: 'gold', label: 'おうごん', desc: 'きらめくゴールド', colors: themeSwatch('gold') },
-  { id: 'dark', label: 'ダーク', desc: '目にやさしい暗い色', icon: Moon },
+  { id: 'dark', label: 'ダーク', desc: <>{F("目","め")}にやさしい{F("暗","くら")}い{F("色","いろ")}</>, icon: Moon },
 ];
 
 // 音量プリセット
@@ -38,9 +38,9 @@ const VOLUME_LEVELS = [
 ];
 
 const MOTION_OPTIONS = [
-  { id: 'system', label: 'じどう', desc: '端末設定に合わせる' },
-  { id: 'full', label: '標準', desc: '演出を楽しむ' },
-  { id: 'reduced', label: '少なめ', desc: '動きをおさえる' },
+  { id: 'system', label: 'じどう', desc: <>{F("端末","たんまつ")}の{F("設定","せってい")}に{F("合","あ")}わせる</> },
+  { id: 'full', label: <>{F("標準","ひょうじゅん")}</>, desc: <>{F("演出","えんしゅつ")}を{F("楽","たの")}しむ</> },
+  { id: 'reduced', label: <>{F("少","すく")}なめ</>, desc: <>{F("動","うご")}きをおさえる</> },
 ];
 
 // ふりがなの出し方（utils/furigana.js）。えらぶ文字は、設定にかかわらずふりがなを付ける
@@ -274,7 +274,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       </Section>
 
       {/* 動き・端末負荷の設定 */}
-      <Section icon={Accessibility} title="画面のうごき">
+      <Section icon={Accessibility} title={<>{F("画面","がめん")}のうごき</>}>
         <div className="grid grid-cols-3 gap-2">
           {MOTION_OPTIONS.map((option) => {
             const isActive = motionPreference === option.id;
@@ -287,7 +287,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                 className={`min-h-[72px] rounded-xl border-[3px] p-2 text-center transition-all ${isActive ? 'border-[var(--secondary)] bg-[var(--secondary)]/10 shadow-[2px_2px_0_var(--secondary)]' : 'border-[var(--text)]/20 hover:border-[var(--text)]/50'}`}
               >
                 <div className="flex items-center justify-center gap-1 text-xs font-black text-[var(--text)]">
-                  {option.label}
+                  <span>{option.label}</span>
                   {isActive && <Check size={13} className="text-[var(--secondary)]" aria-hidden="true" />}
                 </div>
                 <div className="mt-1 text-xs font-bold leading-tight text-[var(--text-muted)]">{option.desc}</div>
@@ -296,12 +296,12 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           })}
         </div>
         <div className="rounded-xl bg-[var(--bg)] px-3 py-2 text-xs font-bold leading-relaxed text-[var(--text-muted)]">
-          「{F("少","すく")}なめ」はアニメーション・{F("天気","てんき")}・{F("紙吹雪","かみふぶき")}をおさえ、電池も長もちしやすくします。
+          「{F("少","すく")}なめ」はアニメーション・{F("天気","てんき")}・{F("紙吹雪","かみふぶき")}をおさえ、{F("電池","でんち")}も{F("長","なが")}もちしやすくします。
         </div>
       </Section>
 
       {/* 音の設定 */}
-      <Section icon={isMuted ? VolumeX : Volume2} title="音の設定">
+      <Section icon={isMuted ? VolumeX : Volume2} title={<>{F("音","おと")}の{F("設定","せってい")}</>}>
         <div className="flex gap-2">
           {VOLUME_LEVELS.map(vol => {
             const isActive = volumeLevel === vol.id;
@@ -363,9 +363,9 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
             <div className="text-sm font-bold text-[var(--text)] mb-2">1{F("回","かい")}のセッションの{F("量","りょう")}</div>
             <div className="flex gap-2">
               {[
-                { id: 'small', label: <>{F("少","すく")}なめ</>, desc: '復習10＋新3' },
-                { id: 'normal', label: 'ふつう', desc: '復習20＋新5' },
-                { id: 'large', label: <>{F("多","おお")}め</>, desc: '復習30＋新8' },
+                { id: 'small', label: <>{F("少","すく")}なめ</>, desc: <>{F("復習","ふくしゅう")}10＋{F("新","しん")}3</> },
+                { id: 'normal', label: 'ふつう', desc: <>{F("復習","ふくしゅう")}20＋{F("新","しん")}5</> },
+                { id: 'large', label: <>{F("多","おお")}め</>, desc: <>{F("復習","ふくしゅう")}30＋{F("新","しん")}8</> },
               ].map(s => {
                 const isActive = sessionSize === s.id;
                 return (
@@ -434,7 +434,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
       </Section>
 
       {/* 運用診断・サポート */}
-      <Section icon={Activity} title="アプリの状態とサポート">
+      <Section icon={Activity} title={<>アプリの{F("状態","じょうたい")}とサポート</>}>
         <SystemStatusPanel />
       </Section>
 

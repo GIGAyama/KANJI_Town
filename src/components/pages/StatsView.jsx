@@ -34,7 +34,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   );
   const dailyData = weeklySummary.days.map((day, index) => ({
     ...day,
-    label: index === 6 ? '今日' : index === 5 ? '昨日' : `${day.date.getDate()}日`,
+    label: index === 6 ? 'きょう' : index === 5 ? 'きのう' : `${day.date.getDate()}日`,
   }));
 
   const maxExp = Math.max(...dailyData.map(d => d.exp), 1);
@@ -44,7 +44,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
   );
   const forecastData = reviewForecast.days.map((day, index) => ({
     ...day,
-    label: index === 0 ? '今日' : index === 1 ? '明日' : `${day.date.getMonth() + 1}/${day.date.getDate()}`,
+    label: index === 0 ? 'きょう' : index === 1 ? 'あした' : `${day.date.getMonth() + 1}/${day.date.getDate()}`,
   }));
   const nextReviewLabel = reviewForecast.nextReviewAt
     ? `${new Date(reviewForecast.nextReviewAt).getMonth() + 1}月${new Date(reviewForecast.nextReviewAt).getDate()}日`
@@ -96,11 +96,11 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
 
       {/* 4技能の習熟度 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
-        <div className="mb-1 text-center text-sm font-black text-[var(--text)]">漢字を身につける「4つの力」</div>
+        <div className="mb-1 text-center text-sm font-black text-[var(--text)]">{F("漢字","かんじ")}を{F("身","み")}につける「4つの{F("力","ちから")}」</div>
         <div className="mb-3 text-center text-[10px] font-bold text-[var(--text-muted)]">
           {masterySummary.learnedCount > 0
             ? `${masterySummary.learnedCount}字の回答と練習記録から自動計算`
-            : '漢字を学習すると、力の伸びがここに表示されます'}
+            : <>{F("漢字","かんじ")}を{F("学習","がくしゅう")}すると、{F("力","ちから")}の{F("伸","の")}びがここに{F("表示","ひょうじ")}されます</>}
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="list" aria-label="読み、意味、書字、筆順の習熟度">
           {MASTERY_SKILLS.map((skill) => {
@@ -187,7 +187,7 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
               </div>
             ))}
           </div>
-          <div className="mt-2 text-[10px] font-bold text-[var(--text-muted)]">「いちどで正解できた数」をかぞえています</div>
+          <div className="mt-2 text-[10px] font-bold text-[var(--text-muted)]">「いちどで{F("正解","せいかい")}できた{F("数","かず")}」をかぞえています</div>
         </div>
       )}
 
@@ -199,14 +199,14 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
         </div>
         <div className={`mb-3 text-[11px] font-bold ${reviewForecast.overdueCount > 0 ? 'text-rose-600' : 'text-[var(--text-muted)]'}`}>
           {reviewForecast.overdueCount > 0
-            ? `${reviewForecast.overdueCount}字が復習を待っています`
+            ? <>{reviewForecast.overdueCount}{F("字","じ")}が{F("復習","ふくしゅう")}を{F("待","ま")}っています</>
             : reviewForecast.todayCount > 0
-              ? `きょうは ${reviewForecast.todayCount}字の復習予定です`
+              ? <>きょうは {reviewForecast.todayCount}{F("字","じ")}の{F("復習","ふくしゅう")}{F("予定","よてい")}です</>
               : reviewForecast.tomorrowCount > 0
-                ? `あしたは ${reviewForecast.tomorrowCount}字の復習予定です`
+                ? <>あしたは {reviewForecast.tomorrowCount}{F("字","じ")}の{F("復習","ふくしゅう")}{F("予定","よてい")}です</>
                 : nextReviewLabel
-                  ? `次の復習は ${nextReviewLabel} です`
-                  : '学習した漢字が増えると、ここに予定が表示されます'}
+                  ? <>{F("次","つぎ")}の{F("復習","ふくしゅう")}は {nextReviewLabel} です</>
+                  : <>{F("学習","がくしゅう")}した{F("漢字","かんじ")}が{F("増","ふ")}えると、ここに{F("予定","よてい")}が{F("表示","ひょうじ")}されます</>}
         </div>
         <div className="flex items-end gap-2 h-28" role="list" aria-label={`7日間の復習予定、合計${reviewForecast.weekCount}字`}>
           {forecastData.map((day, index) => (
