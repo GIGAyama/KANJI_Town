@@ -25,6 +25,37 @@ const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
 const distanceOf = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/** 交差の判定に使う、児童の1画あたりの点の数 */
+const CROSS_SAMPLES = 64;
+
+/**
+ * 等間隔に取りなおした2つの画の、字形のずれ（Analyzer.shapeDistance と同じ計算）。
+ * @returns {{ forward: number, reversed: number }}
+ */
+function sampledShapeDistance(a, b) {
+  if (a.length === 0 || b.length === 0 || a.length !== b.length) return { forward: Infinity, reversed: Infinity };
+  let forward = 0;
+  let reversed = 0;
+  for (let i = 0; i < a.length; i++) {
+    forward += distanceOf(a[i], b[i]);
+    reversed += distanceOf(a[i], b[a.length - 1 - i]);
+  }
+  return { forward: forward / a.length, reversed: reversed / a.length };
+}
+
+/** お手本どうしの交差表。字ごと（strokeData の配列ごと）に1回だけ求める */
+const crossMatrixCache = new WeakMap();
+function expectedCrossMatrix(strokeData, expected, provided) {
+  const n = expected.length;
+  const valid = (matrix) => Array.isArray(matrix) && matrix.length === n && matrix.every(row => Array.isArray(row) && row.length === n);
+  if (valid(provided)) return provided;
+  const cached = strokeData && typeof strokeData === 'object' ? crossMatrixCache.get(strokeData) : null;
+  if (valid(cached)) return cached;
+  const matrix = expected.map((_, i) => expected.map((__, j) => i !== j && Analyzer.isCrossed(expected[i].points, expected[j].points)));
+  if (strokeData && typeof strokeData === 'object') crossMatrixCache.set(strokeData, matrix);
+  return matrix;
+}
+
 /** 点の並びの長さ（正規化座標） */
 function pathLength(points) {
   let length = 0;
@@ -178,9 +209,10 @@ function shapeComment(ratio) {
  * @param {Array<Array<{x: number, y: number, time: number}>>} userStrokes - キャンバス座標
  * @param {Array<{s: {x, y}, e: {x, y}, points: Array, endingType?: string|null}>} strokeData - 正規化済み正解
  * @param {number} canvasSize
+ * @param {{ expectedCross?: boolean[][] }} [options] - expectedCross: お手本どうしの交差表（SessionView の crossMatrix）
  * @returns {object} 採点結果
  */
-export function gradeStrokes(userStrokes, strokeData, canvasSize) {
+export function gradeStrokes(userStrokes, strokeData, canvasSize, options = {}) {
   const details = [];
   const expected = Array.isArray(strokeData) ? strokeData.map(sanitizeTarget) : [];
   const expectedCount = expected.length;
@@ -255,10 +287,13 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   })));
 
   // ── 画の対応づけ（どの画を書いたのか）──
-  const cost = user.map(stroke => expected.map(target => {
+  // 字形の比較は、画ごとに1回だけ等間隔に取りなおした点で行う（以前は組ごとに取りなおしていた）。
+  const userSamples = user.map(stroke => (stroke.length > 0 ? Analyzer.resample(stroke, STROKE_THRESHOLDS.SHAPE_SAMPLES) : []));
+  const targetSamples = expected.map(target => Analyzer.resample(target.points, STROKE_THRESHOLDS.SHAPE_SAMPLES));
+  const shapes = user.map((_, i) => expected.map((__, j) => sampledShapeDistance(userSamples[i], targetSamples[j])));
+  const cost = user.map((stroke, i) => expected.map((target, j) => {
     if (stroke.length === 0) return 10;
-    const shape = Analyzer.shapeDistance(stroke, target.points);
-    const shapeDist = Math.min(shape.forward, shape.reversed);
+    const shapeDist = Math.min(shapes[i][j].forward, shapes[i][j].reversed);
     const startDist = distanceOf(stroke[0], target.s);
     const endDist = distanceOf(stroke[stroke.length - 1], target.e);
     return shapeDist * 0.6 + startDist * 0.2 + endDist * 0.2;
@@ -279,7 +314,8 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
 
   for (let i = 0; i < expectedCount; i++) {
     const stroke = user[i];
-    const target = expected[assignment[i]] ?? expected[i];
+    const targetIndex = expected[assignment[i]] ? assignment[i] : i;
+    const target = expected[targetIndex];
     // 対応づけが本来の位置とずれていても、正しい位置との費用差がわずかなら
     // （＝どちらを書いたのか幾何的に区別できない画なら）誤りと断定しない。
     const discriminable = assignment[i] !== i
@@ -291,7 +327,7 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
       continue;
     }
 
-    const shape = Analyzer.shapeDistance(stroke, target.points);
+    const shape = shapes[i][targetIndex];
     // 逆走（例：横画を右から左へ）は、逆順で比べた方が明らかに近いことで分かる
     const isReversed = shape.reversed < shape.forward * 0.6 && shape.reversed < tolerances.shape;
     const shapeRatio = distanceScore(shape.forward, tolerances.shape);
@@ -342,13 +378,18 @@ export function gradeStrokes(userStrokes, strokeData, canvasSize) {
   let crossPairs = 0;
   let crossMatch = true;
   const crossIssues = [];
+  // 交差の判定は画の点の数どうしの掛け算になる。ペンでゆっくり書くと 1 画 600 点にもなり、
+  // 20 画の字で 0.4 秒ほど固まっていたので、児童の画は CROSS_SAMPLES 点に取りなおしてから比べる。
+  // お手本どうしの交差は字ごとに1回だけ求めて使いまわす。
+  const expectedCross = expectedCrossMatrix(strokeData, expected, options.expectedCross);
+  const userCross = user.map(stroke => (stroke.length > CROSS_SAMPLES ? Analyzer.resample(stroke, CROSS_SAMPLES) : stroke));
 
   for (let i = 0; i < expectedCount; i++) {
     for (let j = i + 1; j < expectedCount; j++) {
-      const expectedCrossed = Analyzer.isCrossed(expected[i].points, expected[j].points);
+      const expectedCrossed = expectedCross[i][j];
       const ui = inverse[i];
       const uj = inverse[j];
-      const actualDepth = (ui >= 0 && uj >= 0) ? Analyzer.crossingDepth(user[ui], user[uj]) : 0;
+      const actualDepth = (ui >= 0 && uj >= 0) ? Analyzer.crossingDepth(userCross[ui], userCross[uj]) : 0;
       // 交わるべき組と、交わってはいけないのに交わった組だけを評価対象にする
       // （無関係な組を含めると平均が薄まり、誤りが点数に表れなくなる）
       if (!expectedCrossed && actualDepth <= STROKE_THRESHOLDS.CROSS_DEPTH_NONE) continue;

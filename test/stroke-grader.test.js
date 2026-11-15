@@ -326,6 +326,31 @@ test('大きさの補正には上限があり、極端に小さい字は減点�
   assert.ok(reversed.total <= 69, `${reversed.total}`);
 });
 
+// ── 計算量 ──
+test('20画の字をペンでゆっくり書いても（1画600点）、採点はすぐ終わる', () => {
+  // 以前は全画の組で点の数どうしの掛け算をしていて、20画×600点で 0.4 秒ほど固まった
+  const model = Array.from({ length: 20 }, (_, k) => {
+    const y = 0.05 + k * 0.045;
+    return expectedStroke({ x: 0.1 + (k % 3) * 0.05, y }, { x: 0.9 - (k % 2) * 0.1, y: y + (k % 4 === 0 ? 0.3 : 0) }, 'tome');
+  });
+  const strokes = model.map(s => userStroke(s.s, s.e, { steps: 600, msPerPoint: 5 }));
+  gradeStrokes(strokes, model, CANVAS); // 1回目（お手本の交差表を作る）
+  const started = performance.now();
+  const result = gradeStrokes(strokes, model, CANVAS);
+  const elapsed = performance.now() - started;
+  assert.equal(result.strokeCountMatch, true);
+  assert.ok(elapsed < 150, `${elapsed.toFixed(1)}ms`);
+});
+
+test('お手本の交差表を渡しても、渡さなくても、同じ採点になる', () => {
+  const strokes = [userStroke(TSUCHI[0].s, TSUCHI[0].e), userStroke({ x: 0.5, y: 0.15 }, { x: 0.5, y: 0.8 }), userStroke(TSUCHI[2].s, TSUCHI[2].e)];
+  const matrix = TSUCHI.map(() => TSUCHI.map(() => false)); // 「土」はどの画も突き抜けない
+  const withMatrix = gradeStrokes(strokes, TSUCHI, CANVAS, { expectedCross: matrix });
+  const without = gradeStrokes(strokes, TSUCHI, CANVAS);
+  assert.equal(withMatrix.total, without.total);
+  assert.equal(withMatrix.crossMatch, without.crossMatch);
+});
+
 // ── でたらめな入力 ──
 const dotAt = (x, y) => [{ x: x * CANVAS, y: y * CANVAS, time: 0 }, { x: x * CANVAS + 1, y: y * CANVAS + 1, time: 30 }];
 const ICHI = [expectedStroke({ x: 0.15, y: 0.5 }, { x: 0.85, y: 0.5 }, 'tome')];
