@@ -45,6 +45,8 @@ async function walk(dir, out = []) {
   for (const e of entries) {
     if (['node_modules', 'dist', '.git', '.assets-original'].includes(e.name)) continue;
     const rel = dir ? `${dir}/${e.name}` : e.name;
+    // Claude Code が並行作業に使う git worktree（リポジトリの写しがまるごと入る。追跡しない）
+    if (rel === '.claude/worktrees') continue;
     if (e.isDirectory()) await walk(rel, out);
     else out.push(rel);
   }
