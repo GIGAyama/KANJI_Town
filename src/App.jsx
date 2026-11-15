@@ -13,7 +13,7 @@ import UpdateToast from './components/ui/UpdateToast';
 import MobileBottomNav from './components/ui/MobileBottomNav';
 
 import { StorageAPI, getLevelInfo } from './systems/storage';
-import { calculateNextReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
+import { calculateNextReview, isEarlyReview, migrateCard, recordPracticeAttempt, recordSelfReport } from './systems/srs';
 import { buildLearningPlan, buildWeakKanjiPlan, getDailyLearningProgress, getGoalAwareSessionLimits } from './systems/learning-plan';
 import { createSessionCheckpoint, restoreSessionCheckpoint } from './systems/session-checkpoint';
 import { readSharedDrill } from './systems/drill-share';
@@ -625,7 +625,12 @@ export default function App() {
     const curWithMastery = skills.length > 0
       ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
       : cur;
-    if (sessionData.isDrill) {
+    // 期限前の早い復習（ボス・サバイバル・1字の練習で、期限の来ていない字）は、特訓と同じく
+    // 練習の記録だけにする。以前は正解のたびに間隔を掛け算で伸ばし、数分で何百日も先になっていた。
+    // 忘れていた（again）ときは、期限前でも間隔反復に記録する。
+    const now = Date.now();
+    const practiceOnly = sessionData.isDrill || (evalType !== 'again' && isEarlyReview(cur, now));
+    if (practiceOnly) {
       setStats(s => {
         const latest = migrateCard(s.kanjiStats?.[id]);
         const latestWithMastery = skills.length > 0
@@ -653,7 +658,7 @@ export default function App() {
       return evalType !== 'again';
     }
 
-    const next = calculateNextReview(curWithMastery, evalType);
+    const next = calculateNextReview(curWithMastery, evalType, now);
     const wasNew = curWithMastery.status === 'new';
     const isMastering = next.graduated && next.interval >= 7 * 24 * 60 * 60 * 1000;
     const newStatus = isMastering ? 'mastered' : next.graduated ? 'review' : 'learning';
