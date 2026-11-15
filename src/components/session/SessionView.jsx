@@ -12,7 +12,7 @@ import { Analyzer } from '../../systems/analyzer';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
-import { getRecommendedPracticeMode } from '../../systems/mastery';
+import { getRecommendedPracticeMode, writingSkillEvidence } from '../../systems/mastery';
 
 const MODE_LABELS = { read: '音読', watch: '書き順', write: 'なぞる', test: 'テスト' };
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
@@ -92,7 +92,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
   // 画面を離れたあとに onFinish が動いて結果画面へ飛ばないよう、タイマーを止める
   useEffect(() => () => clearTimeout(evaluationTimerRef.current), []);
 
-  const handleEvaluation = (evalType, { selfReport = false } = {}) => {
+  const handleEvaluation = (evalType, { selfReport = false, gradeResult = null } = {}) => {
     if (evaluatingRef.current) return;
     evaluatingRef.current = true;
     if (evalType === 'easy') onRecordEasy();
@@ -102,7 +102,8 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
     setActiveStamp(evalType === 'hard' ? 'good' : evalType); // hard は good スタンプで表示
     evaluationTimerRef.current = setTimeout(() => {
       setActiveStamp(null);
-      const success = onUpdateStat(currentKanji, evalType, { ...WRITING_SKILLS, selfReport });
+      // 書字と筆順は、採点結果から別々に記録する（書き順だけがちがう字を見分けるため）
+      const success = onUpdateStat(currentKanji, evalType, { ...WRITING_SKILLS, selfReport, skillEvidence: writingSkillEvidence(gradeResult, evalType) });
       if (success) {
         const nextQueue = queue.slice(1);
         onProgress?.(nextQueue);

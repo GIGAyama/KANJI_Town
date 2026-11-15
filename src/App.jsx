@@ -631,12 +631,16 @@ export default function App() {
     });
   }, []);
 
-  const handleUpdateStat = (kanjiObj, evalType, { skills = [], selfReport = false } = {}) => {
+  const handleUpdateStat = (kanjiObj, evalType, { skills = [], selfReport = false, skillEvidence = null } = {}) => {
     const id = kanjiObj.id;
     recordStudyAttempt(id, { ok: evalType !== 'again', skill: skills[0] });
+    // 技能ごとの証拠（毎日のテストでは書字と筆順を採点結果から別々に決める）。無ければ全技能に同じ評価
+    const skillUpdates = Array.isArray(skillEvidence) && skillEvidence.length > 0
+      ? skillEvidence
+      : skills.map(skill => ({ skill, evidence: evalType }));
     const cur = migrateCard(stats.kanjiStats?.[id]);
-    const curWithMastery = skills.length > 0
-      ? { ...cur, skillMastery: recordSkillEvidence(cur, skills.map(skill => ({ skill, evidence: evalType }))) }
+    const curWithMastery = skillUpdates.length > 0
+      ? { ...cur, skillMastery: recordSkillEvidence(cur, skillUpdates) }
       : cur;
     // 期限前の早い復習（ボス・サバイバル・1字の練習で、期限の来ていない字）は、特訓と同じく
     // 練習の記録だけにする。以前は正解のたびに間隔を掛け算で伸ばし、数分で何百日も先になっていた。
@@ -646,8 +650,8 @@ export default function App() {
     if (practiceOnly) {
       setStats(s => {
         const latest = migrateCard(s.kanjiStats?.[id]);
-        const latestWithMastery = skills.length > 0
-          ? { ...latest, skillMastery: recordSkillEvidence(latest, skills.map(skill => ({ skill, evidence: evalType }))) }
+        const latestWithMastery = skillUpdates.length > 0
+          ? { ...latest, skillMastery: recordSkillEvidence(latest, skillUpdates) }
           : latest;
         return {
           ...s,

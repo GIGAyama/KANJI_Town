@@ -276,7 +276,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
                   <MotionButton
                     variant={btn.variant}
                     // 採点できなかった（お手本が無い）ときの評価は、自己申告として記録で区別する
-                    onClick={() => { if (isAllowed) onEvaluate(btn.key, { selfReport: !hasRecommendation }); }}
+                    onClick={() => { if (isAllowed) onEvaluate(btn.key, { selfReport: !hasRecommendation, gradeResult }); }}
                     disabled={evaluationLocked || !isAllowed}
                     aria-disabled={!isAllowed || undefined}
                     className={`w-full font-black border-[var(--text)] ${

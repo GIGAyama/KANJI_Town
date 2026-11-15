@@ -71,6 +71,45 @@ export function recordSkillEvidence(card, updates, now = Date.now()) {
   return mastery;
 }
 
+const EVALUATION_RANK = { again: 0, hard: 1, good: 2, easy: 3 };
+const lowerEvaluation = (a, b) => (EVALUATION_RANK[a] <= EVALUATION_RANK[b] ? a : b);
+
+/** 字形の点の割合から、書字の証拠を決める（講評の「字の形」と同じ区切り） */
+function shapeEvidence(ratio) {
+  if (ratio >= 0.85) return 'easy';
+  if (ratio >= 0.6) return 'good';
+  if (ratio >= 0.35) return 'hard';
+  return 'again';
+}
+
+/**
+ * 書き取りの採点結果から、書字（writing）と筆順（stroke）の証拠を別々に決める。
+ * 以前は両方に同じ自己評価を記録していたので、「形は取れるが書き順が怪しい」を
+ * 切り分けられず、筆順だけが弱い字で「書き順」から始める練習が提案されなかった。
+ * - 筆順: 書き順がちがえば again、書く向きが逆の画があれば hard まで
+ * - 書字: 点画の交差がちがえば again、それ以外は字形の点の割合で決める
+ * どちらも、児童がつけた評価より上にはしない（自分に厳しくつけた評価はそのまま使う）。
+ * 採点できなかったとき（画数ちがい・お手本なし）は、両方に評価をそのまま使う。
+ * @param {object|null} gradeResult - gradeStrokes の結果
+ * @param {'again'|'hard'|'good'|'easy'} evaluation - 間隔反復に使う評価
+ * @returns {Array<{skill: 'writing'|'stroke', evidence: string}>}
+ */
+export function writingSkillEvidence(gradeResult, evaluation) {
+  if (!(evaluation in EVALUATION_RANK)) return [];
+  if (!gradeResult || gradeResult.strokeCountMatch !== true) {
+    return [{ skill: 'writing', evidence: evaluation }, { skill: 'stroke', evidence: evaluation }];
+  }
+  const shape = (gradeResult.breakdown || []).find((item) => item.key === 'shape');
+  const shapeRatio = shape && shape.max > 0 ? shape.points / shape.max : 0;
+  const writing = gradeResult.crossMatch === false ? 'again' : shapeEvidence(shapeRatio);
+  const reversed = (gradeResult.strokeFeedback || []).some((item) => item.reversed);
+  const stroke = gradeResult.orderMatch === false ? 'again' : reversed ? 'hard' : evaluation;
+  return [
+    { skill: 'writing', evidence: lowerEvaluation(writing, evaluation) },
+    { skill: 'stroke', evidence: lowerEvaluation(stroke, evaluation) },
+  ];
+}
+
 export function getWeakestSkill(card) {
   const mastery = normalizeSkillMastery(card?.skillMastery, card);
   return MASTERY_SKILLS
