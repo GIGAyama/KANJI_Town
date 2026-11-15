@@ -5,6 +5,7 @@ import MotionButton from '../ui/MotionButton';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
+import { writingSkillEvidence } from '../../systems/mastery';
 import { appendRound, shuffled } from '../../systems/question-queue';
 import LeaveLearningButton from '../ui/LeaveLearningButton';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
@@ -464,7 +465,7 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave, paused = 
         perfectCount: earnedRef.current.perfectCount + 1,
       };
       audioCtrl.playSE('stamp_perfect');
-      onUpdateStat(kanji, 'easy', WRITING_SKILLS);
+      onUpdateStat(kanji, 'easy', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'easy') });
     } else if (rank === 'ok') {
       setOkCount(c => c + 1);
       earnedRef.current = {
@@ -473,12 +474,12 @@ const SurvivalView = ({ queue, onUpdateStat, onFinish, onRequestLeave, paused = 
         coins: earnedRef.current.coins + 2,
       };
       audioCtrl.playSE('stamp_good');
-      onUpdateStat(kanji, 'good', WRITING_SKILLS);
+      onUpdateStat(kanji, 'good', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'good') });
     } else {
       setMissCount(c => c + 1);
       audioCtrl.playSE('stamp_bad');
       // 書き順だけのまちがいは、毎日の学習のテストと同じ基準（'hard' まで）で記録する
-      onUpdateStat(kanji, isOrderMistake(result) ? recommendEvaluation(result) : 'again', WRITING_SKILLS);
+      onUpdateStat(kanji, isOrderMistake(result) ? recommendEvaluation(result) : 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, isOrderMistake(result) ? recommendEvaluation(result) : 'again') });
       // ミスフラッシュ
       setMissFlash(true);
       later(() => setMissFlash(false), 400);

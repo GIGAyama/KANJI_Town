@@ -7,6 +7,7 @@ import KanjiGlyph from '../ui/KanjiGlyph';
 import { audioCtrl } from '../../systems/audio';
 import { F, SurvivalRubyText, FormatKun } from '../ui/FormatKun';
 import { gradeStrokes, getGradeLabel } from '../../systems/strokeGrader';
+import { writingSkillEvidence } from '../../systems/mastery';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { TEST, GRADING } from '../../constants/gameConfig';
 import { resolveThemeColor } from '../../utils/theme-colors';
@@ -558,7 +559,7 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequ
     const passed = result.total >= TEST.PASS_THRESHOLD && result.strokeCountMatch && result.crossMatch !== false;
 
     // EXP累積のためonUpdateStatを呼ぶ
-    onUpdateStat(kanji, passed ? 'good' : 'again', WRITING_SKILLS);
+    onUpdateStat(kanji, passed ? 'good' : 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, passed ? 'good' : 'again') });
 
     // 結果画面で「なぜこの点数か」を見せるため、お手本も回答といっしょに残す
     const answer = {

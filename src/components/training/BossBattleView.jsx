@@ -6,6 +6,7 @@ import { SvgGhostBoss } from '../../data/town-items';
 import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { pickPromptExample } from '../../systems/prompt-example';
 import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
+import { writingSkillEvidence } from '../../systems/mastery';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { RefreshCw, Swords, Shield } from 'lucide-react';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
@@ -305,14 +306,14 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, '画数ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', WRITING_SKILLS);
+        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
       } else if (!result.crossMatch) {
         // 交差ミス → 一撃アウト（0点）、ボス強攻撃2ダメージ
         setBattleMessage('せんの交わりがちがう！一撃アウト！');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, '交差ミス！ボスの猛攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', WRITING_SKILLS);
+        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
       } else if (isOrderMistake(result)) {
         // 書き順ちがい → 見た目が合っていても攻撃は通らない。復習リストに入れる。
         // 点数（上限69点）だけで見ると「ダメージを与えた」になり、まちがった書き順に報酬が出ていた。
@@ -320,7 +321,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
         audioCtrl.playSE('stamp_bad');
         doBossAttack(1, 'ボスの反撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, recommendEvaluation(result), WRITING_SKILLS);
+        onUpdateStat(kanji, recommendEvaluation(result), { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, recommendEvaluation(result)) });
       } else if (result.total >= 80) {
         // 会心の一撃
         setBattleMessage('会心の一撃！');
@@ -332,7 +333,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
           coins: earnedRef.current.coins + 8,
           perfectCount: earnedRef.current.perfectCount + 1,
         };
-        onUpdateStat(kanji, 'easy', WRITING_SKILLS);
+        onUpdateStat(kanji, 'easy', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'easy') });
       } else if (result.total >= 60) {
         // ダメージ！
         setBattleMessage('ダメージを与えた！');
@@ -343,20 +344,20 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
           exp: earnedRef.current.exp + 15,
           coins: earnedRef.current.coins + 5,
         };
-        onUpdateStat(kanji, 'good', WRITING_SKILLS);
+        onUpdateStat(kanji, 'good', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'good') });
       } else if (result.total >= 50) {
         // ダメージ通らない + ボス反撃1ダメージ
         setBattleMessage('おしい…ダメージが通らない！');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(1, 'ボスの反撃！');
-        onUpdateStat(kanji, 'hard', WRITING_SKILLS);
+        onUpdateStat(kanji, 'hard', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'hard') });
       } else {
         // 50点未満 → ボス強攻撃2ダメージ + 復習リスト入り
         setBattleMessage('うまく書けなかった…');
         audioCtrl.playSE('stamp_bad');
         doBossAttack(2, 'ボスの強攻撃！');
         addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', WRITING_SKILLS);
+        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
       }
     }, 600);
   };
