@@ -304,20 +304,27 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   // 縦に重ねたレイアウト（スマホ・タブレットの縦持ち）では、問題文をボタンのすぐ上に出す。
   // 以前はキャンバスの下のスクロールする所にあり、タブレットの縦持ちでは下のボタンに隠れて、
   // スクロールしないと「何を書くか」が見えなかった。自己採点をやめたので、見えないまま書かせない。
+  // 高さ 739px までは、ここと下のボタンを詰めて出す。この高さでは、書くマスの大きさを
+  // 「ここ（詰めた形）が入る残り」で決めているので（learning-viewport.js の STACKED_RESERVE）、
+  // 詰めた形の高さを変えたら、そちらの値も測りなおすこと。
   const compactPrompt = isStacked && (
-    <div className="bg-[var(--panel)] rounded-xl border-[3px] border-[var(--text)] px-2 py-1 [@media(max-height:699px)]:py-0.5 flex items-center gap-1">
+    <div className="bg-[var(--panel)] rounded-xl border-[3px] border-[var(--text)] px-2 py-1 [@media(max-height:739px)]:py-0.5 flex items-center gap-1">
       <div className="flex-1 min-w-0 text-center">
-        {/* 背の低いスマホでは、キャンバスを隠さないよう見出しを省く（文の「◯」が問題そのもの） */}
-        <div className="text-[10px] font-bold text-[var(--text-muted)] leading-tight [@media(max-height:699px)]:hidden">{promptExample ? <>「◯」の{F("漢字","かんじ")}を {F("書","か")}こう</> : <>この{F("漢字","かんじ")}、{F("書","か")}ける？</>}</div>
+        {/* 背の低いスマホでは、見出しをかなだけにする（ルビの行の高さを足さず、何をするかは残す）。
+            高さ 580px 未満では、マスが下限の大きさでも入りきらないので、見出しは省く（文の「◯」が問題そのもの） */}
+        <div className="text-[10px] font-bold text-[var(--text-muted)] leading-tight">
+          <span className="[@media(max-height:739px)]:hidden">{promptExample ? <>「◯」の{F("漢字","かんじ")}を {F("書","か")}こう</> : <>この{F("漢字","かんじ")}、{F("書","か")}ける？</>}</span>
+          <span className="hidden [@media(min-height:580px)_and_(max-height:739px)]:inline">{promptExample ? '「◯」の かんじを かこう' : 'この かんじ、かける？'}</span>
+        </div>
         {promptExample && (
-          <p className="text-lg [@media(max-height:699px)]:text-base font-black text-[var(--text)] ruby-text !leading-[2.1]" data-testid="test-prompt">
+          <p className="text-lg [@media(max-height:739px)]:text-base font-black text-[var(--text)] ruby-text !leading-[2.1]" data-testid="test-prompt">
             <SurvivalRubyText text={promptExample} targetChar={kanji.char} />
           </p>
         )}
         {(hintOpen || !promptExample) && <div className="text-sm font-black tracking-wider text-[var(--text)] pb-0.5">{readings}</div>}
       </div>
       {promptExample && (
-        <button type="button" onClick={() => setHintOpen((open) => !open)} aria-expanded={hintOpen} aria-label="ヒント：読みかた" className="shrink-0 w-12 h-12 [@media(max-height:699px)]:w-11 [@media(max-height:699px)]:h-11 rounded-xl border-2 border-[var(--text)] bg-[var(--bg)] text-lg flex items-center justify-center">💡</button>
+        <button type="button" onClick={() => setHintOpen((open) => !open)} aria-expanded={hintOpen} aria-label="ヒント：読みかた" className="shrink-0 w-12 h-12 [@media(max-height:739px)]:w-11 [@media(max-height:739px)]:h-11 rounded-xl border-2 border-[var(--text)] bg-[var(--bg)] text-lg flex items-center justify-center">💡</button>
       )}
     </div>
   );
@@ -331,7 +338,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     <MotionButton variant="secondary" onClick={clearCanvas} disabled={userStrokes.length === 0} className="py-2 text-xs sm:text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] !gap-1"><RotateCcw size={16} className="shrink-0" /> {F("書","か")}きなおす</MotionButton>
   );
   const revealButton = (
-    <MotionButton variant="primary" onClick={handleReveal} disabled={!canReveal} aria-disabled={!canReveal || undefined} data-testid="test-reveal" className={`w-full ${isStacked ? 'py-3 [@media(max-height:699px)]:py-2 text-xl' : 'py-5 md:py-8 text-xl md:text-3xl'} font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] ${canReveal ? 'animate-pulse' : ''}`}><Eye size={28} /> こたえあわせ</MotionButton>
+    <MotionButton variant="primary" onClick={handleReveal} disabled={!canReveal} aria-disabled={!canReveal || undefined} data-testid="test-reveal" className={`w-full ${isStacked ? 'py-3 [@media(max-height:739px)]:py-2 text-xl' : 'py-5 md:py-8 text-xl md:text-3xl'} font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] ${canReveal ? 'animate-pulse' : ''}`}><Eye size={28} /> こたえあわせ</MotionButton>
   );
   // 高さの下限は style で置く（index.css の button の 44px が、min-h のユーティリティより強いため）
   const writingActions = isStacked ? (
@@ -441,7 +448,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   );
 
   const action = (
-    <div className={`flex flex-col ${isStacked ? 'gap-1.5 [@media(max-height:699px)]:gap-1 sm:gap-2' : 'gap-2 md:gap-3'}`}>
+    <div className={`flex flex-col ${isStacked ? 'gap-1.5 [@media(max-height:739px)]:gap-1 sm:gap-2' : 'gap-2 md:gap-3'}`}>
       {!showAnswer
         ? writingActions
         : <div className="flex flex-col gap-2 md:gap-3 animate-in slide-in-from-bottom-2">{view ? judgedActions : selfReportActions}</div>}

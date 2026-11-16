@@ -37,11 +37,12 @@ const ModeLayout = ({ mainContent, tabsContent, infoContent, actionContent, isSt
     <div className={isStacked ? 'flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar gap-3 py-2' : 'contents'}>
       <div
         className={isStacked
-          // 背の低い画面（620px 未満）では、キャンバスの大きさの決め方（learning-viewport.js の 42%）に
-          // 枠の高さも合わせる。以前は枠だけ 50dvh のままで、上下に 35px ずつ余白ができ、
-          // そのぶん下のボタンにキャンバスが隠れていた。下限の 242px は、キャンバスの下限 220px に
-          // 枠のパディングと枠線（22px）を足したもの（これを割るとキャンバスが正方形でなくなる）。
-          ? 'bg-[var(--bg)] rounded-[16px] border-[3px] border-[var(--text)] flex items-center justify-center overflow-hidden p-2 shadow-inner relative shrink-0 mx-auto w-full h-[min(50dvh,640px)] [@media(max-height:619px)]:h-[42dvh] min-h-[220px] [@media(max-height:619px)]:min-h-[242px] max-h-[640px]'
+          // 枠の高さは、キャンバスの大きさの決め方（learning-viewport.js）と同じ式にする:
+          // 「画面の半分」と「上のタブと下のボタンを引いた残り（100dvh - STACKED_RESERVE）」の小さいほう。
+          // 片方だけを変えると、枠よりキャンバスが大きくなって正方形でなくなるか、
+          // 枠だけが大きくなって、下のボタンにキャンバスが隠れる。
+          // 下限の 242px は、キャンバスの下限 220px に枠のパディングと枠線（22px）を足したもの。
+          ? 'bg-[var(--bg)] rounded-[16px] border-[3px] border-[var(--text)] flex items-center justify-center overflow-hidden p-2 shadow-inner relative shrink-0 mx-auto w-full h-[min(50dvh,640px,calc(100dvh_-_348px))] min-h-[242px] max-h-[640px]'
           : 'flex-1 bg-[var(--bg)] rounded-[20px] border-[4px] border-[var(--text)] flex items-center justify-center overflow-auto p-2 lg:p-3 shadow-inner relative min-h-0'}
       >
         {mainContent}
