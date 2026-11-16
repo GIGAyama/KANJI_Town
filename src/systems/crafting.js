@@ -236,6 +236,19 @@ const RESULT_TO_TOWN_ITEM = {
   bus_stop: 't_bus_stop',
   vending_machine: 't_vending_machine',
   trash_can: 't_trash_can',
+  // 2026-11 に足したもの
+  maple: 't_maple',
+  ginkgo: 't_ginkgo',
+  palm: 't_palm',
+  sunflower: 't_sunflower',
+  bush: 't_bush',
+  paddy: 't_paddy',
+  field: 't_field',
+  stone_path: 't_stone_path',
+  beach: 't_beach',
+  scarecrow: 't_scarecrow',
+  koinobori: 't_koinobori',
+  signal: 't_signal',
 };
 
 export function getResultTownItemId(resultType) {

@@ -22,12 +22,18 @@ const VIEW_RANGE_MARGIN = 4;
  * 画面に入るマスの範囲（整数 4 つ）を返す。
  * ドラッグ中は位置が 1px ずつ変わるが、範囲は VIEW_RANGE_STEP マスの境目を
  * またぐまで同じ値を返すので、全マスの作り直しが起きない。
+ *
+ * 町のレイヤーは「枠の横のまん中」を原点に置いてある（left: 50%）。画面に見えているのは、
+ * 横は 原点の左右へ 枠の幅の半分ずつ、たては 原点から下へ 枠の高さの分。
+ * ⚠️ 以前は横を「原点から右へ 枠の幅の分」として計算していたので、窓が 枠の幅の半分だけ右へ
+ *    ずれていた。横長の画面で町を小さくして見ると、左上と左下の角で 地面と建物が ななめに
+ *    切れて消え、右がわでは 画面の外のマスを よぶんに作っていた。
  */
 export function computeViewRange({ offsetX, offsetY, zoom, width, height }) {
   const z = zoom > 0 ? zoom : 1;
-  const vl = -offsetX / z - TILE_W;
+  const vl = (-offsetX - width / 2) / z - TILE_W;
   const vt = -offsetY / z - 100;
-  const vr = (-offsetX + width) / z + TILE_W;
+  const vr = (-offsetX + width / 2) / z + TILE_W;
   const vb = (-offsetY + height) / z + 100;
   const corners = [fromIso(vl, vt), fromIso(vr, vt), fromIso(vl, vb), fromIso(vr, vb)];
   const xs = corners.map((c) => c.x);
@@ -42,40 +48,54 @@ export function computeViewRange({ offsetX, offsetY, zoom, width, height }) {
   };
 }
 
-/** 探索済み（霧が晴れている）マスか */
+/** 探索済み（島として見えている）マスか */
 export const isExplored = (x, y, exploredRadius) => Math.max(Math.abs(x - C), Math.abs(y - C)) <= exploredRadius;
 
+/** 拡大率の下限と上限 */
+export const ZOOM_MIN = 0.25;
+export const ZOOM_MAX = 2.5;
+export const clampZoom = (zoom) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+
 /**
- * 霧を描く SVG 1 枚の置き場所（町レイヤーの座標）。マップ全体（GRID_SIZE × GRID_SIZE マス）を覆う。
- * 霧はマスごとに div と svg を作らず、この 1 枚の中にひし形を並べる。
+ * 画面の 1 点（anchorX, anchorY。町の枠の左上からの px）を動かさずに拡大率を変えたときの、
+ * 町のレイヤーの位置を返す。
+ *
+ * 町のレイヤーは「枠の横のまん中」を原点に置き（left: 50%）、translate(offset) のあとに
+ * 左上を基点にして scale(zoom) している。拡大率だけを変えると、町は原点（マップの
+ * いちばん上の頂点）から遠ざかる向きへ動くので、大きくするたびに町が画面の下へ流れて
+ * 見えなくなっていた。見ている場所を保つには、位置もいっしょに動かす。
+ * @param {{ offsetX: number, offsetY: number, zoom: number }} view いまの位置と拡大率
+ * @param {number} nextZoom 変えたあとの拡大率
+ * @param {number} width 町の枠の幅（px）
  */
-export function fogFieldBounds() {
-  const width = GRID_SIZE * TILE_W;
-  const height = GRID_SIZE * TILE_H;
-  // マス (0, GRID_SIZE-1) の左の頂点が x の最小（= -width/2）、マス (0,0) の上の頂点が y の最小（= 0）
-  return { left: -width / 2, top: 0, width, height };
+export function zoomAround({ offsetX, offsetY, zoom }, nextZoom, anchorX, anchorY, width) {
+  const z = zoom > 0 ? zoom : 1;
+  const mapX = (anchorX - width / 2 - offsetX) / z;
+  const mapY = (anchorY - offsetY) / z;
+  return {
+    zoom: nextZoom,
+    offsetX: anchorX - width / 2 - mapX * nextZoom,
+    offsetY: anchorY - mapY * nextZoom,
+  };
 }
 
-/** 探索範囲のすぐ外の 1 周か（ここだけは霧を 1 マスずつ描く） */
-export const isFogRing = (x, y, exploredRadius) => Math.max(Math.abs(x - C), Math.abs(y - C)) === exploredRadius + 1;
-
 /**
- * 大きな建物（size を持つもの）の絵は、足もとのマスより手前へはみ出す。霧に接している
- * ところでは、これまで手前の霧のマスがその絵の端を隠していたので、まわりの霧のマスも
- * 奥行き（z-index）つきで 1 マスずつ描く。そのマスの "x,y" を返す。
- * @param {{x:number,y:number,w:number,h:number}[]} anchors 大きな建物の左上のマスと大きさ
+ * 町がはじめて出るときの拡大率と位置（探索範囲の島が、枠にちょうど収まるように）。
+ * @param {{ width: number, height: number, exploredRadius: number, isEditing?: boolean }} frame
  */
-export function buildLayeredFogKeys(anchors, exploredRadius) {
-  const keys = new Set();
-  for (const { x, y, w, h } of anchors) {
-    for (let fy = y - 2; fy <= y + h + 1; fy++) {
-      for (let fx = x - 2; fx <= x + w + 1; fx++) {
-        if (fx < 0 || fy < 0 || fx >= GRID_SIZE || fy >= GRID_SIZE) continue;
-        if (!isExplored(fx, fy, exploredRadius)) keys.add(`${fx},${fy}`);
-      }
-    }
-  }
-  return keys;
+export function fitTownView({ width, height, exploredRadius, isEditing = false }) {
+  const R = exploredRadius || 3;
+  // 島の幅と高さ。高さには、建物の背・手前の がけ・その下の雲の分を足す
+  const islandW = (2 * R + 2) * TILE_W;
+  const islandH = (2 * R + 2) * TILE_H + 130;
+  // まわりの余白。まちづくりでは上と下のボタンが重なるので広めにとる。
+  // せまい画面（スマホ）では、余白が広すぎると町が豆つぶになるので、枠の大きさに合わせて減らす
+  const padX = isEditing ? Math.min(110, width * 0.1) : Math.min(28, width * 0.05);
+  const padY = isEditing ? Math.min(110, height * 0.14) : Math.min(28, height * 0.06);
+  const zoom = Math.min(1.8, Math.max(ZOOM_MIN, Math.min((width - padX * 2) / islandW, (height - padY * 2) / islandH)));
+  // 島のまん中（中心のマスのまん中）より少し下を、枠のまん中に合わせる
+  const centerY = toIsoY(C, C) + TILE_H / 2 + 10;
+  return { zoom, offsetX: 0, offsetY: height / 2 - centerY * zoom + (isEditing ? -36 : 0) };
 }
 
 /** 住民の重なり順（奥行き）。マスの地面（depth）・平面（+10）・建物（+140）と同じものさし */

@@ -7,6 +7,8 @@ import {
   patchHistory,
   buildMegaIndex,
   applyUpgrade,
+  canPlaceAt,
+  releaseHiddenItems,
 } from '../src/systems/town-editing.js';
 
 const ITEMS = new Map([
@@ -147,4 +149,61 @@ test('強化: 道の上に乗せた建物は、上に乗せられる形なら置
   assert.equal(toBig.townMap['3,3:top'], undefined);
   assert.equal(toBig.townMap['1,1'], 't_road', '下の道は残る');
   assert.deepEqual(reconcile(toBig), toBig.townItems);
+});
+
+test('大きな建物の足もと（地図には更地と書いてあるマス）には、何も置けない', () => {
+  const map = { '5,5': 't_temple', '6,5': 't_cleared', '5,6': 't_cleared', '6,6': 't_cleared', '7,5': 't_cleared', '7,6': 't_weed', '8,5': 't_roughland', '8,6': 't_cleared' };
+  const index = buildMegaIndex(map, ITEMS);
+  assert.equal(canPlaceAt(map, index, 6, 6), false, '足もとの右下のマス');
+  assert.equal(canPlaceAt(map, index, 5, 5), false, '左上のマス（建物の id が書いてある）');
+  assert.equal(canPlaceAt(map, index, 7, 5), true, 'となりの更地');
+  assert.equal(canPlaceAt(map, index, 7, 6), true, 'ざっそうの上には置ける');
+  assert.equal(canPlaceAt(map, index, 8, 5), false, '開拓していない土地');
+  // 2×1 の建物: 足もとに かかるなら置けない
+  assert.equal(canPlaceAt(map, index, 6, 6, 2, 1), false);
+  assert.equal(canPlaceAt(map, index, 7, 6, 2, 1), true);
+  assert.equal(canPlaceAt(map, index, 7, 5, 2, 1), false, '右のマスが荒れ地');
+  // マップの外へ はみ出す場所には置けない
+  assert.equal(canPlaceAt({ '49,49': 't_cleared' }, new Map(), 49, 49, 2, 1), false);
+});
+
+test('大きな建物の足もとに かくれていたものは、地図から外す（もちものに戻る）', () => {
+  const map = {
+    '5,5': 't_temple', '6,5': 't_house1', '5,6': 't_cleared', '6,6': 't_cleared', '6,6:top': 't_bench',
+    '9,9': 't_house1', '9,10': 't_road', '9,10:top': 't_bench',
+  };
+  const { map: next, freed } = releaseHiddenItems(map, ITEMS);
+  assert.deepEqual([...freed].sort(), ['t_bench', 't_house1']);
+  assert.equal(next['6,5'], 't_cleared');
+  assert.equal(next['6,6:top'], undefined);
+  assert.equal(next['5,5'], 't_temple', '大きな建物そのものは残る');
+  assert.equal(next['9,9'], 't_house1', 'ふつうに置いたものは残る');
+  assert.equal(next['9,10:top'], 't_bench', '道の上に乗せたものは残る');
+  assert.notEqual(next, map, '元の地図は書きかえない');
+  assert.equal(map['6,5'], 't_house1');
+});
+
+test('大きな建物どうしが重なっていたら、あとの建物を外す。重なりが無ければ地図はそのまま', () => {
+  // (5,5) のお寺の足もと (6,6) に、もう 1 つのお寺の左上がある
+  const map = { '5,5': 't_temple', '6,5': 't_cleared', '5,6': 't_cleared', '6,6': 't_temple', '7,6': 't_cleared', '6,7': 't_cleared', '7,7': 't_cleared' };
+  const { map: next, freed } = releaseHiddenItems(map, ITEMS);
+  assert.deepEqual(freed, ['t_temple']);
+  assert.equal(next['5,5'], 't_temple');
+  assert.equal(next['6,6'], 't_cleared');
+
+  const clean = { '5,5': 't_temple', '6,5': 't_cleared', '5,6': 't_cleared', '6,6': 't_cleared', '9,9': 't_house1' };
+  const same = releaseHiddenItems(clean, ITEMS);
+  assert.deepEqual(same.freed, []);
+  assert.equal(same.map, clean, '何も外さないときは同じ地図を返す');
+});
+
+test('強化: 置きかえ先が、ほかの大きな建物の足もとに重なるなら置きかえない', () => {
+  // 小さな家 (4,5) を 2×1 の大きな家にすると (5,5) に かかる。そこは お寺の足もと
+  const townMap = { '4,5': 't_house1', '5,5': 't_cleared', '5,4': 't_temple', '6,4': 't_cleared', '6,5': 't_cleared' };
+  const r = applyUpgrade({ townMap, townItems: { t_house1: 1 } },
+    { requires: 't_house1', quantity: 1, resultItemId: 't_house2', resultAmount: 1 }, ITEMS);
+  assert.equal(r.replacedOnMap, 0);
+  assert.equal(r.clearedOnMap, 1);
+  assert.equal(r.townMap['4,5'], 't_cleared');
+  assert.equal(r.townItems.t_house2, 1, '上位の建物はもちものに入る');
 });

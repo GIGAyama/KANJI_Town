@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { Suspense, useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, Coins, Eraser, Undo2, ArrowLeft, Lock, Heart, Package, Hammer, Users, Sparkles, ArrowUpCircle, Crown, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { TOWN_ITEMS, TOWN_ITEM_MAP } from '../../data/town-items';
+import { ItemArt } from '../../data/town-art';
 import { MATERIALS } from '../../data/materials';
-import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, BUILDING_SETS, getActiveSets } from '../../data/recipes';
+import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, DECORATION_RECIPES } from '../../data/recipes';
 import { OCCUPATIONS } from '../../data/residents';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN, C } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
@@ -14,12 +15,11 @@ import { canCraft, craft, getResultTownItemId, applyOccupationDiscount } from '.
 import { getCraftBonuses } from '../../data/residents';
 import { F } from '../ui/FormatKun';
 import { getMinLevelForGrade } from '../../utils/level-system';
-import { applyUpgrade, buildMegaIndex, countMissionBuildings, countPlacedItems, patchHistory, trackPlacementGain } from '../../systems/town-editing';
+import { applyUpgrade, buildMegaIndex, canPlaceAt, countMissionBuildings, countPlacedItems, patchHistory, releaseHiddenItems, trackPlacementGain } from '../../systems/town-editing';
 
 const TIER_COLORS = ['', '#64748b', '#3b82f6', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
 // --- パーティクルエフェクト ---
-const DUST_EMOJIS = ['💨', '🌫️', '✨'];
 const CONFETTI_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6'];
 const SPARKLE_EMOJIS = ['✨', '🌟', '⭐', '💫'];
 
@@ -46,8 +46,12 @@ const ParticleOverlay = ({ particles, type }) => (
 const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [filterType, setFilterType] = useState('all');
-  const [localMap, setLocalMap] = useState({ ...(stats.townMap || {}) });
-  const [history, setHistory] = useState([{ ...(stats.townMap || {}) }]);
+  // 大きな建物の足もとに かくれているもの（以前の不具合で置けてしまったもの）は、開いたときに
+  // 地図から外す。持っている数は変わらないので、もちものに戻って もう一度置ける
+  const [released] = useState(() => releaseHiddenItems(stats.townMap || {}, TOWN_ITEM_MAP));
+  const [localMap, setLocalMap] = useState({ ...released.map });
+  const [history, setHistory] = useState([{ ...released.map }]);
+  const [notice, setNotice] = useState(null);
   const [historyIdx, setHistoryIdx] = useState(0);
   const [placementError, setPlacementError] = useState(null);
   // Side panel tabs: items (default), craft, residents
@@ -59,19 +63,16 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
   // Resident state
   const [expandedOcc, setExpandedOcc] = useState(null);
   // パーティクルエフェクト
-  const [dustParticles, setDustParticles] = useState([]);
   const [confettiParticles, setConfettiParticles] = useState([]);
 
-  const spawnDust = () => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2 - 50;
-    const ps = Array.from({ length: 8 }, (_, i) => ({
-      id: Date.now() + i, x: cx, y: cy,
-      dx: (Math.random() - 0.5) * 120, dy: -Math.random() * 80 - 20,
-      delay: Math.random() * 0.2, emoji: DUST_EMOJIS[i % DUST_EMOJIS.length],
-    }));
-    setDustParticles(ps);
-    setTimeout(() => setDustParticles([]), 1200);
+  // マスの上の演出（開拓の土けむり・置いたときの きらめき）。町マップが、そのマスの上に描く
+  const [cellEffect, setCellEffect] = useState(null);
+  const effectTimer = useRef(0);
+  useEffect(() => () => clearTimeout(effectTimer.current), []);
+  const showCellEffect = (effect) => {
+    setCellEffect({ id: Date.now(), ...effect });
+    clearTimeout(effectTimer.current);
+    effectTimer.current = setTimeout(() => setCellEffect(null), 1300);
   };
 
   const spawnConfetti = () => {
@@ -124,6 +125,15 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     if (onPlace) for (let i = 0; i < gained; i++) onPlace();
   };
 
+  // かくれていたものを戻したときは、その地図を保存し、何が起きたかを知らせる（開いたときに 1 回だけ）
+  useEffect(() => {
+    if (released.freed.length === 0) return undefined;
+    persistMap(released.map);
+    setNotice(`たてものの 下に かくれていた ものを、もちものに もどしました（${released.freed.length}こ）`);
+    const timer = setTimeout(() => setNotice(null), 7000);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** 地図を変えたら、表示・もとに戻す履歴・保存・ミッションをまとめて進める */
   const commitMap = (newMap, { permanentPatch, statsPatch } = {}) => {
     setLocalMap(newMap);
@@ -160,15 +170,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     [availableItems, filterType],
   );
 
-  const canPlaceMultiTile = (x, y, w, h) => {
-    for (let dy = 0; dy < h; dy++) {
-      for (let dx = 0; dx < w; dx++) {
-        const tile = localMap[`${x + dx},${y + dy}`];
-        if (tile !== 't_cleared' && tile !== 't_weed') return false;
-      }
-    }
-    return true;
-  };
+  const canPlaceMultiTile = (x, y, w, h) => canPlaceAt(localMap, megaIndex, x, y, w, h);
 
   const findMegaAnchor = (x, y) => megaIndex.get(`${x},${y}`) || null;
 
@@ -189,7 +191,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       const newMap = { ...localMap, [key]: 't_cleared' };
       // 開拓はコインを払うので、もとに戻すで荒れ地へ戻らないよう履歴にも書きこむ
       commitMap(newMap, { permanentPatch: { [key]: 't_cleared' }, statsPatch: (s) => ({ coins: (s.coins || 0) - cost }) });
-      audioCtrl.playSE('place'); spawnDust(); return;
+      audioCtrl.playSE('place'); showCellEffect({ x, y, kind: 'dust', label: `-${cost}` }); return;
     }
 
     if (selectedItem === 'eraser') {
@@ -204,6 +206,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         }
         commitMap(newMap);
         audioCtrl.playSE('click');
+        showCellEffect({ x: ax, y: ay, w: item.size.w, h: item.size.h, kind: 'poof' });
         return;
       }
 
@@ -217,11 +220,28 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         }
         commitMap(newMap);
         audioCtrl.playSE('click');
+        showCellEffect({ x, y, kind: 'poof' });
       }
       return;
     }
 
     if (!selectedItem) {
+      // 大きな建物は、足もとのどのマスを押しても持ち上げられる。
+      // 以前は左上のマス（建物の絵の奥にかくれる）を押したときだけだった
+      const megaAnchor = findMegaAnchor(x, y);
+      if (megaAnchor) {
+        const { ax, ay, item } = megaAnchor;
+        const newMap = { ...localMap };
+        for (let dy = 0; dy < item.size.h; dy++) {
+          for (let dx = 0; dx < item.size.w; dx++) {
+            newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
+          }
+        }
+        commitMap(newMap);
+        setSelectedItem(item.id);
+        audioCtrl.playSE('click');
+        return;
+      }
       if (currentTile && currentTile !== 't_cleared' && currentTile !== 't_weed') {
         const itemDef = TOWN_ITEM_MAP.get(currentTile);
         if (itemDef && itemDef.type !== 'terrain') {
@@ -231,20 +251,6 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             delete newMap[`${key}:top`];
             commitMap(newMap);
             setSelectedItem(topItemId);
-            audioCtrl.playSE('click');
-            return;
-          }
-          const megaAnchor = findMegaAnchor(x, y);
-          if (megaAnchor) {
-            const { anchorKey, ax, ay, item } = megaAnchor;
-            const newMap = { ...localMap };
-            for (let dy = 0; dy < item.size.h; dy++) {
-              for (let dx = 0; dx < item.size.w; dx++) {
-                newMap[`${ax + dx},${ay + dy}`] = 't_cleared';
-              }
-            }
-            commitMap(newMap);
-            setSelectedItem(item.id);
             audioCtrl.playSE('click');
             return;
           }
@@ -258,6 +264,13 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     }
 
     let targetKey = key;
+
+    // 大きな建物の足もと（左上以外のマス）。地図には更地と書いてあるが、置けない
+    if (megaIndex.has(key) && megaIndex.get(key).anchorKey !== key) {
+      audioCtrl.playSE('stamp_bad');
+      showError('たてものの 上には おけません');
+      return;
+    }
 
     if (currentTile !== 't_cleared' && currentTile !== 't_weed') {
       const currentDef = TOWN_ITEM_MAP.get(currentTile);
@@ -304,11 +317,44 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
         }
       }
       commitMap(newMap); audioCtrl.playSE('place');
+      showCellEffect({ x, y, w, h, kind: 'place' });
       return;
     }
 
     const newMap = { ...localMap, [targetKey]: selectedItem };
     commitMap(newMap); audioCtrl.playSE('place');
+    showCellEffect({ x, y, kind: 'place' });
+  };
+
+  /**
+   * 押している（マウスなら指している）マスに出す目じるし。
+   * 置く前に、足もとの範囲と 置けるかどうか（緑 = 置ける・赤 = 置けない）が見える。
+   * 以前は、大きな建物を置けない場所を押してから「2x2マスの更地が必要」と出ていた。
+   */
+  const getCellHint = (x, y) => {
+    const dist = Math.max(Math.abs(x - C), Math.abs(y - C));
+    if (dist > (stats.exploredRadius || 3)) return false;
+    const key = `${x},${y}`;
+    const tile = localMap[key];
+    if (tile === 't_deadland') return { tone: 'bad' };
+    if (CULTIVATABLE_TERRAIN.has(tile)) {
+      const cost = TOWN_ITEM_MAP.get(tile)?.cultivateCost || 5;
+      return { tone: (stats.coins || 0) >= cost ? 'cost' : 'bad', label: `開拓 -${cost}💰` };
+    }
+    const mega = megaIndex.get(key);
+    const here = mega ? { x: mega.ax, y: mega.ay, w: mega.item.size.w, h: mega.item.size.h } : null;
+    const tileDef = TOWN_ITEM_MAP.get(tile);
+    const hasItem = Boolean(mega) || Boolean(tileDef && tileDef.type !== 'terrain');
+    if (selectedItem === 'eraser') return hasItem ? { ...here, tone: 'bad' } : null;
+    if (!selectedItem) return hasItem ? { ...here, tone: 'plain' } : null;
+    const selDef = TOWN_ITEM_MAP.get(selectedItem);
+    if (!selDef) return null;
+    if (selDef.size) {
+      const { w, h } = selDef.size;
+      return { w, h, tone: canPlaceMultiTile(x, y, w, h) ? 'good' : 'bad' };
+    }
+    const canStack = Boolean(tileDef?.isFlat && !selDef.isFlat && !localMap[`${key}:top`]);
+    return { tone: canPlaceAt(localMap, megaIndex, x, y) || canStack ? 'good' : 'bad' };
   };
 
   // 配置はそのたびに保存してある。「保存」は、書き出しを待たずに確定してホームへ戻る
@@ -337,6 +383,8 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       case 'upgrade': base = UPGRADE_RECIPES; break;
       case 'mega': base = MEGA_RECIPES; break;
       case 'rare': base = RARE_RECIPES; break;
+      // かざり（噴水・乗り物・ベンチなど）。レシピは前からあったが、ここに分類が無くて作れなかった
+      case 'decoration': base = DECORATION_RECIPES; break;
       default: base = MATERIAL_RECIPES;
     }
     if (filterTier > 0) return base.filter(r => r.tier === filterTier);
@@ -442,11 +490,10 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
           画面全体が白飛びすることがある */}
       {/* === フルスクリーンマップ === */}
       <div className="absolute inset-0" style={{ bottom: 72 }}>
-        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} />
+        <DraggableTownMap mapData={localMap} isDanger={false} isEditing={true} onCellTap={handleCellTap} reviewCount={0} villagers={stats.villagers || []} exploredRadius={stats.exploredRadius || 3} getCellHint={getCellHint} effect={cellEffect} />
       </div>
 
       {/* === パーティクルエフェクト === */}
-      <ParticleOverlay particles={dustParticles} type="dust" />
       <ParticleOverlay particles={confettiParticles} type="confetti" />
 
       {/* === ヘッダーバー（オーバーレイ） === */}
@@ -470,6 +517,13 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
       {placementError && (
         <div className="absolute top-28 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 whitespace-nowrap animate-bounce">
           {placementError}
+        </div>
+      )}
+
+      {/* === お知らせ（かくれていたものを もちものに戻した、など） === */}
+      {notice && (
+        <div role="status" className="absolute top-28 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-lg z-50 max-w-[92%] text-center">
+          {notice}
         </div>
       )}
 
@@ -527,6 +581,9 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
               </div>
               {/* シートコンテンツ */}
               <div className="overflow-y-auto no-scrollbar px-3 pb-4" style={{ maxHeight: 'calc(55vh - 80px)' }}>
+                {/* アイテムの絵（lazy）は、はじめて描くときに 1 回 待ちになる。ここで受けて、
+                    町マップごと「よみこみ中」に切りかわらないようにする */}
+                <Suspense fallback={<div className="py-6 text-center text-xs font-bold text-[var(--text)] opacity-50">よみこみ中…</div>}>
                 {dockOpen === 'items' && <ItemsPanel
                   filteredItems={filteredItems} filterType={filterType} setFilterType={setFilterType}
                   selectedItem={selectedItem} setSelectedItem={setSelectedItem}
@@ -547,6 +604,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
                   residentStats={residentStats} dailyPreview={dailyPreview} villagers={villagers}
                   expandedOcc={expandedOcc} setExpandedOcc={setExpandedOcc} playerLevel={playerLevel}
                 />}
+                </Suspense>
               </div>
             </motion.div>
           </>
@@ -598,7 +656,7 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
     {/* Filter tabs */}
     <div className="flex flex-wrap gap-1.5">
       {[
-        { key: 'all', label: 'すべて' }, { key: 'nature', label: <>{F("自然","しぜん")}</> }, { key: 'building', label: <>{F("建物","たてもの")}</> }, { key: 'mega', label: <>{F("大型","おおがた")}</> }, { key: 'rare', label: 'レア' }, { key: 'special', label: <>{F("特別","とくべつ")}</> }
+        { key: 'all', label: 'すべて' }, { key: 'nature', label: <>{F("自然","しぜん")}</> }, { key: 'building', label: <>{F("建物","たてもの")}</> }, { key: 'mega', label: <>{F("大型","おおがた")}</> }, { key: 'decoration', label: 'かざり' }, { key: 'rare', label: 'レア' }, { key: 'special', label: <>{F("特別","とくべつ")}</> }
       ].map(f => (
         <button key={f.key} onClick={() => setFilterType(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap border-2 transition-all ${filterType === f.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>{f.label}</button>
       ))}
@@ -621,10 +679,11 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
             else { audioCtrl.playSE('stamp_bad'); }
           }} className={`flex flex-col items-center gap-0.5 cursor-pointer rounded-xl border-[3px] p-1.5 transition-all select-none ${isGradeLocked ? 'border-gray-400 opacity-50 grayscale' : isSelected ? 'border-[var(--primary)] scale-105 shadow-lg' : 'border-[var(--text)] opacity-80 hover:opacity-100 hover:scale-105'} ${item.bg}`}>
             <div className="w-12 h-12 flex items-center justify-center pointer-events-none relative">
-              <item.svg />
+              <ItemArt item={item} />
               {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
             </div>
-            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate w-full">{item.name}</div>
+            {/* 名前は白い ふだに のせる（鍛冶場・要塞のような こい色の カードでも読めるように） */}
+            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate max-w-full bg-[var(--panel)]/85 rounded px-1">{item.name}</div>
             {item.size && <div className="text-[7px] font-black bg-amber-100 text-amber-700 px-1 rounded-full border border-amber-300">{item.size.w}×{item.size.h}</div>}
             {isGradeLocked
               ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">Lv.{getMinLevelForGrade(item.minGrade)}</div>
@@ -645,6 +704,7 @@ const CRAFT_CATEGORIES = [
   { key: 'building', label: <>{F("建物","たてもの")}</>, icon: '🏠' },
   { key: 'upgrade', label: <>{F("強化","きょうか")}</>, icon: '⬆' },
   { key: 'mega', label: <>{F("大型","おおがた")}</>, icon: '🏰' },
+  { key: 'decoration', label: 'かざり', icon: '🌷' },
   { key: 'rare', label: 'レア', icon: '✨' },
 ];
 
@@ -707,7 +767,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
     </div>
 
     {/* Tier filter */}
-    {(craftCategory === 'building' || craftCategory === 'mega') && (
+    {(craftCategory === 'building' || craftCategory === 'mega' || craftCategory === 'decoration') && (
       <div className="flex flex-wrap gap-1">
         <button onClick={() => { setFilterTier(0); audioCtrl.playSE('click'); }} className={`px-2.5 py-1 rounded-full text-[10px] font-black border-2 transition-all ${filterTier === 0 ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60'}`}>全て</button>
         {[1, 2, 3, 4, 5, 6].map(t => (
@@ -737,7 +797,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
             {/* レシピ情報 */}
             <div className="flex items-center gap-2">
               <div className={`w-10 h-10 shrink-0 rounded-lg border-2 border-[var(--text)] flex items-center justify-center overflow-hidden ${townItem?.bg || 'bg-[var(--bg)]'}`}>
-                {townItem ? <townItem.svg /> : resultMat ? <span className="text-xl">{resultMat.icon}</span> : <span>?</span>}
+                {townItem ? <ItemArt item={townItem} /> : resultMat ? <span className="text-xl">{resultMat.icon}</span> : <span>?</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
