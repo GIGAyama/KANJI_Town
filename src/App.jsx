@@ -24,9 +24,8 @@ import { SESSION, EXP, RARE_DROP, ECONOMY, DEBOUNCE, TEST, READING } from './con
 
 // Data
 import { KANJI_DATA, KANJI_UNLOCK_EXTRA } from './data/kanji-data';
-import { STORY_STAGES } from './data/story-stages';
 import { createVillager, calculateSatisfaction, getSatisfactionLabel, getSatisfactionMultiplier } from './systems/residents';
-import { calculateMaterialDrops } from './systems/crafting';
+import { calculateMaterialDrops } from './systems/material-drops';
 import { getDailyMissions, updateMissionProgress } from './data/daily-missions';
 import { getLoginBonusDay, getLoginBonusReward, applyLoginBonus } from './data/login-bonus';
 import { getTodayString } from './utils/date-utils';
