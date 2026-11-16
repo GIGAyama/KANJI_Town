@@ -535,6 +535,50 @@ export function recommendEvaluation(result) {
 }
 
 /**
+ * 線を、だいたい同じ間隔の点の並びにする（「字の線に重なっているか」を、画の切れ目に関係なく数えるため）。
+ * @param {Array<Array<{x: number, y: number}>>} strokes
+ * @param {number} step 点の間隔
+ */
+function inkPoints(strokes, step) {
+  const points = [];
+  for (const stroke of strokes) {
+    if (stroke.length === 0) continue;
+    points.push(stroke[0]);
+    for (let i = 1; i < stroke.length; i++) {
+      const a = stroke[i - 1];
+      const b = stroke[i];
+      const pieces = Math.max(1, Math.ceil(distanceOf(a, b) / step));
+      for (let k = 1; k <= pieces; k++) points.push({ x: a.x + (b.x - a.x) * k / pieces, y: a.y + (b.y - a.y) * k / pieces });
+    }
+  }
+  return points;
+}
+
+/** from の点のうち、to のどれかの点が radius 以内にあるものの割合 */
+function nearRatio(from, to, radius) {
+  if (from.length === 0 || to.length === 0) return 0;
+  let hit = 0;
+  for (const a of from) {
+    for (const b of to) {
+      if (Math.abs(a.x - b.x) <= radius && Math.abs(a.y - b.y) <= radius && distanceOf(a, b) <= radius) { hit++; break; }
+    }
+  }
+  return hit / from.length;
+}
+
+/**
+ * 「ほとんど書いていない」かどうかを、測った数から決める（読み取れる字かどうかは、呼ぶ側で別に見る）。
+ * @param {{ expectedCount: number, markCount: number, inkRatio: number, inkCoverage: number }} measured
+ * @returns {'ink'|'few'|null} ink: 点・ごく短い線だけ／few: 画がお手本の 1/3 以下で、お手本の線の半分も書けていない
+ */
+export function carelessReasonOf({ expectedCount, markCount, inkRatio, inkCoverage }) {
+  if (inkRatio < JUDGE.CARELESS_MIN_INK_RATIO) return 'ink';
+  // 割り算にすると 1/3 の丸めで境目がずれるので、掛け算で比べる
+  const fewStrokes = expectedCount >= 3 && markCount * JUDGE.CARELESS_FEW_STROKES_DIVISOR <= expectedCount;
+  return fewStrokes && inkCoverage < JUDGE.CARELESS_MAX_INK_COVERAGE ? 'few' : null;
+}
+
+/**
  * 書いた線が「お手本の字として読み取れるか」と「どれだけ書いたか」を測る。
  *
  * gradeStrokes は画数が合わないと採点しない（0点で内訳なし）ので、1画多い・少ないだけの字と、
@@ -543,11 +587,22 @@ export function recommendEvaluation(result) {
  * 「書いた線のどれかと形・位置が合うか」を数える。書く向きが逆でも合うものとして数える
  * （向きや順番のまちがいは、読み取れないこととは別なので）。
  *
+ * てきとう書き（careless）は重いペナルティにつながるので、「ほとんど書いていない」ものだけにする:
+ * - 線の長さの合計が、お手本の1割に満たない（点・ごく短い線だけ）
+ * - 3画以上の字で、書いた画がお手本の 1/3 以下で、しかもお手本の線の半分も書けていない
+ * 以前は画数だけで決めていたので、ペンをはなさずに続けて書いた字（1画に数えられる）や、
+ * タッチがとぎれて画がいくつにも切れた字、手のひらが当たって点が入った字まで、てきとう書きにしていた
+ * （試算で 74〜100%）。いまは「お手本の線のうち、書いた線が近くにある割合」（inkCoverage）を見るので、
+ * 字の形に書けていれば、画の数え方がどうなっていても、てきとう書きにはしない。
+ * でたらめな線をたくさん引いたものは、ほかの字と書きまちがえた字と見分けられないので、
+ * てきとう書きにはしない（「もう1回」になるだけ）。
+ *
  * @param {Array<Array<{x: number, y: number}>>} userStrokes
  * @param {Array<{points: Array}>} strokeData
  * @param {number} [canvasSize]
- * @returns {{ expectedCount: number, actualCount: number, inkRatio: number, sizeRatio: number,
- *   coverage: number, recognized: boolean, careless: boolean, carelessReason: 'few'|'many'|'ink'|null }}
+ * @returns {{ expectedCount: number, actualCount: number, markCount: number, inkRatio: number, sizeRatio: number,
+ *   coverage: number, inkCoverage: number, recognized: boolean, careless: boolean, carelessReason: 'few'|'ink'|null }}
+ *   markCount: 点・ごく短い線をのぞいた画数。inkCoverage: お手本の線のうち、書いた線が近くにある割合
  */
 export function measureAttempt(userStrokes, strokeData, canvasSize = 1) {
   const expected = Array.isArray(strokeData) ? strokeData.map(sanitizeTarget) : [];
@@ -557,21 +612,13 @@ export function measureAttempt(userStrokes, strokeData, canvasSize = 1) {
     .filter(stroke => stroke.length > 0);
   const expectedCount = expected.length;
   const actualCount = user.length;
-  const empty = { expectedCount, actualCount, inkRatio: 0, sizeRatio: 1, coverage: 0, recognized: false, careless: false, carelessReason: null };
-  if (expectedCount === 0) return empty;
+  if (expectedCount === 0) {
+    return { expectedCount, actualCount, markCount: 0, inkRatio: 0, sizeRatio: 1, coverage: 0, inkCoverage: 0, recognized: false, careless: false, carelessReason: null };
+  }
 
   const expectedInk = expected.reduce((sum, target) => sum + pathLength(target.points), 0);
   const userInk = user.reduce((sum, stroke) => sum + pathLength(stroke), 0);
   const inkRatio = expectedInk > 0 ? userInk / expectedInk : 1;
-
-  // ── てきとう書き（書こうとしていない）──
-  // 読み取れるかどうかより先に、「どれだけ書いたか」だけで決める。形は見ない
-  // （形だけを見ると、ほかの字とまちがえて書いた子まで巻きこむ）。
-  let carelessReason = null;
-  // 割り算にすると 1/3 の丸めで境目がずれるので、掛け算で比べる
-  if (expectedCount >= 3 && actualCount * JUDGE.CARELESS_FEW_STROKES_DIVISOR <= expectedCount) carelessReason = 'few';
-  else if (actualCount >= expectedCount * JUDGE.CARELESS_MANY_STROKES_FACTOR + JUDGE.CARELESS_MANY_STROKES_EXTRA) carelessReason = 'many';
-  else if (inkRatio < JUDGE.CARELESS_MIN_INK_RATIO) carelessReason = 'ink';
 
   // ── 字として読み取れるか ──
   const userBounds = boundsOf(user);
@@ -607,12 +654,39 @@ export function measureAttempt(userStrokes, strokeData, canvasSize = 1) {
   const countDiffLimit = Math.max(1, Math.ceil(expectedCount * JUDGE.RECOGNIZED_COUNT_DIFF_RATIO));
   const recognized = coverage >= JUDGE.RECOGNIZED_COVERAGE && Math.abs(actualCount - expectedCount) <= countDiffLimit;
 
+  // ── お手本の線に、どれだけ重なっているか ──
+  // 点・ごく短い線（手のひらが当たったもの）は、画数にも、大きさをそろえる基準にも数えない。
+  const marks = user.filter(stroke => pathLength(stroke) >= JUDGE.NOISE_STROKE_LENGTH);
+  const markCount = marks.length;
+  const markBounds = boundsOf(marks);
+  let inkCoverage = 0;
+  if (expectedBounds && markBounds) {
+    // 点が多すぎて重くならないよう、長い字は間隔を広げる
+    const step = Math.max(JUDGE.INK_POINT_STEP, Math.max(expectedInk, userInk) / JUDGE.INK_POINT_MAX);
+    const modelPoints = inkPoints(expected.map(target => target.points), step);
+    const alignable = markBounds.side > SIZE_EPSILON && expectedBounds.side > SIZE_EPSILON;
+    const markScale = alignable ? expectedBounds.side / markBounds.side : 1;
+    const aligned = inkPoints(marks.map(stroke => stroke.map(p => ({
+      x: expectedBounds.x + (p.x - markBounds.x) * markScale,
+      y: expectedBounds.y + (p.y - markBounds.y) * markScale,
+    }))), step);
+    // 大きさと位置をそろえたときと、書いたままのときの、よく重なるほうを採る（疑わしいときは書いた子の側に立つ）
+    inkCoverage = Math.max(
+      nearRatio(modelPoints, aligned, JUDGE.INK_NEAR_DISTANCE),
+      nearRatio(modelPoints, inkPoints(marks, step), JUDGE.INK_NEAR_DISTANCE),
+    );
+  }
+
+  const carelessReason = carelessReasonOf({ expectedCount, markCount, inkRatio, inkCoverage });
+
   return {
     expectedCount,
     actualCount,
+    markCount,
     inkRatio,
     sizeRatio,
     coverage,
+    inkCoverage,
     recognized,
     // 読み取れる字は、小さく書いただけ・1画多いだけ。てきとう書きとは数えない
     careless: !recognized && carelessReason !== null,
@@ -632,7 +706,8 @@ export function measureAttempt(userStrokes, strokeData, canvasSize = 1) {
  * - retry: 画数がちがう・形が合わない。お手本を見てもう1回。
  *   ただし字として読み取れるもの（1画多い・小さく書いた など）は、同じ字で2回目からは
  *   hard で通す（ゆびがはなれて画が切れるような、子どもには直せない理由で止まらないように）。
- * - careless: ほとんど書いていない・でたらめに線を引いた。もう1回のうえ、ごほうびが減る。
+ * - careless: ほとんど書いていない（点だけ・線を1本引いただけ など）。画面は、答えを見せる前に
+ *   「書きなおす／わからない／このまま こたえあわせ」を確かめ、このまま進んだときだけ重いペナルティを科す。
  * - ungraded: お手本が無く採点できない（このときだけ自己申告にする）。
  *
  * @param {Array} userStrokes

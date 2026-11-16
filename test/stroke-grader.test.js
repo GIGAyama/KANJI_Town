@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Worker } from 'node:worker_threads';
-import { gradeStrokes, isOrderMistake, judgeWriting, measureAttempt, recommendEvaluation } from '../src/systems/strokeGrader.js';
+import { carelessReasonOf, gradeStrokes, isOrderMistake, judgeWriting, measureAttempt, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
 
@@ -427,10 +427,11 @@ test('書き順・線の交わりがちがう字は、点が残っていれば�
 test('線を1本引いただけ・点を打っただけは careless（てきとう書き）で、何回やっても通らない', () => {
   const cases = [
     ['三に線1本', [randomLine({ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.7 })], SAN, 'few'],
-    ['三に点1つ', [dotAt(0.5, 0.5)], SAN, 'few'],
+    ['三に点1つ', [dotAt(0.5, 0.5)], SAN, 'ink'],
     ['三に点3つ', [dotAt(0.3, 0.3), dotAt(0.5, 0.5), dotAt(0.7, 0.7)], SAN, 'ink'],
     ['一に点1つ', [dotAt(0.8, 0.8)], ICHI, 'ink'],
-    ['三に線を12本', Array.from({ length: 12 }, (_, i) => randomLine({ x: 0.1, y: 0.1 + i * 0.07 }, { x: 0.9, y: 0.12 + i * 0.07 })), SAN, 'many'],
+    // 点を足して画数だけを合わせても、点は画に数えない
+    ['三に線1本と点2つ', [randomLine({ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.7 }), dotAt(0.3, 0.8), dotAt(0.7, 0.2)], SAN, 'few'],
   ];
   for (const [label, strokes, model, reason] of cases) {
     for (const previousFails of [0, 1, 2]) {
@@ -500,13 +501,64 @@ test('とちゅうまで書いた字（半分より多い）は、てきとう�
 });
 
 test('「画数の 1/3 以下」の境目は、どの画数でも同じに決まる', () => {
-  const lines = (n) => Array.from({ length: n }, (_, k) => expectedStroke({ x: 0.1, y: 0.05 + k * (0.9 / n) }, { x: 0.9, y: 0.05 + k * (0.9 / n) }, 'tome'));
+  // お手本の線の半分も書けていない（inkCoverage 0.3）とき、画数の境目だけで決まる
   for (let expected = 3; expected <= 24; expected++) {
-    const model = lines(expected);
     const few = Math.floor(expected / 3);
-    const written = (count) => model.slice(0, count).map(s => userStroke(s.s, s.e));
-    assert.equal(measureAttempt(written(few), model, CANVAS).carelessReason, 'few', `${expected}画に${few}画`);
-    assert.equal(measureAttempt(written(few + 1), model, CANVAS).carelessReason, null, `${expected}画に${few + 1}画`);
+    const measured = (markCount) => ({ expectedCount: expected, markCount, inkRatio: 0.3, inkCoverage: 0.3 });
+    assert.equal(carelessReasonOf(measured(few)), 'few', `${expected}画に${few}画`);
+    assert.equal(carelessReasonOf(measured(few + 1)), null, `${expected}画に${few + 1}画`);
+  }
+  // 2画までの字は、画数では決めない
+  assert.equal(carelessReasonOf({ expectedCount: 2, markCount: 0, inkRatio: 0.3, inkCoverage: 0 }), null);
+});
+
+test('画が少なくても、お手本の線の半分に重なっていれば、てきとう書きにしない', () => {
+  const base = { expectedCount: 9, markCount: 1, inkRatio: 1 };
+  assert.equal(carelessReasonOf({ ...base, inkCoverage: 0.49 }), 'few');
+  assert.equal(carelessReasonOf({ ...base, inkCoverage: 0.5 }), null);
+  // 線の長さがお手本の1割に満たないものは、重なりに関係なく てきとう書き（点・ごく短い線だけ）
+  assert.equal(carelessReasonOf({ ...base, inkRatio: 0.09, inkCoverage: 1 }), 'ink');
+  assert.equal(carelessReasonOf({ ...base, inkRatio: 0.1, inkCoverage: 1 }), null);
+});
+
+// 重いペナルティにつながるので、字を書こうとした子を てきとう書きにしないことを確かめる。
+// 以前は画数だけで決めていたので、下の4つはどれも てきとう書きになっていた。
+test('ペンをはなさずに続けて書いた字（1画に数えられる）は、てきとう書きにしない', () => {
+  const joined = [sanUser().flat()];
+  const attempt = measureAttempt(joined, SAN, CANVAS);
+  assert.equal(attempt.markCount, 1);
+  assert.ok(attempt.inkCoverage >= 0.9, `inkCoverage ${attempt.inkCoverage}`);
+  assert.equal(attempt.careless, false);
+  assert.equal(judgeWriting(joined, SAN, CANVAS).verdict, 'retry');
+});
+
+test('タッチがとぎれて画がいくつにも切れた字は、てきとう書きにしない', () => {
+  const pieces = (stroke, n) => Array.from({ length: n }, (_, k) => stroke.slice(Math.floor(stroke.length * k / n), Math.floor(stroke.length * (k + 1) / n) + 1)).filter(part => part.length >= 2);
+  const broken = sanUser().flatMap(stroke => pieces(stroke, 4));
+  assert.ok(broken.length >= 11, `${broken.length}画`);
+  const judged = judgeWriting(broken, SAN, CANVAS);
+  assert.equal(judged.attempt.careless, false);
+  assert.equal(judged.verdict, 'retry');
+});
+
+test('手のひらが当たって点がたくさん入った字は、てきとう書きにしない（点は画にも大きさにも数えない）', () => {
+  const dots = [[0.05, 0.05], [0.95, 0.9], [0.9, 0.1], [0.1, 0.95], [0.5, 0.97], [0.97, 0.5], [0.03, 0.5], [0.5, 0.03]].map(([x, y]) => dotAt(x, y));
+  const judged = judgeWriting([...sanUser(), ...dots], SAN, CANVAS);
+  assert.equal(judged.attempt.actualCount, 11);
+  assert.equal(judged.attempt.markCount, 3);
+  assert.equal(judged.attempt.careless, false);
+  // 小さく書いた字に点が入っても同じ（点で外接枠が広がっても、字の大きさは字の線だけで測る）
+  const tiny = judgeWriting([...sanScaled(0.3), ...dots], SAN, CANVAS);
+  assert.ok(tiny.attempt.inkCoverage >= 0.9, `inkCoverage ${tiny.attempt.inkCoverage}`);
+  assert.equal(tiny.attempt.careless, false);
+});
+
+test('でたらめな線をたくさん引いたものは、てきとう書きにはしない（ほかの字の書きまちがいと見分けられないので、もう1回にする）', () => {
+  const lines = Array.from({ length: 12 }, (_, i) => randomLine({ x: 0.1, y: 0.1 + i * 0.07 }, { x: 0.9, y: 0.12 + i * 0.07 }));
+  for (const previousFails of [0, 1, 2]) {
+    const judged = judgeWriting(lines, SAN, CANVAS, { previousFails });
+    assert.equal(judged.verdict, 'retry', `やり直し ${previousFails} 回`);
+    assert.equal(judged.attempt.careless, false);
   }
 });
 
