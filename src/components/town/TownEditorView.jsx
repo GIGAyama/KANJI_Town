@@ -682,7 +682,8 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
               <ItemArt item={item} />
               {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
             </div>
-            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate w-full">{item.name}</div>
+            {/* 名前は白い ふだに のせる（鍛冶場・要塞のような こい色の カードでも読めるように） */}
+            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate max-w-full bg-[var(--panel)]/85 rounded px-1">{item.name}</div>
             {item.size && <div className="text-[7px] font-black bg-amber-100 text-amber-700 px-1 rounded-full border border-amber-300">{item.size.w}×{item.size.h}</div>}
             {isGradeLocked
               ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">Lv.{getMinLevelForGrade(item.minGrade)}</div>

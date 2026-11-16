@@ -1,5 +1,9 @@
-// 建物の絵（SVG）。ファイル内の見出しごとに src/data/iso-svg/ の下へ分けてある。
+// 町の絵（SVG）。種類ごとに src/data/iso-svg/ の下へ分けてある。
 // town-items.jsx が import('./iso-svg') の 1 か所から読むので、分けても遅延チャンクは 1 本のまま。
+//   terrain・structures : 地形と、平らなアイテムの見本・「小さな家」・橋
+//   nature              : 木・花・岩など（絵は nature-art.js）
+//   buildings           : 建物 69 種（絵は buildings-art.js、部品は kit.js）
+//   special・vehicles・street : 前の絵がらの小さなもの（かざり・のりもの・道ばたのもの）
 import { mountSharedDefs } from './iso-svg/shared.jsx';
 
 // 絵が参照する影・光・グラデーション（url(#…)）を、文書に 1 回だけ置く
@@ -9,11 +13,6 @@ export * from './iso-svg/terrain.jsx';
 export * from './iso-svg/nature.jsx';
 export * from './iso-svg/structures.jsx';
 export * from './iso-svg/buildings.jsx';
-export * from './iso-svg/economy.jsx';
 export * from './iso-svg/special.jsx';
-export * from './iso-svg/commercial.jsx';
-export * from './iso-svg/public.jsx';
-export * from './iso-svg/modern.jsx';
-export * from './iso-svg/leisure.jsx';
 export * from './iso-svg/vehicles.jsx';
 export * from './iso-svg/street.jsx';

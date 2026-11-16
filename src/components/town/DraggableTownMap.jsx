@@ -178,14 +178,15 @@ function nightLightOf(itemId, item) {
   if (!LIT_TYPES.has(item.type) || UNLIT_ITEMS.has(itemId)) return null;
   const fit = itemFit(item);
   const span = (fit.bw + fit.bh) * 20;
-  return { width: Math.max(30, span * 1.5), height: Math.max(22, span * 0.95), lift: 8 + Math.min(item.isoHeight || 20, 40) * 0.28 };
+  // cu・cv: 建物が敷地のまん中から ずれているとき（学校の校舎は敷地の奥、など）の、建物のまん中
+  return { width: Math.max(30, span * 1.5), height: Math.max(22, span * 0.95), lift: 8 + Math.min(item.isoHeight || 20, 40) * 0.28, cu: fit.cu, cv: fit.cv };
 }
 
 const NightLight = memo(({ x, y, w, h, light }) => (
   <div aria-hidden="true" style={{
     position: 'absolute',
-    left: toIsoX(x + w / 2, y + h / 2) - light.width / 2,
-    top: toIsoY(x + w / 2, y + h / 2) - light.lift - light.height / 2,
+    left: toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.width / 2,
+    top: toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift - light.height / 2,
     width: light.width,
     height: light.height,
     backgroundImage: GLOW,

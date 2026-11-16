@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FITTED_ITEM_IDS, itemFit } from '../src/data/town-item-fit.js';
 
-// 建物の絵は 1 枚ずつ、足もとの位置も大きさも ちがう決まりで描いてある。置き方の表
-// （town-item-fit.js）に載せ忘れた大きな建物は、置いたマスからずれて描かれる
+// 町の絵を、置いたマスのどこに・どの大きさで置くかの表（town-item-fit.js）を見る。
+// 表に載せ忘れた大きな建物は、置いたマスからずれて描かれる
 // （以前は全部がそうで、建物を押しても動かせない・手前の建物に めりこむ、の原因だった）。
+// 建物の絵と 表の食いちがい（足もとの大きさ・影）は、buildings-art.test.js が見る。
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const ITEMS = [...read('../src/data/town-items.jsx').matchAll(/^\s*\{ id: '(t_\w+)',(.*)\},?\s*$/gm)].map((m) => {
@@ -48,6 +49,16 @@ test('1 マスのものは大きさを変えず、足もとの位置だけを直
   // 表に無い 1 マスのもの（木・お店など）は、足もとのまん中が (0, -50)
   assert.deepEqual(itemFit(byId.get('t_tree')), { ax: 0, ay: -50, s: 0.32, bw: 0.86, bh: 0.86, flip: false });
   assert.deepEqual(itemFit(null), itemFit(byId.get('t_tree')));
+});
+
+test('柱 1 本の細いもの（信号機・こいのぼり・かかし）は、置く場所は変えず、影だけ細くする', () => {
+  // 表に無いと 足もとが 0.86 マス（木と同じ）になり、柱の下に 木の大きさの影が落ちる
+  const tree = itemFit(byId.get('t_tree'));
+  for (const id of ['t_signal', 't_koinobori', 't_scarecrow']) {
+    const fit = itemFit(byId.get(id));
+    assert.deepEqual([fit.ax, fit.ay, fit.s], [tree.ax, tree.ay, tree.s], `${id} の置く場所`);
+    assert.ok(fit.bw <= 0.3 && fit.bh <= 0.3, `${id} の足もと ${fit.bw}`);
+  }
 });
 
 test('表に無い大きな建物は、足もとが 88% の ひし形の絵として、マスに収まる大きさで置く', () => {

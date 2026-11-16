@@ -78,7 +78,16 @@ test('置き方の表（town-item-fit.js）は、絵の足もとの大きさ・�
     assert.ok(art.base[0] > 0 && art.base[0] <= w && art.base[1] > 0 && art.base[1] <= h, `${name}: 足もとが敷地に収まらない`);
     // 置き方は どの絵も同じ決まり
     const fit = itemFit(ITEMS.get(`t_${name}`));
-    assert.deepEqual(fit, { ax: 0, ay: -50, s: 0.16 * (w + h), bw: art.base[0], bh: art.base[1], flip: false, ownShadow: Boolean(art.shadow) });
+    const expected = { ax: 0, ay: -50, s: 0.16 * (w + h), bw: art.base[0], bh: art.base[1], flip: false, ownShadow: Boolean(art.shadow) };
+    // at: 建物のまん中が敷地のまん中から ずれている絵。影と夜のあかりを、建物の足もとに合わせる
+    if (art.at) {
+      assert.deepEqual([row[3], row[4]], art.at, `${name}: 建物の場所`);
+      assert.ok(art.at[0] > 0 && art.at[0] < w && art.at[1] > 0 && art.at[1] < h, `${name}: 建物の場所が敷地の外`);
+      expected.cu = art.at[0]; expected.cv = art.at[1];
+    } else {
+      assert.ok(row.length <= 3, `${name}: 表にだけ 建物の場所がある`);
+    }
+    assert.deepEqual(fit, expected);
     // 影を絵の中に描く絵は、絵の中に影がある（地面のレイヤーは描かない）
     if (art.shadow === 'own') assert.ok(buildingArt(name, 0).includes('fill="#1e2a3a"'), `${name}: 絵の中に影が無い`);
   }

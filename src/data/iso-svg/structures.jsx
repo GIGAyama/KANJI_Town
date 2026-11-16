@@ -1,9 +1,10 @@
 import React from 'react';
-import { isoPt, iso3, FaceSW, FaceSE } from './shared.jsx';
+import { isoPt, iso3 } from './shared.jsx';
 import { GROUND_ICON_VIEWBOX, paintGroundIcon } from '../../systems/town-ground-paint.js';
 import { HOUSE_PALETTES } from './house-art.js';
 
-// 平面・住宅（道・水路・家・お店・学校など）
+// 平らなアイテムの見本（道・水路・芝生など）と、「小さな家」・橋。
+// お店・学校などの建物の絵は buildings-art.js（部品は kit.js）にある。
 
 // ==========================================
 // 4. Structures Assets
@@ -56,13 +57,13 @@ export const SvgBridge = () => (
         {/* アーチの側面（手前・左面） */}
         <path d={`M ${iso3(30, 96, 2)} C ${iso3(30, 74, 14)} ${iso3(30, 26, 14)} ${iso3(30, 4, 2)}
                  L ${iso3(30, 12, 2)} C ${iso3(30, 30, 10)} ${iso3(30, 70, 10)} ${iso3(30, 88, 2)} Z`}
-          fill="#a8a29e" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+          fill="#a8a29e" stroke="#2b211c" strokeWidth="1.2" strokeLinejoin="round" />
         {/* 桁下のアーチ開口（影） */}
         <path d={`M ${iso3(30, 70, 0)} C ${iso3(30, 62, 7)} ${iso3(30, 38, 7)} ${iso3(30, 30, 0)} Z`} fill="#1e293b" opacity="0.55" />
         {/* 路面（上面） */}
         <path d={`M ${iso3(30, 96, 2)} C ${iso3(30, 74, 14)} ${iso3(30, 26, 14)} ${iso3(30, 4, 2)}
                  L ${iso3(58, 4, 2)} C ${iso3(58, 26, 14)} ${iso3(58, 74, 14)} ${iso3(58, 96, 2)} Z`}
-          fill="#e7e5e4" stroke="#1e293b" strokeWidth="1.2" strokeLinejoin="round" />
+          fill="#e7e5e4" stroke="#2b211c" strokeWidth="1.2" strokeLinejoin="round" />
         {/* 石畳のライン */}
         {[20, 36, 50, 64, 80].map(y => {
           const zz = 2 + 10.5 * Math.sin(Math.PI * (y - 4) / 92);

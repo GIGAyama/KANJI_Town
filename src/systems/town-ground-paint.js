@@ -759,8 +759,8 @@ export function paintChunk(model, cx, cy, options = {}) {
       // 7. 影（左上から光が当たるので、右手前へ落ちる）。大きさは絵の足もと（bw × bh マス）に合わせる
       const cast = castAt(model, x, y);
       if (cast && cast.height > 0) {
-        const gx = x + cast.w / 2;
-        const gy = y + cast.h / 2;
+        const gx = x + cast.w / 2 + (cast.ox || 0);
+        const gy = y + cast.h / 2 + (cast.oy || 0);
         if (cast.round) {
           const rx = Math.max(7, (cast.bw + cast.bh) * 11) + Math.min(cast.height, 40) * 0.1;
           put(shadow, SHADOW_SOFT, gx + 0.1, gy, ell(rx + 2.6, (rx + 2.6) * 0.5));

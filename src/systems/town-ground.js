@@ -86,11 +86,10 @@ const KIND_BY_ITEM = Object.freeze({
  * - NO_SHADOW   : 低くて平らなもの（公園・プール・庭など）。箱の影を落とすと不自然になる
  * - ROUND_SHADOW: 建物でも、足もとが丸い・細いもの（鳥居・井戸など）
  */
-const NO_SHADOW = new Set([
-  't_bridge', 't_garden', 't_zen_garden', 't_pool', 't_park', 't_playground', 't_fence', 't_port',
-  't_mega_harbor_town', 't_airport', 't_stadium', 't_hot_spring', 't_festival_stage',
-]);
-const ROUND_SHADOW = new Set(['t_torii', 't_well', 't_dragon', 't_wall', 't_mine', 't_ferris_wheel', 't_tv_tower', 't_monument', 't_perfect_monument', 't_golden_tower']);
+// ⚠️ 建物（iso-svg/buildings-art.js）のうち、影を絵の中に描くもの・平らなものは、絵の側の
+//    shadow（'own'・'none'）で決まる（town-item-fit.js の ownShadow）。ここに書くのは それ以外。
+const NO_SHADOW = new Set(['t_bridge', 't_garden', 't_zen_garden', 't_playground', 't_fence']);
+const ROUND_SHADOW = new Set(['t_torii', 't_well', 't_dragon', 't_mine', 't_ferris_wheel', 't_tv_tower']);
 
 /** 地面として描くので、建物のレイヤーでは絵を出さない id */
 const GROUND_AND_STANDING = new Set(['t_bridge', 't_cherry_road', 't_weed', 't_palm']);
@@ -115,8 +114,8 @@ const inGrid = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
  *
  * - kind[i]  : 地面の種類の番号
  * - land[i]  : 1 なら地面を描くマス（探索ずみ、または大きな建物の足もと）
- * - casts[i] : 影を落とすもの（{ w, h, bw, bh, height, round }）。大きな建物は左上のマスにだけ入る。
- *              w・h は足もとのマス数、bw・bh は絵の足もとの大きさ（マス）
+ * - casts[i] : 影を落とすもの（{ w, h, bw, bh, height, round, ox?, oy? }）。大きな建物は左上のマスにだけ入る。
+ *              w・h は足もとのマス数、bw・bh は絵の足もとの大きさ（マス）、ox・oy は敷地のまん中からの ずれ
  *
  * 大きな建物（size を持つもの）は、探索範囲の外へ はみ出して置けてしまう。はみ出した
  * 足もとにも地面を描かないと、建物が空に浮いて見えるので land に入れる。
@@ -149,6 +148,8 @@ export function buildGroundModel(map, itemMap, exploredRadius) {
         // 足もとの表（kind を更地にする）に使うので、影を落とさないものも入れておく
         const fit = itemFit(item);
         casts[i] = { w: item.size.w, h: item.size.h, bw: fit.bw, bh: fit.bh, height: NO_SHADOW.has(itemId) || fit.ownShadow ? 0 : (item.isoHeight || 30), round: ROUND_SHADOW.has(itemId) };
+        // 建物が敷地のまん中から ずれているときは、影も そこへ ずらす
+        if (fit.cu !== undefined) { casts[i].ox = fit.cu - item.size.w / 2; casts[i].oy = fit.cv - item.size.h / 2; }
       } else if (item.type !== 'terrain' && !item.isFlat && !NO_SHADOW.has(itemId) && !itemFit(item).ownShadow) {
         const fit = itemFit(item);
         casts[i] = { w: 1, h: 1, bw: fit.bw, bh: fit.bh, height: item.isoHeight || 10, round: item.type === 'nature' || item.type === 'decoration' || ROUND_SHADOW.has(itemId) };
@@ -221,7 +222,7 @@ export function chunkSignature(model, cx, cy) {
   for (let y = y0; y < y0 + CHUNK; y++) {
     for (let x = x0; x < x0 + CHUNK; x++) {
       const cast = castAt(model, x, y);
-      if (cast) sig += `|${x - x0},${y - y0},${cast.w},${cast.h},${cast.bw},${cast.bh},${cast.height},${cast.round ? 1 : 0}`;
+      if (cast) sig += `|${x - x0},${y - y0},${cast.w},${cast.h},${cast.bw},${cast.bh},${cast.height},${cast.round ? 1 : 0},${cast.ox || 0},${cast.oy || 0}`;
     }
   }
   return sig;

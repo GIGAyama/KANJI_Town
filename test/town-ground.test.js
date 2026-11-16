@@ -121,6 +121,7 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   const hospital = castAt(model, C - 4, C + 4);
   assert.deepEqual([hospital.w, hospital.h], [2, 1]);
   assert.ok(hospital.height > 0 && hospital.bw > 1.5 && hospital.bw <= 2, '病院は地面のレイヤーが影を落とす');
+  assert.equal(hospital.ox, undefined, '敷地のまん中に建つ建物は、影を ずらさない');
   const house = castAt(model, C, C);
   assert.ok(house && !house.round && house.height > 0);
   assert.ok(castAt(model, C + 2, C).round, '木の影は丸い');
@@ -133,6 +134,21 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   assert.equal(castle.height, 0);
   assert.equal(castAt(model, C + 1, C + 3), null, '大きな建物の影は、左上のマスにだけ入れる');
   assert.equal(castAt(model, C + 3, C + 2), null, '庭園のような平たいものは影を落とさない');
+});
+
+test('建物が敷地のまん中から ずれているときは、影を建物の足もとへ ずらす', () => {
+  // 温泉宿（2×1）は、宿が敷地の左がわ・おふろが右がわにある
+  const map = filled('t_cleared');
+  map[`${C},${C}`] = 't_hot_spring';
+  const model = buildGroundModel(map, ITEMS, 6);
+  const cast = castAt(model, C, C);
+  assert.ok(cast.height > 0);
+  assert.ok(cast.ox < -0.3 && cast.ox > -0.6, `影の ずれ ${cast.ox}`);
+  // ずれは絵の中身（署名）に入っている: ずれが変われば描きなおす
+  const cx = Math.floor(C / CHUNK); const cy = Math.floor(C / CHUNK);
+  const before = chunkSignature(model, cx, cy);
+  cast.ox = 0;
+  assert.notEqual(chunkSignature(model, cx, cy), before);
 });
 
 test('地面の種類を 1 つずつ・となりあわせで全部描いても、壊れた SVG にならない', () => {
