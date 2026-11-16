@@ -1,5 +1,5 @@
 import React from 'react';
-import { darken, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, Fl, MarketStall } from './shared.jsx';
+import { darken, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, MarketStall } from './shared.jsx';
 
 // 名所・大型（鳥居・お寺・お城・メガ建築・レア建物など）
 
@@ -885,13 +885,12 @@ export const SvgZenGarden = () => (
 );
 
 export const SvgNationalLibrary = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-lg" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.2)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="38" ry="19" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-4 -32,-20 0,-36 32,-20" fill="#cbd5e1" /><polygon points="0,-15 -28,-29 -28,-45 0,-31" fill="#fde68a" /><polygon points="0,-15 28,-29 28,-45 0,-31" fill="#fef08a" /><polygon points="0,-33 -30,-48 0,-60 30,-48" fill="#d6d3d1" /><polygon points="0,-31 -30,-46 -30,-48 0,-33" fill="#94a3b8" /><polygon points="0,-31 30,-46 30,-48 0,-33" fill="#cbd5e1" /><g transform="translate(0, -42)"><polygon points="0,0 -12,-6 -12,-12 0,-6" fill="#d4d4d8" /><polygon points="0,0 12,-6 12,-12 0,-6" fill="#e4e4e7" /><path d="M -12,-12 C -12,-28 12,-28 12,-12" fill="#0f766e" /><polygon points="-2,-27 2,-27 2,-30 -2,-30" fill="#e2e8f0" /><polygon points="-3,-30 3,-30 0,-33" fill="#0f766e" /></g></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.2)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,-4 -32,-20 0,-36 32,-20" fill="#cbd5e1" /><polygon points="0,-15 -28,-29 -28,-45 0,-31" fill="#fde68a" /><polygon points="0,-15 28,-29 28,-45 0,-31" fill="#fef08a" /><polygon points="0,-33 -30,-48 0,-60 30,-48" fill="#d6d3d1" /><polygon points="0,-31 -30,-46 -30,-48 0,-33" fill="#94a3b8" /><polygon points="0,-31 30,-46 30,-48 0,-33" fill="#cbd5e1" /><g transform="translate(0, -42)"><polygon points="0,0 -12,-6 -12,-12 0,-6" fill="#d4d4d8" /><polygon points="0,0 12,-6 12,-12 0,-6" fill="#e4e4e7" /><path d="M -12,-12 C -12,-28 12,-28 12,-12" fill="#0f766e" /><polygon points="-2,-27 2,-27 2,-30 -2,-30" fill="#e2e8f0" /><polygon points="-3,-30 3,-30 0,-33" fill="#0f766e" /></g></g></svg>);
 
 export const SvgWell = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}>
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 50) scale(1.6)">
       {/* 影 */}
-      <ellipse cx="0" cy="22" rx="24" ry="12" fill="#020617" opacity="0.18" filter="url(#soft-shadow)" />
 
       {/* === 井戸の本体（石造り円筒） === */}
       {/* 奥の壁面 */}
@@ -1200,7 +1199,6 @@ export const SvgLibrary = () => (
 export const SvgFountain = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 78) scale(2.4)">
-      <ellipse cx="0" cy="9" rx="21" ry="8.5" fill="#020617" opacity="0.18" />
       {/* 水盤（下段・石の縁） */}
       <path d="M -19,0 A 19,8 0 0 0 19,0 L 19,5 A 19,8 0 0 1 -19,5 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.2" />
       <ellipse cx="0" cy="0" rx="19" ry="8" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1.2" />
@@ -1231,16 +1229,16 @@ export const SvgFountain = () => (
   </svg>
 );
 
-export const SvgPond = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="pond" thickness={4} /></svg>;
+// 池の見本は structures.jsx（ほかの平らなアイテムと同じく、地面の絵から作る）
 
 export const SvgStoneLantern = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="10" ry="5" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,-2 -8,-6 0,-10 8,-6" fill="#cbd5e1" /><polygon points="0,-6 -3,-7.5 -3,-20 0,-18.5" fill="#475569" /><polygon points="0,-6 3,-7.5 3,-20 0,-18.5" fill="#64748b" /><polygon points="0,-20 -6,-23 0,-26 6,-23" fill="#e2e8f0" /><polygon points="0,-21 -3,-22.5 -3,-26.5 0,-25" fill="#fef08a" filter="url(#glow-effect)" /><polygon points="0,-21 3,-22.5 3,-26.5 0,-25" fill="#fcd34d" /><polygon points="0,-26 -10,-31 0,-36 10,-31" fill="#475569" /><polygon points="0,-26 -10,-31 -10,-29 0,-24" fill="#64748b" /><polygon points="0,-26 10,-31 10,-29 0,-24" fill="#94a3b8" /><polygon points="0,-37 -2,-38 0,-40 2,-38" fill="#e2e8f0" /><circle cx="-4" cy="-5" r="1.5" fill="#15803d" opacity="0.8" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,-2 -8,-6 0,-10 8,-6" fill="#cbd5e1" /><polygon points="0,-6 -3,-7.5 -3,-20 0,-18.5" fill="#475569" /><polygon points="0,-6 3,-7.5 3,-20 0,-18.5" fill="#64748b" /><polygon points="0,-20 -6,-23 0,-26 6,-23" fill="#e2e8f0" /><polygon points="0,-21 -3,-22.5 -3,-26.5 0,-25" fill="#fef08a" filter="url(#glow-effect)" /><polygon points="0,-21 3,-22.5 3,-26.5 0,-25" fill="#fcd34d" /><polygon points="0,-26 -10,-31 0,-36 10,-31" fill="#475569" /><polygon points="0,-26 -10,-31 -10,-29 0,-24" fill="#64748b" /><polygon points="0,-26 10,-31 10,-29 0,-24" fill="#94a3b8" /><polygon points="0,-37 -2,-38 0,-40 2,-38" fill="#e2e8f0" /><circle cx="-4" cy="-5" r="1.5" fill="#15803d" opacity="0.8" /></g></svg>);
 
 export const SvgStatue = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="-2" rx="14" ry="7" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,-2 -12,-8 0,-14 12,-8" fill="#cbd5e1" /><polygon points="0,-2 -12,-8 -12,-10 0,-4" fill="#94a3b8" /><polygon points="0,-2 12,-8 12,-10 0,-4" fill="#e2e8f0" /><polygon points="0,-10 -3,-11.5 -3,-30 0,-28.5" fill="#94a3b8" /><polygon points="0,-10 3,-11.5 3,-30 0,-28.5" fill="#cbd5e1" /><polygon points="0,-28.5 -8,-32.5 0,-36.5 8,-32.5" fill="#e2e8f0" /><polygon points="0,-32 -2,-33 -2,-42 0,-41" fill="#94a3b8" /><polygon points="0,-32 2,-33 2,-42 0,-41" fill="#cbd5e1" /><circle cx="0" cy="-44" r="4" fill="#e2e8f0" /><circle cx="-1" cy="-45" r="0.8" fill="#475569" /><circle cx="1" cy="-45" r="0.8" fill="#475569" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,-2 -12,-8 0,-14 12,-8" fill="#cbd5e1" /><polygon points="0,-2 -12,-8 -12,-10 0,-4" fill="#94a3b8" /><polygon points="0,-2 12,-8 12,-10 0,-4" fill="#e2e8f0" /><polygon points="0,-10 -3,-11.5 -3,-30 0,-28.5" fill="#94a3b8" /><polygon points="0,-10 3,-11.5 3,-30 0,-28.5" fill="#cbd5e1" /><polygon points="0,-28.5 -8,-32.5 0,-36.5 8,-32.5" fill="#e2e8f0" /><polygon points="0,-32 -2,-33 -2,-42 0,-41" fill="#94a3b8" /><polygon points="0,-32 2,-33 2,-42 0,-41" fill="#cbd5e1" /><circle cx="0" cy="-44" r="4" fill="#e2e8f0" /><circle cx="-1" cy="-45" r="0.8" fill="#475569" /><circle cx="1" cy="-45" r="0.8" fill="#475569" /></g></svg>);
 
 export const SvgGoldenTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="20" ry="10" fill="#020617" opacity="0.4" filter="url(#soft-shadow)" /><polygon points="0,0 -14,-7 -14,-25 0,-18" fill="#d97706" /><polygon points="0,0 14,-7 14,-25 0,-18" fill="url(#grad-gold)" /><polygon points="0,-18 -14,-25 0,-32 14,-25" fill="#fcd34d" /><polygon points="0,-22 -8,-26 -8,-40 0,-36" fill="#d97706" /><polygon points="0,-22 8,-26 8,-40 0,-36" fill="url(#grad-gold)" /><polygon points="0,-36 -8,-40 0,-44 8,-40" fill="#fef08a" /><polygon points="0,-38 -5,-41 0,-48 5,-41" fill="url(#grad-gold)" /><circle cx="0" cy="-50" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,0 -14,-7 -14,-25 0,-18" fill="#d97706" /><polygon points="0,0 14,-7 14,-25 0,-18" fill="url(#grad-gold)" /><polygon points="0,-18 -14,-25 0,-32 14,-25" fill="#fcd34d" /><polygon points="0,-22 -8,-26 -8,-40 0,-36" fill="#d97706" /><polygon points="0,-22 8,-26 8,-40 0,-36" fill="url(#grad-gold)" /><polygon points="0,-36 -8,-40 0,-44 8,-40" fill="#fef08a" /><polygon points="0,-38 -5,-41 0,-48 5,-41" fill="url(#grad-gold)" /><circle cx="0" cy="-50" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
 
 export const SvgGuardianShrine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
@@ -1376,7 +1374,6 @@ export const SvgGrandSmithy = () => (
 export const SvgWindmill = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 96) scale(2.3)">
-      <ellipse cx="0" cy="1.5" rx="16" ry="6.5" fill="#020617" opacity="0.18" />
       {/* 塔（すぼまった円錐台） */}
       <path d="M -9,0 L -6,-30 L 6,-30 L 9,0 A 9,3.6 0 0 1 -9,0 Z" fill="#fde047" stroke="#1e293b" strokeWidth="1.3" strokeLinejoin="round" />
       <path d="M 0,1.8 A 9,3.6 0 0 0 9,0 L 6,-30 L 0,-30 Z" fill="#eab308" />
@@ -1413,17 +1410,16 @@ export const SvgWindmill = () => (
 );
 
 export const SvgBellTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -12,-6 -12,-24 0,-18" fill="#ffedd5" /><polygon points="0,0 12,-6 12,-24 0,-18" fill="#fde68a" /><polygon points="0,-18 -14,-25 0,-38 14,-25" fill="#78350f" /><polygon points="0,-18 14,-25 14,-23 0,-16" fill="#451a03" /><circle cx="0" cy="-22" r="4" fill="#fbbf24" filter="url(#glow-effect)" /><path d="M 0,-26 L 0,-18" stroke="#78350f" strokeWidth="1" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.4)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,0 -12,-6 -12,-24 0,-18" fill="#ffedd5" /><polygon points="0,0 12,-6 12,-24 0,-18" fill="#fde68a" /><polygon points="0,-18 -14,-25 0,-38 14,-25" fill="#78350f" /><polygon points="0,-18 14,-25 14,-23 0,-16" fill="#451a03" /><circle cx="0" cy="-22" r="4" fill="#fbbf24" filter="url(#glow-effect)" /><path d="M 0,-26 L 0,-18" stroke="#78350f" strokeWidth="1" /></g></svg>);
 
-export const SvgCherryRoad = () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><Fl type="road" color="#fce7f3" thickness={4} /></svg>;
+// 桜並木の絵は nature.jsx（小道の両がわの桜）。足もとの小道は地面のレイヤーが描く
 
 export const SvgClockTower = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="16" ry="8" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -10,-5 -10,-35 0,-30" fill="#fef3c7" /><polygon points="0,0 10,-5 10,-35 0,-30" fill="#fde68a" /><polygon points="0,-30 -12,-36 0,-48 12,-36" fill="#92400e" /><polygon points="0,-30 -12,-36 -12,-34 0,-28" fill="#78350f" /><circle cx="-5" cy="-20" r="5" fill="#f8fafc" /><circle cx="5" cy="-20" r="5" fill="#f8fafc" /><line x1="-5" y1="-20" x2="-5" y2="-23" stroke="#1e293b" strokeWidth="1" /><line x1="5" y1="-20" x2="6" y2="-22" stroke="#1e293b" strokeWidth="1" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,0 -10,-5 -10,-35 0,-30" fill="#fef3c7" /><polygon points="0,0 10,-5 10,-35 0,-30" fill="#fde68a" /><polygon points="0,-30 -12,-36 0,-48 12,-36" fill="#92400e" /><polygon points="0,-30 -12,-36 -12,-34 0,-28" fill="#78350f" /><circle cx="-5" cy="-20" r="5" fill="#f8fafc" /><circle cx="5" cy="-20" r="5" fill="#f8fafc" /><line x1="-5" y1="-20" x2="-5" y2="-23" stroke="#1e293b" strokeWidth="1" /><line x1="5" y1="-20" x2="6" y2="-22" stroke="#1e293b" strokeWidth="1" /></g></svg>);
 
 export const SvgGoldStatue = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 88) scale(2.4)">
-      <ellipse cx="0" cy="6" rx="14" ry="5.5" fill="#020617" opacity="0.2" />
       {/* 大理石の台座（2段） */}
       <polygon points="-11,5 11,5 9,0.6 -9,0.6" fill="#d6d3d1" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
       <polygon points="-7.5,0.6 7.5,0.6 6.2,-5.4 -6.2,-5.4" fill="#e7e5e4" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
@@ -1458,7 +1454,7 @@ export const SvgGoldStatue = () => (
 );
 
 export const SvgFestivalStage = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full drop-shadow-md" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><ellipse cx="0" cy="0" rx="24" ry="12" fill="#020617" opacity="0.3" filter="url(#soft-shadow)" /><polygon points="0,0 -20,-10 0,-20 20,-10" fill="#fef9c3" /><polygon points="0,0 -20,-10 -20,-14 0,-4" fill="#d97706" /><polygon points="0,0 20,-10 20,-14 0,-4" fill="#b45309" /><polygon points="0,-14 -22,-25 0,-30 22,-25" fill="#ef4444" /><polygon points="0,-14 -22,-25 -22,-23 0,-12" fill="#dc2626" /><circle cx="-10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="0" cy="-25" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.3)" stroke="#1e293b" strokeWidth="1" strokeLinejoin="round"><polygon points="0,0 -20,-10 0,-20 20,-10" fill="#fef9c3" /><polygon points="0,0 -20,-10 -20,-14 0,-4" fill="#d97706" /><polygon points="0,0 20,-10 20,-14 0,-4" fill="#b45309" /><polygon points="0,-14 -22,-25 0,-30 22,-25" fill="#ef4444" /><polygon points="0,-14 -22,-25 -22,-23 0,-12" fill="#dc2626" /><circle cx="-10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="10" cy="-20" r="2" fill="#fbbf24" filter="url(#glow-effect)" /><circle cx="0" cy="-25" r="2" fill="#fbbf24" filter="url(#glow-effect)" /></g></svg>);
 
 export const SvgVillager = () => (
   <svg viewBox="0 -100 100 200" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" filter="url(#strong-shadow)"><rect x="-10" y="-30" width="20" height="20" rx="4" fill="#3b82f6"/><circle cx="0" cy="-40" r="12" fill="#fde047"/><circle cx="-4" cy="-42" r="2" fill="#1e293b"/><circle cx="4" cy="-42" r="2" fill="#1e293b"/><path d="M-5,-35 Q0,-30 5,-35" fill="none" stroke="#1e293b" strokeWidth="2"/></g></svg>);

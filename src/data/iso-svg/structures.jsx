@@ -1,61 +1,52 @@
 import React from 'react';
-import { isoPt, iso3, FaceSW, FaceSE, Fl } from './shared.jsx';
+import { isoPt, iso3, FaceSW, FaceSE } from './shared.jsx';
+import { GROUND_ICON_VIEWBOX, paintGroundIcon } from '../../systems/town-ground-paint.js';
+import { HOUSE_PALETTES } from './house-art.js';
 
 // 平面・住宅（道・水路・家・お店・学校など）
 
 // ==========================================
 // 4. Structures Assets
 // ==========================================
-export const SvgRoad = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="road" color="#cbd5e1" thickness={4} /></svg>;
-export const SvgWater = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="water" color="#7dd3fc" thickness={4} /></svg>;
-export const SvgGrassFlat = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="grass_flat" thickness={4} /></svg>;
-export const SvgBrick = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="brick" thickness={4} /></svg>;
-export const SvgAsphalt = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="asphalt" thickness={4} /></svg>;
-export const SvgMagma = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="magma" thickness={4} /></svg>;
-export const SvgCrosswalk = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="crosswalk" thickness={4} /></svg>;
-export const SvgRailway = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="railway" thickness={4} /></svg>;
-export const SvgDirt = () => <svg viewBox="0 0 100 100" className="w-full h-full"><Fl type="dirt" thickness={4} /></svg>;
-
-
-const HOUSE_PALETTES = [
-  { wallSW: '#fdf8f6', wallSE: '#e7e5e4', baseSW: '#a8a29e', baseSE: '#78716c', roofL: '#ef4444', roofD: '#b91c1c' }, // Classic Red
-  { wallSW: '#f8fafc', wallSE: '#e2e8f0', baseSW: '#94a3b8', baseSE: '#64748b', roofL: '#3b82f6', roofD: '#1d4ed8' }, // Slate Blue
-  { wallSW: '#fef3c7', wallSE: '#fde68a', baseSW: '#fbbf24', baseSE: '#f59e0b', roofL: '#22c55e', roofD: '#15803d' }, // Forest Green
-  { wallSW: '#f5f5f4', wallSE: '#d6d3d1', baseSW: '#57534e', baseSE: '#44403c', roofL: '#334155', roofD: '#0f172a' }, // Dark Modern
-  { wallSW: '#fdf2f8', wallSE: '#fbcfe8', baseSW: '#f472b6', baseSE: '#db2777', roofL: '#ec4899', roofD: '#be185d' }, // Pink Pop
-  { wallSW: '#ecfdf5', wallSE: '#a7f3d0', baseSW: '#6ee7b7', baseSE: '#34d399', roofL: '#d97706', roofD: '#92400e' }, // Mint Orange
-  { wallSW: '#f5f3ff', wallSE: '#ede9fe', baseSW: '#c4b5fd', baseSE: '#a78bfa', roofL: '#a855f7', roofD: '#7e22ce' }, // Lavender
-  { wallSW: '#ffedd5', wallSE: '#fed7aa', baseSW: '#fdba74', baseSE: '#f97316', roofL: '#0ea5e9', roofD: '#0369a1' }, // Warm Cyan
-];
-
-export const SvgHouse1 = ({ seed = 0 }) => {
-  const p = HOUSE_PALETTES[seed % HOUSE_PALETTES.length];
+// 平らなアイテム（道・水路・芝生など）は、町では地面のレイヤー（systems/town-ground-paint.js）が
+// となりとつなげて描く。ここの絵は、もちもの欄・クラフト・ガチャに出す見本で、町と同じ絵を
+// 土の厚みつきの 1 マスとして出す。
+const groundIcons = new Map();
+const GroundIcon = ({ kind }) => {
+  let markup = groundIcons.get(kind);
+  if (markup === undefined) {
+    markup = paintGroundIcon(kind);
+    groundIcons.set(kind, markup);
+  }
   return (
-    <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-      <g transform="translate(50, 100) scale(2.5)">
-        <polygon points="0,-4 -20,-14 -20,-30 -10,-42 0,-20" fill={p.wallSW} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="0,-4 20,-14 20,-30 0,-20" fill={p.wallSE} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        
-        <polygon points="3,-17 24,-27.5 12,-48 -10,-41" fill={p.roofL} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="3,-17 -10,-41 -13,-39 -1,-15" fill={p.roofD} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        <polygon points="3,-17 24,-27.5 24,-25.5 3,-15" fill={p.roofD} stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-
-        <polygon points="6,-7 14,-11 14,-25 6,-21" fill="#d97706" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        <circle cx="12" cy="-16" r="1" fill="#000000" />
-
-        <polygon points="-14,-11 -6,-7 -6,-17 -14,-21" fill="#93c5fd" stroke="#000000" strokeWidth="2" strokeLinejoin="round" />
-        <line x1="-10" y1="-9" x2="-10" y2="-19" stroke="#000000" strokeWidth="1.5" />
-        <line x1="-14" y1="-16" x2="-6" y2="-12" stroke="#000000" strokeWidth="1.5" />
-
-        <g transform="translate(6, -38)">
-          <polygon points="0,0 5,-2.5 5,-12 0,-9.5" fill={p.baseSW} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="0,0 -5,-2.5 -5,-12 0,-9.5" fill={p.baseSE} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
-          <polygon points="0,-9.5 -5,-12 0,-14.5 5,-12" fill={p.wallSE} stroke="#000000" strokeWidth="1.5" strokeLinejoin="round" />
-        </g>
-      </g>
+    <svg viewBox={GROUND_ICON_VIEWBOX} className="w-full h-full">
+      <g dangerouslySetInnerHTML={{ __html: markup }} />
     </svg>
   );
 };
+export const SvgRoad = () => <GroundIcon kind="road" />;
+export const SvgWater = () => <GroundIcon kind="water" />;
+export const SvgGrassFlat = () => <GroundIcon kind="lawn" />;
+export const SvgBrick = () => <GroundIcon kind="brick" />;
+export const SvgAsphalt = () => <GroundIcon kind="asphalt" />;
+export const SvgMagma = () => <GroundIcon kind="magma" />;
+export const SvgCrosswalk = () => <GroundIcon kind="crosswalk" />;
+export const SvgRailway = () => <GroundIcon kind="rail" />;
+export const SvgDirt = () => <GroundIcon kind="dirt" />;
+export const SvgPond = () => <GroundIcon kind="pond" />;
+export const SvgPaddy = () => <GroundIcon kind="paddy" />;
+export const SvgField = () => <GroundIcon kind="field" />;
+export const SvgStonePath = () => <GroundIcon kind="stone" />;
+export const SvgBeach = () => <GroundIcon kind="sand" />;
+
+
+// 「小さな家」の絵のおおもとは house-art.js にあり、文書に 1 回だけ置いてある（shared.jsx）。
+// 町にいちばん多く建つので、置いたマスでは <use> で呼びだす（1 軒 2 要素）。色は seed で決まる。
+export const SvgHouse1 = ({ seed = 0 }) => (
+  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: 'visible' }}>
+    <use href={`#house1-${(Number.isFinite(seed) ? Math.abs(Math.floor(seed)) : 0) % HOUSE_PALETTES.length}`} />
+  </svg>
+);
 
 export const SvgHouse2 = ({ seed = 0 }) => {
   const ptX = (i, j) => (i - 1.0) * 26 - (j - 0.5) * 26;
@@ -280,7 +271,6 @@ export const SvgHouse3 = ({ seed = 0 }) => {
   return (
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 70) scale(2.5)">
-        <ellipse cx="0" cy="18" rx="46" ry="23" fill="rgba(0,0,0,0.15)" />
 
         {/* 1. Back Right Wing */}
         <FaceSW i1={2.2} i2={3.0} j={1.2} k1={0} k2={1.0} />
@@ -366,7 +356,6 @@ export const SvgShop = ({ seed = 0 }) => {
     <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
       <g transform="translate(50, 100) scale(2.5)">
         {/* Ground Shadow */}
-        <ellipse cx="0" cy="0" rx="26" ry="13" fill="rgba(0,0,0,0.15)" />
 
         {/* Building Base / Walls */}
         <polygon points="0,-4 -20,-14 -20,-34 0,-24" fill="#e2e8f0" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
@@ -584,11 +573,7 @@ export const SvgFence = () => (
 export const SvgBridge = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
-      {/* 水面 */}
-      <polygon points={`${iso3(2, 2, 0)} ${iso3(98, 2, 0)} ${iso3(98, 98, 0)} ${iso3(2, 98, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
-      {[[16, 60], [80, 30], [24, 24], [76, 78]].map(([wx, wy], i) => (
-        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
-      ))}
+      {/* 水面は描かない。橋の下の水は、地面のレイヤー（town-ground-paint.js）が となりの水路とつなげて描く */}
       {/* 橋（南西→北東方向のアーチ橋を横から見た立体） */}
       <g>
         {/* アーチの側面（手前・左面） */}

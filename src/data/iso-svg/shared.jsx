@@ -1,4 +1,6 @@
 import React from 'react';
+import { natureArtMarkup } from './nature-art.js';
+import { houseArtMarkup } from './house-art.js';
 
 // 建物の絵（SVG）が共通で使う部品。src/data/iso-svg/ の各ファイルから import する。
 // ここにあるものは src/data/iso-svg.js からは再エクスポートしない（町のアイテムではないため）。
@@ -54,6 +56,23 @@ const SHARED_DEFS_MARKUP =
   '<stop offset="50%" stop-color="#ef4444" />' +
   '<stop offset="100%" stop-color="#b91c1c" />' +
   '</linearGradient>' +
+  // 直方体（IsoCube）の面に重ねる陰影。面の大きさに合わせて伸びる（objectBoundingBox）
+  '<linearGradient id="iso-shade-left" x1="0" y1="0" x2="0" y2="1">' +
+  '<stop offset="0" stop-color="#ffffff" stop-opacity="0.1" /><stop offset="0.45" stop-color="#ffffff" stop-opacity="0" />' +
+  '<stop offset="1" stop-color="#0f172a" stop-opacity="0.16" />' +
+  '</linearGradient>' +
+  '<linearGradient id="iso-shade-right" x1="0" y1="0" x2="0" y2="1">' +
+  '<stop offset="0" stop-color="#0f172a" stop-opacity="0.02" /><stop offset="1" stop-color="#0f172a" stop-opacity="0.24" />' +
+  '</linearGradient>' +
+  '<linearGradient id="iso-shade-top" x1="0" y1="0" x2="1" y2="1">' +
+  '<stop offset="0" stop-color="#ffffff" stop-opacity="0.26" /><stop offset="0.6" stop-color="#ffffff" stop-opacity="0" />' +
+  '</linearGradient>' +
+  '<linearGradient id="iso-glass" x1="0" y1="0" x2="1" y2="1">' +
+  '<stop offset="0" stop-color="#d9f2ff" /><stop offset="0.5" stop-color="#8fd3f7" /><stop offset="1" stop-color="#5fb5e6" />' +
+  '</linearGradient>' +
+  // 木・花・岩と「小さな家」の絵のおおもと（nature.jsx・structures.jsx が <use> で呼びだす）
+  natureArtMarkup() +
+  houseArtMarkup() +
   '</defs>';
 
 export function mountSharedDefs(doc = globalThis.document) {
@@ -92,14 +111,28 @@ const iso3 = (x, y, z = 0) => {
   return `${px.toFixed(2)},${py.toFixed(2)}`;
 };
 
-/** 直方体（左面=南西・右面=南東・天面） */
-const IsoCube = ({ x, y, z = 0, w, d, h, top, left, right, stroke = '#1e293b', sw = 0.8 }) => (
-  <g>
-    <polygon points={`${iso3(x, y + d, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`} fill={left} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
-    <polygon points={`${iso3(x + w, y, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x + w, y, z + h)}`} fill={right} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
-    <polygon points={`${iso3(x, y, z + h)} ${iso3(x + w, y, z + h)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`} fill={top} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
-  </g>
-);
+/**
+ * 直方体（左面=南西・右面=南東・天面）。
+ * 面はベタ塗りの上に、うすい陰影を重ねる（左上から光が当たる: 天面は奥が明るく、
+ * 側面は地面に近いほど暗い）。色は呼び出しがわの色のまま変えない。
+ */
+const IsoCube = ({ x, y, z = 0, w, d, h, top, left, right, stroke = '#1e293b', sw = 0.8 }) => {
+  const leftFace = `${iso3(x, y + d, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`;
+  const rightFace = `${iso3(x + w, y, z)} ${iso3(x + w, y + d, z)} ${iso3(x + w, y + d, z + h)} ${iso3(x + w, y, z + h)}`;
+  const topFace = `${iso3(x, y, z + h)} ${iso3(x + w, y, z + h)} ${iso3(x + w, y + d, z + h)} ${iso3(x, y + d, z + h)}`;
+  // 低い箱（敷地の台・ふち石など）は陰影を重ねても見えないので、要素を増やさない
+  const shaded = h >= 6;
+  return (
+    <g>
+      <polygon points={leftFace} fill={left} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      <polygon points={rightFace} fill={right} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      <polygon points={topFace} fill={top} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      {shaded && <polygon points={leftFace} fill="url(#iso-shade-left)" />}
+      {shaded && <polygon points={rightFace} fill="url(#iso-shade-right)" />}
+      {shaded && <polygon points={topFace} fill="url(#iso-shade-top)" />}
+    </g>
+  );
+};
 
 /** 南西向きの壁面パネル（窓・ドア・看板用） */
 const FaceSW = ({ x1, x2, y, z1, z2, fill, stroke = '#1e293b', sw = 0.8 }) => (
@@ -115,7 +148,8 @@ const FaceSE = ({ x, y1, y2, z1, z2, fill, stroke = '#1e293b', sw = 0.8 }) => (
 const WinSW = ({ x1, x2, y, z1, z2 }) => (
   <g>
     <FaceSW x1={x1} x2={x2} y={y} z1={z1} z2={z2} fill="#f8fafc" sw={1} />
-    <FaceSW x1={x1 + 1} x2={x2 - 1} y={y + 0.1} z1={z1 + 1} z2={z2 - 1} fill="#7dd3fc" sw={0.5} />
+    <FaceSW x1={x1 + 1} x2={x2 - 1} y={y + 0.1} z1={z1 + 1} z2={z2 - 1} fill="url(#iso-glass)" sw={0.5} />
+    <line x1={isoPt(x1 + 2.2, y + 0.1, z2 - 2.2)[0]} y1={isoPt(x1 + 2.2, y + 0.1, z2 - 2.2)[1]} x2={isoPt(x1 + 2.2 + (x2 - x1) * 0.28, y + 0.1, z2 - 2.2 - (z2 - z1) * 0.34)[0]} y2={isoPt(x1 + 2.2 + (x2 - x1) * 0.28, y + 0.1, z2 - 2.2 - (z2 - z1) * 0.34)[1]} stroke="#ffffff" strokeWidth="0.9" strokeLinecap="round" opacity="0.85" />
     <line x1={isoPt((x1 + x2) / 2, y, z1)[0]} y1={isoPt((x1 + x2) / 2, y, z1)[1]} x2={isoPt((x1 + x2) / 2, y, z2)[0]} y2={isoPt((x1 + x2) / 2, y, z2)[1]} stroke="#1e293b" strokeWidth="0.6" />
   </g>
 );
@@ -124,7 +158,8 @@ const WinSW = ({ x1, x2, y, z1, z2 }) => (
 const WinSE = ({ x, y1, y2, z1, z2 }) => (
   <g>
     <FaceSE x={x} y1={y1} y2={y2} z1={z1} z2={z2} fill="#f8fafc" sw={1} />
-    <FaceSE x={x + 0.1} y1={y1 + 1} y2={y2 - 1} z1={z1 + 1} z2={z2 - 1} fill="#7dd3fc" sw={0.5} />
+    <FaceSE x={x + 0.1} y1={y1 + 1} y2={y2 - 1} z1={z1 + 1} z2={z2 - 1} fill="url(#iso-glass)" sw={0.5} />
+    <line x1={isoPt(x + 0.1, y2 - 2.2, z2 - 2.2)[0]} y1={isoPt(x + 0.1, y2 - 2.2, z2 - 2.2)[1]} x2={isoPt(x + 0.1, y2 - 2.2 - (y2 - y1) * 0.28, z2 - 2.2 - (z2 - z1) * 0.34)[0]} y2={isoPt(x + 0.1, y2 - 2.2 - (y2 - y1) * 0.28, z2 - 2.2 - (z2 - z1) * 0.34)[1]} stroke="#ffffff" strokeWidth="0.9" strokeLinecap="round" opacity="0.85" />
     <line x1={isoPt(x, (y1 + y2) / 2, z1)[0]} y1={isoPt(x, (y1 + y2) / 2, z1)[1]} x2={isoPt(x, (y1 + y2) / 2, z2)[0]} y2={isoPt(x, (y1 + y2) / 2, z2)[1]} stroke="#1e293b" strokeWidth="0.6" />
   </g>
 );
@@ -148,134 +183,13 @@ const AwningSW = ({ x1, x2, y, z, c1 = '#ef4444', c2 = '#f8fafc', depth = 9, dro
   );
 };
 
-/** 接地影 */
-const IsoShadow = ({ cx = 0, cy = -21, rx = 40, ry = 19, o = 0.16 }) => (
-  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#020617" opacity={o} />
-);
-
-// --- Flat surface component (道・水路・庭園) ---
-const Fl = ({ cx = 50, cy = 100, color = '#e2e8f0', thickness = 2, scale = 2.0, type = 'road' }) => {
-  const dx = 25 * scale;
-  const dy = 12.5 * scale;
-  
-  let topFill = color;
-  if (type === 'water' || type === 'pond') topFill = 'url(#grad-water)';
-  if (type === 'magma') topFill = 'url(#grad-magma)';
-  if (type === 'grass_flat' || type === 'garden') topFill = '#4ade80';
-  if (type === 'asphalt' || type === 'crosswalk') topFill = '#334155';
-  if (type === 'dirt') topFill = '#78350f';
-  if (type === 'brick') topFill = '#b45309';
-  if (type === 'railway') topFill = '#a8a29e';
-
-  let leftFill = topFill.startsWith('url') ? '#075985' : darken(topFill, 20);
-  let rightFill = topFill.startsWith('url') ? '#0369a1' : darken(topFill, 30);
-  
-  if (type === 'magma') {
-    leftFill = '#7f1d1d'; rightFill = '#450a0a';
-  } else if (type === 'water' || type === 'pond') {
-    leftFill = '#0369a1'; rightFill = '#075985';
-  }
-
-  const topStroke = topFill.startsWith('url') ? 'none' : topFill;
-
-  return (
-    <g transform={`translate(${cx}, ${cy})`}>
-      <polygon points={`0,0 ${dx},-${dy} ${dx},${-dy + thickness} 0,${thickness}`} fill={rightFill} stroke={rightFill} strokeWidth="0.5" strokeLinejoin="round" />
-      <polygon points={`0,0 -${dx},-${dy} -${dx},${-dy + thickness} 0,${thickness}`} fill={leftFill} stroke={leftFill} strokeWidth="0.5" strokeLinejoin="round" />
-      <polygon points={`0,0 ${dx},-${dy} 0,-${dy * 2} -${dx},-${dy}`} fill={topFill} stroke={topStroke} strokeWidth={topStroke !== 'none' ? "1" : "0"} strokeLinejoin="round" />
-      
-      <g opacity="0.9">
-        {type === 'road' && (
-          <path d={`M ${dx*0.5},-${dy*0.5} L -${dx*0.5},-${dy*1.5}`} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
-        )}
-        {type === 'asphalt' && (
-          <g opacity="0.2">
-            <circle cx={-dx*0.4} cy={-dy*1.2} r="1" fill="#fff" />
-            <circle cx={dx*0.5} cy={-dy*0.8} r="1.5" fill="#000" />
-            <circle cx={dx*0.1} cy={-dy*1.6} r="1" fill="#fff" />
-            <circle cx={-dx*0.2} cy={-dy*0.5} r="1" fill="#000" />
-          </g>
-        )}
-        {type === 'crosswalk' && (
-          <g>
-            {[-0.3, -0.15, 0, 0.15, 0.3].map((t, i) => {
-               const cx = t * dx;
-               const cy = -dy - t * dy;
-               const s = 0.2;
-               return (
-                 <path key={i} d={`M ${cx - s*dx},${cy - s*dy} L ${cx + s*dx},${cy + s*dy}`} stroke="#fff" strokeWidth="4" opacity="0.9" />
-               );
-            })}
-          </g>
-        )}
-        {type === 'railway' && (
-          <g>
-            {[-0.4, -0.2, 0, 0.2, 0.4].map((t, i) => {
-              const cx = t * dx;
-              const cy = -dy + t * dy;
-              const s = 0.25;
-              return (
-                <path key={i} d={`M ${cx - s*dx},${cy + s*dy} L ${cx + s*dx},${cy - s*dy}`} stroke="#78350f" strokeWidth="3" />
-              );
-            })}
-            <path d={`M ${dx*0.35},-${dy*0.35} L -${dx*0.65},-${dy*1.35}`} stroke="#94a3b8" strokeWidth="1.5" />
-            <path d={`M ${dx*0.65},-${dy*0.65} L -${dx*0.35},-${dy*1.65}`} stroke="#94a3b8" strokeWidth="1.5" />
-          </g>
-        )}
-        {(type === 'water' || type === 'pond') && (
-          <g>
-            <path d={`M -${dx*0.6},-${dy*0.8} Q 0,-${dy*1.2} ${dx*0.6},-${dy*0.8}`} fill="none" stroke="#fff" strokeWidth="2.5" opacity="0.6" strokeLinecap="round"/>
-            <path d={`M -${dx*0.3},-${dy*1.5} Q 0,-${dy*1.8} ${dx*0.3},-${dy*1.5}`} fill="none" stroke="#bae6fd" strokeWidth="1.5" opacity="0.4" strokeLinecap="round"/>
-            {type === 'pond' && (
-              <g transform={`translate(0, -${dy*1.2})`}>
-                <path d="M 5,2 C 8,0 12,3 8,6 C 4,3 2,0 5,2 Z" fill="#22c55e" />
-                <ellipse cx="-4" cy="-2" rx="3" ry="1.5" fill="#f97316" transform="rotate(30 -4 -2)" />
-                <circle cx="8" cy="-5" r="1.5" fill="#f472b6" />
-              </g>
-            )}
-          </g>
-        )}
-        {type === 'magma' && (
-          <g opacity="0.8">
-            <circle cx={-dx*0.4} cy={-dy*1.2} r="4" fill="#fbbf24" filter="url(#glow-effect)" />
-            <circle cx={dx*0.3} cy={-dy*0.8} r="6" fill="#fef08a" opacity="0.6" />
-            <path d={`M -${dx*0.2},-${dy*0.6} Q ${dx*0.2},-${dy*1.2} ${dx*0.5},-${dy*1.4}`} fill="none" stroke="#fbbf24" strokeWidth="2" opacity="0.8" />
-            <circle cx={0} cy={-dy*1.5} r="3" fill="#ef4444" />
-          </g>
-        )}
-        {type === 'dirt' && (
-          <g opacity="0.4">
-            <circle cx={-dx*0.3} cy={-dy*1.4} r="2" fill="#451a03" />
-            <circle cx={dx*0.5} cy={-dy*0.7} r="1.5" fill="#b45309" />
-            <path d={`M -${dx*0.1},-${dy*0.8} L ${dx*0.2},-${dy*0.9}`} stroke="#451a03" strokeWidth="1" />
-          </g>
-        )}
-        {type === 'brick' && (
-          <g stroke="#78350f" strokeWidth="1" opacity="0.4">
-            <line x1={-dx*0.8} y1={-dy*1.0} x2={dx*0.8} y2={-dy*1.0} />
-            <line x1={-dx*0.4} y1={-dy*0.6} x2={dx*0.4} y2={-dy*0.6} />
-            <line x1={-dx*0.4} y1={-dy*1.4} x2={dx*0.4} y2={-dy*1.4} />
-            <line x1={0} y1={-dy*0.6} x2={dx*0.4} y2={-dy*1.0} />
-            <line x1={-dx*0.4} y1={-dy*1.0} x2={0} y2={-dy*1.4} />
-          </g>
-        )}
-        {(type === 'garden' || type === 'grass_flat') && (
-          <g>
-            <path d={`M -${dx*0.4},-${dy*0.8} Q -${dx*0.3},-${dy*1.1} -${dx*0.2},-${dy*0.8}`} fill="none" stroke="#15803d" strokeWidth="1.5" opacity="0.6"/>
-            <path d={`M ${dx*0.4},-${dy*1.2} Q ${dx*0.5},-${dy*1.5} ${dx*0.6},-${dy*1.2}`} fill="none" stroke="#15803d" strokeWidth="1.5" opacity="0.6"/>
-            {type === 'garden' && (
-              <>
-                <circle cx={-dx*0.2} cy={-dy*0.7} r="2.5" fill="#f472b6" stroke="#000" strokeWidth="0.5" />
-                <circle cx={dx*0.1} cy={-dy*1.0} r="3" fill="#eab308" stroke="#000" strokeWidth="0.5" />
-                <circle cx={dx*0.4} cy={-dy*1.3} r="2.5" fill="#38bdf8" stroke="#000" strokeWidth="0.5" />
-              </>
-            )}
-          </g>
-        )}
-      </g>
-    </g>
-  );
-};
+/**
+ * 接地影（いまは何も描かない）。
+ * 影は地面のレイヤー（systems/town-ground-paint.js）が、絵の足もとの大きさに合わせて描く。
+ * 絵の中にも だ円の影があると、大きな建物ほど濃い影が二重に出た。呼び出しは残してある
+ * （描き方を戻すときは、ここだけを直す）。
+ */
+const IsoShadow = () => null;
 
 // ==========================================
 // 複数の見出しから使う部品（生産・名所の屋台、店・公共の小型建築）
@@ -361,4 +275,4 @@ const ShopBase = ({ wall = '#fff7ed', base, roof = '#e7e5e4', awn1 = '#ef4444', 
   );
 };
 
-export { darken, lighten, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, Fl, MarketStall, ShopBase };
+export { darken, lighten, isoPt, iso3, IsoCube, FaceSW, FaceSE, WinSW, WinSE, AwningSW, IsoShadow, MarketStall, ShopBase };

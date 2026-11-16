@@ -117,7 +117,6 @@ export const SvgTvTower = () => (
 export const SvgStadium = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 78) scale(2.1)">
-      <ellipse cx="0" cy="8" rx="42" ry="20" fill="#020617" opacity="0.16" />
       {/* 外壁（下段） */}
       <path d="M -40,0 A 40,19 0 0 0 40,0 L 40,-8 A 40,19 0 0 1 -40,-8 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="1.3" />
       {/* 外壁の柱 */}

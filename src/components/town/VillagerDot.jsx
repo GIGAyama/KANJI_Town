@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useReducedMotionConfig } from 'framer-motion';
 import { subscribeTownAnimation } from '../../systems/town-animation';
-import { nearbyPointsOfInterest, villagerDepth } from '../../systems/town-map-view';
+import { C, nearbyPointsOfInterest, villagerDepth } from '../../systems/town-map-view';
 
 const TILE_W = 64;
 const TILE_H = 32;
@@ -29,6 +29,8 @@ const CULTIVATABLE_TERRAIN = new Set([
 
 const NO_MAP = {};
 const NO_POINTS = [];
+/** 町は雲の上の島なので、島の外（まだ見えていない土地）へは歩いて出ない */
+const keepOnIsland = (value, exploredRadius) => Math.min(C + exploredRadius + 0.3, Math.max(C - exploredRadius - 0.3, value));
 
 // 歩くときの上下の揺れ（sin 波・3px・約 0.63 秒）と、喜んで跳ねる動き（6px）。
 // どちらも Web Animations で描き、ブラウザの合成だけで動かす（毎フレーム描き直さない）
@@ -98,7 +100,7 @@ const vH = 48;
  *    1 か所変わるだけでブラウザが全体の合成をやり直す（重い町では 1 回 20ms 前後）。
  *    歩き出すときに行き先と所要時間だけを渡し、移動は CSS の transition（transform）に任せる。
  */
-const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest = NO_POINTS }) => {
+const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest = NO_POINTS, exploredRadius = 3 }) => {
   const shouldReduceMotion = useReducedMotionConfig();
   // === ステートマシンの状態 ===
   // 座標は初期値として村民のデータ上の座標を利用。歩いている間は「行き先」を持つ
@@ -188,8 +190,8 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
             }
           } else {
             // ランダムに少しだけ散歩
-            s.targetX = s.gridX + (Math.random() * 4 - 2);
-            s.targetY = s.gridY + (Math.random() * 4 - 2);
+            s.targetX = keepOnIsland(s.gridX + (Math.random() * 4 - 2), exploredRadius);
+            s.targetY = keepOnIsland(s.gridY + (Math.random() * 4 - 2), exploredRadius);
             s.interactTargetId = null;
             startMove(s);
           }
@@ -251,7 +253,7 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
       unsubscribe();
       if (emotionTimerId) clearTimeout(emotionTimerId);
     };
-  }, [pointsOfInterest, shouldReduceMotion, villager.id.length]);
+  }, [pointsOfInterest, shouldReduceMotion, villager.id.length, exploredRadius]);
 
   // 移動中のボビング（上下の揺れ）／インタラクト中のジャンプ
   const motionKind = shouldReduceMotion ? null
@@ -273,7 +275,8 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
 
   // 現在地のタイルIDを取得し、未開拓（草木）か判定する
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
-  const isHidden = CULTIVATABLE_TERRAIN.has(currentTileId);
+  const offIsland = Math.max(Math.abs(Math.round(gridPos.x) - C), Math.abs(Math.round(gridPos.y) - C)) > exploredRadius;
+  const isHidden = offIsland || CULTIVATABLE_TERRAIN.has(currentTileId);
 
   return (
     <div className={`pointer-events-none flex flex-col items-center justify-end ${isHidden ? 'opacity-0' : 'opacity-100'}`}

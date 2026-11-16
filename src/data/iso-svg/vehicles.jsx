@@ -88,7 +88,6 @@ export const SvgBus = () => (
 export const SvgBicycle = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 78) scale(2.3)">
-      <ellipse cx="0" cy="10" rx="18" ry="5" fill="#020617" opacity="0.18" />
       {/* 車輪 */}
       {[-10.5, 10.5].map(cx => (
         <g key={cx}>

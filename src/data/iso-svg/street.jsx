@@ -9,7 +9,6 @@ import React from 'react';
 export const SvgBench = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 82) scale(2.6)">
-      <ellipse cx="0" cy="8" rx="17" ry="5" fill="#020617" opacity="0.18" />
       {/* 脚（鋳鉄風） */}
       <path d="M -11,7 L -11,-4 M -11,1 Q -13.5,1 -13.5,4 L -13.5,7" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
       <path d="M 11,7 L 11,-4 M 11,1 Q 13.5,1 13.5,4 L 13.5,7" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
@@ -29,7 +28,6 @@ export const SvgBench = () => (
 export const SvgMailbox = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 85) scale(2.6)">
-      <ellipse cx="0" cy="7" rx="10" ry="3.5" fill="#020617" opacity="0.2" />
       {/* 台座 */}
       <path d="M -6,7 L -5,3.5 L 5,3.5 L 6,7 Z" fill="#64748b" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
       {/* 円筒の本体 */}
@@ -49,7 +47,6 @@ export const SvgMailbox = () => (
 export const SvgPhoneBooth = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 88) scale(2.5)">
-      <ellipse cx="0" cy="6" rx="12" ry="4" fill="#020617" opacity="0.2" />
       {/* ボックス本体（2.5D） */}
       <polygon points="-8,5 -8,-24 2,-28 2,1" fill="#166534" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
       <polygon points="2,1 2,-28 9,-25 9,4" fill="#14532d" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
@@ -74,7 +71,6 @@ export const SvgPhoneBooth = () => (
 export const SvgStreetLight = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 92) scale(2.5)">
-      <ellipse cx="0" cy="3.5" rx="8" ry="3" fill="#020617" opacity="0.18" />
       {/* 台座 */}
       <path d="M -3.5,3 L -2.2,-0.5 L 2.2,-0.5 L 3.5,3 Z" fill="#475569" stroke="#1e293b" strokeWidth="1.1" strokeLinejoin="round" />
       {/* ポール（上部でカーブ） */}
@@ -95,7 +91,6 @@ export const SvgStreetLight = () => (
 export const SvgBusStop = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 88) scale(2.5)">
-      <ellipse cx="0" cy="5" rx="12" ry="4" fill="#020617" opacity="0.18" />
       {/* 台座とポール */}
       <ellipse cx="-4" cy="3.4" rx="4.4" ry="1.8" fill="#64748b" stroke="#1e293b" strokeWidth="1" />
       <line x1="-4" y1="3" x2="-4" y2="-27" stroke="#334155" strokeWidth="2.4" strokeLinecap="round" />
@@ -126,7 +121,6 @@ export const SvgBusStop = () => (
 export const SvgVendingMachine = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 86) scale(2.5)">
-      <ellipse cx="0" cy="6" rx="11" ry="4" fill="#020617" opacity="0.2" />
       {/* 本体（2.5D） */}
       <polygon points="-8,5 -8,-22 3,-26 3,1" fill="#dc2626" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
       <polygon points="3,1 3,-26 9,-23.5 9,3.5" fill="#991b1b" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
@@ -155,7 +149,6 @@ export const SvgVendingMachine = () => (
 export const SvgTrashCan = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 84) scale(2.5)">
-      <ellipse cx="0" cy="5" rx="9.5" ry="3.5" fill="#020617" opacity="0.2" />
       {/* 本体（円筒） */}
       <path d="M -7,-13 L -6,3 A 6,2.6 0 0 0 6,3 L 7,-13 Z" fill="#64748b" stroke="#1e293b" strokeWidth="1.4" strokeLinejoin="round" />
       {/* 縦のリブ */}

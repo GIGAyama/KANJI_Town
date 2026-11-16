@@ -75,6 +75,71 @@ export function buildMegaIndex(map, itemMap) {
 const isOpenGround = (id) => id === 't_cleared' || id === 't_weed';
 
 /**
+ * (x, y) から w×h マスに置けるか。
+ * 全部のマスが更地（または ざっそう）で、大きな建物の足もとでも無いこと。
+ *
+ * ⚠️ 大きな建物（size を持つもの）は、地図には左上のマスにだけ id を書き、ほかの足もとは
+ *    't_cleared' のままにしてある。以前は地面の id だけを見ていたので、大きな建物の足もとにも
+ *    別のものを置けてしまい、置いたものは画面に出ないまま もちものから減っていた。
+ * @param {Object<string,string>} map
+ * @param {Map<string, object>} megaIndex buildMegaIndex の結果
+ */
+export function canPlaceAt(map, megaIndex, x, y, w = 1, h = 1) {
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const cell = `${x + dx},${y + dy}`;
+      if (x + dx >= GRID_SIZE || y + dy >= GRID_SIZE) return false;
+      if (!isOpenGround(map[cell]) || megaIndex.has(cell)) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * 大きな建物の足もとに かくれているものを、地図から外す（もちものに戻る）。
+ *
+ * 上の不具合で、すでに大きな建物の足もとに置いてしまった記録がある。そのマスは描かれないので、
+ * 置いたものは見えないまま「置いてある数」に数えられ、もちものから減っている。
+ * 地図から外せば、持っている数は変わらないので、もう一度置けるようになる。
+ * @returns {{ map: Object<string,string>, freed: string[] }} freed は外したアイテムの id
+ */
+export function releaseHiddenItems(map, itemMap) {
+  const next = { ...(map || {}) };
+  const freed = [];
+  const covered = new Set();
+  const anchors = Object.keys(next)
+    .filter((key) => !key.includes(':') && itemMap.get(next[key])?.size)
+    .map((key) => { const [x, y] = key.split(',').map(Number); return { key, x, y }; })
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  for (const { key, x, y } of anchors) {
+    if (covered.has(key)) {
+      // ほかの大きな建物の足もとに置かれた、大きな建物
+      freed.push(next[key]);
+      next[key] = 't_cleared';
+      continue;
+    }
+    const { w, h } = itemMap.get(next[key]).size;
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const cell = `${x + dx},${y + dy}`;
+        covered.add(cell);
+        const hidden = itemMap.get(next[cell]);
+        if (hidden && hidden.type !== 'terrain' && !hidden.size) {
+          freed.push(next[cell]);
+          next[cell] = 't_cleared';
+        }
+        if (next[`${cell}:top`]) {
+          freed.push(next[`${cell}:top`]);
+          delete next[`${cell}:top`];
+        }
+      }
+    }
+  }
+  return freed.length > 0 ? { map: next, freed } : { map: map || {}, freed };
+}
+
+/**
  * クラフトの「強化」（元の建物 → 上位の建物）を、もちものと地図の両方に反映する。
  *
  * もちもの（townItems）は「持っている数（置いてある分も含む）」なので、元の建物を
@@ -119,6 +184,9 @@ export function applyUpgrade({ townMap, townItems }, { requires, quantity, resul
     const src = footprint(source);
     const dst = footprint(result);
     const inSource = (x, y) => x >= ax && x < ax + src.w && y >= ay && y < ay + src.h;
+    // ほかの大きな建物の足もと（地図には 't_cleared' と書いてある）には置きかえない。
+    // 前の置きかえで大きな建物が増えているので、1 つごとに引きなおす
+    const megaIndex = buildMegaIndex(map, itemMap);
     let fits = canReplace;
     for (let dy = 0; fits && dy < dst.h; dy++) {
       for (let dx = 0; fits && dx < dst.w; dx++) {
@@ -126,7 +194,7 @@ export function applyUpgrade({ townMap, townItems }, { requires, quantity, resul
         const y = ay + dy;
         const cell = `${x},${y}`;
         if (x >= GRID_SIZE || y >= GRID_SIZE) fits = false;
-        else if (!inSource(x, y) && (!isOpenGround(map[cell]) || map[`${cell}:top`])) fits = false;
+        else if (!inSource(x, y) && (!isOpenGround(map[cell]) || map[`${cell}:top`] || megaIndex.has(cell))) fits = false;
       }
     }
     // 元の建物の場所を更地に戻す（大きな建物なら足もと全部）
