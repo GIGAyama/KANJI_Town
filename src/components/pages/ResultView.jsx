@@ -19,7 +19,8 @@ import { getTodayString } from '../../utils/date-utils';
 import { getHabitStatus } from '../../systems/habit';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
-import { carelessPenaltyRate } from '../../systems/careless';
+import { totalPenalty } from '../../systems/careless-penalty';
+import PenaltyLoss from '../ui/PenaltyLoss';
 import { ShowTeacherOverlay } from '../social/HomeworkParts';
 
 /** ステージの、ふりがなつきの名前と説明（無ければ story-stages.js の名前のまま） */
@@ -29,6 +30,8 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
   const { earnedExp, perfectCount, voicedCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
   const carelessCount = sessionMetrics.carelessCount || 0;
   const carelessLostExp = sessionMetrics.carelessLostExp || 0;
+  // この回に、てきとう書きのペナルティで失ったもの（コイン・もちもの・素材・レベル・土地）
+  const carelessLoss = totalPenalty(sessionMetrics.carelessPenalties);
   // 答えたのに1字もできなかった学習（App が学習の回数・ミッションに数えなかったもの）
   const notCounted = sessionMetrics.counted === false && (sessionMetrics.attemptCount || 0) > 0;
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager || levelUpData?.isLevelUp);
@@ -116,22 +119,25 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         </motion.div>
       )}
 
-      {/* てきとう書きで EXP が減ったとき・1字も書けなかったときは、理由を先に伝える */}
+      {/* てきとう書きで失ったものがあるとき・1字も書けなかったときは、理由を先に伝える */}
       {(carelessCount > 0 || notCounted) && (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} role="status" data-testid="result-careless" className="bg-[var(--panel)] border-[4px] border-[var(--primary)] rounded-2xl p-4 shadow-[4px_4px_0_var(--primary)] flex items-start gap-3">
           <Hand size={28} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />
           <div className="min-w-0 text-sm font-bold leading-relaxed text-[var(--text)]">
             {carelessCount > 0 && (
-              <p>
-                <span className="font-black">てきとうに {F("書","か")}いた {F("回数","かいすう")}：{carelessCount}{F("回","かい")}</span>
-                {carelessLostExp > 0
-                  ? <>。もらえる EXP が <strong data-testid="result-careless-lost">{carelessLostExp}</strong> へったよ。</>
-                  // 1回目は注意だけ（systems/careless.js）。2回目からは減るが、もらえる EXP が無い回は減る分も無い
-                  : carelessPenaltyRate(carelessCount) === 0 ? <>。つぎに てきとうに {F("書","か")}くと、もらえる EXP が へるよ。</> : <>。</>}
-              </p>
+              <>
+                <p>
+                  <span className="font-black">ほとんど {F("書","か")}かずに こたえあわせを した {F("回数","かいすう")}：{carelessCount}{F("回","かい")}</span>
+                  。この{F("回","かい")}の EXP と コインは もらえないよ
+                  {carelessLostExp > 0 && <>（EXP <strong data-testid="result-careless-lost">{carelessLostExp}</strong> が なくなった）</>}。
+                </p>
+                {Object.values(carelessLoss).some((amount) => amount > 0) && (
+                  <p data-testid="result-careless-loss">なくなったもの：<PenaltyLoss loss={carelessLoss} /></p>
+                )}
+              </>
             )}
             {notCounted && <p>{F("書","か")}けた{F("字","じ")}が なかったので、この{F("回","かい")}は {F("学習","がくしゅう")}の {F("回数","かいすう")}に {F("入","はい")}らないよ。</p>}
-            <p className="text-[var(--text-muted)]">ていねいに {F("書","か")}くと、ぜんぶ もらえるよ。</p>
+            <p className="text-[var(--text-muted)]">ていねいに {F("書","か")}けば、なにも なくならないよ。わからないときは「わからない」を おしてね。</p>
           </div>
         </motion.div>
       )}

@@ -1,5 +1,7 @@
-// てきとう書きの回数から、その回の学習でもらえる EXP をどれだけ減らすかを決める。
+// てきとう書き（確かめの画面で「このまま こたえあわせ」を選んだ回数）から、
+// その回の学習でもらえる EXP をどれだけ減らすかを決める。いまの決まりでは、1回でもあれば その回は何ももらえない。
 // 見分けるのは strokeGrader.js（measureAttempt）、数えるのは App.jsx（1回の学習ごと）。
+// コイン・もちもの・レベル・土地へのペナルティは careless-penalty.js。
 import { CARELESS } from '../constants/gameConfig.js';
 
 /**

@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { ChevronRight, Eye, HelpCircle, RotateCcw, Undo2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
+import PenaltyLoss, { penaltyAddedLines } from '../ui/PenaltyLoss';
+import CarelessConfirm from './CarelessConfirm';
 import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { judgeWriting } from '../../systems/strokeGrader';
-import { carelessPenaltyRate } from '../../systems/careless';
+import { applyHeavyPenalty, previewCarelessPenalty, summarizePenalty } from '../../systems/careless-penalty';
+import { TOWN_ITEM_MAP } from '../../data/town-items';
+import { getTodayString } from '../../utils/date-utils';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
@@ -42,7 +47,7 @@ function describeJudgment(judgment) {
     return { tone: 'plain', title: <>こたえを よく {F("見","み")}て、もう1{F("回","かい")} {F("書","か")}こう</>, hints: [] };
   }
   if (verdict === 'careless') {
-    return { tone: 'retry', title: <>✋ ていねいに {F("書","か")}こう！</>, hints: [] };
+    return { tone: 'retry', title: <>✋ ほとんど {F("書","か")}かずに こたえあわせを したよ</>, hints: [] };
   }
   const diff = attempt ? attempt.actualCount - attempt.expectedCount : 0;
   const countHint = diff > 0 ? `${diff}かく おおいよ` : diff < 0 ? `${-diff}かく たりないよ` : null;
@@ -85,11 +90,16 @@ function nextReviewText(card, evaluation, isPractice) {
  * おすすめが「忘れた」でも「むずかしい」を選べば先へ進めたので、線を1本引くだけで学習が進んだ。
  * いまは評価を採点で決め、児童が押すのは「つぎへ」か「もう1回」だけ（strokeGrader.js の judgeWriting）。
  *
- * previousFails: この学習で同じ字をやり直した回数。carelessCount: この学習でのてきとう書きの回数。
- * onJudged: 判定が出たとき（スタンプと音）。onCareless: てきとう書きと判定したとき（すぐ数える）。
+ * ほとんど書いていない字（てきとう書き）は、答えを見せる前に確かめる（CarelessConfirm）。
+ * 「このまま こたえあわせ」を選んだときにだけ、ペナルティを科す（systems/careless-penalty.js）。
+ *
+ * previousFails: この学習で同じ字をやり直した回数。
+ * carelessRecord: これまでのペナルティの記録（stats の carelessStrikes と carelessLog。次に何を失うかを出すため）。
+ * onJudged: 判定が出たとき（スタンプと音）。onCarelessWarned: 確かめの画面を出したとき（回数を残す）。
+ * onCareless: 「このまま」を選んだとき。ペナルティを科す関数を渡すと、失ったものの記録が返る。
  * onRevealChange: 答えを見せているあいだはタブを切りかえさせない（見てから書きなおせてしまうため）。
  */
-const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked, previousFails = 0, carelessCount = 0, onJudged, onCareless, onRevealChange }) => {
+const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked, previousFails = 0, carelessRecord = null, onJudged, onCareless, onCarelessWarned, onRevealChange }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [userStrokes, setUserStrokes] = useState([]);
@@ -97,6 +107,8 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   const lastPosRef = useRef({ x: 0, y: 0 });
   // 答え合わせの結果。null のあいだは書いている途中
   const [judgment, setJudgment] = useState(null);
+  // ほとんど書かずに「こたえあわせ」を押したときの確かめ（開いているあいだは、まだ答えを見せない）
+  const [warning, setWarning] = useState(null);
   // 縦に重ねたレイアウトの問題文で、読みかたのヒントを開いているか
   const [hintOpen, setHintOpen] = useState(false);
   const showAnswer = judgment !== null;
@@ -112,7 +124,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
 
   // 字が変わったら、書いた線と答え合わせを消して次の問題にする
   useEffect(() => {
-    setUserStrokes([]); setJudgment(null); setHintOpen(false);
+    setUserStrokes([]); setJudgment(null); setHintOpen(false); setWarning(null);
     onRevealChangeRef.current?.(false);
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -148,7 +160,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   const startDraw = (e) => {
     e.preventDefault();
     // 答え合わせのあとは書き足せない（答えを見てから直した字を、もう一度採点させないため）
-    if (showAnswer) return;
+    if (showAnswer || warning) return;
     setIsDrawing(true);
     const { x, y } = getCoords(e);
     lastPosRef.current = { x, y };
@@ -220,13 +232,14 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   // 1本も書かずに答え合わせへは進めない。書き順データの読みこみ中は、前の字のお手本で採点してしまうので待つ。
   const canReveal = userStrokes.length > 0 && !isDrawing && !isLoading;
   const handleReveal = () => {
-    if (!canReveal || showAnswer) return;
+    if (!canReveal || showAnswer || warning) return;
     // 線は 0〜1 の比率で持っているので、大きさ 1 として採点する
     const judged = judgeWriting(userStrokes, strokeData, 1, { previousFails });
     if (judged.verdict === 'careless') {
-      // てきとう書きは、ボタンを押す前にやめても数が残るよう、ここで数える
-      onCareless?.();
-      reveal({ ...judged, carelessNth: carelessCount + 1 });
+      // ほとんど書いていない。答えを見せる前に、何を失うかを見せて確かめる
+      setWarning({ judged, preview: previewCarelessPenalty(carelessRecord, getTodayString()) });
+      audioCtrl.playSE('stamp_bad');
+      onCarelessWarned?.();
       return;
     }
     reveal(judged);
@@ -236,7 +249,17 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   const canGiveUp = !isDrawing && !isLoading;
   const handleGiveUp = () => {
     if (!canGiveUp || showAnswer) return;
+    setWarning(null);
     reveal({ verdict: 'giveup', evaluation: 'again', reason: 'giveup', result: null, attempt: null, lenient: false });
+  };
+
+  // 確かめの画面で「このまま こたえあわせ」を選んだ。ここで はじめてペナルティを科す
+  const handleProceedCareless = () => {
+    if (!warning || showAnswer) return;
+    const { judged, preview } = warning;
+    setWarning(null);
+    const entry = onCareless?.((stats, today) => applyHeavyPenalty(stats, { today, itemMap: TOWN_ITEM_MAP })) || null;
+    reveal({ ...judged, penalty: entry, preview });
   };
 
   const view = judgment && judgment.verdict !== 'ungraded' ? describeJudgment(judgment) : null;
@@ -245,7 +268,11 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   const willDefer = Boolean(judgment) && !passed && previousFails + 1 >= SESSION.MAX_RETRIES;
   // 点数は、画数が合っていて採点できたときだけ出す（てきとう書き・わからない には出さない）
   const score = judgment?.result?.strokeCountMatch && judgment.verdict !== 'careless' ? judgment.result.total : null;
-  const penaltyPercent = judgment?.verdict === 'careless' ? Math.round(carelessPenaltyRate(judgment.carelessNth) * 100) : 0;
+  // てきとう書きで失ったものと、次にやると足されるもの
+  const lostSummary = judgment?.verdict === 'careless' && judgment.penalty ? summarizePenalty(judgment.penalty) : null;
+  const lost = lostSummary && Object.values(lostSummary).some((amount) => amount > 0) ? lostSummary : null;
+  const nextAdded = judgment?.verdict === 'careless' && judgment.preview
+    ? penaltyAddedLines(judgment.preview.heavy ? judgment.preview.step : null, judgment.preview.nextStep) : [];
 
   const main = (
     // 上下の余白は、答えを並べて見せるときだけ付ける。書いているあいだも付けていたときは、
@@ -407,10 +434,15 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
       )}
       {judgment.verdict === 'careless' && (
         <div className="text-xs md:text-sm font-bold text-[var(--text)] bg-[var(--bg)] rounded-xl border-2 border-[var(--text)] px-3 py-2 leading-relaxed" data-testid="test-careless-note">
-          {penaltyPercent > 0
-            ? <>てきとうに {F("書","か")}いたので、この{F("回","かい")}に もらえる EXP が <strong>{penaltyPercent}%</strong> へるよ。</>
-            : <>つぎに てきとうに {F("書","か")}くと、もらえる EXP が へるよ。</>}
-          <br />わからないときは「わからない」を おしてね。
+          <p>この{F("回","かい")}の EXP と コインは もらえないよ。</p>
+          {lost && <p>なくなったもの：<PenaltyLoss loss={lost} /></p>}
+          {nextAdded.length > 0 && (
+            <p className="text-[var(--text-muted)]">
+              {judgment.preview.heavy ? <>つぎに やると：</> : <>あしたから また やると：</>}
+              {nextAdded.map(({ key, text }, index) => <span key={key}>{index > 0 ? '・' : ''}{text}</span>)}
+            </p>
+          )}
+          <p>わからないときは「わからない」を おしてね。</p>
         </div>
       )}
       {passed ? (
@@ -455,7 +487,22 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     </div>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
+  return (
+    <>
+      <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />
+      <AnimatePresence>
+        {warning && (
+          <CarelessConfirm
+            key="careless-confirm"
+            preview={warning.preview}
+            onRewrite={() => setWarning(null)}
+            onGiveUp={handleGiveUp}
+            onProceed={handleProceedCareless}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
 };
 
 export default TestMode;

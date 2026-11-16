@@ -792,13 +792,15 @@ const StorageAPI = {
 
   /**
    * てきとう書きを、その日の記録に1回足した新しい stats を返す（学習きろくで先生が見る）。
+   * field: 'carelessWarned' は確かめの画面が出た回数、'careless' はそのまま答え合わせをした回数。
    * @param {object} stats
    * @param {string} [today]
+   * @param {'careless'|'carelessWarned'} [field]
    * @returns {object}
    */
-  recordCareless: (stats, today = getTodayString()) => {
+  recordCareless: (stats, today = getTodayString(), field = 'careless') => {
     const day = stats.daily?.[today] || { exp: 0, reviewed: 0, perfects: 0, attempts: 0, correct: 0 };
-    return { ...stats, daily: { ...stats.daily, [today]: { ...day, careless: (day.careless || 0) + 1 } } };
+    return { ...stats, daily: { ...stats.daily, [today]: { ...day, [field]: (day[field] || 0) + 1 } } };
   },
 
   /**

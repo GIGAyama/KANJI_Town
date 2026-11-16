@@ -79,6 +79,31 @@ test('1日の記録の「てきとう書きの回数」も、数でなければ�
   assert.equal(result.stats.daily['2026-11-17'].careless, 0);
 });
 
+test('てきとう書きの確かめが出た回数・ペナルティの通算・記録も、型がちがえばその欄だけを捨てる', () => {
+  const result = sanitizeStats({
+    ...validBackup(),
+    carelessStrikes: '3',
+    carelessLog: [
+      { date: '2026-11-16', strike: 1, coins: 500 },
+      'こわれた記録',
+      null,
+      { strike: 2 }, // 日付の無いものは捨てる
+      { date: '2026-11-17', strike: 2, land: [['25,25', 't_cleared']], restoredOn: '2026-11-18' },
+    ],
+    daily: { '2026-11-16': { exp: 0, reviewed: 0, carelessWarned: '4', careless: 1 }, '2026-11-17': { exp: 0, reviewed: 0, carelessWarned: 'x' } },
+  });
+  assert.equal(result.stats.carelessStrikes, 3);
+  assert.deepEqual(result.stats.carelessLog.map((entry) => entry.date), ['2026-11-16', '2026-11-17']);
+  assert.equal(result.stats.carelessLog[1].restoredOn, '2026-11-18');
+  assert.equal(result.stats.daily['2026-11-16'].carelessWarned, 4);
+  assert.equal('carelessWarned' in result.stats.daily['2026-11-17'], false);
+  // 記録が配列でなければ、欄ごと捨てる（ほかの記録は残す）
+  const broken = sanitizeStats({ ...validBackup(), carelessLog: 'x', carelessStrikes: 'たくさん' });
+  assert.equal('carelessLog' in broken.stats, false);
+  assert.equal('carelessStrikes' in broken.stats, false);
+  assert.ok(broken.repaired.includes('carelessLog') && broken.repaired.includes('carelessStrikes'));
+});
+
 test('中の1件が壊れていても、その1件だけを捨てる', () => {
   const result = sanitizeStats({
     ...validBackup(),

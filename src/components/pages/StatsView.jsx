@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock, NotebookPen, Hand } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock, NotebookPen } from 'lucide-react';
 import { F } from '../ui/FormatKun';
+import CarelessRecordCard from './CarelessRecordCard';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { loadStudyRecords, summarizeRecentStudy } from '../../systems/studyStats';
 import { STUDY_APP_ID } from '../../systems/studySession';
@@ -16,7 +17,7 @@ const SKILL_COLORS = {
   stroke: { bar: 'bg-violet-400', text: 'text-violet-700', panel: 'bg-violet-50 border-violet-200' },
 };
 
-const StatsView = ({ setView, stats, startWeakSession }) => {
+const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
   const mastered = kanjiList.filter(k => k.stat?.status === 'mastered').length;
   const learning = kanjiList.filter(k => k.stat?.status === 'learning' || k.stat?.status === 'review').length;
@@ -147,20 +148,8 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
         </div>
       </div>
 
-      {/* てきとう書き（先生・おうちの人が見るための数。0回のあいだは出さない） */}
-      {weeklySummary.careless > 0 && (
-        <div className="bg-[var(--panel)] border-[4px] border-[var(--primary)] rounded-2xl p-4 shadow-sm flex items-start gap-3" role="status" data-testid="stats-careless">
-          <Hand size={24} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="text-sm font-black text-[var(--text)]">
-              てきとうに {F("書","か")}いた {F("回数","かいすう")}：きょう {dailyData[6].careless}{F("回","かい")}・7{F("日","にち")}で {weeklySummary.careless}{F("回","かい")}
-            </div>
-            <div className="mt-1 text-[11px] font-bold leading-relaxed text-[var(--text-muted)]">
-              テストで、{F("線","せん")}を 1{F("本","ぽん")} ひくだけ・{F("点","てん")}を うつだけで「こたえあわせ」を おした {F("回数","かいすう")}です。その{F("回","かい")}に もらえる EXP が へります。
-            </div>
-          </div>
-        </div>
-      )}
+      {/* てきとう書き（先生・おうちの人が見るための記録。何も無いあいだは出さない） */}
+      <CarelessRecordCard stats={stats} setStats={setStats} today={dailyData[6]} week={weeklySummary} />
 
       {/* 7日間の学習グラフ */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">

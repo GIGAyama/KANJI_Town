@@ -102,6 +102,16 @@ export const getLevelReward = (level) => {
 };
 
 /**
+ * そのレベルになるのに要る総EXP（レベルを下げるペナルティで、下げた先の EXP を決めるのに使う）。
+ * @param {number} level 1〜MAX_LEVEL（範囲の外は丸める）
+ */
+export const getExpForLevel = (level) => {
+  const target = Math.max(1, Math.min(MAX_LEVEL, Math.floor(Number(level) || 1)));
+  if (target <= TABLE_TOP.level) return LEVEL_TABLE[target - 1].exp;
+  return TABLE_TOP.exp + (target - TABLE_TOP.level) * EXP_PER_LEVEL_ABOVE_TABLE;
+};
+
+/**
  * 現在の総EXPからレベル情報を取得する
  * @param {number} totalExp - プレイヤーの総獲得EXP
  * @returns {Object} { level, progress, currentLevelExp, nextLevelExp, targetReward }

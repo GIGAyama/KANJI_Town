@@ -122,8 +122,10 @@ function createInitialSessionData(overrides = {}) {
     reviewedCount: 0,
     attemptCount: 0,
     correctCount: 0,
-    // てきとう書きの回数（EXP が減る）と、やり直してもできずに次の学習へ回した字の数
+    // てきとう書きのまま答え合わせをした回数（その回の EXP を失う）と、そのとき失ったものの記録、
+    // やり直してもできずに次の学習へ回した字の数
     carelessCount: 0,
+    carelessPenalties: [],
     deferredCount: 0,
     newKanjiCount: 0,
     masteredCount: 0,
@@ -846,13 +848,37 @@ export default function App() {
     }));
   }, []);
 
-  // てきとう書き（線を1本引く・点を打つだけで答え合わせをした）。ボタンを押す前にやめても
-  // 数が残るよう、判定が出た時点でその日の記録に足す。再読みこみで消えないようチェックポイントも書く。
-  const handleRecordCareless = useCallback(() => {
-    setSessionData(d => ({ ...d, carelessCount: (d.carelessCount || 0) + 1 }));
-    setStats(s => StorageAPI.recordCareless(s));
+  // てきとう書き（ほとんど書かずに「こたえあわせ」を押した）。テストの画面は、答えを見せる前に確かめを出す。
+  // 確かめが出た回数は、その日の記録に残す（先生が学習きろくで見る）。
+  const handleCarelessWarned = useCallback(() => {
+    const next = StorageAPI.recordCareless(statsRef.current, getTodayString(), 'carelessWarned');
+    statsRef.current = next;
+    setStats(next);
+    StorageAPI.saveStats(next);
+  }, []);
+  // 確かめで「このまま こたえあわせ」を選んだ。ペナルティを科して、すぐ保存する
+  // （取り返しのつかない変更なので、保存の前に閉じても無かったことにならないように）。
+  // applyPenalty は systems/careless-penalty.js の計算（テストの画面が渡す。初回の JS に入れないため）。
+  const handleRecordCareless = useCallback((applyPenalty) => {
+    const today = getTodayString();
+    const counted = StorageAPI.recordCareless(statsRef.current, today);
+    const result = applyPenalty ? applyPenalty(counted, today) : { stats: counted, entry: null };
+    const entry = result?.entry || null;
+    // 町の建物や土地が変わったら、住民の満足度も数えなおす
+    const next = entry ? { ...result.stats, satisfaction: calculateSatisfaction(result.stats) } : counted;
+    statsRef.current = next;
+    setStats(next);
+    StorageAPI.saveStatsImmediate(next);
+    setSessionData(d => ({
+      ...d,
+      carelessCount: (d.carelessCount || 0) + 1,
+      carelessPenalties: entry ? [...(d.carelessPenalties || []), entry] : (d.carelessPenalties || []),
+      // レベルが下がったら、この回の「学習の前の EXP」も下がった所にそろえる（結果の画面のレベルがずれないように）
+      oldExp: entry?.exp ? Math.max(0, (d.oldExp || 0) - entry.exp) : d.oldExp,
+    }));
     const checkpoint = createSessionCheckpoint(sessionDataRef.current);
     if (checkpoint) StorageAPI.saveActiveSession(checkpoint);
+    return entry;
   }, [setSessionData]);
   const handleDeferKanji = useCallback(() => {
     setSessionData(d => ({ ...d, deferredCount: (d.deferredCount || 0) + 1 }));
@@ -1159,7 +1185,7 @@ export default function App() {
               }} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'residents' && <PageWrapper key="residents"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="residents" seenHints={seenHints} onDismiss={handleDismissHint} /><ResidentPanel stats={stats} setView={setView} /></ErrorBoundary></PageWrapper>}
           {view === 'achievements' && <PageWrapper key="achievements"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="achievements" seenHints={seenHints} onDismiss={handleDismissHint} /><AchievementView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
-          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
+          {view === 'stats' && <PageWrapper key="stats"><ErrorBoundary onReset={() => setView('home')}><FeatureHint featureKey="stats" seenHints={seenHints} onDismiss={handleDismissHint} /><StatsView setView={setView} stats={stats} setStats={setStats} startWeakSession={startWeakSession} /></ErrorBoundary></PageWrapper>}
           {view === 'settings' && <PageWrapper key="settings"><ErrorBoundary onReset={() => setView('home')}><SettingsView setView={setView} stats={stats} setStats={setStats} isMuted={isMuted} setIsMuted={setIsMuted} levelInfo={levelInfo} /></ErrorBoundary></PageWrapper>}
           {view === 'myDrills' && <PageWrapper key="myDrills"><ErrorBoundary onReset={() => setView('home')}><MyDrillsView setView={setView} stats={stats} setStats={setStats} startDrillSession={startDrillSession} startDrillTest={startDrillTest} setHostDrill={setHostDrill} /></ErrorBoundary></PageWrapper>}
           {view === 'drillEditor' && <PageWrapper key="drillEditor" wide><ErrorBoundary onReset={() => setView('home')}><DrillEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
@@ -1171,7 +1197,7 @@ export default function App() {
           {view === 'rangeEditor' && <PageWrapper key="rangeEditor" wide><ErrorBoundary onReset={() => setView('myDrills')}><RangeEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'rangeImport' && <PageWrapper key="rangeImport"><ErrorBoundary onReset={() => setView('home')}><RangeImportView setView={setView} stats={stats} setStats={setStats} rangeParam={launchParams.rangeParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRecordCareless={handleRecordCareless} onDefer={handleDeferKanji} carelessCount={sessionData.carelessCount || 0} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRecordCareless={handleRecordCareless} onCarelessWarned={handleCarelessWarned} onDefer={handleDeferKanji} carelessRecord={stats} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}

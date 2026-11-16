@@ -9,7 +9,7 @@
 /** 1日の記録で数える欄（月ごとの集計にたたむときも同じ欄を足す） */
 export const DAILY_SUM_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct'];
 /** 0 のときは月ごとの集計に欄を作らないもの（てきとう書きの回数。無い子の記録を太らせない） */
-const DAILY_OPTIONAL_SUM_FIELDS = ['careless'];
+const DAILY_OPTIONAL_SUM_FIELDS = ['careless', 'carelessWarned'];
 
 /**
  * cutoffDate（YYYY-MM-DD）より前の日を月ごとの集計にたたんだ新しい stats を返す。

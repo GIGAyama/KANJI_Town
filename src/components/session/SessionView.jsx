@@ -21,7 +21,7 @@ import { SESSION } from '../../constants/gameConfig';
 const MODE_LABELS = { read: '音読', watch: '書き順', write: 'なぞる', test: 'テスト' };
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
-const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, onRecordCareless, onDefer, carelessCount = 0, onRequestLeave, isResumed = false, isPractice = false }) => {
+const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, onRecordCareless, onCarelessWarned, onDefer, carelessRecord = null, onRequestLeave, isResumed = false, isPractice = false }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
   const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
@@ -337,7 +337,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             {mode === 'read' && <ReadMode kanji={currentKanji} paths={paths} isLoading={isLoading} settings={settings} challengeCleared={voicedKanjiIds.has(currentKanji.id)} onChallengeClear={handleChallengeClear} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => { recordSkills([{ skill: 'stroke', evidence: 'exposed' }]); setMode('write'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} onPracticeComplete={(evidence) => recordSkills([{ skill: 'writing', evidence }, { skill: 'stroke', evidence }])} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
-            {mode === 'test' && <TestMode kanji={currentKanji} card={stats[currentKanji.id] || null} isPractice={isPractice} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} previousFails={previousFails} carelessCount={carelessCount} onJudged={handleJudged} onCareless={onRecordCareless} onRevealChange={setTestRevealed} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} card={stats[currentKanji.id] || null} isPractice={isPractice} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} previousFails={previousFails} carelessRecord={carelessRecord} onJudged={handleJudged} onCareless={onRecordCareless} onCarelessWarned={onCarelessWarned} onRevealChange={setTestRevealed} />}
           </>
         )}
       </div>

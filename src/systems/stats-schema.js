@@ -20,14 +20,14 @@ const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const COUNT_FIELDS = [
   'totalExp', 'coins', 'streak', 'population', 'perfectCountTotal', 'exploredRadius',
   'mapSize', 'sessionCount', 'craftCount', 'schemaVersion', 'restPassRechargeProgress',
-  'satisfaction',
+  'satisfaction', 'carelessStrikes',
 ];
 
 /** ふつうのオブジェクトを持つ欄 */
 const OBJECT_FIELDS = ['kanjiStats', 'townMap', 'townItems', 'achievements', 'materials', 'daily', 'dailyArchive', 'settings'];
 
 /** 配列を持つ欄 */
-const ARRAY_FIELDS = ['myDrills', 'villagers', 'unlockedKanji', 'seenHints', 'dailyMissions'];
+const ARRAY_FIELDS = ['myDrills', 'villagers', 'unlockedKanji', 'seenHints', 'dailyMissions', 'carelessLog'];
 
 /** 文字列を持つ欄 */
 const STRING_FIELDS = [
@@ -36,7 +36,7 @@ const STRING_FIELDS = [
 ];
 
 /** 1日の記録の中の数の欄 */
-const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct', 'careless', 'days'];
+const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct', 'careless', 'carelessWarned', 'days'];
 
 /** バックアップとして読みこめるファイルの大きさの上限（端末の localStorage より十分大きい） */
 export const IMPORT_MAX_BYTES = 8 * 1024 * 1024;
@@ -148,6 +148,8 @@ export function sanitizeStats(raw) {
   if (stats.unlockedKanji) stats.unlockedKanji = stats.unlockedKanji.filter(id => typeof id === 'string');
   if (stats.seenHints) stats.seenHints = stats.seenHints.filter(key => typeof key === 'string');
   if (stats.dailyMissions) stats.dailyMissions = stats.dailyMissions.filter(isPlainObject);
+  // てきとう書きのペナルティの記録（systems/careless-penalty.js）。形のちがうものは捨てる
+  if (stats.carelessLog) stats.carelessLog = stats.carelessLog.filter(entry => isPlainObject(entry) && typeof entry.date === 'string');
   if (stats.myDrills) stats.myDrills = stats.myDrills.map(sanitizeDrill).filter(Boolean);
 
   return { stats, repaired };

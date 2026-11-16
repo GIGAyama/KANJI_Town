@@ -26,6 +26,8 @@ const TERRAIN_COLORS = {
   t_roughland:    { top: '#92400e', left: '#78350f', right: '#a16207' },
   t_cleared:      { top: '#d4a96a', left: '#b8915a', right: '#e8c08a' },
   t_weed:         { top: '#84cc16', left: '#65a30d', right: '#a3e635' },
+  // てきとう書きのペナルティで かれた土地（灰色。ひびは GroundDiamond が描く）
+  t_deadland:     { top: '#52525b', left: '#3f3f46', right: '#71717a' },
   t_grassland:    { top: '#86efac', left: '#4ade80', right: '#bbf7d0' },
   t_forest_floor: { top: '#166534', left: '#052e16', right: '#15803d' },
   t_sand:         { top: '#fde68a', left: '#fbbf24', right: '#fef3c7' },
@@ -35,7 +37,7 @@ const TERRAIN_COLORS = {
 
 
 // ── 地形ダイヤモンドSVG ──
-const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivateCost }) => {
+const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivateCost, cracked }) => {
   const top = colors?.top || '#d4a96a';
   const left = colors?.left || '#b8915a';
   const right = colors?.right || '#e8c08a';
@@ -49,6 +51,8 @@ const GroundDiamond = React.memo(({ colors, isEditing, isCultivatable, cultivate
       <polygon points="32,32 64,16 64,18 32,34" fill={right} opacity="0.6" />
       {/* グリッド線（視認性向上） */}
       <polygon points="32,0 64,16 32,32 0,16" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
+      {/* かれた土地のひび */}
+      {cracked && <path d="M14 15l9 3 5-5 6 6 8-3 7 4M28 13l-3-6M34 19l2 8" fill="none" stroke="#18181b" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />}
       {/* 開拓ホバー */}
       {isEditing && isCultivatable && (
         <polygon points="32,0 64,16 32,32 0,16" fill="rgba(245,158,11,0.3)" className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -181,7 +185,7 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, isEditing, isDanger, timeO
       {/* 1. 地面レイヤー（足元） */}
       <div key={`${key}-ground`} style={{ ...tileStyle, top: isoY, height: TILE_H + 2 }}
         className={`select-none ${isEditing ? 'cursor-pointer' : ''} ${dimmed}`}>
-        <GroundDiamond colors={groundColors} isEditing={isEditing && !item} />
+        <GroundDiamond colors={groundColors} isEditing={isEditing && !item} cracked={baseItemId === 't_deadland'} />
       </div>
 
       {/* 2. 建物・オブジェクトレイヤー（立体物） */}
