@@ -82,6 +82,25 @@ export function mountSharedDefs(doc = globalThis.document) {
   doc.body.appendChild(holder.firstChild);
 }
 
+/**
+ * 絵のおおもとを 1 つ、<defs> に足す（同じ id は 1 回だけ）。<use href="#id"> で呼びだせるようになる。
+ *
+ * 新しい絵がらの建物（buildings-art.js）は 100 種類近くあり、全部を先に置くと、町に無い建物の絵まで
+ * 読みこむことになる。その建物を はじめて描くときに、その絵だけを作って置く。
+ * 描いている途中（render の中）から呼んでよい: 置き先は React の外の <svg> で、何度呼んでも同じ結果になる。
+ * @param {string} id 絵の id
+ * @param {() => string} build id つきの <g>…</g> を返す関数（まだ置いていないときだけ呼ぶ）
+ */
+const mountedDefs = new Set();
+export function ensureDef(id, build, doc = globalThis.document) {
+  if (mountedDefs.has(id) || !doc || !doc.body) return;
+  mountSharedDefs(doc);
+  const defs = doc.getElementById(SHARED_DEFS_ID)?.querySelector('defs');
+  if (!defs) return;
+  mountedDefs.add(id);
+  defs.insertAdjacentHTML('beforeend', build());
+}
+
 const darken = (hex, amt = 20) => {
   if (!hex || typeof hex !== 'string' || hex.startsWith('url')) return hex || '#000';
   const match = hex.match(/\w\w/g);

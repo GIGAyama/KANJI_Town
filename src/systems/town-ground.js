@@ -148,8 +148,8 @@ export function buildGroundModel(map, itemMap, exploredRadius) {
         }
         // 足もとの表（kind を更地にする）に使うので、影を落とさないものも入れておく
         const fit = itemFit(item);
-        casts[i] = { w: item.size.w, h: item.size.h, bw: fit.bw, bh: fit.bh, height: NO_SHADOW.has(itemId) ? 0 : (item.isoHeight || 30), round: ROUND_SHADOW.has(itemId) };
-      } else if (item.type !== 'terrain' && !item.isFlat && !NO_SHADOW.has(itemId)) {
+        casts[i] = { w: item.size.w, h: item.size.h, bw: fit.bw, bh: fit.bh, height: NO_SHADOW.has(itemId) || fit.ownShadow ? 0 : (item.isoHeight || 30), round: ROUND_SHADOW.has(itemId) };
+      } else if (item.type !== 'terrain' && !item.isFlat && !NO_SHADOW.has(itemId) && !itemFit(item).ownShadow) {
         const fit = itemFit(item);
         casts[i] = { w: 1, h: 1, bw: fit.bw, bh: fit.bh, height: item.isoHeight || 10, round: item.type === 'nature' || item.type === 'decoration' || ROUND_SHADOW.has(itemId) };
       }

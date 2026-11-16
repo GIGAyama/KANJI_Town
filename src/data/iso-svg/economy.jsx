@@ -281,7 +281,6 @@ export const SvgGrandWarehouse = () => {
   );
 };
 
-
 export const SvgMarket = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
@@ -599,44 +598,6 @@ export const SvgSmithy = () => (
   </svg>
 );
 
-export const SvgFactory = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-    <g transform="translate(50, 100) scale(2.5)">
-      {/* メイン工場棟 */}
-      <polygon points="0,-3 -30,-18 -30,-38 0,-23" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-3 30,-18 30,-38 0,-23" fill="#b91c1c" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 -30,-38 -30,-40 0,-25" fill="#450a0a" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-23 30,-38 30,-40 0,-25" fill="#7f1d1d" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      {/* 左側の倉庫棟 */}
-      <polygon points="-30,-18 -48,-27 -48,-40 -30,-31" fill="#64748b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="-30,-18 -18,-24 -18,-37 -30,-31" fill="#94a3b8" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <polygon points="-30,-31 -48,-40 -33,-47 -18,-37" fill="#475569" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      {/* 窓 */}
-      <g transform="translate(-15, -15)">
-        <polygon points="0,-0.5 -9.5,-5.5 -9.5,-14.5 0,-9.5" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      </g>
-      <g transform="translate(5, -10)">
-        <polygon points="0,-0.5 9.5,-5.5 9.5,-14.5 0,-9.5" fill="#93c5fd" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      </g>
-      {/* 煙突3本 */}
-      <g transform="translate(-18, -35)">
-        <polygon points="0,0 -4,-2 -4,-35 0,-33" fill="#7f1d1d" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,0 4,-2 4,-35 0,-33" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      </g>
-      <g transform="translate(-6, -41)">
-        <polygon points="0,0 -4,-2 -4,-35 0,-33" fill="#7f1d1d" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <polygon points="0,0 4,-2 4,-35 0,-33" fill="#b91c1c" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      </g>
-      <g transform="translate(-35, -38)">
-        <polygon points="0,0 -3,-1.5 -3,-25 0,-23.5" fill="#475569" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-        <polygon points="0,0 3,-1.5 3,-25 0,-23.5" fill="#64748b" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      </g>
-      {/* 入口 */}
-      <polygon points="0,-3 -8,-7 -8,-15 0,-11" fill="#1e293b" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-    </g>
-  </svg>
-);
-
 export const SvgWatermill = () => {
   const iso = (x, y, z = 0) => {
     const ptX = (x * 2 - y) * 0.44;
@@ -743,22 +704,3 @@ export const SvgWatermill = () => {
     </svg>
   );
 };
-
-export const SvgMine = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-    <g transform="translate(50, 100) scale(2.5)">
-      <polygon points="-25,-5 -15,-30 0,-45 20,-35 30,-10 15,5 -10,5" fill="#334155" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="0,-45 20,-35 30,-10 15,5 0,0 -10,-20" fill="#475569" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <polygon points="20,-35 30,-10 25,-5 10,-20" fill="#64748b" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M -10,0 C -10,-20 10,-20 10,0 L 0,5 Z" fill="#000" />
-      <polygon points="-12,-2 -10,-1 -10,-18 -12,-19" fill="#451a03" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      <polygon points="12,-2 10,-1 10,-18 12,-19" fill="#451a03" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      <polygon points="-14,-19 14,-19 12,-16 -12,-16" fill="#451a03" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-      <g transform="translate(-10, 4)">
-        <polygon points="-6,-4 0,-7 6,-4 0,-1" fill="#64748b" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-        <polygon points="-6,-4 0,-1 0,3 -6,0" fill="#475569" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-        <polygon points="0,-1 6,-4 6,0 0,3" fill="#94a3b8" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
-      </g>
-    </g>
-  </svg>
-);

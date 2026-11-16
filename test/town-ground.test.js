@@ -116,7 +116,11 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   map[`${C},${C + 2}`] = 't_castle';
   map[`${C + 3},${C + 2}`] = 't_garden';
   map[`${C - 2},${C}`] = 't_road';
+  map[`${C - 4},${C + 4}`] = 't_hospital';
   const model = buildGroundModel(map, ITEMS, 6);
+  const hospital = castAt(model, C - 4, C + 4);
+  assert.deepEqual([hospital.w, hospital.h], [2, 1]);
+  assert.ok(hospital.height > 0 && hospital.bw > 1.5 && hospital.bw <= 2, '病院は地面のレイヤーが影を落とす');
   const house = castAt(model, C, C);
   assert.ok(house && !house.round && house.height > 0);
   assert.ok(castAt(model, C + 2, C).round, '木の影は丸い');
@@ -124,7 +128,9 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   assert.equal(castAt(model, C - 2, C), null, '道そのものは影を落とさない');
   const castle = castAt(model, C, C + 2);
   assert.deepEqual([castle.w, castle.h], [2, 2]);
-  assert.ok(castle.bw > 1.5 && castle.bw <= 2, `お城の足もとの幅 ${castle.bw}`);
+  assert.ok(castle.bw >= 1.4 && castle.bw <= 2, `お城の足もとの幅 ${castle.bw}`);
+  // お城は敷地に芝を しくので、影は絵の中に描いてある（地面のレイヤーは落とさない）
+  assert.equal(castle.height, 0);
   assert.equal(castAt(model, C + 1, C + 3), null, '大きな建物の影は、左上のマスにだけ入れる');
   assert.equal(castAt(model, C + 3, C + 2), null, '庭園のような平たいものは影を落とさない');
 });

@@ -23,27 +23,14 @@
 //    足さないと DEFAULT_BIG の決まり（足もとが 88% のひし形の絵）で置かれる。
 
 const FIT = {
-  t_wall: [0, -24, 0.32, 0.52, 0.52],
-  t_shop: [0, -25, 0.32, 0.5, 0.5],
-  t_school: [-0.2, -136.2, 0.761, 3.76, 3.76],
-  t_torii: [0, -28, 0.32, 0.8, 0.3],
-  t_temple: [0, -22.5, 0.633, 1.88, 1.88],
-  t_castle: [-0.2, -31.5, 0.655, 1.88, 1.88],
-  t_gold_castle: [-0.2, -36.2, 0.652, 1.88, 1.88],
-  t_dragon: [0, 4, 0.32, 0.5, 0.5],
   t_well: [0, -12, 0.32, 0.36, 0.36],
   t_port: [32.4, -70.6, 0.448, 0.92, 1.88],
-  t_factory: [-22.5, -54.9, 0.39, 1.48, 0.94],
   t_watermill: [-66.8, -11.1, 0.485, 1.77, 0.94, 1],
-  t_mine: [2, -8, 0.32, 0.6, 0.6],
   t_library: [-0.2, -47, 0.357, 0.98, 0.98],
   t_townhall: [-0.2, -47, 0.342, 0.98, 0.98],
   t_embassy: [-0.2, -47, 0.342, 0.98, 0.98],
-  t_golden_tower: [0, -15.7, 0.75, 0.75, 0.75],
   t_guardian_shrine: [-0.2, -46.2, 0.391, 0.98, 0.98],
   t_monument: [-0.2, -46.7, 0.412, 0.98, 0.98],
-  t_house2: [1, -21.3, 0.519, 1.82, 0.94],
-  t_house3: [-12.2, -23, 0.496, 2.82, 1.52],
   t_department: [-0.2, -47, 0.685, 1.88, 1.88],
   t_grand_smithy: [-0.2, -47, 0.342, 0.98, 0.98],
   t_university: [-0.2, -46.7, 0.632, 1.88, 1.88],
@@ -52,30 +39,22 @@ const FIT = {
   t_mega_academy: [-0.2, -46.7, 0.632, 1.88, 1.88],
   t_mega_imperial_palace: [-0.2, -46.7, 0.948, 2.82, 2.82],
   t_mega_wonder: [-0.2, -46.7, 0.948, 2.82, 2.82],
-  t_crystal_tower: [0, -24, 0.6, 0.25, 0.25],
   t_philosophers_lab: [-0.2, -45, 0.374, 0.98, 0.98],
   t_dragon_shrine: [-0.2, -46, 0.655, 1.88, 1.88],
   t_perfect_monument: [-0.2, -47, 0.391, 0.98, 0.98],
   t_hot_spring: [-0.2, -46.3, 0.342, 0.98, 0.98],
   t_observatory: [-0.2, -47, 0.372, 0.98, 0.98],
   t_grand_warehouse: [-0.2, -101.8, 0.421, 0.94, 1.77],
-  t_national_library: [-0.2, -43.5, 0.845, 1.88, 1.88],
   t_mega_harbor_town: [-0.2, -46.7, 0.632, 1.88, 1.88],
   t_mega_shrine_complex: [-0.2, -46.7, 0.632, 1.88, 1.88],
   t_stone_lantern: [0, -13, 0.32, 0.2, 0.2],
   t_fountain: [0, -2, 0.32, 0.44, 0.44],
   t_statue: [0, -19, 0.32, 0.31, 0.31],
   t_windmill: [0, -3, 0.32, 0.3, 0.3],
-  t_bell_tower: [0, -14, 0.32, 0.3, 0.3],
-  t_clock_tower: [0, -11, 0.32, 0.24, 0.24],
   t_gold_statue: [0, 0, 0.32, 0.27, 0.27],
-  t_festival_stage: [0, -22, 0.32, 0.47, 0.47],
   t_family_restaurant: [-0.2, -47, 0.357, 0.98, 0.98],
   t_cinema: [-0.2, -47, 0.357, 0.98, 0.98],
   t_hotel: [-0.3, -45.2, 0.428, 0.98, 1.02],
-  t_hospital: [-17.5, -32.2, 0.578, 1.54, 0.94],
-  t_fire_station: [-17.9, -29.9, 0.657, 1.67, 0.94],
-  t_station: [0, -15, 0.72, 1.7, 1.7],
   t_airport: [-0.2, -45.7, 0.645, 1.88, 1.88],
   t_office_building: [-0.2, -45.7, 0.401, 0.98, 0.98],
   t_tower_apartment: [-0.2, -46, 0.419, 0.98, 0.98],
@@ -95,7 +74,39 @@ const FIT = {
   t_trash_can: [0, -5, 0.32, 0.16, 0.16],
 };
 
-/** 1 マスのものの決まり: 足もとのまん中は (0, -50)。タイルいっぱいに描いた絵（お店など）と、木 */
+/**
+ * 新しい絵がらの建物（iso-svg/buildings-art.js）の、足もとの大きさ [bw, bh]（マス）。
+ * こちらは絵の原点が「敷地のまん中」に そろえてあるので、置き方は どれも同じ決まりになる
+ * （まん中 (0, -50)・大きさ 0.16 ×（敷地の幅 + 奥行き））。ここに書くのは影の大きさだけ。
+ * 3 つめの 1 は「影は絵の中に描いてある」しるし（敷地に芝や しき石を しく絵。地面のレイヤーは影を描かない）。
+ * 値は buildings-art.js の base・shadow と同じにする（test/buildings-art.test.js が見る）。
+ */
+const KIT_BASE = {
+  t_shop: [0.76, 0.62],
+  t_wall: [0.94, 0.94],
+  t_fence: [0.96, 0.1],
+  t_mine: [0.8, 0.66],
+  t_torii: [0.8, 0.14],
+  t_dragon: [0.6, 0.6],
+  t_bell_tower: [0.6, 0.6],
+  t_clock_tower: [0.46, 0.46],
+  t_festival_stage: [0.52, 0.52],
+  t_house2: [1.72, 0.62],
+  t_house3: [2.16, 0.92, 1],
+  t_factory: [1.8, 0.7, 1],
+  t_hospital: [1.8, 0.64],
+  t_fire_station: [1.82, 0.62],
+  t_golden_tower: [0.86, 0.86, 1],
+  t_crystal_tower: [0.7, 0.7],
+  t_station: [1.4, 0.74, 1],
+  t_temple: [1.44, 1.22, 1],
+  t_castle: [1.5, 1.5, 1],
+  t_gold_castle: [1.5, 1.5, 1],
+  t_national_library: [1.64, 1.34, 1],
+  t_school: [2.94, 0.9, 1],
+};
+
+/** 1 マスのものの決まり: 足もとのまん中は (0, -50)。タイルいっぱいに描いた絵と、木 */
 const DEFAULT_ONE = Object.freeze({ ax: 0, ay: -50, s: 0.32, bw: 0.86, bh: 0.86, flip: false });
 
 /**
@@ -106,6 +117,12 @@ const DEFAULT_ONE = Object.freeze({ ax: 0, ay: -50, s: 0.32, bw: 0.86, bh: 0.86,
 export function itemFit(item) {
   const row = item ? FIT[item.id] : null;
   if (row) return { ax: row[0], ay: row[1], s: row[2], bw: row[3], bh: row[4], flip: row[5] === 1 };
+  const base = item ? KIT_BASE[item.id] : null;
+  if (base) {
+    const w = item.size?.w || 1;
+    const h = item.size?.h || 1;
+    return { ax: 0, ay: -50, s: 0.16 * (w + h), bw: base[0], bh: base[1], flip: false, ownShadow: base[2] === 1 };
+  }
   if (item && item.size) {
     // 表に無い大きな建物: 足もとが 88% の ひし形（ShopBase と同じ描き方）だとして置く
     const side = Math.min(item.size.w, item.size.h);
@@ -115,4 +132,7 @@ export function itemFit(item) {
 }
 
 /** 表に載っている id（テスト用） */
-export const FITTED_ITEM_IDS = Object.freeze(Object.keys(FIT));
+export const FITTED_ITEM_IDS = Object.freeze([...Object.keys(FIT), ...Object.keys(KIT_BASE)]);
+
+/** 新しい絵がらの建物の、足もとの大きさの表（テスト用） */
+export const KIT_BASE_SIZES = Object.freeze(KIT_BASE);

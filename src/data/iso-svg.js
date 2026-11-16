@@ -8,6 +8,7 @@ mountSharedDefs();
 export * from './iso-svg/terrain.jsx';
 export * from './iso-svg/nature.jsx';
 export * from './iso-svg/structures.jsx';
+export * from './iso-svg/buildings.jsx';
 export * from './iso-svg/economy.jsx';
 export * from './iso-svg/special.jsx';
 export * from './iso-svg/commercial.jsx';
