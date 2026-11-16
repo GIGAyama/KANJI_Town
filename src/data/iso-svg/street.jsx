@@ -80,7 +80,7 @@ export const SvgStreetLight = () => (
       <path d="M 7,-36.8 L 13,-36.8 L 14.4,-33.4 L 5.6,-33.4 Z" fill="#1e293b" stroke="#0f172a" strokeWidth="1" strokeLinejoin="round" />
       <ellipse cx="10" cy="-33" rx="3.6" ry="1.6" fill="#fef08a" stroke="#2b211c" strokeWidth="0.9" filter="url(#glow-effect)" />
       {/* 光のこぼれ */}
-      <path d="M 6.5,-32 L 3.5,-24 M 13.5,-32 L 16.5,-24" stroke="#fde047" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+      <path d="M 6.5,-32 L 3.5,-24 M 13.5,-32 L 16.5,-24" stroke="#fde047" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.5" />
       {/* 小さな装飾バナー */}
       <rect x="-4.6" y="-26" width="4.6" height="9" rx="0.8" fill="#22c55e" stroke="#2b211c" strokeWidth="0.9" />
       <circle cx="-2.3" cy="-21.5" r="1.5" fill="#fef9c3" />

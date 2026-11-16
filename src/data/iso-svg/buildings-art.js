@@ -16,6 +16,7 @@
 
 import { INK, lot, num, pen, tone } from './kit.js';
 import { HOUSE_PALETTES } from './house-art.js';
+import { flattenOpacity } from './flatten-opacity.js';
 
 const CREAM = '#fff6e6';
 const STONE = '#ddd6ca';
@@ -2504,11 +2505,14 @@ export const BUILDING_ART_NAMES = Object.freeze(Object.keys(BUILDING_ART));
 /** <defs> の中での id */
 export const buildingArtId = (name, variant = 0) => `b-${name}-${variant}`;
 
-/** 絵の中身（見本・テスト用）。無い名前・無い番号は null */
+/**
+ * 絵の中身（見本・テスト用）。無い名前・無い番号は null。
+ * 半透明の図形は、軽く描ける書き方に そろえて返す（flatten-opacity.js）
+ */
 export function buildingArt(name, variant = 0) {
   const art = BUILDING_ART[name];
   if (!art || variant < 0 || variant >= (art.variants || 1)) return null;
-  return art.draw(variant);
+  return flattenOpacity(art.draw(variant));
 }
 
 /** <defs> に入れる形（id つきの <g>）。無い名前は '' */

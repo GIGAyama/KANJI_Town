@@ -9,6 +9,8 @@
 //
 // ⚠️ ここで作る文字列は innerHTML に入れる。色と形は、すべてこのファイルの中の値から作る。
 
+import { flattenOpacity } from './flatten-opacity.js';
+
 const f = (v) => String(Math.round(v * 100) / 100);
 const circle = (cx, cy, r, fill, extra = '') => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="${fill}"${extra}/>`;
 const ellipse = (cx, cy, rx, ry, fill, extra = '') => `<ellipse cx="${f(cx)}" cy="${f(cy)}" rx="${f(rx)}" ry="${f(ry)}" fill="${fill}"${extra}/>`;
@@ -258,6 +260,9 @@ export const NATURE_VARIANTS = Object.freeze({
   tree: 5, sakura: 3, pine: 2, grass: 2, flower: 3, rock: 3, weed: 1, bamboo: 1, cherryroad: 2,
   maple: 2, ginkgo: 1, palm: 1, sunflower: 1, bush: 2, scarecrow: 1, koinobori: 1, signal: 1,
 });
+
+// 半透明の図形は、軽く描ける書き方に そろえる（町に何十本も置かれるので、1 本ごとの差が ひびく）
+for (const name of Object.keys(ART)) ART[name] = flattenOpacity(ART[name]);
 
 /** そのまま <defs> に入れられる形にする */
 export const natureArtMarkup = () => Object.entries(ART)

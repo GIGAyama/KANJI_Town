@@ -45,6 +45,9 @@ export const mix = (a, b, t) => {
 const pen = (width = 1.2, color = INK) => ` stroke="${color}" stroke-width="${f(width)}" stroke-linejoin="round" stroke-linecap="round"`;
 const op = (opacity) => (opacity ? ` opacity="${f(opacity)}"` : '');
 
+/** 草の かたまり（tuft）の形。はじめの点 (-2.6, 0.4) から、2 次の曲線 6 本を 相対の座標で つなぐ */
+const TUFT = [0.5, -2.4, -0.6, -4.2, 1.7, 1.2, 2, 3.2, 0.3, -2.8, 1.6, -4.6, 0.3, 2.5, -0.2, 4.6, 1, -1.6, 2.5, -2.1, -0.6, 1.6, -1.3, 3.1];
+
 /** 地面と平行な円は、画面では だ円になる。半径 1 マスあたりの 横・たての半径 */
 const RX = 40 * Math.SQRT2;
 const RY = 20 * Math.SQRT2;
@@ -492,10 +495,14 @@ export function lot(w = 1, h = 1) {
       + `<path d="M${f(x - 5.2 * s)} ${f(y - 8 * s)}L${f(x)} ${f(y - 16.4 * s)}L${f(x - 1.4 * s)} ${f(y - 8 * s)}Z" fill="${lite}"/>`
       + `<path d="M${f(x - 3.8 * s)} ${f(y - 13 * s)}L${f(x)} ${f(y - 20.6 * s)}L${f(x - 1 * s)} ${f(y - 13 * s)}Z" fill="${lite}"/>`;
   };
-  /** 草の かたまり（地面の かざり） */
+  /**
+   * 草の かたまり（地面の かざり）。
+   * 形は 相対の座標（TUFT）で持ち、大きさは数に かけておく。transform で置くと、ブラウザが
+   * 1 本ずつ 別の単位として扱う（柵は 1 つに 6 本あり、長く並べると その数だけ重くなる）。
+   */
   const tuft = (u, v, s = 1, color = '#5aa23d') => {
     const [x, y] = xy(u, v, 0);
-    return `<path transform="translate(${f(x)} ${f(y)}) scale(${f(s)})" d="M-2.6 .4q.5-2.4-.6-4.2 1.7 1.2 2 3.2.3-2.8 1.6-4.6.3 2.5-.2 4.6 1-1.6 2.5-2.1-.6 1.6-1.3 3.1z" fill="${color}"/>`;
+    return `<path d="M${f(x - 2.6 * s)} ${f(y + 0.4 * s)}q${TUFT.map((n) => f(n * s)).join(' ')}z" fill="${color}"/>`;
   };
   /** はち植え（入口の よこに置く丸い木） */
   const pot = (u, v, s = 1, leaf = '#34994d') => {

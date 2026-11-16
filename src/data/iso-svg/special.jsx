@@ -12,21 +12,21 @@ export const SvgZenGarden = () => (
       <polygon points={`${iso3(10, 10, 3.6)} ${iso3(90, 10, 3.6)} ${iso3(90, 90, 3.6)} ${iso3(10, 90, 3.6)}`} fill="#fef9c3" stroke="#2b211c" strokeWidth="0.9" strokeLinejoin="round" />
       {/* 砂紋（縦の流れ） */}
       {[24, 34, 44, 54, 64, 74].map(y => (
-        <line key={y} x1={isoPt(13, y, 3.7)[0]} y1={isoPt(13, y, 3.7)[1]} x2={isoPt(87, y, 3.7)[0]} y2={isoPt(87, y, 3.7)[1]} stroke="#eab308" strokeWidth="0.6" opacity="0.65" />
+        <line key={y} x1={isoPt(13, y, 3.7)[0]} y1={isoPt(13, y, 3.7)[1]} x2={isoPt(87, y, 3.7)[0]} y2={isoPt(87, y, 3.7)[1]} stroke="#eab308" strokeWidth="0.6" strokeOpacity="0.65" />
       ))}
       {/* 岩の周りの波紋＋岩（メイン） */}
       <g>
-        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="17" ry="8" fill="none" stroke="#eab308" strokeWidth="0.7" opacity="0.8" />
-        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="12" ry="5.6" fill="none" stroke="#ca8a04" strokeWidth="0.7" opacity="0.8" />
+        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="17" ry="8" fill="none" stroke="#eab308" strokeWidth="0.7" strokeOpacity="0.8" />
+        <ellipse cx={isoPt(38, 40, 3.8)[0]} cy={isoPt(38, 40, 3.8)[1]} rx="12" ry="5.6" fill="none" stroke="#ca8a04" strokeWidth="0.7" strokeOpacity="0.8" />
         <g transform={`translate(${isoPt(38, 40, 3.8)[0].toFixed(1)}, ${isoPt(38, 40, 3.8)[1].toFixed(1)})`}>
           <path d="M -7,0 Q -7.6,-6 -3,-9 Q 2,-11.6 6,-7 Q 8.4,-4 6.6,-0.6 Q 2,2.6 -7,0 Z" fill="#57534e" stroke="#2b211c" strokeWidth="1.2" strokeLinejoin="round" />
           <path d="M -3,-9 Q 2,-11.6 6,-7 L 2.6,-4.6 Q -1,-7.6 -3,-9 Z" fill="#78716c" stroke="#2b211c" strokeWidth="0.9" strokeLinejoin="round" />
-          <path d="M -5,-1 Q -2,0.6 2,0" fill="none" stroke="#a3e635" strokeWidth="1" strokeLinecap="round" opacity="0.9" />
+          <path d="M -5,-1 Q -2,0.6 2,0" fill="none" stroke="#a3e635" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.9" />
         </g>
       </g>
       {/* 岩（サブ2つ） */}
       <g transform={`translate(${isoPt(66, 62, 3.8)[0].toFixed(1)}, ${isoPt(66, 62, 3.8)[1].toFixed(1)})`}>
-        <ellipse cx="0" cy="0" rx="10" ry="4.6" fill="none" stroke="#eab308" strokeWidth="0.6" opacity="0.8" />
+        <ellipse cx="0" cy="0" rx="10" ry="4.6" fill="none" stroke="#eab308" strokeWidth="0.6" strokeOpacity="0.8" />
         <path d="M -4,-0.6 Q -4.4,-4.4 -1,-5.6 Q 2.6,-6.6 4,-3.4 Q 4.8,-1 3,0.4 Q -0.6,1.6 -4,-0.6 Z" fill="#78716c" stroke="#2b211c" strokeWidth="1.1" strokeLinejoin="round" />
       </g>
       <g transform={`translate(${isoPt(74, 26, 3.8)[0].toFixed(1)}, ${isoPt(74, 26, 3.8)[1].toFixed(1)})`}>
@@ -35,10 +35,10 @@ export const SvgZenGarden = () => (
       {/* 苔とモミジ */}
       <g transform={`translate(${isoPt(20, 76, 3.8)[0].toFixed(1)}, ${isoPt(20, 76, 3.8)[1].toFixed(1)})`}>
         <ellipse cx="0" cy="0" rx="7" ry="3.2" fill="#16a34a" stroke="#2b211c" strokeWidth="0.9" />
-        <ellipse cx="-2" cy="-1" rx="3" ry="1.4" fill="#4ade80" opacity="0.8" />
+        <ellipse cx="-2" cy="-1" rx="3" ry="1.4" fill="#4ade80" fillOpacity="0.8" />
         <line x1="3" y1="-1" x2="3" y2="-9" stroke="#78350f" strokeWidth="1.2" strokeLinecap="round" />
         <circle cx="3" cy="-11.5" r="4" fill="#ef4444" stroke="#2b211c" strokeWidth="0.9" />
-        <circle cx="1.4" cy="-12.6" r="1.6" fill="#f87171" opacity="0.9" />
+        <circle cx="1.4" cy="-12.6" r="1.6" fill="#f87171" fillOpacity="0.9" />
       </g>
       {/* 石灯篭（隅） */}
       <g transform={`translate(${isoPt(84, 82, 3.8)[0].toFixed(1)}, ${isoPt(84, 82, 3.8)[1].toFixed(1)})`}>
@@ -63,19 +63,19 @@ export const SvgWell = () => (
 
       {/* === 井戸の本体（石造り円筒） === */}
       {/* 奥の壁面 */}
-      <path d="M -20,2 A 20,10 0 0 1 20,2 L 20,18 A 20,10 0 0 0 -20,18 Z" fill="#475569" opacity="0.5" />
+      <path d="M -20,2 A 20,10 0 0 1 20,2 L 20,18 A 20,10 0 0 0 -20,18 Z" fill="#475569" fillOpacity="0.5" />
       {/* 手前の壁面 */}
       <path d="M -20,2 L -20,18 A 20,10 0 0 0 20,18 L 20,2" fill="#64748b" stroke="#2b211c" strokeWidth="1" strokeLinejoin="round" />
       {/* 石のテクスチャ */}
-      <path d="M -19,7 A 19,9.5 0 0 0 19,7" stroke="#2b211c" strokeWidth="0.5" fill="none" opacity="0.3" />
-      <path d="M -18,12 A 18,9 0 0 0 18,12" stroke="#2b211c" strokeWidth="0.5" fill="none" opacity="0.3" />
+      <path d="M -19,7 A 19,9.5 0 0 0 19,7" stroke="#2b211c" strokeWidth="0.5" fill="none" strokeOpacity="0.3" />
+      <path d="M -18,12 A 18,9 0 0 0 18,12" stroke="#2b211c" strokeWidth="0.5" fill="none" strokeOpacity="0.3" />
       {/* 縁の厚み（上部リング） */}
       <ellipse cx="0" cy="2" rx="20" ry="10" fill="#94a3b8" stroke="#2b211c" strokeWidth="1.2" />
       <ellipse cx="0" cy="0" rx="21" ry="10.5" fill="#cbd5e1" stroke="#2b211c" strokeWidth="1.2" />
       {/* 内側の穴 */}
       <ellipse cx="0" cy="0" rx="16" ry="8" fill="#1e293b" stroke="#0f172a" strokeWidth="0.8" />
       {/* 水面 */}
-      <ellipse cx="0" cy="1" rx="14" ry="7" fill="url(#grad-water)" opacity="0.85" />
+      <ellipse cx="0" cy="1" rx="14" ry="7" fill="url(#grad-water)" fillOpacity="0.85" />
 
       {/* === 支柱（アイソメトリック立体） === */}
       {/* 左柱 - 西面（暗い） */}
@@ -123,8 +123,8 @@ export const SvgFountain = () => (
       <ellipse cx="0" cy="0" rx="19" ry="8" fill="#cbd5e1" stroke="#2b211c" strokeWidth="1.2" />
       <ellipse cx="0" cy="0" rx="16" ry="6.6" fill="url(#grad-water)" stroke="#0369a1" strokeWidth="0.8" />
       {/* 波紋 */}
-      <ellipse cx="0" cy="0" rx="11" ry="4.4" fill="none" stroke="#e0f2fe" strokeWidth="0.8" opacity="0.85" />
-      <ellipse cx="0" cy="0" rx="6.5" ry="2.6" fill="none" stroke="#bae6fd" strokeWidth="0.7" opacity="0.8" />
+      <ellipse cx="0" cy="0" rx="11" ry="4.4" fill="none" stroke="#e0f2fe" strokeWidth="0.8" strokeOpacity="0.85" />
+      <ellipse cx="0" cy="0" rx="6.5" ry="2.6" fill="none" stroke="#bae6fd" strokeWidth="0.7" strokeOpacity="0.8" />
       {/* 支柱 */}
       <path d="M -2.6,-1 L -1.8,-12 L 1.8,-12 L 2.6,-1 Z" fill="#e2e8f0" stroke="#2b211c" strokeWidth="1" strokeLinejoin="round" />
       {/* 上段の水盤 */}
@@ -136,7 +136,7 @@ export const SvgFountain = () => (
       <path d="M -1,-16 C -5,-19 -6.6,-15 -7.5,-12.6" fill="none" stroke="#7dd3fc" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M 1,-16 C 5,-19 6.6,-15 7.5,-12.6" fill="none" stroke="#bae6fd" strokeWidth="1.4" strokeLinecap="round" />
       {/* 上段からあふれる水 */}
-      <path d="M -8,-10.6 C -9.4,-7 -10.5,-4 -11.5,-1.6 M 8,-10.6 C 9.4,-7 10.5,-4 11.5,-1.6" fill="none" stroke="#bae6fd" strokeWidth="1.3" strokeLinecap="round" opacity="0.9" />
+      <path d="M -8,-10.6 C -9.4,-7 -10.5,-4 -11.5,-1.6 M 8,-10.6 C 9.4,-7 10.5,-4 11.5,-1.6" fill="none" stroke="#bae6fd" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.9" />
       {/* しぶき */}
       <circle cx="0" cy="-26.5" r="1.3" fill="#f0f9ff" stroke="#7dd3fc" strokeWidth="0.5" />
       <circle cx="-4" cy="-21" r="0.8" fill="#e0f2fe" />
@@ -163,7 +163,7 @@ export const SvgWindmill = () => (
       <path d="M -9,0 L -6,-30 L 6,-30 L 9,0 A 9,3.6 0 0 1 -9,0 Z" fill="#fde047" stroke="#2b211c" strokeWidth="1.3" strokeLinejoin="round" />
       <path d="M 0,1.8 A 9,3.6 0 0 0 9,0 L 6,-30 L 0,-30 Z" fill="#eab308" />
       <path d="M -9,0 L -6,-30 L 6,-30 L 9,0 A 9,3.6 0 0 1 -9,0 Z" fill="none" stroke="#2b211c" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M -8.4,-4 L 8.4,-4 M -7.6,-11 L 7.6,-11" stroke="#ca8a04" strokeWidth="0.8" opacity="0.8" />
+      <path d="M -8.4,-4 L 8.4,-4 M -7.6,-11 L 7.6,-11" stroke="#ca8a04" strokeWidth="0.8" strokeOpacity="0.8" />
       {/* 窓とドア */}
       <path d="M -3,0.6 L -3,-7 A 3,2.6 0 0 1 3,-7 L 3,0.6 Z" fill="#78350f" stroke="#2b211c" strokeWidth="1" strokeLinejoin="round" />
       <circle cx="0" cy="-20" r="2.6" fill="#7dd3fc" stroke="#2b211c" strokeWidth="0.9" />
@@ -238,9 +238,9 @@ export const SvgGarden = () => (
       <IsoCube x={4} y={4} w={92} d={92} h={2.5} top="#4ade80" left="#22c55e" right="#16a34a" sw={1} />
       {/* 小道（斜めのS字） */}
       <path d={`M ${iso3(14, 88, 2.6)} C ${iso3(40, 70, 2.6)} ${iso3(36, 40, 2.6)} ${iso3(60, 30, 2.6)} C ${iso3(74, 24, 2.6)} ${iso3(82, 18, 2.6)} ${iso3(88, 12, 2.6)}`}
-        fill="none" stroke="#e7e5e4" strokeWidth="5" strokeLinecap="round" opacity="0.95" />
+        fill="none" stroke="#e7e5e4" strokeWidth="5" strokeLinecap="round" strokeOpacity="0.95" />
       <path d={`M ${iso3(14, 88, 2.6)} C ${iso3(40, 70, 2.6)} ${iso3(36, 40, 2.6)} ${iso3(60, 30, 2.6)}`}
-        fill="none" stroke="#d6d3d1" strokeWidth="1" strokeDasharray="2,3" opacity="0.9" />
+        fill="none" stroke="#d6d3d1" strokeWidth="1" strokeDasharray="2,3" strokeOpacity="0.9" />
       {/* 花壇（左） */}
       <g>
         <polygon points={`${iso3(14, 14, 2.6)} ${iso3(44, 14, 2.6)} ${iso3(44, 44, 2.6)} ${iso3(14, 44, 2.6)}`} fill="#92400e" stroke="#2b211c" strokeWidth="1" strokeLinejoin="round" />
@@ -268,7 +268,7 @@ export const SvgGarden = () => (
       {/* 刈り込みの丸い低木 */}
       {[[86, 42], [52, 82]].map(([bx, by], i) => (
         <g key={i} transform={`translate(${isoPt(bx, by, 2.6)[0].toFixed(1)}, ${isoPt(bx, by, 2.6)[1].toFixed(1)})`}>
-          <ellipse cx="0" cy="0.6" rx="5" ry="2.2" fill="#020617" opacity="0.15" />
+          <ellipse cx="0" cy="0.6" rx="5" ry="2.2" fill="#020617" fillOpacity="0.15" />
           <circle cx="0" cy="-3.6" r="4.6" fill="#16a34a" stroke="#2b211c" strokeWidth="1" />
           <path d="M -3.4,-5.4 A 4.6,4.6 0 0 1 0,-8.2" fill="none" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" />
         </g>
@@ -324,4 +324,4 @@ export const SvgVillager = () => (
   <svg viewBox="0 -100 100 200" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" filter="url(#strong-shadow)"><rect x="-10" y="-30" width="20" height="20" rx="4" fill="#3b82f6"/><circle cx="0" cy="-40" r="12" fill="#fde047"/><circle cx="-4" cy="-42" r="2" fill="#1e293b"/><circle cx="4" cy="-42" r="2" fill="#1e293b"/><path d="M-5,-35 Q0,-30 5,-35" fill="none" stroke="#2b211c" strokeWidth="2"/></g></svg>);
 
 export const SvgGhostBoss = () => (
-  <svg viewBox="0 -100 100 200" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" filter="url(#glow-effect)"><path d="M-30,20 Q0,-40 30,20 Q15,10 0,20 Q-15,10 -30,20 Z" fill="#9333ea" opacity="0.8"/><circle cx="-10" cy="0" r="5" fill="#f8fafc"/><circle cx="10" cy="0" r="5" fill="#f8fafc"/></g></svg>);
+  <svg viewBox="0 -100 100 200" style={{ overflow: "visible" }}><g transform="translate(50, 100) scale(2.5)" filter="url(#glow-effect)"><path d="M-30,20 Q0,-40 30,20 Q15,10 0,20 Q-15,10 -30,20 Z" fill="#9333ea" fillOpacity="0.8"/><circle cx="-10" cy="0" r="5" fill="#f8fafc"/><circle cx="10" cy="0" r="5" fill="#f8fafc"/></g></svg>);

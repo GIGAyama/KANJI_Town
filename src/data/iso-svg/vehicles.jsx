@@ -123,7 +123,7 @@ export const SvgShipVehicle = () => (
       {/* 水面パッド */}
       <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="url(#grad-water)" stroke="#0369a1" strokeWidth="1" strokeLinejoin="round" />
       {[[20, 70], [55, 82], [75, 30], [30, 30]].map(([wx, wy], i) => (
-        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+        <path key={i} d={`M ${isoPt(wx, wy, 0)[0]},${isoPt(wx, wy, 0)[1]} q 4,-1.6 8,0`} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8" />
       ))}
       {/* 船体（側面カーブ付き） */}
       <g transform={`translate(${isoPt(50, 52, 0)[0]}, ${isoPt(50, 52, 0)[1]})`}>
@@ -154,10 +154,10 @@ export const SvgAirplane = () => (
     <g transform="translate(50, 100) scale(2.15)">
       {/* 駐機場パッド */}
       <polygon points={`${iso3(6, 6, 0)} ${iso3(94, 6, 0)} ${iso3(94, 94, 0)} ${iso3(6, 94, 0)}`} fill="#94a3b8" stroke="#2b211c" strokeWidth="0.9" strokeLinejoin="round" />
-      <polygon points={`${iso3(46, 10, 0.1)} ${iso3(54, 10, 0.1)} ${iso3(54, 90, 0.1)} ${iso3(46, 90, 0.1)}`} fill="#fbbf24" opacity="0.7" />
+      <polygon points={`${iso3(46, 10, 0.1)} ${iso3(54, 10, 0.1)} ${iso3(54, 90, 0.1)} ${iso3(46, 90, 0.1)}`} fill="#fbbf24" fillOpacity="0.7" />
       {/* 機体（斜め上から見たスタイル） */}
       <g transform="translate(0, -24) rotate(-24) scale(1.05)">
-        <ellipse cx="0" cy="14" rx="9" ry="3.5" fill="#020617" opacity="0.15" />
+        <ellipse cx="0" cy="14" rx="9" ry="3.5" fill="#020617" fillOpacity="0.15" />
         {/* 主翼（後ろ側） */}
         <polygon points="-2.5,-4 -21,6 -18,9 -1,2" fill="#cbd5e1" stroke="#2b211c" strokeWidth="1.1" strokeLinejoin="round" />
         {/* 胴体 */}

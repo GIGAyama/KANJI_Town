@@ -149,3 +149,15 @@ test('部品（kit.js）: どの部品も壊れていない絵を返す', () => 
   };
   for (const [name, markup] of Object.entries(parts)) assertCleanArt(`${markup}${' '.repeat(200)}`, `kit.${name}`);
 });
+
+test('部品（kit.js）: 草の かたまりは、transform を使わず 座標で置く', () => {
+  // transform で置くと、ブラウザが 1 本ずつ別の単位として扱う。柵は 1 つに 6 本あり、長く並べると その数だけ重くなる
+  const k = lot(1, 1);
+  const tuft = k.tuft(0.5, 0.5);
+  assert.ok(!tuft.includes('transform='), tuft);
+  const [x, y] = k.xy(0.5, 0.5, 0);
+  // はじめの点は、置く場所から (-2.6, +0.4)。大きさを 2 倍にすると、その ずれも 2 倍になる
+  assert.ok(tuft.startsWith(`<path d="M${Math.round((x - 2.6) * 100) / 100} ${Math.round((y + 0.4) * 100) / 100}q`), tuft);
+  assert.ok(k.tuft(0.5, 0.5, 2).startsWith(`<path d="M${Math.round((x - 5.2) * 100) / 100} ${Math.round((y + 0.8) * 100) / 100}q1 -4.8 -1.2 -8.4 `), k.tuft(0.5, 0.5, 2));
+  assert.ok(!buildingArt('fence', 0).includes('transform='), '柵の絵に transform が残っている');
+});

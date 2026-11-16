@@ -59,7 +59,7 @@ export const SvgBridge = () => (
                  L ${iso3(30, 12, 2)} C ${iso3(30, 30, 10)} ${iso3(30, 70, 10)} ${iso3(30, 88, 2)} Z`}
           fill="#a8a29e" stroke="#2b211c" strokeWidth="1.2" strokeLinejoin="round" />
         {/* 桁下のアーチ開口（影） */}
-        <path d={`M ${iso3(30, 70, 0)} C ${iso3(30, 62, 7)} ${iso3(30, 38, 7)} ${iso3(30, 30, 0)} Z`} fill="#1e293b" opacity="0.55" />
+        <path d={`M ${iso3(30, 70, 0)} C ${iso3(30, 62, 7)} ${iso3(30, 38, 7)} ${iso3(30, 30, 0)} Z`} fill="#1e293b" fillOpacity="0.55" />
         {/* 路面（上面） */}
         <path d={`M ${iso3(30, 96, 2)} C ${iso3(30, 74, 14)} ${iso3(30, 26, 14)} ${iso3(30, 4, 2)}
                  L ${iso3(58, 4, 2)} C ${iso3(58, 26, 14)} ${iso3(58, 74, 14)} ${iso3(58, 96, 2)} Z`}
@@ -67,7 +67,7 @@ export const SvgBridge = () => (
         {/* 石畳のライン */}
         {[20, 36, 50, 64, 80].map(y => {
           const zz = 2 + 10.5 * Math.sin(Math.PI * (y - 4) / 92);
-          return <line key={y} x1={isoPt(31, y, zz)[0]} y1={isoPt(31, y, zz)[1]} x2={isoPt(57, y, zz)[0]} y2={isoPt(57, y, zz)[1]} stroke="#a8a29e" strokeWidth="0.7" opacity="0.9" />;
+          return <line key={y} x1={isoPt(31, y, zz)[0]} y1={isoPt(31, y, zz)[1]} x2={isoPt(57, y, zz)[0]} y2={isoPt(57, y, zz)[1]} stroke="#a8a29e" strokeWidth="0.7" strokeOpacity="0.9" />;
         })}
         {/* 欄干（手前側） */}
         {[8, 24, 40, 56, 72, 88].map(y => {

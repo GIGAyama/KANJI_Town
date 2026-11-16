@@ -10,6 +10,8 @@
 //
 // ⚠️ ここで作る文字列は innerHTML に入れる。色と形は、すべてこのファイルの中の値から作る。
 
+import { flattenOpacity } from './flatten-opacity.js';
+
 const f = (v) => String(Math.round(v * 100) / 100);
 const P = (u, v, z = 0) => `${f((u - v) * 40)} ${f(-40 + (u + v) * 20 - z)}`;
 const INK = '#2b211c';
@@ -138,8 +140,8 @@ function house(pal) {
 
 /** そのまま <defs> に入れられる形にする（id は house1-0 〜 house1-7） */
 export const houseArtMarkup = () => HOUSE_PALETTES
-  .map((pal, i) => `<g id="house1-${i}" transform="translate(50 100) scale(2.5)">${house(pal)}</g>`)
+  .map((pal, i) => `<g id="house1-${i}" transform="translate(50 100) scale(2.5)">${flattenOpacity(house(pal))}</g>`)
   .join('');
 
 /** 画面で確かめるために、絵の中身を番号で引く（見本用） */
-export const houseArt = (index) => house(HOUSE_PALETTES[index % HOUSE_PALETTES.length]);
+export const houseArt = (index) => flattenOpacity(house(HOUSE_PALETTES[index % HOUSE_PALETTES.length]));
