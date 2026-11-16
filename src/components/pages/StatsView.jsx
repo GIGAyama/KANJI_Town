@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, ArrowLeft, Target, CalendarClock, NotebookPen } from 'lucide-react';
 import { F } from '../ui/FormatKun';
+import CarelessRecordCard from './CarelessRecordCard';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { loadStudyRecords, summarizeRecentStudy } from '../../systems/studyStats';
 import { STUDY_APP_ID } from '../../systems/studySession';
@@ -16,7 +17,7 @@ const SKILL_COLORS = {
   stroke: { bar: 'bg-violet-400', text: 'text-violet-700', panel: 'bg-violet-50 border-violet-200' },
 };
 
-const StatsView = ({ setView, stats, startWeakSession }) => {
+const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
   const kanjiList = KANJI_DATA.map(k => ({ ...k, stat: stats.kanjiStats?.[k.id] }));
   const mastered = kanjiList.filter(k => k.stat?.status === 'mastered').length;
   const learning = kanjiList.filter(k => k.stat?.status === 'learning' || k.stat?.status === 'review').length;
@@ -146,6 +147,9 @@ const StatsView = ({ setView, stats, startWeakSession }) => {
           <div className="text-xs font-bold text-[var(--text-muted)]">7{F("日","にち")}の{F("正答率","せいとうりつ")}</div>
         </div>
       </div>
+
+      {/* てきとう書き（先生・おうちの人が見るための記録。何も無いあいだは出さない） */}
+      <CarelessRecordCard stats={stats} setStats={setStats} today={dailyData[6]} week={weeklySummary} />
 
       {/* 7日間の学習グラフ */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">

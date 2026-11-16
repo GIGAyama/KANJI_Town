@@ -9,6 +9,9 @@ const NUMBER_FIELDS = [
   'reviewedCount',
   'attemptCount',
   'correctCount',
+  // 再開してもてきとう書きの回数（EXP が減る）と、次の学習へ回した字の数が消えないようにする
+  'carelessCount',
+  'deferredCount',
   'newKanjiCount',
   'masteredCount',
 ];

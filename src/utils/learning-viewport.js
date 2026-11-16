@@ -8,6 +8,22 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const CANVAS_MAX = 640;
 
 /**
+ * 縦に重ねたレイアウトで、書くマスの枠の外に要る高さ（px）。
+ * 上のヘッダーとタブ（約150）＋ 下のボタンの領域（テストの、詰めた形で約200）から、
+ * 枠の下の余白ぶんを引いて、マスの下に 10px ほど残るように決めた実測値。
+ *
+ * 以前は「画面の高さの 50%（620px 未満は 42%）」だけで決めていて、下のボタンの領域の高さを
+ * 見ていなかった。高さ 620〜720px のスマホ（ブラウザの枠が出ている iPhone・Android）では、
+ * 枠に入りきらないマスが縦に 30px つぶれるか、正方形にするとマスの下が最大 24px ボタンの下に隠れた。
+ * 下のボタンがいちばん多いのはテストなので、テストで隠れなければ、ほかのタブでも隠れない。
+ *
+ * ⚠️ ModeLayout.jsx の枠の高さ（calc(100dvh - この値)）と同じ値にすること
+ *    （test/learning-viewport.test.js が見ている）。高さ 590px より低い画面ではマスが
+ *    下限の 220px になり、577px より低いと下が隠れはじめる（実測: 568px で 9px・560px で 17px）。
+ */
+export const STACKED_RESERVE = 348;
+
+/**
  * 学習画面のレイアウトと正方形キャンバスの論理サイズを算出する。
  * 幅だけでなく高さと縦横比も考慮し、タブレット縦持ちでサイドバーが
  * 学習領域を圧迫しないようにする。
@@ -20,8 +36,9 @@ export function calculateLearningViewport(width, height) {
 
   if (isStacked) {
     const availableWidth = safeWidth - 32;
+    // 枠の高さは「画面の半分」と「上のタブと下のボタンを引いた残り」の小さいほう。
     // -24 はコンテナのパディング・枠線ぶん。
-    const availableHeight = safeHeight * (safeHeight < 620 ? 0.42 : 0.5) - 24;
+    const availableHeight = Math.min(safeHeight * 0.5, safeHeight - STACKED_RESERVE) - 24;
     // ModeLayout の縦積み枠は min(50dvh,640px) から内側パディング・枠線を引いた
     // 約618pxが内寸の上限。超えると枠が潰れて非正方形になるため616で頭打ちにする。
     return {

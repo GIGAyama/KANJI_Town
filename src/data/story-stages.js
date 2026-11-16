@@ -1,17 +1,24 @@
 // ストーリーステージ — マイ漢字タウン
-// 割合ベースの進行（学年の漢字数に依存しない設計）
-// Phase 2: 50×50マップ対応 — 最大半径25で全マップ開放
+// レベルで進む称号。ホームの上のバーと、学習の結果の画面に出る。
 //
-// percentage: その学年の漢字のうち何%習得すればこのステージに到達するか
+// ここは起動のときに読む（ホームが使う）ので、名前と絵文字だけを置く。
+// ふりがなつきの名前と説明文は story-stage-text.js（結果の画面が開くときに読む）。
+//
+// Lv100「天下人」が最後だったが、レベルの上限を Lv999 に上げたので、その先の称号を足した。
 
 export const STORY_STAGES = [
-  { id: 0, minLevel: 1,   radius: 3,  title: '荒野の旅人',  emoji: '🏕️', desc: 'ここは何もない荒野。だが、あなたの挑戦が今はじまる。' },
-  { id: 1, minLevel: 10,  radius: 8,  title: '開拓者',       emoji: '⛺',  desc: '最初の仲間が集まった。小さな集落が生まれようとしている。' },
-  { id: 2, minLevel: 25,  radius: 12, title: '村の創設者',   emoji: '🏘️', desc: '村人たちの笑い声が聞こえる。あなたは村長と呼ばれるようになった。' },
-  { id: 3, minLevel: 40,  radius: 16, title: '町の領主',     emoji: '🏙️', desc: '商人や職人が集まり、町に活気があふれてきた。' },
-  { id: 4, minLevel: 60,  radius: 20, title: '城主',         emoji: '🏯',  desc: 'あなたの名声は遠く広まった。城を建て、都を守れ。' },
-  { id: 5, minLevel: 80,  radius: 23, title: '大名',         emoji: '⚔️', desc: '領土は広がり、民は豊かに暮らしている。' },
-  { id: 6, minLevel: 100, radius: 25, title: '天下人',       emoji: '👑',  desc: 'すべての修行を乗り越えた。この街は永遠に語り継がれるだろう。' },
+  { id: 0,  minLevel: 1,   title: '荒野の旅人',  emoji: '🏕️' },
+  { id: 1,  minLevel: 10,  title: '開拓者',       emoji: '⛺' },
+  { id: 2,  minLevel: 25,  title: '村の創設者',   emoji: '🏘️' },
+  { id: 3,  minLevel: 40,  title: '町の領主',     emoji: '🏙️' },
+  { id: 4,  minLevel: 60,  title: '城主',         emoji: '🏯' },
+  { id: 5,  minLevel: 80,  title: '大名',         emoji: '⚔️' },
+  { id: 6,  minLevel: 100, title: '天下人',       emoji: '👑' },
+  { id: 7,  minLevel: 150, title: '名君',         emoji: '🎖️' },
+  { id: 8,  minLevel: 200, title: '大王',         emoji: '🦁' },
+  { id: 9,  minLevel: 300, title: '伝説の王',     emoji: '🌟' },
+  { id: 10, minLevel: 500, title: '漢字の神',     emoji: '⛩️' },
+  { id: 11, minLevel: 999, title: '永遠の伝説',   emoji: '🏆' },
 ];
 
 /**

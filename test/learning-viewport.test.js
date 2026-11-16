@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   calculateLearningViewport,
   calculateTrainingViewport,
+  STACKED_RESERVE,
   TRAINING_VIEWPORT_PRESETS,
 } from '../src/utils/learning-viewport.js';
 
@@ -37,6 +39,47 @@ test('縦積みはModeLayoutの枠内寸(616px)で頭打ちになる', () => {
   const result = calculateLearningViewport(900, 2000);
   assert.equal(result.isStacked, true);
   assert.equal(result.canvasSize, 616);
+});
+
+test('縦積みの背の低い画面は、上のタブと下のボタンを引いた残りにキャンバスを収める', () => {
+  // 以前は「高さの 50%（620px 未満は 42%）」だけで決めていたので、高さ 620〜720px のスマホで
+  // マスが枠に入りきらなかった（縦につぶれるか、下が最大 24px ボタンの領域に隠れる）。
+  assert.equal(calculateLearningViewport(360, 640).canvasSize, 640 - STACKED_RESERVE - 24);
+  assert.equal(calculateLearningViewport(375, 667).canvasSize, 667 - STACKED_RESERVE - 24);
+  assert.equal(calculateLearningViewport(360, 600).canvasSize, 600 - STACKED_RESERVE - 24);
+  // 残りが足りないときは下限（これより低い画面では、隠れる分が残る）
+  assert.equal(calculateLearningViewport(360, 560).canvasSize, 220);
+  // 高い画面は今までどおり「画面の半分」か幅で決まる
+  assert.equal(calculateLearningViewport(390, 844).canvasSize, 358);
+  assert.equal(calculateLearningViewport(768, 1024).canvasSize, 488);
+});
+
+test('縦積みのキャンバスは、高さを変えても不連続に跳ねない', () => {
+  // 以前は 619px → 620px で 236 → 286 と 50px 跳ねていた（42% と 50% の境目）
+  let previous = calculateLearningViewport(600, 480).canvasSize;
+  for (let height = 481; height <= 1400; height++) {
+    const size = calculateLearningViewport(600, height).canvasSize;
+    assert.ok(size >= previous && size - previous <= 2, `高さ ${height - 1}→${height} で ${previous}→${size}`);
+    previous = size;
+  }
+});
+
+test('縦積みのキャンバスは、ModeLayout の枠の内側に収まる（枠と同じ式で決める）', () => {
+  // 枠の高さ（ModeLayout.jsx）: min(50dvh, 640px, 100dvh - STACKED_RESERVE)、下限 242px。内側は -22px。
+  const layout = readFileSync(new URL('../src/components/ui/ModeLayout.jsx', import.meta.url), 'utf8');
+  assert.ok(
+    layout.includes(`h-[min(50dvh,640px,calc(100dvh_-_${STACKED_RESERVE}px))]`),
+    'ModeLayout の枠の高さが STACKED_RESERVE と同じ値になっていない',
+  );
+  assert.ok(layout.includes('min-h-[242px]'), 'ModeLayout の枠の下限が 242px でない');
+  const frameInner = (height) => Math.max(242, Math.min(height * 0.5, 640, height - STACKED_RESERVE)) - 22;
+  for (const width of [320, 360, 600, 900]) {
+    for (let height = 480; height <= 2000; height += 7) {
+      const { isStacked, canvasSize } = calculateLearningViewport(width, height);
+      if (!isStacked) continue;
+      assert.ok(canvasSize <= frameInner(height), `${width}x${height}: キャンバス ${canvasSize} が枠の内側 ${frameInner(height)} をこえる`);
+    }
+  }
 });
 
 test('キャンバスサイズは下限と上限640でクランプされる', () => {

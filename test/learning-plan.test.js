@@ -175,6 +175,40 @@ test('週次サマリーは目標達成日と記録済み回答の正答率を�
   assert.equal(summary.consistencyPercent, 14);
 });
 
+test('週次サマリーは、てきとう書きの回数も日ごと・7日の合計で返す（学習きろくで先生が見る）', () => {
+  const summary = getWeeklyLearningSummary({
+    daily: {
+      '2026-07-14': { exp: 0, reviewed: 0, attempts: 0, correct: 0, careless: 4 }, // 7日より前は数えない
+      '2026-07-20': { exp: 0, reviewed: 0, attempts: 3, correct: 0, careless: 3 },
+      '2026-07-21': { exp: 30, reviewed: 5, attempts: 6, correct: 5, careless: 1 },
+    },
+  }, new Date(2026, 6, 21, 12));
+  assert.equal(summary.careless, 4);
+  assert.deepEqual(summary.days.map((day) => day.careless), [0, 0, 0, 0, 0, 3, 1]);
+  // てきとう書きだけの日（答えていない日）は、学習した日に数えない
+  const only = getWeeklyLearningSummary({ daily: { '2026-07-21': { exp: 0, reviewed: 0, attempts: 0, correct: 0, careless: 2 } } }, new Date(2026, 6, 21, 12));
+  assert.equal(only.studiedDays, 0);
+  assert.equal(only.careless, 2);
+  // 古い記録（欄が無い）は 0
+  assert.equal(getWeeklyLearningSummary({ daily: { '2026-07-21': { exp: 30, reviewed: 5 } } }, new Date(2026, 6, 21, 12)).careless, 0);
+});
+
+test('週次サマリーは、てきとう書きの確かめが出た回数も返す（そのまま進んだ回数とは別に数える）', () => {
+  const summary = getWeeklyLearningSummary({
+    daily: {
+      '2026-07-14': { exp: 0, reviewed: 0, carelessWarned: 9 }, // 7日より前は数えない
+      '2026-07-20': { exp: 0, reviewed: 0, carelessWarned: 3, careless: 1 },
+      '2026-07-21': { exp: 30, reviewed: 5, attempts: 6, correct: 5, carelessWarned: 2 },
+    },
+  }, new Date(2026, 6, 21, 12));
+  assert.equal(summary.carelessWarned, 5);
+  assert.equal(summary.careless, 1);
+  assert.deepEqual(summary.days.map((day) => day.carelessWarned), [0, 0, 0, 0, 0, 3, 2]);
+  // 確かめが出ただけの日は、学習した日に数えない
+  assert.equal(summary.days[5].studied, false);
+  assert.equal(getWeeklyLearningSummary({ daily: {} }, new Date(2026, 6, 21, 12)).carelessWarned, 0);
+});
+
 test('挑戦数のない旧日次データから正答率を推測しない', () => {
   const summary = getWeeklyLearningSummary({
     settings: { dailyGoal: 5 },

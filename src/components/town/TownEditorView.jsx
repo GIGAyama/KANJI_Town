@@ -179,6 +179,9 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
     const key = `${x},${y}`;
     const currentTile = localMap[key];
 
+    // てきとう書きのペナルティで かれた土地は、開拓も建築もできない（systems/careless-penalty.js）
+    if (currentTile === 't_deadland') { audioCtrl.playSE('stamp_bad'); showError('かれた土地には、なにも おけません'); return; }
+
     if (CULTIVATABLE_TERRAIN.has(currentTile)) {
       const terrainDef = TOWN_ITEM_MAP.get(currentTile);
       const cost = terrainDef?.cultivateCost || 5;

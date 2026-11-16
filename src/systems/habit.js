@@ -16,6 +16,16 @@ function parseDateKey(value) {
   return timestamp;
 }
 
+/**
+ * その学習を「学習した日」（連続日数・おやすみパス・町の手入れ）に数えるか。
+ * 1字でもできた（または EXP をもらった）ときだけ数える。以前は答えただけで数えたので、
+ * 線を1本引いて終えるだけで連続記録が続き、町も荒れなかった。
+ * @param {{ exp?: number, reviewed?: number }} session - その学習でもらった EXP と、できた字の数
+ */
+export function countsAsLearningDay({ exp = 0, reviewed = 0 } = {}) {
+  return exp > 0 || reviewed > 0;
+}
+
 export function getDayDifference(fromDate, toDate) {
   const from = parseDateKey(fromDate);
   const to = parseDateKey(toDate);

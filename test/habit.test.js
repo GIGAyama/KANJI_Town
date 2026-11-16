@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  REST_PASS_RECHARGE_DAYS,
   applyLearningDayHabit,
   canProtectRestDay,
+  countsAsLearningDay,
   getDayDifference,
   getEffectiveStreak,
   getHabitStatus,
   normalizeHabitState,
-  REST_PASS_RECHARGE_DAYS,
 } from '../src/systems/habit.js';
 
 test('端末の時計が過去へ戻っても、連続記録を1日目に戻さず、最後に学んだ日も巻き戻さない', () => {
@@ -128,4 +129,13 @@ test('パス使用後は合計5日の学習で再獲得する', () => {
   assert.equal(stats.streak, 13);
   assert.equal(stats.lastHabitEvent.type, 'rest_pass_recharged');
   assert.equal(REST_PASS_RECHARGE_DAYS, 5);
+});
+
+test('1字もできていない学習は「学習した日」に数えない（答えただけでは連続日数が続かない）', () => {
+  // 以前は答えた数が 1 でもあれば数えたので、線を1本引いて終えるだけで連続記録が続いていた
+  assert.equal(countsAsLearningDay({ exp: 0, reviewed: 0 }), false);
+  assert.equal(countsAsLearningDay({}), false);
+  assert.equal(countsAsLearningDay(), false);
+  assert.equal(countsAsLearningDay({ exp: 0, reviewed: 1 }), true);
+  assert.equal(countsAsLearningDay({ exp: 5, reviewed: 0 }), true);
 });

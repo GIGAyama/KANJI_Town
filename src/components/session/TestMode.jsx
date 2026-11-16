@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Eye, RotateCcw, Undo2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import { ChevronRight, Eye, HelpCircle, RotateCcw, Undo2 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModeLayout from '../ui/ModeLayout';
 import KanjiGlyph from '../ui/KanjiGlyph';
+import PenaltyLoss, { penaltyAddedLines } from '../ui/PenaltyLoss';
+import CarelessConfirm from './CarelessConfirm';
 import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
-import { allowedEvaluations, gradeStrokes, recommendEvaluation } from '../../systems/strokeGrader';
+import { judgeWriting } from '../../systems/strokeGrader';
+import { applyHeavyPenalty, previewCarelessPenalty, summarizePenalty } from '../../systems/careless-penalty';
+import { TOWN_ITEM_MAP } from '../../data/town-items';
+import { getTodayString } from '../../utils/date-utils';
 import { resolveThemeColor } from '../../utils/theme-colors';
 import { attachDrawListeners } from '../../utils/draw-pointer-events';
 import { fitSquareCanvas } from '../../utils/canvas-dpr';
@@ -15,27 +20,62 @@ import { strokeNormalizedPaths, toNormalizedStroke } from '../../systems/stroke-
 import { describeNextReview, migrateCard } from '../../systems/srs';
 import { SESSION } from '../../constants/gameConfig';
 
-function getScoreBanner(result) {
-  if (!result) return null;
-  if (!result.strokeCountMatch) return { text: 'かくすうが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
-  if (!result.crossMatch) return { text: 'せんの まじわりが ちがうよ💦', color: 'var(--primary)', textColor: 'var(--panel)' };
-  if (result.orderMatch === false) return { text: 'かきじゅんを たしかめよう💦', color: 'var(--accent)', textColor: 'var(--text)' };
-  if (result.total >= 80) return { text: 'よく 書けているよ！✨', color: 'var(--secondary)', textColor: 'var(--panel)' };
-  if (result.total >= 55) return { text: 'おしい！もうすこし！', color: 'var(--accent)', textColor: 'var(--text)' };
-  if (result.total >= 30) return { text: 'むずかしかったね…', color: '#fbbf24', textColor: 'var(--text)' };
-  return { text: 'もうすこし れんしゅう しよう', color: 'var(--primary)', textColor: 'var(--panel)' };
+// 判定の帯の色。どれも「テーマの地の色＋その上で読める文字色」の組にする（test/theme-colors.test.js）
+const TONES = {
+  great: { backgroundColor: 'var(--secondary)', color: 'var(--panel)' },
+  soso: { backgroundColor: 'var(--accent)', color: 'var(--text)' },
+  retry: { backgroundColor: 'var(--primary)', color: 'var(--panel)' },
+  plain: { backgroundColor: 'var(--bg)', color: 'var(--text)' },
+};
+
+/** 採点の講評（strokeGrader の details）のうち、どの画のことかが分かるものを、ひらがなにして出す */
+function strokeHints(result) {
+  return (result?.details || [])
+    .filter((detail) => detail.includes('かくめ'))
+    .map((detail) => detail.replace(/^書き順：/, '').replace('書いているよ', 'かいているよ').replace('書く向きが', 'かく むきが'))
+    .slice(0, 2);
 }
 
-const EVAL_BUTTONS = [
-  { key: 'easy', variant: 'primary', label: 'よくできた！✨', shadow: 'shadow-[0_6px_0_#9f1239]' },
-  { key: 'good', variant: 'success', label: '書けた👍', shadow: 'shadow-[0_6px_0_#065f46]' },
-  { key: 'hard', variant: 'warning', label: 'むずかしい😓', shadow: 'shadow-[0_4px_0_#92400e]' },
-  { key: 'again', variant: 'danger', label: '忘れた💦', shadow: 'shadow-[0_4px_0_#334155]' },
+/**
+ * 判定（judgeWriting の結果、または「わからない」）を、子どもに見せることばにする。
+ * できたかどうかはコンピューターが決める。ここは理由を伝えるだけで、評価は変えない。
+ */
+function describeJudgment(judgment) {
+  const { verdict, evaluation, reason, result, attempt, lenient } = judgment;
+  const hints = strokeHints(result);
+  if (verdict === 'giveup') {
+    return { tone: 'plain', title: <>こたえを よく {F("見","み")}て、もう1{F("回","かい")} {F("書","か")}こう</>, hints: [] };
+  }
+  if (verdict === 'careless') {
+    return { tone: 'retry', title: <>✋ ほとんど {F("書","か")}かずに こたえあわせを したよ</>, hints: [] };
+  }
+  const diff = attempt ? attempt.actualCount - attempt.expectedCount : 0;
+  const countHint = diff > 0 ? `${diff}かく おおいよ` : diff < 0 ? `${-diff}かく たりないよ` : null;
+  if (verdict === 'pass') {
+    if (evaluation === 'easy') return { tone: 'great', title: <>💮 よく {F("書","か")}けているよ！</>, hints };
+    if (evaluation === 'good') return { tone: 'great', title: <>⭕ {F("書","か")}けたね！</>, hints };
+    if (reason === 'cross') return { tone: 'soso', title: <>🔺 せんの まじわりが ちがうよ</>, hints };
+    if (reason === 'order') return { tone: 'soso', title: <>🔺 かきじゅんを たしかめよう</>, hints };
+    if (lenient && reason === 'count') return { tone: 'soso', title: <>🔺 かくすうが ちがうよ。つぎは {F("気","き")}をつけよう</>, hints: countHint ? [countHint] : [] };
+    if (lenient && reason === 'small') return { tone: 'soso', title: <>🔺 つぎは もっと {F("大","おお")}きく {F("書","か")}こう</>, hints: [] };
+    return { tone: 'soso', title: <>🔺 もうすこし ていねいに {F("書","か")}こう</>, hints };
+  }
+  if (reason === 'count') return { tone: 'retry', title: <>かくすうが ちがうよ💦</>, hints: countHint ? [countHint] : [] };
+  if (reason === 'small') return { tone: 'retry', title: <>{F("字","じ")}が {F("小","ちい")}さいよ。ますいっぱいに {F("大","おお")}きく {F("書","か")}こう</>, hints: [] };
+  if (reason === 'large') return { tone: 'retry', title: <>{F("字","じ")}が {F("大","おお")}きすぎるよ。ますの {F("中","なか")}に {F("書","か")}こう</>, hints: [] };
+  return { tone: 'retry', title: <>{F("形","かたち")}が ちがうよ。お{F("手本","てほん")}を よく {F("見","み")}よう</>, hints };
+}
+
+// お手本が読めず採点できないときだけ出す、自己申告のボタン
+const SELF_REPORT_BUTTONS = [
+  { key: 'easy', variant: 'primary', label: <>よくできた！✨</> },
+  { key: 'good', variant: 'success', label: <>{F("書","か")}けた👍</> },
+  { key: 'hard', variant: 'warning', label: <>むずかしい😓</> },
+  { key: 'again', variant: 'danger', label: <>{F("忘","わす")}れた💦</> },
 ];
 
 /** 評価したあとの次の復習を、子ども向けのことばにする（実際の間隔と同じ計算） */
 function nextReviewText(card, evaluation, isPractice) {
-  if (evaluation === 'again') return <>もう{F("一度","いちど")}</>;
   // 特訓・ドリルは間隔反復を進めない練習なので、日付は出さない
   if (isPractice) return 'れんしゅう';
   const { unit, value } = describeNextReview(migrateCard(card), evaluation, Date.now(), { minLearningDelay: SESSION.GRACE_PERIOD });
@@ -43,15 +83,35 @@ function nextReviewText(card, evaluation, isPractice) {
   return value === 1 ? 'あした' : `${value}にちご`;
 }
 
-const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked }) => {
-  const [showAnswer, setShowAnswer] = useState(false);
+/**
+ * 毎日の学習のテスト。お手本を見ないで書き、「こたえあわせ」でコンピューターが採点する。
+ *
+ * 以前は採点のあとに4つのボタンから児童が評価を選んでいた（おすすめの1段上まで）。
+ * おすすめが「忘れた」でも「むずかしい」を選べば先へ進めたので、線を1本引くだけで学習が進んだ。
+ * いまは評価を採点で決め、児童が押すのは「つぎへ」か「もう1回」だけ（strokeGrader.js の judgeWriting）。
+ *
+ * ほとんど書いていない字（てきとう書き）は、答えを見せる前に確かめる（CarelessConfirm）。
+ * 「このまま こたえあわせ」を選んだときにだけ、ペナルティを科す（systems/careless-penalty.js）。
+ *
+ * previousFails: この学習で同じ字をやり直した回数。
+ * carelessRecord: これまでのペナルティの記録（stats の carelessStrikes と carelessLog。次に何を失うかを出すため）。
+ * onJudged: 判定が出たとき（スタンプと音）。onCarelessWarned: 確かめの画面を出したとき（回数を残す）。
+ * onCareless: 「このまま」を選んだとき。ペナルティを科す関数を渡すと、失ったものの記録が返る。
+ * onRevealChange: 答えを見せているあいだはタブを切りかえさせない（見てから書きなおせてしまうため）。
+ */
+const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoading = false, strokeData, onEvaluate, evaluationLocked = false, canvasSize, commonSidebar, isStacked, previousFails = 0, carelessRecord = null, onJudged, onCareless, onCarelessWarned, onRevealChange }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [userStrokes, setUserStrokes] = useState([]);
   const currentPathRef = useRef([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const [gradeResult, setGradeResult] = useState(null);
-  const [recommendedEval, setRecommendedEval] = useState(null);
+  // 答え合わせの結果。null のあいだは書いている途中
+  const [judgment, setJudgment] = useState(null);
+  // ほとんど書かずに「こたえあわせ」を押したときの確かめ（開いているあいだは、まだ答えを見せない）
+  const [warning, setWarning] = useState(null);
+  // 縦に重ねたレイアウトの問題文で、読みかたのヒントを開いているか
+  const [hintOpen, setHintOpen] = useState(false);
+  const showAnswer = judgment !== null;
   // 出題は例文の対象字を◯にした形にする。読みの並び（「カン」）だけでは
   // 漢・感・完・官・刊 のどれか決まらず、正しく書いても不正解になっていた。
   const promptExample = useMemo(() => pickPromptExample(kanji, Math.floor(Math.random() * 8)), [kanji]);
@@ -59,13 +119,18 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   // 書いた線は 0〜1 の比率で持つ（キャンバスの大きさが変わっても描きなおせるように）
   const userStrokesRef = useRef(userStrokes);
   userStrokesRef.current = userStrokes;
+  const onRevealChangeRef = useRef(onRevealChange);
+  onRevealChangeRef.current = onRevealChange;
 
   // 字が変わったら、書いた線と答え合わせを消して次の問題にする
   useEffect(() => {
-    setShowAnswer(false); setUserStrokes([]); setGradeResult(null); setRecommendedEval(null);
+    setUserStrokes([]); setJudgment(null); setHintOpen(false); setWarning(null);
+    onRevealChangeRef.current?.(false);
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
   }, [kanji]);
+  // 画面を離れるときは、タブの切りかえをもどす
+  useEffect(() => () => onRevealChangeRef.current?.(false), []);
 
   // キャンバスの大きさが変わったとき（画面の回転・ブラウザの枠の伸び縮み）は、大きさを合わせて描きなおすだけにする。
   // 以前はここで書いた線も答え合わせも消していたので、持ちかえるだけで書きかけのテストが消えていた。
@@ -93,7 +158,10 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
   };
 
   const startDraw = (e) => {
-    e.preventDefault(); setIsDrawing(true);
+    e.preventDefault();
+    // 答え合わせのあとは書き足せない（答えを見てから直した字を、もう一度採点させないため）
+    if (showAnswer || warning) return;
+    setIsDrawing(true);
     const { x, y } = getCoords(e);
     lastPosRef.current = { x, y };
     currentPathRef.current = [{ x, y, time: Date.now() }];
@@ -155,26 +223,61 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     audioCtrl.playSE('click');
   };
 
-  // 1本も書かずに答えを見て「よくできた」を押せないよう、書いてからでないと答え合わせに進めない。
-  // 書き順データの読みこみ中は、前の字のお手本で採点してしまうので待つ。
-  const canReveal = userStrokes.length > 0 && !isDrawing && !isLoading;
-  const handleReveal = () => {
-    if (!canReveal) return;
-    setShowAnswer(true);
-    audioCtrl.playSE('click');
-    if (strokeData && strokeData.length > 0) {
-      // 線は 0〜1 の比率で持っているので、大きさ 1 として採点する
-      const result = gradeStrokes(userStrokes, strokeData, 1);
-      setGradeResult(result);
-      setRecommendedEval(recommendEvaluation(result));
-    }
+  const reveal = (judged) => {
+    setJudgment(judged);
+    onRevealChangeRef.current?.(true);
+    onJudged?.(judged);
   };
 
-  const banner = getScoreBanner(gradeResult);
-  const allowedKeys = allowedEvaluations(recommendedEval);
+  // 1本も書かずに答え合わせへは進めない。書き順データの読みこみ中は、前の字のお手本で採点してしまうので待つ。
+  const canReveal = userStrokes.length > 0 && !isDrawing && !isLoading;
+  const handleReveal = () => {
+    if (!canReveal || showAnswer || warning) return;
+    // 線は 0〜1 の比率で持っているので、大きさ 1 として採点する
+    const judged = judgeWriting(userStrokes, strokeData, 1, { previousFails });
+    if (judged.verdict === 'careless') {
+      // ほとんど書いていない。答えを見せる前に、何を失うかを見せて確かめる
+      setWarning({ judged, preview: previewCarelessPenalty(carelessRecord, getTodayString()) });
+      audioCtrl.playSE('stamp_bad');
+      onCarelessWarned?.();
+      return;
+    }
+    reveal(judged);
+  };
+
+  // わからないときは、でたらめに書くかわりに答えを見られる（その字はもう1回。ペナルティは無い）
+  const canGiveUp = !isDrawing && !isLoading;
+  const handleGiveUp = () => {
+    if (!canGiveUp || showAnswer) return;
+    setWarning(null);
+    reveal({ verdict: 'giveup', evaluation: 'again', reason: 'giveup', result: null, attempt: null, lenient: false });
+  };
+
+  // 確かめの画面で「このまま こたえあわせ」を選んだ。ここで はじめてペナルティを科す
+  const handleProceedCareless = () => {
+    if (!warning || showAnswer) return;
+    const { judged, preview } = warning;
+    setWarning(null);
+    const entry = onCareless?.((stats, today) => applyHeavyPenalty(stats, { today, itemMap: TOWN_ITEM_MAP })) || null;
+    reveal({ ...judged, penalty: entry, preview });
+  };
+
+  const view = judgment && judgment.verdict !== 'ungraded' ? describeJudgment(judgment) : null;
+  const passed = judgment?.verdict === 'pass';
+  // この字のやり直しが上限に届いたら、次の学習へ回す
+  const willDefer = Boolean(judgment) && !passed && previousFails + 1 >= SESSION.MAX_RETRIES;
+  // 点数は、画数が合っていて採点できたときだけ出す（てきとう書き・わからない には出さない）
+  const score = judgment?.result?.strokeCountMatch && judgment.verdict !== 'careless' ? judgment.result.total : null;
+  // てきとう書きで失ったものと、次にやると足されるもの
+  const lostSummary = judgment?.verdict === 'careless' && judgment.penalty ? summarizePenalty(judgment.penalty) : null;
+  const lost = lostSummary && Object.values(lostSummary).some((amount) => amount > 0) ? lostSummary : null;
+  const nextAdded = judgment?.verdict === 'careless' && judgment.preview
+    ? penaltyAddedLines(judgment.preview.heavy ? judgment.preview.step : null, judgment.preview.nextStep) : [];
 
   const main = (
-    <div className="flex flex-row flex-wrap gap-4 md:gap-6 justify-center items-center w-full h-full overflow-y-auto no-scrollbar content-center pb-4 pt-4">
+    // 上下の余白は、答えを並べて見せるときだけ付ける。書いているあいだも付けていたときは、
+    // 高さで大きさが決まる画面（タブレットの縦持ちなど）でマスが 30px つぶれて、正方形でなくなっていた。
+    <div className={`flex flex-row flex-wrap gap-4 md:gap-6 justify-center items-center w-full h-full overflow-y-auto no-scrollbar content-center ${showAnswer ? 'py-4' : ''}`}>
       <div className="relative border-[4px] border-[var(--text)] rounded-[20px] bg-[var(--panel)] overflow-hidden touch-none transition-all duration-200 shadow-[4px_4px_0_var(--text)] md:shadow-[8px_8px_0_var(--text)] shrink-0" style={{ width: canvasSize, maxWidth: showAnswer ? 'calc(50% - 16px)' : '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
         <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-[var(--text)] opacity-10 -translate-x-1/2 pointer-events-none" />
         <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-[var(--text)] opacity-10 -translate-y-1/2 pointer-events-none" />
@@ -200,7 +303,8 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     </>
   );
 
-  const info = (
+  // 横に並べたレイアウトでは、問題文を右の列に出す。
+  const info = isStacked ? null : (
     <div className="bg-[var(--panel)] rounded-2xl p-3 md:p-4 text-center border-[4px] border-[var(--text)] shadow-[4px_4px_0_var(--text)] flex flex-col gap-2">
       {promptExample ? (
         <>
@@ -224,84 +328,181 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
     </div>
   );
 
-  const action = (
-    <div className="flex flex-col gap-2 md:gap-3">
-      {!showAnswer && (
-        // 「1画もどす／書きなおす」はキャンバスの外に置く。以前はキャンバスの右下に重ねていたため、
-        // 狭い画面では下のほうの画の書きはじめをボタンが受けとり、「かくすうが ちがう」と誤って採点されていた。
-        <div className="flex gap-2">
-          <MotionButton variant="secondary" onClick={undoLastStroke} disabled={userStrokes.length === 0} className="py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)]"><Undo2 size={16} /> 1{F("画","かく")}もどす</MotionButton>
-          <MotionButton variant="secondary" onClick={clearCanvas} disabled={userStrokes.length === 0} className="py-2 text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)]"><RotateCcw size={16} /> {F("書","か")}きなおす</MotionButton>
+  // 縦に重ねたレイアウト（スマホ・タブレットの縦持ち）では、問題文をボタンのすぐ上に出す。
+  // 以前はキャンバスの下のスクロールする所にあり、タブレットの縦持ちでは下のボタンに隠れて、
+  // スクロールしないと「何を書くか」が見えなかった。自己採点をやめたので、見えないまま書かせない。
+  // 高さ 739px までは、ここと下のボタンを詰めて出す。この高さでは、書くマスの大きさを
+  // 「ここ（詰めた形）が入る残り」で決めているので（learning-viewport.js の STACKED_RESERVE）、
+  // 詰めた形の高さを変えたら、そちらの値も測りなおすこと。
+  const compactPrompt = isStacked && (
+    <div className="bg-[var(--panel)] rounded-xl border-[3px] border-[var(--text)] px-2 py-1 [@media(max-height:739px)]:py-0.5 flex items-center gap-1">
+      <div className="flex-1 min-w-0 text-center">
+        {/* 背の低いスマホでは、見出しをかなだけにする（ルビの行の高さを足さず、何をするかは残す）。
+            高さ 580px 未満では、マスが下限の大きさでも入りきらないので、見出しは省く（文の「◯」が問題そのもの） */}
+        <div className="text-[10px] font-bold text-[var(--text-muted)] leading-tight">
+          <span className="[@media(max-height:739px)]:hidden">{promptExample ? <>「◯」の{F("漢字","かんじ")}を {F("書","か")}こう</> : <>この{F("漢字","かんじ")}、{F("書","か")}ける？</>}</span>
+          <span className="hidden [@media(min-height:580px)_and_(max-height:739px)]:inline">{promptExample ? '「◯」の かんじを かこう' : 'この かんじ、かける？'}</span>
         </div>
-      )}
-      {!showAnswer ? (
-        <>
-          {userStrokes.length === 0 && (
-            <div className="text-center text-xs md:text-sm font-bold text-[var(--text)] opacity-70" role="status">✏️ まず {F("書","か")}いてみよう</div>
-          )}
-          <MotionButton variant="primary" onClick={handleReveal} disabled={!canReveal} aria-disabled={!canReveal || undefined} className={`w-full py-5 md:py-8 text-xl md:text-3xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] ${canReveal ? 'animate-pulse' : ''}`}><Eye size={28} /> こたえあわせ</MotionButton>
-        </>
-      ) : (
-        <div className="flex flex-col gap-2 md:gap-3 animate-in slide-in-from-bottom-2">
-          {banner ? (
-            <div className="text-center text-sm font-bold py-2 px-3 rounded-xl border-[3px] border-[var(--text)] shadow-sm" style={{ backgroundColor: banner.color, color: banner.textColor }}>
-              {banner.text}
-            </div>
-          ) : (
-            <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm">
-              {F("自分","じぶん")}に{F("正直","しょうじき")}に{F("評価","ひょうか")}しよう！
-            </div>
-          )}
-          {recommendedEval && (
-            <div className="text-center text-[10px] md:text-xs font-bold text-[var(--text)] opacity-70">
-              コンピューターの おすすめより 1つ{F("上","うえ")}まで えらべるよ
-            </div>
-          )}
-          <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
-            {EVAL_BUTTONS.map(btn => {
-              const isRecommended = recommendedEval === btn.key;
-              const hasRecommendation = recommendedEval !== null;
-              const isAllowed = allowedKeys.includes(btn.key);
-              return (
-                <div key={btn.key} className="relative">
-                  {isRecommended && (
-                    <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="absolute -top-2 -right-2 z-10 bg-[var(--accent)] text-[var(--text)] text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-[var(--text)] animate-bounce"
-                    >
-                      おすすめ！
-                    </motion.div>
-                  )}
-                  <MotionButton
-                    variant={btn.variant}
-                    // 採点できなかった（お手本が無い）ときの評価は、自己申告として記録で区別する
-                    onClick={() => { if (isAllowed) onEvaluate(btn.key, { selfReport: !hasRecommendation, gradeResult }); }}
-                    disabled={evaluationLocked || !isAllowed}
-                    aria-disabled={!isAllowed || undefined}
-                    className={`w-full font-black border-[var(--text)] ${
-                      isRecommended
-                        ? `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow} ring-4 ring-[var(--accent)] ring-offset-1`
-                        : hasRecommendation
-                          ? `py-2 md:py-3 text-sm md:text-base border-[3px] opacity-60`
-                          : `py-3 md:py-5 text-base md:text-2xl border-[4px] ${btn.shadow}`
-                    }`}
-                  >
-                    {btn.key === 'good' ? <>{F("書","か")}けた👍</> : btn.key === 'again' ? <>{F("忘","わす")}れた💦</> : btn.label}
-                    <span className="text-[10px] md:text-sm font-bold opacity-70 ml-1">
-                      （{btn.key === 'again' || isPractice ? null : <>{F("次回","じかい")}：</>}{nextReviewText(card, btn.key, isPractice)}）
-                    </span>
-                  </MotionButton>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {promptExample && (
+          <p className="text-lg [@media(max-height:739px)]:text-base font-black text-[var(--text)] ruby-text !leading-[2.1]" data-testid="test-prompt">
+            <SurvivalRubyText text={promptExample} targetChar={kanji.char} />
+          </p>
+        )}
+        {(hintOpen || !promptExample) && <div className="text-sm font-black tracking-wider text-[var(--text)] pb-0.5">{readings}</div>}
+      </div>
+      {promptExample && (
+        <button type="button" onClick={() => setHintOpen((open) => !open)} aria-expanded={hintOpen} aria-label="ヒント：読みかた" className="shrink-0 w-12 h-12 [@media(max-height:739px)]:w-11 [@media(max-height:739px)]:h-11 rounded-xl border-2 border-[var(--text)] bg-[var(--bg)] text-lg flex items-center justify-center">💡</button>
       )}
     </div>
   );
 
-  return <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />;
+  // 「1画もどす／書きなおす」はキャンバスの外に置く。以前はキャンバスの右下に重ねていたため、
+  // 狭い画面では下のほうの画の書きはじめをボタンが受けとり、「かくすうが ちがう」と誤って採点されていた。
+  const undoButton = (
+    <MotionButton variant="secondary" onClick={undoLastStroke} disabled={userStrokes.length === 0} className="py-2 text-xs sm:text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] !gap-1"><Undo2 size={16} className="shrink-0" /> 1{F("画","かく")}もどす</MotionButton>
+  );
+  const clearButton = (
+    <MotionButton variant="secondary" onClick={clearCanvas} disabled={userStrokes.length === 0} className="py-2 text-xs sm:text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] !gap-1"><RotateCcw size={16} className="shrink-0" /> {F("書","か")}きなおす</MotionButton>
+  );
+  const revealButton = (
+    <MotionButton variant="primary" onClick={handleReveal} disabled={!canReveal} aria-disabled={!canReveal || undefined} data-testid="test-reveal" className={`w-full ${isStacked ? 'py-3 [@media(max-height:739px)]:py-2 text-xl' : 'py-5 md:py-8 text-xl md:text-3xl'} font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239] ${canReveal ? 'animate-pulse' : ''}`}><Eye size={28} /> こたえあわせ</MotionButton>
+  );
+  // 高さの下限は style で置く（index.css の button の 44px が、min-h のユーティリティより強いため）
+  const writingActions = isStacked ? (
+    <>
+      {compactPrompt}
+      <div className="flex gap-1.5">
+        {undoButton}
+        {clearButton}
+        <MotionButton variant="secondary" onClick={handleGiveUp} disabled={!canGiveUp} data-testid="test-giveup" style={{ minHeight: 48 }} className="py-2 text-xs sm:text-sm border-[2px] border-[var(--text)] flex-1 shadow-[0_2px_0_var(--text)] !gap-1"><HelpCircle size={16} className="shrink-0" /> わからない</MotionButton>
+      </div>
+      {revealButton}
+    </>
+  ) : (
+    <>
+      <div className="flex gap-2">
+        {undoButton}
+        {clearButton}
+      </div>
+      {userStrokes.length === 0 && (
+        <div className="text-center text-xs md:text-sm font-bold text-[var(--text-muted)]" role="status">✏️ まず {F("書","か")}いてみよう</div>
+      )}
+      {revealButton}
+      <MotionButton variant="secondary" onClick={handleGiveUp} disabled={!canGiveUp} data-testid="test-giveup" style={{ minHeight: 48 }} className="w-full py-2 text-sm md:text-base border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)]"><HelpCircle size={18} /> わからない（こたえを {F("見","み")}る）</MotionButton>
+    </>
+  );
+
+  const selfReportActions = (
+    <>
+      <div className="text-center text-sm font-bold text-[var(--text)] bg-[var(--accent)] py-2 rounded-xl border-[3px] border-[var(--text)] shadow-sm">
+        {F("自分","じぶん")}に{F("正直","しょうじき")}に{F("評価","ひょうか")}しよう！
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+        {SELF_REPORT_BUTTONS.map(btn => (
+          <MotionButton
+            key={btn.key}
+            variant={btn.variant}
+            // 採点できなかった（お手本が無い）ときの評価は、自己申告として記録で区別する
+            onClick={() => onEvaluate(btn.key, { selfReport: true, gradeResult: null })}
+            disabled={evaluationLocked}
+            className="w-full py-3 md:py-5 text-base md:text-2xl font-black border-[4px] border-[var(--text)]"
+          >
+            {btn.label}
+          </MotionButton>
+        ))}
+      </div>
+    </>
+  );
+
+  const judgedActions = view && (
+    <>
+      <div
+        role="status"
+        data-testid="test-verdict"
+        data-verdict={judgment.verdict}
+        data-evaluation={judgment.evaluation}
+        className="text-center text-sm md:text-base font-black py-2 px-3 rounded-xl border-[3px] border-[var(--text)] shadow-sm leading-relaxed"
+        style={TONES[view.tone]}
+      >
+        {view.title}
+        {score !== null && <span className="ml-2 whitespace-nowrap" data-testid="test-score">{score}{F("点","てん")}</span>}
+      </div>
+      {view.hints.length > 0 && (
+        <ul className="text-xs md:text-sm font-bold text-[var(--text)] bg-[var(--bg)] rounded-xl border-2 border-[var(--text)] px-3 py-1.5 leading-relaxed">
+          {view.hints.map((hint) => <li key={hint}>・{hint}</li>)}
+        </ul>
+      )}
+      {judgment.verdict === 'careless' && (
+        <div className="text-xs md:text-sm font-bold text-[var(--text)] bg-[var(--bg)] rounded-xl border-2 border-[var(--text)] px-3 py-2 leading-relaxed" data-testid="test-careless-note">
+          <p>この{F("回","かい")}の EXP と コインは もらえないよ。</p>
+          {lost && <p>なくなったもの：<PenaltyLoss loss={lost} /></p>}
+          {nextAdded.length > 0 && (
+            <p className="text-[var(--text-muted)]">
+              {judgment.preview.heavy ? <>つぎに やると：</> : <>あしたから また やると：</>}
+              {nextAdded.map(({ key, text }, index) => <span key={key}>{index > 0 ? '・' : ''}{text}</span>)}
+            </p>
+          )}
+          <p>わからないときは「わからない」を おしてね。</p>
+        </div>
+      )}
+      {passed ? (
+        <MotionButton
+          variant="primary"
+          onClick={() => onEvaluate(judgment.evaluation, { gradeResult: judgment.result })}
+          disabled={evaluationLocked}
+          aria-disabled={evaluationLocked || undefined}
+          data-testid="test-next"
+          className="w-full py-4 md:py-6 text-xl md:text-2xl font-black border-[4px] border-[var(--text)] shadow-[0_6px_0_#9f1239]"
+        >
+          つぎへ <ChevronRight size={26} />
+          <span className="text-[10px] md:text-sm font-bold opacity-80">（{isPractice ? null : <>{F("次回","じかい")}：</>}{nextReviewText(card, judgment.evaluation, isPractice)}）</span>
+        </MotionButton>
+      ) : (
+        <>
+          <MotionButton
+            variant={willDefer ? 'secondary' : 'primary'}
+            onClick={() => onEvaluate('again', { gradeResult: judgment.result })}
+            disabled={evaluationLocked}
+            aria-disabled={evaluationLocked || undefined}
+            data-testid="test-retry"
+            className={`w-full py-4 md:py-6 text-lg md:text-2xl font-black border-[4px] border-[var(--text)] ${willDefer ? 'shadow-[0_4px_0_var(--text)]' : 'shadow-[0_6px_0_#9f1239]'}`}
+          >
+            {willDefer
+              ? <>この{F("字","じ")}は また こんど <ChevronRight size={24} /></>
+              : <>お{F("手本","てほん")}を {F("見","み")}て もう1{F("回","かい")} <ChevronRight size={24} /></>}
+          </MotionButton>
+          {willDefer && (
+            <p className="text-[11px] md:text-xs font-bold text-[var(--text-muted)] text-center">つぎの {F("学習","がくしゅう")}で また {F("出","で")}てくるよ</p>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  const action = (
+    <div className={`flex flex-col ${isStacked ? 'gap-1.5 [@media(max-height:739px)]:gap-1 sm:gap-2' : 'gap-2 md:gap-3'}`}>
+      {!showAnswer
+        ? writingActions
+        : <div className="flex flex-col gap-2 md:gap-3 animate-in slide-in-from-bottom-2">{view ? judgedActions : selfReportActions}</div>}
+    </div>
+  );
+
+  return (
+    <>
+      <ModeLayout mainContent={main} tabsContent={commonSidebar} infoContent={info} actionContent={action} isStacked={isStacked} />
+      <AnimatePresence>
+        {warning && (
+          <CarelessConfirm
+            key="careless-confirm"
+            preview={warning.preview}
+            onRewrite={() => setWarning(null)}
+            onGiveUp={handleGiveUp}
+            onProceed={handleProceedCareless}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
 };
 
 export default TestMode;

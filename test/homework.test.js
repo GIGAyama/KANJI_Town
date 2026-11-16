@@ -190,6 +190,17 @@ test('宿題の結果は、最高点・はじめてできた日・回数をそ�
   assert.equal(done.report.passed, true);
   assert.equal(done.drills[0].homeworkResult.doneOn, '2026-11-16');
 
+  // ただし、何度やり直してもできずに次の学習へ回した字が残っているとき（incomplete）は、できたにしない。
+  // 以前は「もう1回」が終わるまで続いたので、終えた＝ぜんぶ書けた、だった。
+  const partial = recordHomeworkResult(pd, 'h9', { correct: 0, attempts: 3, today: '2026-11-16', incomplete: true });
+  assert.equal(partial.report.passed, false);
+  assert.deepEqual(partial.drills[0].homeworkResult, { tries: 1, best: 0, lastOn: '2026-11-16' });
+  assert.equal(getHomeworkState(partial.drills[0], '2026-11-16').state, 'doing');
+  // そのあとでぜんぶ書けたら、できたになる
+  const retried = recordHomeworkResult(partial.drills, 'h9', { correct: 1, attempts: 1, today: '2026-11-17', incomplete: false });
+  assert.equal(retried.report.passed, true);
+  assert.equal(retried.drills[0].homeworkResult.doneOn, '2026-11-17');
+
   // 見つからない・1問もこたえていない・日付がおかしいときは何もしない
   assert.equal(recordHomeworkResult(drills, 'hzz', { correct: 1, attempts: 1, today: '2026-11-17' }).drills, drills);
   assert.equal(recordHomeworkResult(drills, 'h1', { correct: 0, attempts: 0, today: '2026-11-17' }).report, null);

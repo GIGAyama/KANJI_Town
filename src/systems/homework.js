@@ -51,11 +51,12 @@ export function readHomework(drill) {
 
 /**
  * 宿題の学習を終えたときに、そのドリルへ結果を書く。
- * 点数は「できた問題 ÷ こたえた問題」。テストは合格の目安以上で、れんしゅうは終えたら「できた」。
+ * 点数は「できた問題 ÷ こたえた問題」。テストは合格の目安以上で、れんしゅうはぜんぶの字を書けたら「できた」。
+ * （何度やり直してもできない字は次の学習へ回る。そのときは incomplete: true で呼ぶ）
  * できた日は、はじめてできた日のまま変えない。
  * @returns {{ drills: object[], report: object|null }} 見つからない・1問もこたえていないときは drills をそのまま返す
  */
-export function recordHomeworkResult(drills, homeworkId, { correct, attempts, today }) {
+export function recordHomeworkResult(drills, homeworkId, { correct, attempts, today, incomplete = false }) {
   const list = Array.isArray(drills) ? drills : [];
   const index = homeworkId ? list.findIndex((d) => readHomework(d)?.id === homeworkId) : -1;
   const tried = Math.floor(Number(attempts) || 0);
@@ -65,7 +66,8 @@ export function recordHomeworkResult(drills, homeworkId, { correct, attempts, to
   const score = Math.max(0, Math.min(100, Math.round(((Number(correct) || 0) / tried) * 100)));
   const prev = drill.homeworkResult || {};
   const prevBest = Number.isFinite(prev.best) ? prev.best : -1;
-  const passed = hw.mode === 'practice' || score >= hw.pass;
+  // れんしゅうは、できなかった字を残して終えたとき（incomplete）は「できた」にしない
+  const passed = hw.mode === 'practice' ? !incomplete : score >= hw.pass;
   const doneOn = isValidDateKey(prev.doneOn) ? prev.doneOn : passed ? today : undefined;
   const homeworkResult = {
     tries: (Number.isInteger(prev.tries) && prev.tries > 0 ? prev.tries : 0) + 1,

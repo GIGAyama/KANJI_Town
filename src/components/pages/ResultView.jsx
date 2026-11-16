@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Sparkles, Coins, Map, ChevronRight, Target, CheckCircle2, NotebookPen, Presentation } from 'lucide-react';
+import { Gift, Sparkles, Coins, Map, Target, CheckCircle2, NotebookPen, Presentation, Hand } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
-import ModalDialog from '../ui/ModalDialog';
+import LevelUpModal from '../ui/LevelUpModal';
 import AnimatedCounter from '../ui/AnimatedCounter';
 import Confetti from '../ui/Confetti';
 import { TOWN_ITEMS, SvgVillager } from '../../data/town-items';
 import { GACHA_POOL } from '../../data/gacha-pool';
 import { STORY_STAGES, getCurrentStage } from '../../data/story-stages';
+import { STORY_STAGE_TEXT } from '../../data/story-stage-text';
 import { StorageAPI } from '../../systems/storage';
-import { F } from '../ui/FormatKun';
+import { F, RubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
 import { getOccupation } from '../../data/residents';
 import { getLevelInfoFromExp } from '../../utils/level-system';
@@ -18,10 +19,21 @@ import { getTodayString } from '../../utils/date-utils';
 import { getHabitStatus } from '../../systems/habit';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
+import { totalPenalty } from '../../systems/careless-penalty';
+import PenaltyLoss from '../ui/PenaltyLoss';
 import { ShowTeacherOverlay } from '../social/HomeworkParts';
+
+/** ステージの、ふりがなつきの名前と説明（無ければ story-stages.js の名前のまま） */
+const stageText = (stage) => STORY_STAGE_TEXT[stage.id] || { title: stage.title, desc: '' };
 
 const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContinueLearning }) => {
   const { earnedExp, perfectCount, voicedCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
+  const carelessCount = sessionMetrics.carelessCount || 0;
+  const carelessLostExp = sessionMetrics.carelessLostExp || 0;
+  // この回に、てきとう書きのペナルティで失ったもの（コイン・もちもの・素材・レベル・土地）
+  const carelessLoss = totalPenalty(sessionMetrics.carelessPenalties);
+  // 答えたのに1字もできなかった学習（App が学習の回数・ミッションに数えなかったもの）
+  const notCounted = sessionMetrics.counted === false && (sessionMetrics.attemptCount || 0) > 0;
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager || levelUpData?.isLevelUp);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
@@ -76,37 +88,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
 
       {/* レベルアップモーダル */}
       <AnimatePresence>
-        {showLevelUpModal && levelUpData && (
-          <ModalDialog labelId="levelup-title" onEscape={() => setShowLevelUpModal(false)} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--panel)] w-full max-w-sm rounded-3xl border-[4px] border-[var(--primary)] shadow-[0_8px_0_var(--primary)] overflow-hidden">
-              <div className="bg-[var(--primary)] text-[var(--panel)] text-center py-4 relative">
-                <div id="levelup-title" className="text-3xl font-black tracking-widest">{F("昇","しょう")}{F("格","かく")}！</div>
-                <div className="absolute top-0 right-0 left-0 bottom-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTExIDEwaDJ2NGgtem0wLThoMnY0aC0yem0wIDEyaDJ2NGgtMnpNNCAxMHYyaDQtMnYtem0tNCAwaDJ2Mkgwem0xNiAwaDZWMTBoLTZ6Ii8+PC9zdmc+')] bg-repeat" />
-              </div>
-              <div className="p-6 text-center">
-                <div className="text-[var(--text)] font-bold mb-1">レベルが上がった！</div>
-                <div className="flex items-center justify-center gap-3 my-4">
-                  <div className="text-4xl font-black text-gray-400">Lv.{levelUpData.oldLevel}</div>
-                  <ChevronRight size={32} className="text-[var(--primary)]" />
-                  <div className="text-6xl font-black text-[var(--accent)] drop-shadow-md">Lv.{levelUpData.newLevel}</div>
-                </div>
-                <div className="bg-[var(--bg)] rounded-xl p-3 border-2 border-[var(--text)] text-left mb-6">
-                  <div className="text-sm font-black mb-2 text-center text-[var(--text-muted)] border-b-2 border-dashed border-[var(--text)] pb-2">ごほうび</div>
-                  <ul className="space-y-2">
-                    {levelUpData.rewards.map((r, i) => r.reward && (
-                      <motion.li key={i} initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} transition={{ delay: 0.5 + (i*0.2) }} className="flex items-start gap-2 text-sm font-bold text-[var(--text)]">
-                        <span className="shrink-0 text-[var(--primary)]">🎁</span> {r.reward.text || <>アイテム{F("解放","かいほう")}！</>}
-                      </motion.li>
-                    ))}
-                  </ul>
-                </div>
-                <MotionButton variant="primary" data-autofocus onClick={() => setShowLevelUpModal(false)} className="w-full py-4 text-xl border-[4px] border-[var(--text)] shadow-[0_4px_0_#9f1239]">
-                  やったー！ 🎉
-                </MotionButton>
-              </div>
-            </div>
-          </ModalDialog>
-        )}
+        {showLevelUpModal && levelUpData && <LevelUpModal levelUpData={levelUpData} onClose={() => setShowLevelUpModal(false)} />}
       </AnimatePresence>
 
       {/* 先生に見せる（宿題のときだけ） */}
@@ -125,13 +107,38 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                   ? (homeworkReport.passed
                     ? <>テスト {homeworkReport.score}{F("点","てん")}・{F("合格","ごうかく")}！ できたよ 🎉</>
                     : <>テスト {homeworkReport.score}{F("点","てん")}。{homeworkReport.pass}{F("点","てん")}で {F("合格","ごうかく")}だよ。もう{F("一度","いちど")} ちょうせんできるよ</>)
-                  : <>{F("練習","れんしゅう")} できたよ 🎉</>}
+                  : homeworkReport.passed
+                    ? <>{F("練習","れんしゅう")} できたよ 🎉</>
+                    : <>まだ {F("書","か")}けていない{F("字","じ")}が あるよ。もう{F("一度","いちど")} ちょうせんできるよ</>}
               </div>
             </div>
           </div>
           <MotionButton variant="primary" onClick={() => setShowTeacher(true)} className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#9f1239]">
             <Presentation size={22} /> {F("先生","せんせい")}に{F("見","み")}せる
           </MotionButton>
+        </motion.div>
+      )}
+
+      {/* てきとう書きで失ったものがあるとき・1字も書けなかったときは、理由を先に伝える */}
+      {(carelessCount > 0 || notCounted) && (
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} role="status" data-testid="result-careless" className="bg-[var(--panel)] border-[4px] border-[var(--primary)] rounded-2xl p-4 shadow-[4px_4px_0_var(--primary)] flex items-start gap-3">
+          <Hand size={28} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />
+          <div className="min-w-0 text-sm font-bold leading-relaxed text-[var(--text)]">
+            {carelessCount > 0 && (
+              <>
+                <p>
+                  <span className="font-black">ほとんど {F("書","か")}かずに こたえあわせを した {F("回数","かいすう")}：{carelessCount}{F("回","かい")}</span>
+                  。この{F("回","かい")}の EXP と コインは もらえないよ
+                  {carelessLostExp > 0 && <>（EXP <strong data-testid="result-careless-lost">{carelessLostExp}</strong> が なくなった）</>}。
+                </p>
+                {Object.values(carelessLoss).some((amount) => amount > 0) && (
+                  <p data-testid="result-careless-loss">なくなったもの：<PenaltyLoss loss={carelessLoss} /></p>
+                )}
+              </>
+            )}
+            {notCounted && <p>{F("書","か")}けた{F("字","じ")}が なかったので、この{F("回","かい")}は {F("学習","がくしゅう")}の {F("回数","かいすう")}に {F("入","はい")}らないよ。</p>}
+            <p className="text-[var(--text-muted)]">ていねいに {F("書","か")}けば、なにも なくならないよ。わからないときは「わからない」を おしてね。</p>
+          </div>
         </motion.div>
       )}
 
@@ -197,11 +204,11 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
       {/* ストーリーナレーション */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] text-center">
         <div className="text-4xl mb-1">{currentStage.emoji}</div>
-        <div className="font-black text-[var(--primary)] text-lg">{currentStage.title}</div>
-        <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{currentStage.desc}</p>
+        <div className="font-black text-[var(--primary)] text-lg ruby-text"><RubyText text={stageText(currentStage).title} /></div>
+        <p className="text-xs text-[var(--text-muted)] mt-1 ruby-text"><RubyText text={stageText(currentStage).desc} /></p>
         {nextStage && (
-          <div className="mt-2 text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg px-2 py-1">
-            {F("次","つぎ")}のステージ「{nextStage.title}」まで あと{F("レベル","れべる")}{Math.max(0, nextStage.minLevel - newLevelInfo.level)}
+          <div className="mt-2 text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg px-2 py-1 ruby-text" data-testid="next-stage">
+            {F("次","つぎ")}のステージ「<RubyText text={stageText(nextStage).title} />」まで あと {Math.max(0, nextStage.minLevel - newLevelInfo.level)}レベル
           </div>
         )}
       </motion.div>

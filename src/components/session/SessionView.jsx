@@ -16,11 +16,12 @@ import { fetchKanjiVg } from '../../systems/kanjiVg';
 import { F } from '../ui/FormatKun';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
 import { getRecommendedPracticeMode, writingSkillEvidence } from '../../systems/mastery';
+import { SESSION } from '../../constants/gameConfig';
 
 const MODE_LABELS = { read: '音読', watch: '書き順', write: 'なぞる', test: 'テスト' };
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
 
-const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, onRequestLeave, isResumed = false, isPractice = false }) => {
+const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, onUpdateStat, onRecordSkillEvidence, onProgress, onFinish, onRecordPerfect, onRecordEasy, onRecordVoiced, onRecordCareless, onCarelessWarned, onDefer, carelessRecord = null, onRequestLeave, isResumed = false, isPractice = false }) => {
   const [queue, setQueue] = useState(initialQueue); const [mode, setMode] = useState('read'); const [paths, setPaths] = useState([]); const [strokeData, setStrokeData] = useState([]); const [crossMatrix, setCrossMatrix] = useState([]); const [isLoading, setIsLoading] = useState(false);
   const { canvasSize, isStacked } = useLearningViewport();
   const [activeStamp, setActiveStamp] = useState(null); const [combo, setCombo] = useState(0); const [reachedStep, setReachedStep] = useState(0);
@@ -105,41 +106,71 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, MODES, isNew, reachedStep]);
 
-  // 評価は1字につき1回だけ受けつける。スタンプの演出中もボタンは押せるため、
-  // 2回押すとタイマーが2本走り、EXP・コイン・住民が2〜3倍に記録されていた。
+  // 評価は1字につき1回だけ受けつける（2回押すと EXP・コイン・住民が2〜3倍に記録されていた）。
   const evaluatingRef = useRef(false);
-  const evaluationTimerRef = useRef(null);
+  const stampTimerRef = useRef(null);
   useEffect(() => { evaluatingRef.current = false; }, [currentKanji]);
-  // 画面を離れたあとに onFinish が動いて結果画面へ飛ばないよう、タイマーを止める
-  useEffect(() => () => clearTimeout(evaluationTimerRef.current), []);
+  useEffect(() => () => clearTimeout(stampTimerRef.current), []);
+
+  // この学習で、字ごとにやり直した回数。読み取れる字は2回目から通し（judgeWriting）、
+  // SESSION.MAX_RETRIES 回やり直してもできない字は次の学習へ回す。
+  const failCountsRef = useRef({});
+  const previousFails = failCountsRef.current[currentKanji?.id] || 0;
+  // 答え合わせのあと、ボタンを押すまではタブを切りかえさせない。
+  // 切りかえられると、答えを見たあとでテストに戻って書きなおし、やり直しもてきとう書きも記録に残らなかった。
+  const [testRevealed, setTestRevealed] = useState(false);
+  const [deferNotice, setDeferNotice] = useState(null);
+  useEffect(() => {
+    if (!deferNotice) return undefined;
+    const timer = setTimeout(() => setDeferNotice(null), 3200);
+    return () => clearTimeout(timer);
+  }, [deferNotice]);
+
+  // 判定が出たとき（こたえあわせを押したとき）に、スタンプと音で知らせる。
+  // 評価はコンピューターが決めるので、ボタンを押す前に結果が分かる。
+  const handleJudged = (judged) => {
+    if (judged.verdict === 'ungraded') return;
+    const stamp = judged.verdict === 'pass' ? judged.evaluation : judged.verdict === 'giveup' ? null : judged.verdict;
+    audioCtrl.playSE(stamp === 'easy' ? 'stamp_perfect' : stamp === 'good' ? 'stamp_good' : stamp === 'hard' || stamp === null ? 'click' : 'stamp_bad');
+    if (!stamp) return;
+    setActiveStamp(stamp);
+    clearTimeout(stampTimerRef.current);
+    stampTimerRef.current = setTimeout(() => setActiveStamp(null), stamp === 'easy' || stamp === 'good' ? 900 : 1300);
+  };
+
+  const advanceTo = (nextQueue) => {
+    onProgress?.(nextQueue);
+    if (nextQueue.length === 0) onFinish();
+    else setQueue(nextQueue);
+  };
 
   const handleEvaluation = (evalType, { selfReport = false, gradeResult = null } = {}) => {
     if (evaluatingRef.current) return;
     evaluatingRef.current = true;
     evaluatedCountRef.current += 1;
+    setTestRevealed(false);
     if (evalType === 'easy') onRecordEasy();
-    if (evalType === 'easy' || evalType === 'good') { const newC = combo + 1; setCombo(newC); }
-    else { setCombo(0); }
-    audioCtrl.playSE(evalType === 'again' ? 'stamp_bad' : evalType === 'easy' ? 'stamp_perfect' : evalType === 'hard' ? 'click' : 'stamp_good');
-    setActiveStamp(evalType === 'hard' ? 'good' : evalType); // hard は good スタンプで表示
-    evaluationTimerRef.current = setTimeout(() => {
-      setActiveStamp(null);
-      // 書字と筆順は、採点結果から別々に記録する（書き順だけがちがう字を見分けるため）
-      const success = onUpdateStat(currentKanji, evalType, { ...WRITING_SKILLS, selfReport, skillEvidence: writingSkillEvidence(gradeResult, evalType) });
-      if (success) {
-        const nextQueue = queue.slice(1);
-        onProgress?.(nextQueue);
-        if (nextQueue.length === 0) onFinish();
-        else setQueue(nextQueue);
-      } else {
-        const nextQueue = [...queue.slice(1), currentKanji];
-        onProgress?.(nextQueue);
-        setQueue(nextQueue);
-        setMode('watch');
-        // 同じ字を先送りにしただけなら currentKanji が変わらないこともあるので、ここで戻す
-        if (nextQueue[0] === currentKanji) evaluatingRef.current = false;
-      }
-    }, evalType === 'again' ? 1500 : 900); // again以外は短めに
+    setCombo(evalType === 'easy' || evalType === 'good' ? combo + 1 : 0);
+    // 書字と筆順は、採点結果から別々に記録する（書き順だけがちがう字を見分けるため）
+    const success = onUpdateStat(currentKanji, evalType, { ...WRITING_SKILLS, selfReport, skillEvidence: writingSkillEvidence(gradeResult, evalType) });
+    if (success) { advanceTo(queue.slice(1)); return; }
+
+    const fails = (failCountsRef.current[currentKanji.id] || 0) + 1;
+    failCountsRef.current[currentKanji.id] = fails;
+    if (fails >= SESSION.MAX_RETRIES) {
+      // 何度やってもできない字で止まらないよう、この学習からは外す。
+      // 記録は「忘れた」のままなので、次の学習でまた出てくる。
+      onDefer?.();
+      setDeferNotice(currentKanji.char);
+      advanceTo(queue.slice(1));
+      return;
+    }
+    const nextQueue = [...queue.slice(1), currentKanji];
+    onProgress?.(nextQueue);
+    setQueue(nextQueue);
+    setMode('watch');
+    // 同じ字を先送りにしただけなら currentKanji が変わらないこともあるので、ここで戻す
+    if (nextQueue[0] === currentKanji) evaluatingRef.current = false;
   };
   const recordSkills = (updates) => onRecordSkillEvidence?.(currentKanji, updates);
 
@@ -186,6 +217,11 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             <button
               key={t.id}
               onClick={() => {
+                if (testRevealed && mode === 'test') {
+                  // 答えを見たあとは、下のボタンで進む（ほかのタブへは行けない）
+                  if (t.id !== 'test') { audioCtrl.playSE('stamp_bad'); setLockedHint(<>さきに {F("下","した")}の ボタンを おしてね</>); }
+                  return;
+                }
                 if (isDisabled) {
                   audioCtrl.playSE('stamp_bad');
                   setLockedHint(isUnavailable
@@ -225,6 +261,20 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             className="absolute top-14 md:top-16 left-1/2 z-40 whitespace-nowrap rounded-full border-[3px] border-[var(--text)] bg-emerald-100 px-4 py-2 text-xs md:text-sm font-black text-emerald-800 shadow-[3px_3px_0_var(--text)]"
           >
             ✓ つづきから{F("再開","さいかい")}しました
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {deferNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -8, x: '-50%' }}
+            role="status"
+            data-testid="defer-notice"
+            className="absolute top-14 md:top-16 left-1/2 z-40 max-w-[92%] rounded-2xl border-[3px] border-[var(--text)] bg-[var(--panel)] px-4 py-2 text-center text-xs md:text-sm font-black text-[var(--text)] shadow-[3px_3px_0_var(--text)]"
+          >
+            「{deferNotice}」は つぎの {F("学習","がくしゅう")}で また {F("出","で")}てくるよ
           </motion.div>
         )}
       </AnimatePresence>
@@ -287,7 +337,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
             {mode === 'read' && <ReadMode kanji={currentKanji} paths={paths} isLoading={isLoading} settings={settings} challengeCleared={voicedKanjiIds.has(currentKanji.id)} onChallengeClear={handleChallengeClear} onNext={() => { recordSkills([{ skill: 'reading', evidence: 'exposed' }, { skill: 'meaning', evidence: 'exposed' }]); setMode('watch'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'watch' && <WatchMode paths={paths} strokeData={strokeData} isLoading={isLoading} onNext={() => { recordSkills([{ skill: 'stroke', evidence: 'exposed' }]); setMode('write'); }} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
             {mode === 'write' && <WriteMode paths={paths} strokeData={strokeData} crossMatrix={crossMatrix} onNext={() => setMode('test')} onPracticeComplete={(evidence) => recordSkills([{ skill: 'writing', evidence }, { skill: 'stroke', evidence }])} canvasSize={canvasSize} commonSidebar={commonSidebarTop} onRecordPerfect={onRecordPerfect} isStacked={isStacked} />}
-            {mode === 'test' && <TestMode kanji={currentKanji} card={stats[currentKanji.id] || null} isPractice={isPractice} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} />}
+            {mode === 'test' && <TestMode kanji={currentKanji} card={stats[currentKanji.id] || null} isPractice={isPractice} paths={paths} isLoading={isLoading} strokeData={strokeData} onEvaluate={handleEvaluation} evaluationLocked={activeStamp !== null} canvasSize={canvasSize} commonSidebar={commonSidebarTop} isStacked={isStacked} previousFails={previousFails} carelessRecord={carelessRecord} onJudged={handleJudged} onCareless={onRecordCareless} onCarelessWarned={onCarelessWarned} onRevealChange={setTestRevealed} />}
           </>
         )}
       </div>

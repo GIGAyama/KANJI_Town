@@ -22,6 +22,9 @@ const TOWN_ITEMS = [
   { id: 't_roughland', svg: lazySvg('SvgRoughland'), name: '荒れ地', price: 0,     pros: -2,   type: 'terrain', bg: 'bg-[#92400e]', cultivateCost: 15, isoHeight: 0 },
   { id: 't_cleared',   svg: lazySvg('SvgCleared'),   name: '更地',   price: 0,     pros: 0,    type: 'terrain', bg: 'bg-[#d4a96a]', isoHeight: 0 },
   { id: 't_weed',      svg: lazySvg('SvgWeed'),      name: 'ざっそう', price: 0,   pros: -5,   type: 'terrain', bg: 'bg-[#a3e635]', isoHeight: 6 },
+  // てきとう書きのペナルティで かれた土地（systems/careless-penalty.js）。開拓できず、建物も置けない。
+  // 学習しても戻らない（cultivateCost を持たせない）。絵は地面の色とひびで描くので、svg は岩盤のものを借りる
+  { id: 't_deadland',  svg: lazySvg('SvgBedrock'),   name: 'かれた土地', price: 0, pros: -5,   type: 'terrain', bg: 'bg-[#52525b]', isoHeight: 0 },
   { id: 't_grassland',     svg: lazySvg('SvgGrassland'),    name: '草地',     price: 0, pros: 1,  type: 'terrain', bg: 'bg-[#86efac]',  cultivateCost: 10, isoHeight: 0 },
   { id: 't_forest_floor',  svg: lazySvg('SvgForestFloor'),  name: '森林',     price: 0, pros: 2,  type: 'terrain', bg: 'bg-[#14532d]',  cultivateCost: 30, isoHeight: 0 },
   { id: 't_sand',          svg: lazySvg('SvgSand'),         name: '砂地',     price: 0, pros: 0,  type: 'terrain', bg: 'bg-[#fde68a]',  cultivateCost: 10, isoHeight: 0 },

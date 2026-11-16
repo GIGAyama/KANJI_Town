@@ -9,9 +9,9 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
 import { getTodayString, formatDate } from '../utils/date-utils.js';
-import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
+import { getLevelInfoFromExp, getThemeFromLevel, liftLevelCap } from '../utils/level-system.js';
 import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
-import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
+import { applyLearningDayHabit, canProtectRestDay, countsAsLearningDay, normalizeHabitState } from './habit.js';
 import { recordDiagnosticEvent } from './diagnostics.js';
 import { sanitizeStats } from './stats-schema.js';
 import { countStudyTotals, foldDailyIntoArchive } from './daily-archive.js';
@@ -629,11 +629,15 @@ const StorageAPI = {
     // ── サボり検出：街が廃れる仕組み ──
     const neglectApplied = StorageAPI._applyNeglectPenalties(stats);
 
+    // ── Lv100 が上限だったころにためた EXP を、新しいレベルに直す（1つの記録につき1回だけ） ──
+    stats = liftLevelCap(stats);
+
     // ── 実績の進捗を起動時に一括更新（新規追加分も反映） ──
     if (!stats.achievements) stats.achievements = {};
     StorageAPI._updateAchievements(stats);
 
-    if (neglectApplied) StorageAPI.saveStatsImmediate(stats);
+    // ごほうびを渡したときは、お祝いを出す前に閉じても二重に渡さないよう、すぐ書く
+    if (neglectApplied || stats.pendingLevelUp) StorageAPI.saveStatsImmediate(stats);
     return stats;
   },
 
@@ -787,6 +791,19 @@ const StorageAPI = {
   },
 
   /**
+   * てきとう書きを、その日の記録に1回足した新しい stats を返す（学習きろくで先生が見る）。
+   * field: 'carelessWarned' は確かめの画面が出た回数、'careless' はそのまま答え合わせをした回数。
+   * @param {object} stats
+   * @param {string} [today]
+   * @param {'careless'|'carelessWarned'} [field]
+   * @returns {object}
+   */
+  recordCareless: (stats, today = getTodayString(), field = 'careless') => {
+    const day = stats.daily?.[today] || { exp: 0, reviewed: 0, perfects: 0, attempts: 0, correct: 0 };
+    return { ...stats, daily: { ...stats.daily, [today]: { ...day, [field]: (day[field] || 0) + 1 } } };
+  },
+
+  /**
    * セッション終了時の日次データ更新
    * @param {object} stats - 直接変更される
    * @param {number} exp - 獲得EXP
@@ -799,7 +816,11 @@ const StorageAPI = {
     const perfectCount = sessionData.perfectCount || 0;
     const attemptCount = Math.max(0, Number(sessionData.attemptCount) || 0);
     const correctCount = Math.min(attemptCount, Math.max(0, Number(sessionData.correctCount) || 0));
-    const hasLearningActivity = exp > 0 || reviewedCount > 0 || attemptCount > 0;
+    // 「学習した日」（連続日数・町の手入れ）に数えるのは、1字でもできた日だけ。
+    // 以前は答えただけで数えたので、線を1本引いて終えるだけで連続記録が続いていた。
+    // 答えた数と正解の数は、できた字が無い日も残す（正答率に出るように）。
+    const hasProgress = countsAsLearningDay({ exp, reviewed: reviewedCount });
+    const hasLearningActivity = hasProgress || attemptCount > 0;
 
     if (hasLearningActivity) {
       if (!stats.daily) stats.daily = {};
@@ -824,7 +845,7 @@ const StorageAPI = {
     }
 
     // ストリーク更新（1日の休息はおやすみパスで自動保護）
-    if (hasLearningActivity && stats.lastDate !== today) {
+    if (hasProgress && stats.lastDate !== today) {
       Object.assign(stats, applyLearningDayHabit(stats, today));
       stats.lastNeglectAppliedDate = today;
     }

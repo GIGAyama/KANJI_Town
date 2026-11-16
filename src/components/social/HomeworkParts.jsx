@@ -148,7 +148,10 @@ export const ShowTeacherOverlay = ({ report, onClose }) => {
             </div>
           </>
         ) : (
-          <div className="text-4xl sm:text-5xl font-black text-emerald-700 flex items-center gap-2"><BookOpen size={40} aria-hidden="true" />{F("練習","れんしゅう")} できた</div>
+          report.passed
+            ? <div className="text-4xl sm:text-5xl font-black text-emerald-700 flex items-center gap-2"><BookOpen size={40} aria-hidden="true" />{F("練習","れんしゅう")} できた</div>
+            // 何度やり直してもできず、次の学習へ回した字があるとき
+            : <div className="text-3xl sm:text-4xl font-black text-slate-700 flex items-center gap-2"><BookOpen size={36} aria-hidden="true" />{F("練習","れんしゅう")} とちゅう</div>
         )}
         <div className="text-2xl font-black">{m}{F("月","がつ")}{d}{F("日","にち")}に {report.passed ? 'できた' : <>やった</>}</div>
         <button type="button" onClick={onClose} className="mt-2 w-full min-h-[56px] rounded-2xl border-[3px] border-slate-900 bg-slate-100 text-lg font-black">とじる</button>
