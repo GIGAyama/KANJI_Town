@@ -71,12 +71,14 @@ test('置き方の表（town-item-fit.js）は、絵の足もとの大きさ・�
     const art = BUILDING_ART[name];
     const row = KIT_BASE_SIZES[`t_${name}`];
     assert.deepEqual([row[0], row[1]], art.base, name);
-    assert.equal(row[2] === 1, art.shadow === 'own', `${name}: 影のしるし`);
+    // 'own' = 影は絵の中に描いてある、'none' = 平らなもの（プールなど）で影を落とさない。どちらも地面のレイヤーは描かない
+    assert.ok([undefined, 'own', 'none'].includes(art.shadow), `${name}: shadow の値`);
+    assert.equal(row[2] === 1, Boolean(art.shadow), `${name}: 影のしるし`);
     const [w, h] = art.size;
     assert.ok(art.base[0] > 0 && art.base[0] <= w && art.base[1] > 0 && art.base[1] <= h, `${name}: 足もとが敷地に収まらない`);
     // 置き方は どの絵も同じ決まり
     const fit = itemFit(ITEMS.get(`t_${name}`));
-    assert.deepEqual(fit, { ax: 0, ay: -50, s: 0.16 * (w + h), bw: art.base[0], bh: art.base[1], flip: false, ownShadow: art.shadow === 'own' });
+    assert.deepEqual(fit, { ax: 0, ay: -50, s: 0.16 * (w + h), bw: art.base[0], bh: art.base[1], flip: false, ownShadow: Boolean(art.shadow) });
     // 影を絵の中に描く絵は、絵の中に影がある（地面のレイヤーは描かない）
     if (art.shadow === 'own') assert.ok(buildingArt(name, 0).includes('fill="#1e2a3a"'), `${name}: 絵の中に影が無い`);
   }
@@ -123,7 +125,8 @@ test('部品（kit.js）: どの部品も壊れていない絵を返す', () => 
     glass: k.glass(f, 0.2, 1.2, 2, 9, 4) + k.glass(e, 0.2, 1.2, 2, 9, 1),
     door: k.door(f, 0.6, 0.8, 0, 11) + k.door(e, 0.6, 0.9, 0, 11, { double: true, pane: false }),
     awning: k.awning(f, 0.2, 1.2, 13) + k.awning(e, 0.2, 1.2, 13, { n: 3 }),
-    sign: k.sign(f, 0.4, 1, 14, 18) + k.onFace(f, 0.7, 16, '<circle r="1" fill="#ffffff"/>') + k.onFace(e, 0.7, 16, '<circle r="1" fill="#ffffff"/>'),
+    sign: k.sign(f, 0.4, 1, 14, 18) + k.onFace(f, 0.7, 16, '<circle r="1" fill="#ffffff"/>') + k.onFace(e, 0.7, 16, '<circle r="1" fill="#ffffff"/>') + k.billboard(1, 1, 20, '<circle r="1" fill="#ffffff"/>'),
+    roofTop: k.acUnit(0.3, 0.3, 14) + k.skylight(0.5, 0.5, 0.8, 0.8, 14),
     gableU: k.gableWalls(0.2, 0.2, 1.4, 1.2, 14, 9, '#ffffff', 'u') + k.gableRoof(0.2, 0.2, 1.4, 1.2, 14, 9, '#cc3333', 'u'),
     gableV: k.gableWalls(0.2, 0.2, 1.4, 1.2, 14, 9, '#ffffff', 'v') + k.gableRoof(0.2, 0.2, 1.4, 1.2, 14, 2, '#cc3333', 'v', { plain: true }),
     hipWide: k.hipRoof(0.2, 0.2, 1.6, 1, 14, 9, '#cc3333'),

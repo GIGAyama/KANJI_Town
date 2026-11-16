@@ -58,8 +58,9 @@ test('表に無い大きな建物は、足もとが 88% の ひし形の絵と�
 });
 
 test('うら返して置く絵は、長い向きが足もとの長い向きに合っている', () => {
+  // 水車小屋を描きなおしてからは、うら返して置く絵は無い（描きなおした絵は、敷地の向きに合わせて描いてある）
   const flipped = FITTED_ITEM_IDS.filter((id) => itemFit(byId.get(id)).flip);
-  assert.deepEqual(flipped, ['t_watermill']);
+  assert.deepEqual(flipped, []);
   for (const id of flipped) {
     const item = byId.get(id);
     const fit = itemFit(item);

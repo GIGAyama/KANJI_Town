@@ -118,6 +118,12 @@ export function lot(w = 1, h = 1) {
     return `<g transform="matrix(1 ${face.side === 'sw' ? 0.5 : -0.5} 0 1 ${f(x)} ${f(y)})">${markup}</g>`;
   };
 
+  /** 画面に正面を向けて置く絵（かたむけない。しるし・きらめき など）。markup の原点が その場所になる */
+  const billboard = (u, v, z, markup) => {
+    const [x, y] = xy(u, v, z);
+    return `<g transform="translate(${f(x)} ${f(y)})">${markup}</g>`;
+  };
+
   // ── 箱 ──
   /**
    * 直方体。c は左手前の面の色。
@@ -536,17 +542,23 @@ export function lot(w = 1, h = 1) {
     return out;
   };
 
+  /** 屋上の 空調の機械（平らな屋根が のっぺりしないように置く） */
+  const acUnit = (u, v, z, s = 1) => box(u, v, u + 0.11 * s, v + 0.09 * s, z, z + 2.6 * s, '#dfe4ea', { top: '#eef1f5', lw: 0.8 })
+    + oval(u + 0.055 * s, v + 0.045 * s, z + 2.6 * s, 2.3 * s, 1.15 * s, '#8a94a3', 0.5);
+  /** 屋上の 明かりとり（ガラスの天窓） */
+  const skylight = (u0, v0, u1, v1, z) => poly([[u0, v0, z], [u1, v0, z], [u1, v1, z], [u0, v1, z]], '#9fdcf7', 0.8)
+    + flat([[u0, v0, z], [u0 + (u1 - u0) * 0.45, v0, z], [u0, v0 + (v1 - v0) * 0.6, z]], '#dff4ff', 0.8);
   /** 絵を、置き方の決まりに合う形に包む（id を付けて <defs> に入れられる形） */
   const wrap = (markup, id) => `<g${id ? ` id="${id}"` : ''} transform="translate(50 50) scale(${f(5 / (w + h))})">${markup}</g>`;
 
   return {
     w, h, X, Y, xy, path, poly, flat, seg, bar, curve, dot, oval, disc, shape,
-    SW, SE, rect, panel, band, rule, onFace,
+    SW, SE, rect, panel, band, rule, onFace, billboard,
     box, pad, shadow, roundShadow, plinth, eaveShade,
     win, wins, glass, door, awning, sign,
     tiles, gableWalls, gableRoof, hipRoof, parapet,
     cyl, cone, dome,
-    bush, tree, fir, tuft, pot, flowers, flag, smoke, steps,
+    bush, tree, fir, tuft, pot, flowers, flag, smoke, steps, acUnit, skylight,
     wrap,
   };
 }

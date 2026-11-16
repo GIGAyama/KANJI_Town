@@ -8,7 +8,6 @@ import { isoPt, iso3, IsoCube, FaceSW, FaceSE, AwningSW, IsoShadow, ShopBase } f
 // 共通ビルダー ShopBase + 店舗ごとのグリフで統一クオリティ
 // ==========================================
 
-
 export const SvgCafe = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
@@ -48,19 +47,6 @@ export const SvgBurgerShop = () => (
   </svg>
 );
 
-export const SvgFamilyRestaurant = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-    <g transform="translate(50, 100) scale(2.15)">
-      <ShopBase wide wall="#fef9c3" base="#b45309" roof="#f97316" awn1="#f97316" awn2="#fffbeb" sign="#fffbeb" signEdge="#ea580c"
-        glyph={<g>
-          <circle cx="1.5" cy="-1" r="4.4" fill="#f8fafc" stroke="#1e293b" strokeWidth="0.8" />
-          <circle cx="1.5" cy="-1" r="2.2" fill="#fde68a" stroke="#e2e8f0" strokeWidth="0.5" />
-          <path d="M -5.5,-5.5 L -5.5,4 M -7,-5.5 L -7,-2.5 Q -7,-1 -5.5,-1 M -4,-5.5 L -4,-2.5 Q -4,-1 -5.5,-1" fill="none" stroke="#475569" strokeWidth="0.9" strokeLinecap="round" />
-        </g>} />
-    </g>
-  </svg>
-);
-
 export const SvgConvenienceStore = () => (
   <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
     <g transform="translate(50, 100) scale(2.15)">
@@ -91,78 +77,6 @@ export const SvgFlowerShop = () => (
         <circle cx="-2" cy="-6" r="2" fill="#f472b6" stroke="#1e293b" strokeWidth="0.6" />
         <circle cx="1.5" cy="-6.6" r="2" fill="#facc15" stroke="#1e293b" strokeWidth="0.6" />
         <circle cx="0" cy="-4.6" r="1.6" fill="#38bdf8" stroke="#1e293b" strokeWidth="0.6" />
-      </g>
-    </g>
-  </svg>
-);
-
-export const SvgCinema = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-    <g transform="translate(50, 100) scale(2.15)">
-      <ShopBase wide wall="#334155" base="#0f172a" roof="#1e293b" awn1="#dc2626" awn2="#fef3c7" sign="#0f172a" signEdge="#dc2626" h={30} pad="#475569"
-        glyph={<g>
-          {/* カチンコ */}
-          <rect x="-5.5" y="-2" width="11" height="6.5" rx="0.8" fill="#1e293b" stroke="#fef3c7" strokeWidth="0.7" />
-          <g transform="rotate(-15 -5.5 -2)">
-            <rect x="-5.5" y="-5" width="11" height="3" rx="0.8" fill="#1e293b" stroke="#fef3c7" strokeWidth="0.7" />
-            <path d="M -4.5,-5 L -2.5,-2 M -1,-5 L 1,-2 M 2.5,-5 L 4.5,-2" stroke="#fef3c7" strokeWidth="0.9" />
-          </g>
-          <circle cx="0" cy="1.4" r="1.4" fill="#fbbf24" />
-        </g>} />
-      {/* 電飾マーキー */}
-      {[30, 40, 50, 60, 70].map(x => (
-        <circle key={x} cx={isoPt(x, 84.6, 27)[0]} cy={isoPt(x, 84.6, 27)[1]} r="1" fill="#fde047" stroke="#1e293b" strokeWidth="0.4" />
-      ))}
-    </g>
-  </svg>
-);
-
-export const SvgHotel = () => (
-  <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: "visible" }}>
-    <g transform="translate(50, 100) scale(2.1)">
-      <IsoShadow rx={32} />
-      <polygon points={`${iso3(10, 10, 0)} ${iso3(90, 10, 0)} ${iso3(90, 90, 0)} ${iso3(10, 90, 0)}`} fill="#cbd5e1" stroke="#1e293b" strokeWidth="0.9" strokeLinejoin="round" />
-      {/* タワー本体 */}
-      <IsoCube x={24} y={24} w={52} d={52} h={66} top="#64748b" left="#475569" right="#334155" sw={1.1} />
-      {/* 客室窓（南西面・暖色の明かり） */}
-      {[14, 26, 38, 50].map((z, r) => (
-        <g key={z}>
-          {[[28, 36], [40, 48], [52, 60], [64, 72]].map(([a, b], c) => (
-            <FaceSW key={c} x1={a} x2={b} y={76.2} z1={z} z2={z + 7} fill={(r + c) % 3 === 0 ? '#fef08a' : (r + c) % 3 === 1 ? '#fde047' : '#94a3b8'} sw={0.6} />
-          ))}
-        </g>
-      ))}
-      {/* 客室窓（南東面） */}
-      {[14, 26, 38, 50].map((z, r) => (
-        <g key={z}>
-          {[[30, 40], [46, 56], [60, 70]].map(([a, b], c) => (
-            <FaceSE key={c} x={76.2} y1={a} y2={b} z1={z} z2={z + 7} fill={(r + c) % 2 === 0 ? '#fbbf24' : '#78716c'} sw={0.6} />
-          ))}
-        </g>
-      ))}
-      {/* エントランス＋赤い絨毯とキャノピー */}
-      <polygon points={`${iso3(42, 76, 0.2)} ${iso3(58, 76, 0.2)} ${iso3(58, 92, 0.2)} ${iso3(42, 92, 0.2)}`} fill="#dc2626" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" />
-      <FaceSW x1={42} x2={58} y={76.4} z1={0} z2={9.5} fill="#0f172a" sw={1} />
-      <FaceSW x1={44.5} x2={49.5} y={76.6} z1={0.8} z2={8.6} fill="#fde68a" sw={0.5} />
-      <FaceSW x1={50.5} x2={55.5} y={76.6} z1={0.8} z2={8.6} fill="#fcd34d" sw={0.5} />
-      <AwningSW x1={40} x2={60} y={76} z={11} c1="#b91c1c" c2="#fef3c7" depth={8} drop={2} stripes={5} />
-      {/* キャノピー支柱 */}
-      {[42, 58].map(x => (
-        <line key={x} x1={isoPt(x, 84, 0)[0]} y1={isoPt(x, 84, 0)[1]} x2={isoPt(x, 84, 8.5)[0]} y2={isoPt(x, 84, 8.5)[1]} stroke="#fbbf24" strokeWidth="1.4" strokeLinecap="round" />
-      ))}
-      {/* 縦型HOTELサイン */}
-      <FaceSW x1={22} x2={30} y={76.5} z1={20} z2={58} fill="#b91c1c" sw={1} />
-      {['H', 'O', 'T', 'E', 'L'].map((ch, i) => (
-        <text key={ch} x={isoPt(26, 76.7, 55 - i * 7.5)[0]} y={isoPt(26, 76.7, 55 - i * 7.5)[1]} textAnchor="middle" fontSize="6.5" fontWeight="900" fill="#fef9c3" fontFamily="sans-serif">{ch}</text>
-      ))}
-      {/* 屋上（パラペット＋ルーフバー） */}
-      <IsoCube x={22} y={22} w={56} d={56} z={66} h={3} top="#94a3b8" left="#cbd5e1" right="#64748b" sw={0.9} />
-      <IsoCube x={34} y={34} w={22} d={16} z={69} h={7} top="#e2e8f0" left="#f8fafc" right="#cbd5e1" sw={0.8} />
-      <FaceSW x1={36} x2={54} y={50.2} z1={71} z2={75} fill="#7dd3fc" sw={0.6} />
-      {/* 星型ネオン */}
-      <g transform={`translate(${isoPt(62, 44, 74)[0].toFixed(1)}, ${isoPt(62, 44, 74)[1].toFixed(1)})`}>
-        <path d="M 0,-4 L 1.2,-1.2 L 4,-1 L 1.8,0.8 L 2.4,3.6 L 0,2 L -2.4,3.6 L -1.8,0.8 L -4,-1 L -1.2,-1.2 Z"
-          fill="#fde047" stroke="#1e293b" strokeWidth="0.8" strokeLinejoin="round" filter="url(#glow-effect)" />
       </g>
     </g>
   </svg>
