@@ -36,6 +36,21 @@ export const SESSION = {
   },
   /** セッション直後の復習猶予時間(ms) */
   GRACE_PERIOD: 30 * 60 * 1000,
+  /** 同じ字をこの回数やり直してもできないときは、その字を次の学習へ回す（1字で止まらないように） */
+  MAX_RETRIES: 3,
+};
+
+/**
+ * てきとう書き（線を1本引く・点を打つだけで答え合わせをする）への対応。
+ * 見分け方は strokeGrader.js の measureAttempt、割合の計算は systems/careless.js。
+ */
+export const CARELESS = {
+  /** 1回の学習で、この回数までは注意だけにする（うっかりを巻きこまないため） */
+  FREE_WARNINGS: 1,
+  /** それをこえた1回ごとに、その回の学習でもらえる EXP を減らす割合 */
+  EXP_PENALTY_STEP: 0.1,
+  /** 減らす割合の上限 */
+  EXP_PENALTY_MAX: 0.5,
 };
 
 /** 経済設定 */

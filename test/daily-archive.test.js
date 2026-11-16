@@ -31,3 +31,14 @@ test('記録が無くても数えられる', () => {
   assert.deepEqual(countStudyTotals({}), { loginDays: 0, reviewTotal: 0 });
   assert.equal(foldDailyIntoArchive(null, null), null);
 });
+
+test('てきとう書きの回数も月ごとの集計に足す（0 回の月には欄を作らない）', () => {
+  const stats = { daily: {
+    '2026-08-30': { exp: 0, reviewed: 0, perfects: 0, attempts: 3, correct: 0, careless: 2 },
+    '2026-08-31': { exp: 10, reviewed: 3, perfects: 0, attempts: 4, correct: 3, careless: 1 },
+    '2026-09-01': { exp: 10, reviewed: 3, perfects: 0, attempts: 4, correct: 3 },
+  } };
+  const folded = foldDailyIntoArchive(stats, null);
+  assert.equal(folded.dailyArchive['2026-08'].careless, 3);
+  assert.equal('careless' in folded.dailyArchive['2026-09'], false);
+});

@@ -14,7 +14,7 @@
 // 3. 終筆（とめ・はね・はらい）は字体の許容幅が広いので、
 //    配点を控えめにし、不一致でも部分点を残す。
 //
-import { STROKE_THRESHOLDS, getStrokeTolerances } from '../constants/strokeConfig.js';
+import { JUDGE, STROKE_THRESHOLDS, getStrokeTolerances } from '../constants/strokeConfig.js';
 import { GRADING } from '../constants/gameConfig.js';
 import { Analyzer } from './analyzer.js';
 import { endingSimilarity, endingVerb } from './strokeKind.js';
@@ -534,21 +534,140 @@ export function recommendEvaluation(result) {
   return 'again';
 }
 
-/** 自己評価のボタンの並び（下から順に） */
-export const EVALUATION_ORDER = ['again', 'hard', 'good', 'easy'];
+/**
+ * 書いた線が「お手本の字として読み取れるか」と「どれだけ書いたか」を測る。
+ *
+ * gradeStrokes は画数が合わないと採点しない（0点で内訳なし）ので、1画多い・少ないだけの字と、
+ * 線を1本引いただけの字を見分けられない。ここでは画数が合っていなくても、
+ * 字全体の大きさと位置をお手本にそろえてから（上限なし）、お手本の画ごとに
+ * 「書いた線のどれかと形・位置が合うか」を数える。書く向きが逆でも合うものとして数える
+ * （向きや順番のまちがいは、読み取れないこととは別なので）。
+ *
+ * @param {Array<Array<{x: number, y: number}>>} userStrokes
+ * @param {Array<{points: Array}>} strokeData
+ * @param {number} [canvasSize]
+ * @returns {{ expectedCount: number, actualCount: number, inkRatio: number, sizeRatio: number,
+ *   coverage: number, recognized: boolean, careless: boolean, carelessReason: 'few'|'many'|'ink'|null }}
+ */
+export function measureAttempt(userStrokes, strokeData, canvasSize = 1) {
+  const expected = Array.isArray(strokeData) ? strokeData.map(sanitizeTarget) : [];
+  const size = Number.isFinite(canvasSize) && canvasSize > 0 ? canvasSize : 1;
+  const user = (Array.isArray(userStrokes) ? userStrokes : [])
+    .map(stroke => (Array.isArray(stroke) ? stroke : []).filter(isFinitePoint).map(p => ({ x: p.x / size, y: p.y / size })))
+    .filter(stroke => stroke.length > 0);
+  const expectedCount = expected.length;
+  const actualCount = user.length;
+  const empty = { expectedCount, actualCount, inkRatio: 0, sizeRatio: 1, coverage: 0, recognized: false, careless: false, carelessReason: null };
+  if (expectedCount === 0) return empty;
+
+  const expectedInk = expected.reduce((sum, target) => sum + pathLength(target.points), 0);
+  const userInk = user.reduce((sum, stroke) => sum + pathLength(stroke), 0);
+  const inkRatio = expectedInk > 0 ? userInk / expectedInk : 1;
+
+  // ── てきとう書き（書こうとしていない）──
+  // 読み取れるかどうかより先に、「どれだけ書いたか」だけで決める。形は見ない
+  // （形だけを見ると、ほかの字とまちがえて書いた子まで巻きこむ）。
+  let carelessReason = null;
+  // 割り算にすると 1/3 の丸めで境目がずれるので、掛け算で比べる
+  if (expectedCount >= 3 && actualCount * JUDGE.CARELESS_FEW_STROKES_DIVISOR <= expectedCount) carelessReason = 'few';
+  else if (actualCount >= expectedCount * JUDGE.CARELESS_MANY_STROKES_FACTOR + JUDGE.CARELESS_MANY_STROKES_EXTRA) carelessReason = 'many';
+  else if (inkRatio < JUDGE.CARELESS_MIN_INK_RATIO) carelessReason = 'ink';
+
+  // ── 字として読み取れるか ──
+  const userBounds = boundsOf(user);
+  const expectedBounds = boundsOf(expected.map(target => target.points));
+  let sizeRatio = 1;
+  let coverage = 0;
+  if (userBounds && expectedBounds) {
+    const comparable = userBounds.side > SIZE_EPSILON && expectedBounds.side > SIZE_EPSILON;
+    if (comparable) sizeRatio = userBounds.side / expectedBounds.side;
+    const scale = comparable ? 1 / sizeRatio : 1;
+    const tolerances = getStrokeTolerances(expectedCount);
+    const userSamples = user.map(stroke => ({
+      length: pathLength(stroke) * scale,
+      points: Analyzer.resample(stroke.map(p => ({
+        x: expectedBounds.x + (p.x - userBounds.x) * scale,
+        y: expectedBounds.y + (p.y - userBounds.y) * scale,
+      })), STROKE_THRESHOLDS.SHAPE_SAMPLES),
+    }));
+    let matched = 0;
+    for (const target of expected) {
+      const targetSample = Analyzer.resample(target.points, STROKE_THRESHOLDS.SHAPE_SAMPLES);
+      const targetLength = pathLength(target.points);
+      const found = userSamples.some((sample) => {
+        const lengthOk = targetLength < GRADING.SHORT_STROKE_LENGTH || sample.length >= targetLength * GRADING.MIN_LENGTH_RATIO;
+        if (!lengthOk) return false;
+        const shape = sampledShapeDistance(sample.points, targetSample);
+        return distanceScore(Math.min(shape.forward, shape.reversed), tolerances.shape) >= GRADING.MIN_STROKE_SHAPE;
+      });
+      if (found) matched++;
+    }
+    coverage = matched / expectedCount;
+  }
+  const countDiffLimit = Math.max(1, Math.ceil(expectedCount * JUDGE.RECOGNIZED_COUNT_DIFF_RATIO));
+  const recognized = coverage >= JUDGE.RECOGNIZED_COVERAGE && Math.abs(actualCount - expectedCount) <= countDiffLimit;
+
+  return {
+    expectedCount,
+    actualCount,
+    inkRatio,
+    sizeRatio,
+    coverage,
+    recognized,
+    // 読み取れる字は、小さく書いただけ・1画多いだけ。てきとう書きとは数えない
+    careless: !recognized && carelessReason !== null,
+    carelessReason: recognized ? null : carelessReason,
+  };
+}
 
 /**
- * 自己評価で選べるボタンを返す。
- * 採点できたときは、おすすめより1段上までしか選べない（自分に厳しくつける方向は自由）。
- * 以前は線を1本も書かずに「よくできた」を押せ、間隔反復・技能点・EXP が自己申告どおりに進んでいた。
- * お手本が読めず採点できないとき（recommended が null）だけ、すべて選べる。
- * @param {'again'|'hard'|'good'|'easy'|null} recommended - recommendEvaluation の結果
- * @returns {Array<'again'|'hard'|'good'|'easy'>}
+ * 毎日の学習のテストで、書いた字を「できた／もう1回／てきとう書き」に分ける（自己採点のかわり）。
+ *
+ * 以前は採点のおすすめを出したうえで児童がボタンを選び、おすすめが「忘れた」でも
+ * 「むずかしい」を選べば合格あつかいで先へ進めた。線を1本引くだけで新出字の EXP 50 が入り、
+ * 1日の目標も進んでいた。ここで決めた評価がそのまま間隔反復と EXP に使われる。
+ *
+ * - pass: 画数が合っていて 40 点以上。評価は点数で決める（80 以上 easy・55 以上 good・ほか hard）。
+ *   線の交わり・書き順がちがう字は 50 点以上で通し、評価は hard まで（まもなくまた出す）。
+ * - retry: 画数がちがう・形が合わない。お手本を見てもう1回。
+ *   ただし字として読み取れるもの（1画多い・小さく書いた など）は、同じ字で2回目からは
+ *   hard で通す（ゆびがはなれて画が切れるような、子どもには直せない理由で止まらないように）。
+ * - careless: ほとんど書いていない・でたらめに線を引いた。もう1回のうえ、ごほうびが減る。
+ * - ungraded: お手本が無く採点できない（このときだけ自己申告にする）。
+ *
+ * @param {Array} userStrokes
+ * @param {Array} strokeData
+ * @param {number} [canvasSize]
+ * @param {{ previousFails?: number, expectedCross?: boolean[][] }} [options]
+ *   previousFails: このセッションで同じ字をやり直した回数
+ * @returns {{ verdict: 'pass'|'retry'|'careless'|'ungraded', evaluation: 'easy'|'good'|'hard'|'again'|null,
+ *   reason: string, result: object, attempt: object|null, lenient: boolean }}
  */
-export function allowedEvaluations(recommended) {
-  const index = EVALUATION_ORDER.indexOf(recommended);
-  if (index < 0) return [...EVALUATION_ORDER];
-  return EVALUATION_ORDER.slice(0, Math.min(EVALUATION_ORDER.length, index + 2));
+export function judgeWriting(userStrokes, strokeData, canvasSize = 1, options = {}) {
+  const result = gradeStrokes(userStrokes, strokeData, canvasSize, options);
+  if (!Array.isArray(strokeData) || strokeData.length === 0) {
+    return { verdict: 'ungraded', evaluation: null, reason: 'no-model', result, attempt: null, lenient: false };
+  }
+  const flaw = result.crossMatch === false ? 'cross' : result.orderMatch === false ? 'order' : null;
+  if (result.strokeCountMatch === true && result.total >= (flaw ? JUDGE.FLAWED_PASS_MIN_TOTAL : JUDGE.PASS_MIN_TOTAL)) {
+    const evaluation = flaw ? 'hard'
+      : result.total >= JUDGE.EASY_MIN_TOTAL ? 'easy'
+        : result.total >= JUDGE.GOOD_MIN_TOTAL ? 'good' : 'hard';
+    return { verdict: 'pass', evaluation, reason: flaw || 'ok', result, attempt: null, lenient: false };
+  }
+
+  const attempt = measureAttempt(userStrokes, strokeData, canvasSize);
+  const reason = result.strokeCountMatch !== true ? 'count'
+    : attempt.sizeRatio < JUDGE.SIZE_TOO_SMALL ? 'small'
+      : attempt.sizeRatio > JUDGE.SIZE_TOO_LARGE ? 'large'
+        : flaw || 'shape';
+  if (attempt.recognized && (Number(options.previousFails) || 0) >= 1) {
+    return { verdict: 'pass', evaluation: 'hard', reason, result, attempt, lenient: true };
+  }
+  if (attempt.careless) {
+    return { verdict: 'careless', evaluation: 'again', reason: attempt.carelessReason, result, attempt, lenient: false };
+  }
+  return { verdict: 'retry', evaluation: 'again', reason, result, attempt, lenient: false };
 }
 
 /**

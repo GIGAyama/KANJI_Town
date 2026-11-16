@@ -64,6 +64,21 @@ test('数字の欄の文字列は数に直す（"100" に足し算すると "100
   assert.ok(result.repaired.includes('streak'));
 });
 
+test('1日の記録の「てきとう書きの回数」も、数でなければその欄だけを捨てる', () => {
+  const result = sanitizeStats({
+    ...validBackup(),
+    daily: {
+      '2026-11-15': { exp: 10, reviewed: 3, careless: '2' },
+      '2026-11-16': { exp: 10, reviewed: 3, careless: 'たくさん' },
+      '2026-11-17': { exp: 10, reviewed: 3, careless: -4 },
+    },
+  });
+  assert.equal(result.stats.daily['2026-11-15'].careless, 2);
+  assert.equal('careless' in result.stats.daily['2026-11-16'], false);
+  assert.equal(result.stats.daily['2026-11-16'].reviewed, 3);
+  assert.equal(result.stats.daily['2026-11-17'].careless, 0);
+});
+
 test('中の1件が壊れていても、その1件だけを捨てる', () => {
   const result = sanitizeStats({
     ...validBackup(),

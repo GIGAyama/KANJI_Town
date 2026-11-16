@@ -82,6 +82,8 @@ export function getWeeklyLearningSummary(stats, endDate = new Date()) {
       reviewed,
       attempts,
       correct,
+      // てきとう書き（線を1本引く・点を打つだけで答え合わせをした回数）
+      careless: Math.max(0, Number(record.careless) || 0),
       studied: exp > 0 || reviewed > 0 || attempts > 0,
       goalComplete: reviewed >= goal,
     });
@@ -93,7 +95,8 @@ export function getWeeklyLearningSummary(stats, endDate = new Date()) {
     reviewed: summary.reviewed + day.reviewed,
     attempts: summary.attempts + day.attempts,
     correct: summary.correct + day.correct,
-  }), { studiedDays: 0, goalDays: 0, reviewed: 0, attempts: 0, correct: 0 });
+    careless: summary.careless + day.careless,
+  }), { studiedDays: 0, goalDays: 0, reviewed: 0, attempts: 0, correct: 0, careless: 0 });
 
   return {
     ...totals,

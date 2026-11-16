@@ -32,6 +32,7 @@ import { getTodayString } from './utils/date-utils';
 import { getEffectiveStreak } from './systems/habit';
 import { getMotionPreference, shouldReduceMotion } from './utils/motion-preference';
 import { recordSkillEvidence } from './systems/mastery';
+import { applyCarelessPenalty } from './systems/careless';
 import { fillQueue, shuffled } from './systems/question-queue';
 import { THEMES, themeCssVars } from './constants/themes';
 import { createTabCoordinator } from './systems/tab-coordinator';
@@ -121,6 +122,9 @@ function createInitialSessionData(overrides = {}) {
     reviewedCount: 0,
     attemptCount: 0,
     correctCount: 0,
+    // てきとう書きの回数（EXP が減る）と、やり直してもできずに次の学習へ回した字の数
+    carelessCount: 0,
+    deferredCount: 0,
     newKanjiCount: 0,
     masteredCount: 0,
     unlockedItems: [],
@@ -749,7 +753,11 @@ export default function App() {
     }
 
     const next = calculateNextReview(curWithMastery, evalType, now);
-    const wasNew = curWithMastery.status === 'new';
+    // はじめての字（まだ1回もできていない字）。1回目でできなくても、できたときに新出字として数える。
+    // 以前は1回目の評価だけを見ていたので、やり直してできた字は EXP 50 をもらえず、
+    // 逆に、書けなかった字も「新しい漢字」のミッションに数えていた。
+    const wasNew = curWithMastery.status === 'new' || curWithMastery.pendingNew === true;
+    const learnedNew = wasNew && evalType !== 'again';
     const isMastering = next.graduated && next.interval >= 7 * 24 * 60 * 60 * 1000;
     const newStatus = isMastering ? 'mastered' : next.graduated ? 'review' : 'learning';
     let exp = 0; let unlockedItem = null; let newVillager = null;
@@ -803,6 +811,7 @@ export default function App() {
           mistakes: evalType === 'again' ? (curWithMastery.mistakes || 0) + 1 : (curWithMastery.mistakes || 0),
           ...recordPracticeAttempt(curWithMastery, evalType),
           ...recordSelfReport(curWithMastery, selfReport),
+          pendingNew: wasNew && !learnedNew ? true : undefined,
         },
       },
       ...(newVillager ? { population: (s.population || 0) + 1, villagers: [...(s.villagers || []), newVillager] } : {}),
@@ -813,7 +822,7 @@ export default function App() {
       reviewedCount: (d.reviewedCount || 0) + (evalType === 'again' ? 0 : 1),
       attemptCount: (d.attemptCount || 0) + 1,
       correctCount: (d.correctCount || 0) + (evalType === 'again' ? 0 : 1),
-      newKanjiCount: (d.newKanjiCount || 0) + (wasNew ? 1 : 0),
+      newKanjiCount: (d.newKanjiCount || 0) + (learnedNew ? 1 : 0),
       masteredCount: (d.masteredCount || 0) + (isMastering && cur.status !== 'mastered' ? 1 : 0),
       unlockedItems: unlockedItem ? [...d.unlockedItems, unlockedItem] : d.unlockedItems,
       newVillager: d.newVillager || newVillager,
@@ -837,6 +846,18 @@ export default function App() {
     }));
   }, []);
 
+  // てきとう書き（線を1本引く・点を打つだけで答え合わせをした）。ボタンを押す前にやめても
+  // 数が残るよう、判定が出た時点でその日の記録に足す。再読みこみで消えないようチェックポイントも書く。
+  const handleRecordCareless = useCallback(() => {
+    setSessionData(d => ({ ...d, carelessCount: (d.carelessCount || 0) + 1 }));
+    setStats(s => StorageAPI.recordCareless(s));
+    const checkpoint = createSessionCheckpoint(sessionDataRef.current);
+    if (checkpoint) StorageAPI.saveActiveSession(checkpoint);
+  }, [setSessionData]);
+  const handleDeferKanji = useCallback(() => {
+    setSessionData(d => ({ ...d, deferredCount: (d.deferredCount || 0) + 1 }));
+  }, [setSessionData]);
+
   const handleFinishSession = (additionalResults = {}) => {
     // setSessionData はrefも同期更新するため、最後の回答直後でも最新集計を確定できる。
     const activeSession = sessionDataRef.current;
@@ -847,11 +868,17 @@ export default function App() {
     if (!isLearningView(viewRef.current)) return;
     // 規定の終了条件に到達。学習ログは統計保存後（学習画面を離れるタイミング）に確定する。
     markStudySessionCompleted();
-    const totalExp = activeSession.earnedExp + (additionalResults.exp || 0);
+    // てきとう書きがあった回は、もらえる EXP（と、そこから換算するコイン）を減らす
+    const penalty = applyCarelessPenalty(activeSession.earnedExp + (additionalResults.exp || 0), activeSession.carelessCount);
+    const totalExp = penalty.exp;
     const coinBonus = Math.floor(totalExp / ECONOMY.EXP_TO_COIN_DIVISOR) + (additionalResults.coins || 0);
+    const correctTotal = activeSession.correctCount + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0);
+    // 1字もできていない学習は、学習の回数・ミッション・レアドロップに数えない。
+    // 以前は書かずに終えても1回と数え、「セッション」のミッションやレアアイテムが手に入った。
+    const counted = correctTotal > 0;
     const rareChance = RARE_DROP.BASE_CHANCE + (stats.streak * RARE_DROP.STREAK_BONUS);
     let rareDrop = additionalResults.rareDrop || null;
-    if (!rareDrop && Math.random() < Math.min(rareChance, RARE_DROP.MAX_CHANCE)) {
+    if (counted && !rareDrop && Math.random() < Math.min(rareChance, RARE_DROP.MAX_CHANCE)) {
       rareDrop = RARE_DROP.ITEMS[Math.floor(Math.random() * RARE_DROP.ITEMS.length)];
     }
     
@@ -878,7 +905,8 @@ export default function App() {
     }
 
     // 宿題の学習なら、そのドリルに最高点・できた日・回数を残す（学習ログ study.v1 の形は変えない）
-    const homeworkArgs = { correct: activeSession.correctCount + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0), attempts: activeSession.attemptCount + (additionalResults.attemptCount || 0), today: getTodayString() };
+    // 次の学習へ回した字があるうちは、宿題の練習を「できた」にしない
+    const homeworkArgs = { correct: correctTotal, attempts: activeSession.attemptCount + (additionalResults.attemptCount || 0), today: getTodayString(), incomplete: (activeSession.deferredCount || 0) > 0 };
     const homeworkReport = activeSession.homeworkId
       ? recordHomeworkResult(statsRef.current.myDrills, activeSession.homeworkId, homeworkArgs).report
       : null;
@@ -893,8 +921,10 @@ export default function App() {
       perfectCount: activeSession.perfectCount + (additionalResults.perfectCount || 0),
       reviewedCount: activeSession.reviewedCount + (additionalResults.reviewedCount || 0),
       attemptCount: activeSession.attemptCount + (additionalResults.attemptCount || 0),
-      correctCount: activeSession.correctCount
-        + (additionalResults.correctCount ?? additionalResults.reviewedCount ?? 0),
+      correctCount: correctTotal,
+      // 結果の画面で、減った EXP と、数えなかった理由を知らせる
+      carelessLostExp: penalty.lost,
+      counted,
       unlockedItems: unlockedItemsThisSession,
       levelUpData, // ResultViewに渡すレベルアップ情報
       // 結果の画面の「先生に見せる」に出す（宿題でなければ前の宿題の結果を引き継がない）
@@ -909,7 +939,7 @@ export default function App() {
       // 半径拡大
       if (addedRadius > 0) newStats.exploredRadius = Math.max(newStats.exploredRadius || 3, addedRadius);
       // セッション数カウント更新
-      newStats.sessionCount = (newStats.sessionCount || 0) + 1;
+      if (counted) newStats.sessionCount = (newStats.sessionCount || 0) + 1;
       if (homeworkReport) newStats.myDrills = recordHomeworkResult(newStats.myDrills, activeSession.homeworkId, homeworkArgs).drills;
       // 実績の進み具合は、セッション数とコインを足したあとで数え直す（以前は1回遅れていた）
       StorageAPI.refreshAchievements(newStats);
@@ -934,7 +964,7 @@ export default function App() {
       const perfectCount = activeSession.perfectCount + (additionalResults.perfectCount || 0);
       const newKanjiCount = (activeSession.newKanjiCount || 0) + (additionalResults.newKanjiCount || 0);
       const masteredCount = (activeSession.masteredCount || 0) + (additionalResults.masteredCount || 0);
-      let updated = updateMissionProgress(prev, 'session', 1);
+      let updated = counted ? updateMissionProgress(prev, 'session', 1) : prev;
       updated = updateMissionProgress(updated, 'review', reviewCount);
       updated = updateMissionProgress(updated, 'perfect', perfectCount);
       updated = updateMissionProgress(updated, 'exp', totalExp);
@@ -1141,7 +1171,7 @@ export default function App() {
           {view === 'rangeEditor' && <PageWrapper key="rangeEditor" wide><ErrorBoundary onReset={() => setView('myDrills')}><RangeEditorView setView={setView} stats={stats} setStats={setStats} /></ErrorBoundary></PageWrapper>}
           {view === 'rangeImport' && <PageWrapper key="rangeImport"><ErrorBoundary onReset={() => setView('home')}><RangeImportView setView={setView} stats={stats} setStats={setStats} rangeParam={launchParams.rangeParam} /></ErrorBoundary></PageWrapper>}
           {view === 'gacha' && <PageWrapper key="gacha"><ErrorBoundary onReset={() => setView('home')}><GachaView stats={stats} setStats={setStats} onBack={() => setView('home')} /></ErrorBoundary></PageWrapper>}
-          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
+          {view === 'session' && <FullScreenWrapper key="session"><ErrorBoundary onReset={abandonLearningSession}>{(stats.settings?.readingCheck !== false) && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 w-[min(560px,92%)]"><FeatureHint featureKey="readingCheck" seenHints={seenHints} onDismiss={handleDismissHint} /></div>}<SessionView queue={sessionData.remainingQueue || sessionData.queue} totalCount={sessionData.queue.length} stats={stats.kanjiStats || {}} settings={stats.settings || {}} onUpdateStat={handleUpdateStat} onRecordSkillEvidence={handleRecordSkillEvidence} onProgress={handleSessionProgress} onFinish={handleFinishSession} onRecordPerfect={handleRecordPerfect} onRecordEasy={handleRecordEasy} onRecordVoiced={handleRecordVoiced} onRecordCareless={handleRecordCareless} onDefer={handleDeferKanji} carelessCount={sessionData.carelessCount || 0} onRequestLeave={requestLeaveLearning} isResumed={isResumedSession} isPractice={sessionData.isDrill} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'flashcard' && <FullScreenWrapper key="flashcard"><ErrorBoundary onReset={() => setView('home')}><FlashcardView queue={sessionData.queue} stats={stats} setStats={setStats} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'survival' && <FullScreenWrapper key="survival"><ErrorBoundary onReset={() => setView('home')}><SurvivalView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}
           {view === 'boss' && <FullScreenWrapper key="boss"><ErrorBoundary onReset={() => setView('home')}><BossBattleView queue={sessionData.queue} onUpdateStat={handleUpdateStat} onFinish={handleFinishSession} onBossDefeat={handleBossDefeat} onRequestLeave={requestLeaveLearning} paused={showLeaveConfirm || tabInactive} sessionEarnedExp={sessionData.earnedExp} /></ErrorBoundary></FullScreenWrapper>}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Sparkles, Coins, Map, Target, CheckCircle2, NotebookPen, Presentation } from 'lucide-react';
+import { Gift, Sparkles, Coins, Map, Target, CheckCircle2, NotebookPen, Presentation, Hand } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import LevelUpModal from '../ui/LevelUpModal';
 import AnimatedCounter from '../ui/AnimatedCounter';
@@ -19,6 +19,7 @@ import { getTodayString } from '../../utils/date-utils';
 import { getHabitStatus } from '../../systems/habit';
 
 import { gachaRoll, isRareItem } from '../../systems/gacha';
+import { carelessPenaltyRate } from '../../systems/careless';
 import { ShowTeacherOverlay } from '../social/HomeworkParts';
 
 /** ステージの、ふりがなつきの名前と説明（無ければ story-stages.js の名前のまま） */
@@ -26,6 +27,10 @@ const stageText = (stage) => STORY_STAGE_TEXT[stage.id] || { title: stage.title,
 
 const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContinueLearning }) => {
   const { earnedExp, perfectCount, voicedCount, unlockedItems, rareDrop, newVillager, levelUpData } = sessionMetrics;
+  const carelessCount = sessionMetrics.carelessCount || 0;
+  const carelessLostExp = sessionMetrics.carelessLostExp || 0;
+  // 答えたのに1字もできなかった学習（App が学習の回数・ミッションに数えなかったもの）
+  const notCounted = sessionMetrics.counted === false && (sessionMetrics.attemptCount || 0) > 0;
   const [showConfetti, setShowConfetti] = useState(earnedExp > 20 || !!newVillager || levelUpData?.isLevelUp);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [gachaResult, setGachaResult] = useState(null);
@@ -99,13 +104,35 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
                   ? (homeworkReport.passed
                     ? <>テスト {homeworkReport.score}{F("点","てん")}・{F("合格","ごうかく")}！ できたよ 🎉</>
                     : <>テスト {homeworkReport.score}{F("点","てん")}。{homeworkReport.pass}{F("点","てん")}で {F("合格","ごうかく")}だよ。もう{F("一度","いちど")} ちょうせんできるよ</>)
-                  : <>{F("練習","れんしゅう")} できたよ 🎉</>}
+                  : homeworkReport.passed
+                    ? <>{F("練習","れんしゅう")} できたよ 🎉</>
+                    : <>まだ {F("書","か")}けていない{F("字","じ")}が あるよ。もう{F("一度","いちど")} ちょうせんできるよ</>}
               </div>
             </div>
           </div>
           <MotionButton variant="primary" onClick={() => setShowTeacher(true)} className="w-full py-4 text-lg font-black border-[3px] border-[var(--text)] shadow-[0_4px_0_#9f1239]">
             <Presentation size={22} /> {F("先生","せんせい")}に{F("見","み")}せる
           </MotionButton>
+        </motion.div>
+      )}
+
+      {/* てきとう書きで EXP が減ったとき・1字も書けなかったときは、理由を先に伝える */}
+      {(carelessCount > 0 || notCounted) && (
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} role="status" data-testid="result-careless" className="bg-[var(--panel)] border-[4px] border-[var(--primary)] rounded-2xl p-4 shadow-[4px_4px_0_var(--primary)] flex items-start gap-3">
+          <Hand size={28} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />
+          <div className="min-w-0 text-sm font-bold leading-relaxed text-[var(--text)]">
+            {carelessCount > 0 && (
+              <p>
+                <span className="font-black">てきとうに {F("書","か")}いた {F("回数","かいすう")}：{carelessCount}{F("回","かい")}</span>
+                {carelessLostExp > 0
+                  ? <>。もらえる EXP が <strong data-testid="result-careless-lost">{carelessLostExp}</strong> へったよ。</>
+                  // 1回目は注意だけ（systems/careless.js）。2回目からは減るが、もらえる EXP が無い回は減る分も無い
+                  : carelessPenaltyRate(carelessCount) === 0 ? <>。つぎに てきとうに {F("書","か")}くと、もらえる EXP が へるよ。</> : <>。</>}
+              </p>
+            )}
+            {notCounted && <p>{F("書","か")}けた{F("字","じ")}が なかったので、この{F("回","かい")}は {F("学習","がくしゅう")}の {F("回数","かいすう")}に {F("入","はい")}らないよ。</p>}
+            <p className="text-[var(--text-muted)]">ていねいに {F("書","か")}くと、ぜんぶ もらえるよ。</p>
+          </div>
         </motion.div>
       )}
 

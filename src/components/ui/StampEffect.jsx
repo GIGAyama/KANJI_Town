@@ -24,9 +24,14 @@ const StampEffect = ({ stamp }) => {
   if (!stamp) return null;
   const config = { 
     'easy': { text: <Medal className="w-[180px] h-[180px] md:w-[240px] md:h-[240px]" />, color: 'text-amber-500', label: 'よくできました！', purify: true }, 
-    'good': { text: '👍', color: 'text-sky-500', label: '書けた！' }, 
-    'again': { text: '💦', color: 'text-slate-500', label: '忘れた…' } 
+    'good': { text: '👍', color: 'text-sky-500', label: 'かけた！' },
+    // 毎日の学習のテストの判定（こたえあわせを押したときに出る）
+    'hard': { text: '🔺', color: 'text-amber-500', label: 'もうすこし！' },
+    'retry': { text: '💦', color: 'text-slate-500', label: 'もう1かい！' },
+    'careless': { text: '✋', color: 'text-rose-500', label: 'ていねいに！' },
+    'again': { text: '💦', color: 'text-slate-500', label: 'もう1かい！' },
   }[stamp];
+  if (!config) return null;
 
   return (
     <motion.div initial={{ scale: 4, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 1.5 }} transition={{ type: "spring", stiffness: 400, damping: 15 }} className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">

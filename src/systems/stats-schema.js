@@ -36,7 +36,7 @@ const STRING_FIELDS = [
 ];
 
 /** 1日の記録の中の数の欄 */
-const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct', 'days'];
+const DAILY_COUNT_FIELDS = ['exp', 'reviewed', 'perfects', 'attempts', 'correct', 'careless', 'days'];
 
 /** バックアップとして読みこめるファイルの大きさの上限（端末の localStorage より十分大きい） */
 export const IMPORT_MAX_BYTES = 8 * 1024 * 1024;

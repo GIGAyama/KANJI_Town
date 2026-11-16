@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Worker } from 'node:worker_threads';
-import { allowedEvaluations, gradeStrokes, isOrderMistake, recommendEvaluation } from '../src/systems/strokeGrader.js';
+import { gradeStrokes, isOrderMistake, judgeWriting, measureAttempt, recommendEvaluation } from '../src/systems/strokeGrader.js';
 import { endingTypeFromKvgType, endingSimilarity, describeEndingFeedback } from '../src/systems/strokeKind.js';
 import { getStrokeTolerances } from '../src/constants/strokeConfig.js';
 
@@ -389,19 +389,149 @@ test('形の取れた字では、書き順・とめの点はこれまでどお�
   assert.equal(result.order, clean.order);
 });
 
-test('自己評価は、おすすめより1段上までしか選べない（厳しくつける方向は自由）', () => {
-  assert.deepEqual(allowedEvaluations('again'), ['again', 'hard']);
-  assert.deepEqual(allowedEvaluations('hard'), ['again', 'hard', 'good']);
-  assert.deepEqual(allowedEvaluations('good'), ['again', 'hard', 'good', 'easy']);
-  assert.deepEqual(allowedEvaluations('easy'), ['again', 'hard', 'good', 'easy']);
-  // 画数ちがいは again がおすすめになり、「よくできた」「書けた」は選べない
-  const wrongCount = gradeStrokes(sanUser([0, 1]), SAN, CANVAS);
-  assert.deepEqual(allowedEvaluations(recommendEvaluation(wrongCount)), ['again', 'hard']);
+// ── 毎日の学習のテストの判定（自己採点のかわり）──
+// 以前は採点のおすすめより1段上まで児童が選べ、画数ちがい（おすすめ「忘れた」）でも
+// 「むずかしい」を選べば合格あつかいで先へ進めた。線を1本引くだけで学習が進んでいた。
+const sanSplit = () => {
+  // 「三」の2画目の とちゅうで ゆびが はなれて、2本に切れた（4画になる）
+  const strokes = sanUser();
+  const mid = { x: 0.40, y: 0.50 };
+  strokes.splice(1, 1, userStroke(SAN[1].s, mid, { steps: 12 }), userStroke(mid, SAN[1].e, { steps: 12 }));
+  return strokes;
+};
+const randomLine = (a, b) => userStroke(a, b);
+
+test('ていねいに書いた字は pass。評価は点数で決まり、児童は上げられない', () => {
+  const judged = judgeWriting(sanUser(), SAN, CANVAS);
+  assert.equal(judged.verdict, 'pass');
+  assert.equal(judged.evaluation, 'easy');
+  assert.equal(judged.reason, 'ok');
+  assert.equal(judged.lenient, false);
 });
 
-test('採点できないとき（おすすめが無いとき）だけ、自己評価をすべて選べる', () => {
-  assert.deepEqual(allowedEvaluations(null), ['again', 'hard', 'good', 'easy']);
-  assert.deepEqual(allowedEvaluations(undefined), ['again', 'hard', 'good', 'easy']);
+test('書き順・線の交わりがちがう字は、点が残っていれば通すが hard まで', () => {
+  const wrongOrder = judgeWriting(sanUser([2, 1, 0]), SAN, CANVAS);
+  assert.equal(wrongOrder.verdict, 'pass');
+  assert.equal(wrongOrder.evaluation, 'hard');
+  assert.equal(wrongOrder.reason, 'order');
+
+  // 「土」の2画目を上へ突き出した字。以前はおすすめが again で、選べるのは「むずかしい」までだった
+  const pierced = [userStroke(TSUCHI[0].s, TSUCHI[0].e), userStroke({ x: 0.50, y: 0.15 }, { x: 0.50, y: 0.80 }), userStroke(TSUCHI[2].s, TSUCHI[2].e)];
+  const crossed = judgeWriting(pierced, TSUCHI, CANVAS);
+  assert.equal(crossed.result.crossMatch, false);
+  assert.equal(crossed.verdict, 'pass');
+  assert.equal(crossed.evaluation, 'hard');
+  assert.equal(crossed.reason, 'cross');
+});
+
+test('線を1本引いただけ・点を打っただけは careless（てきとう書き）で、何回やっても通らない', () => {
+  const cases = [
+    ['三に線1本', [randomLine({ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.7 })], SAN, 'few'],
+    ['三に点1つ', [dotAt(0.5, 0.5)], SAN, 'few'],
+    ['三に点3つ', [dotAt(0.3, 0.3), dotAt(0.5, 0.5), dotAt(0.7, 0.7)], SAN, 'ink'],
+    ['一に点1つ', [dotAt(0.8, 0.8)], ICHI, 'ink'],
+    ['三に線を12本', Array.from({ length: 12 }, (_, i) => randomLine({ x: 0.1, y: 0.1 + i * 0.07 }, { x: 0.9, y: 0.12 + i * 0.07 })), SAN, 'many'],
+  ];
+  for (const [label, strokes, model, reason] of cases) {
+    for (const previousFails of [0, 1, 2]) {
+      const judged = judgeWriting(strokes, model, CANVAS, { previousFails });
+      assert.equal(judged.verdict, 'careless', `${label}（やり直し ${previousFails} 回）`);
+      assert.equal(judged.evaluation, 'again', label);
+      assert.equal(judged.reason, reason, label);
+    }
+  }
+});
+
+test('でたらめな線を画数ぶん引いても通らない（てきとう書きとは決めつけず、もう1回にする）', () => {
+  const lines = [
+    randomLine({ x: 0.2, y: 0.9 }, { x: 0.9, y: 0.1 }),
+    randomLine({ x: 0.1, y: 0.1 }, { x: 0.3, y: 0.9 }),
+    randomLine({ x: 0.8, y: 0.2 }, { x: 0.6, y: 0.9 }),
+  ];
+  for (const previousFails of [0, 1, 2]) {
+    const judged = judgeWriting(lines, SAN, CANVAS, { previousFails });
+    assert.equal(judged.verdict, 'retry', `やり直し ${previousFails} 回`);
+    assert.equal(judged.evaluation, 'again');
+  }
+});
+
+test('1画多いだけの字は、1回目はもう1回、同じ字の2回目からは hard で通す（読み取れる字で止めない）', () => {
+  const first = judgeWriting(sanSplit(), SAN, CANVAS, { previousFails: 0 });
+  assert.equal(first.result.strokeCountMatch, false);
+  assert.equal(first.verdict, 'retry');
+  assert.equal(first.reason, 'count');
+  assert.equal(first.attempt.recognized, true);
+  assert.equal(first.attempt.careless, false);
+
+  const second = judgeWriting(sanSplit(), SAN, CANVAS, { previousFails: 1 });
+  assert.equal(second.verdict, 'pass');
+  assert.equal(second.evaluation, 'hard');
+  assert.equal(second.lenient, true);
+});
+
+test('「三」に「二」を書いたような、画が足りない字は 2回目でも読み取れる範囲でしか通さない', () => {
+  // 3画のうち2画（67%）は合っているので読み取れる字。1回目は必ずやり直しになる
+  const two = judgeWriting(sanUser([0, 1]), SAN, CANVAS, { previousFails: 0 });
+  assert.equal(two.verdict, 'retry');
+  assert.equal(two.reason, 'count');
+  // 3画のうち1画しか無い字は、何回目でも通らない
+  const one = judgeWriting(sanUser([0]), SAN, CANVAS, { previousFails: 2 });
+  assert.notEqual(one.verdict, 'pass');
+});
+
+test('小さく書いた字は「小さい」と伝えてもう1回。てきとう書きにはしない', () => {
+  const tiny = judgeWriting(sanScaled(0.3), SAN, CANVAS);
+  assert.equal(tiny.verdict, 'retry');
+  assert.equal(tiny.reason, 'small');
+  assert.equal(tiny.attempt.recognized, true);
+  assert.equal(tiny.attempt.careless, false);
+  assert.equal(judgeWriting(sanScaled(0.3), SAN, CANVAS, { previousFails: 1 }).verdict, 'pass');
+});
+
+test('とちゅうまで書いた字（半分より多い）は、てきとう書きにしない', () => {
+  // 6画の字の3画だけ。画数の 1/3（2画）より多いので、やり直しになるだけ
+  const model = Array.from({ length: 6 }, (_, k) => expectedStroke({ x: 0.15, y: 0.15 + k * 0.14 }, { x: 0.85, y: 0.15 + k * 0.14 }, 'tome'));
+  const half = model.slice(0, 3).map(s => userStroke(s.s, s.e));
+  const judged = judgeWriting(half, model, CANVAS);
+  assert.equal(judged.verdict, 'retry');
+  assert.equal(judged.attempt.careless, false);
+  // 2画だけなら 1/3 以下なので、てきとう書き
+  assert.equal(judgeWriting(half.slice(0, 2), model, CANVAS).verdict, 'careless');
+});
+
+test('「画数の 1/3 以下」の境目は、どの画数でも同じに決まる', () => {
+  const lines = (n) => Array.from({ length: n }, (_, k) => expectedStroke({ x: 0.1, y: 0.05 + k * (0.9 / n) }, { x: 0.9, y: 0.05 + k * (0.9 / n) }, 'tome'));
+  for (let expected = 3; expected <= 24; expected++) {
+    const model = lines(expected);
+    const few = Math.floor(expected / 3);
+    const written = (count) => model.slice(0, count).map(s => userStroke(s.s, s.e));
+    assert.equal(measureAttempt(written(few), model, CANVAS).carelessReason, 'few', `${expected}画に${few}画`);
+    assert.equal(measureAttempt(written(few + 1), model, CANVAS).carelessReason, null, `${expected}画に${few + 1}画`);
+  }
+});
+
+test('2画の字に1本だけ書いても、てきとう書きにはしない（半分は書いている）', () => {
+  const NI = [expectedStroke({ x: 0.25, y: 0.3 }, { x: 0.75, y: 0.3 }, 'tome'), expectedStroke({ x: 0.15, y: 0.7 }, { x: 0.85, y: 0.7 }, 'tome')];
+  const judged = judgeWriting([userStroke(NI[0].s, NI[0].e)], NI, CANVAS);
+  assert.equal(judged.verdict, 'retry');
+  assert.equal(judged.reason, 'count');
+});
+
+test('お手本が無いときは ungraded（このときだけ自己申告にする）', () => {
+  const judged = judgeWriting(sanUser(), [], CANVAS);
+  assert.equal(judged.verdict, 'ungraded');
+  assert.equal(judged.evaluation, null);
+});
+
+test('measureAttempt は、こわれた入力でも数を返す', () => {
+  const broken = measureAttempt([[{ x: NaN, y: 1 }], null, 'x'], SAN, 0);
+  assert.equal(broken.actualCount, 0);
+  assert.equal(broken.recognized, false);
+  assert.equal(measureAttempt(sanUser(), null, CANVAS).expectedCount, 0);
+  const ok = measureAttempt(sanUser(), SAN, CANVAS);
+  assert.equal(ok.coverage, 1);
+  assert.ok(Math.abs(ok.inkRatio - 1) < 0.01, `${ok.inkRatio}`);
+  assert.ok(Math.abs(ok.sizeRatio - 1) < 0.01, `${ok.sizeRatio}`);
 });
 
 /**

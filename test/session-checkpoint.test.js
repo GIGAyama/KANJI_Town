@@ -38,6 +38,20 @@ test('学習途中の残りキューと獲得記録をIDベースで復元する
   assert.equal(restored.expMultiplier, 1.15);
 });
 
+test('てきとう書きの回数と、次の学習へ回した字の数は、再開しても残る', () => {
+  // 残らないと、タブを読みこみなおすだけで EXP の減り方が元にもどり、宿題の練習も「できた」になる
+  const now = Date.UTC(2026, 6, 21, 12);
+  const checkpoint = createSessionCheckpoint({ queue: kanjiData, remainingQueue: [kanjiData[2]], carelessCount: 3, deferredCount: 1 }, now);
+  const restored = restoreSessionCheckpoint(checkpoint, kanjiData, now + 60_000);
+  assert.equal(restored.carelessCount, 3);
+  assert.equal(restored.deferredCount, 1);
+  // 更新前の版が書いたチェックポイント（欄が無い）は 0 として読む
+  const { carelessCount: _c, deferredCount: _d, ...oldMetrics } = checkpoint.metrics;
+  const old = restoreSessionCheckpoint({ ...checkpoint, metrics: oldMetrics }, kanjiData, now + 60_000);
+  assert.equal(old.carelessCount, 0);
+  assert.equal(old.deferredCount, 0);
+});
+
 test('学習ログの単元情報（studyUnit）を検証して復元する', () => {
   const now = Date.UTC(2026, 6, 21, 12);
   const checkpoint = createSessionCheckpoint({
