@@ -43,6 +43,43 @@ test('数 px ずらしただけでは表示範囲が変わらない（ドラッ�
   assert.ok(changes <= 4, `範囲が ${changes} 回変わった`);
 });
 
+test('画面に見えているマスは、かならず表示範囲に入る（横長の画面の 左の角も）', () => {
+  // 町のレイヤーの原点は「枠の横のまん中」（left: 50%）。以前は 横を「原点から右へ 枠の幅の分」と
+  // して計算していたので、窓が 枠の幅の半分だけ右へ ずれていた。横長の画面で町を小さくして見ると、
+  // 左上と左下の角で 地面と建物が ななめに切れて消えた。
+  let visible = 0;
+  for (const [width, height] of [[1280, 616], [430, 500], [820, 1100]]) {
+    for (const zoom of [0.25, 0.33, 0.5, 0.8, 1, 1.6, 2.5]) {
+      // 町の いろいろな場所 (tx, ty) を、画面の上のほう・まん中・下のほうに置く
+      for (let tx = 0; tx <= GRID_SIZE; tx += 10) for (let ty = 0; ty <= GRID_SIZE; ty += 10) for (const fy of [0.15, 0.5, 0.85]) {
+        const offsetX = -toIsoX(tx, ty) * zoom;
+        const offsetY = height * fy - toIsoY(tx, ty) * zoom;
+        const r = computeViewRange({ offsetX, offsetY, zoom, width, height });
+        const inRange = (x, y) => x >= r.startX && x <= r.endX && y >= r.startY && y <= r.endY;
+        for (let y = 0; y < GRID_SIZE; y++) for (let x = 0; x < GRID_SIZE; x++) {
+          const sx = width / 2 + offsetX + toIsoX(x + 0.5, y + 0.5) * zoom;
+          const sy = offsetY + toIsoY(x + 0.5, y + 0.5) * zoom;
+          if (sx < 0 || sx > width || sy < 0 || sy > height) continue;
+          visible++;
+          assert.ok(inRange(x, y), `${width}×${height} 拡大率 ${zoom}: 画面の (${Math.round(sx)}, ${Math.round(sy)}) に見えるマス (${x}, ${y}) が範囲の外 ${JSON.stringify(r)}`);
+          // 大きな建物（4×5 マスまで）は 左上のマスにだけ id がある。そのマスも範囲に入っていないと、建物ごと消える
+          assert.ok(inRange(Math.max(0, x - 3), Math.max(0, y - 4)), `${width}×${height} 拡大率 ${zoom}: (${x}, ${y}) を足もとに持つ建物の 左上のマスが範囲の外`);
+        }
+      }
+    }
+  }
+  assert.ok(visible > 100000, '見えているマスを数えている');
+});
+
+test('表示範囲は、画面の右へ よぶんに広がらない', () => {
+  // 横 1280 の画面で、町のまん中を 2 倍で見る。画面に見えるのは 町の座標で 横 -320〜320
+  const zoom = 2;
+  const r = computeViewRange({ offsetX: -toIsoX(C, C) * zoom, offsetY: 308 - toIsoY(C, C) * zoom, zoom, width: 1280, height: 616 });
+  // 左上の角のマスは (11, 23)、右上の角のマスは (23, 11)。そこから よゆう 4 マスを取り、4 マスの境目に そろえる
+  assert.equal(r.startX, 4, '左（以前は 12 で、左上の角のマスが 範囲の外だった）');
+  assert.equal(r.startY, 4, '右（以前は 0 で、画面の外のマスを よぶんに作っていた）');
+});
+
 test('表示範囲は VIEW_RANGE_STEP マスの境目にそろう', () => {
   const r = view(37, -333, 0.8);
   if (r.startX > 0) assert.equal(r.startX % VIEW_RANGE_STEP, 0);

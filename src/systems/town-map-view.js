@@ -22,12 +22,18 @@ const VIEW_RANGE_MARGIN = 4;
  * 画面に入るマスの範囲（整数 4 つ）を返す。
  * ドラッグ中は位置が 1px ずつ変わるが、範囲は VIEW_RANGE_STEP マスの境目を
  * またぐまで同じ値を返すので、全マスの作り直しが起きない。
+ *
+ * 町のレイヤーは「枠の横のまん中」を原点に置いてある（left: 50%）。画面に見えているのは、
+ * 横は 原点の左右へ 枠の幅の半分ずつ、たては 原点から下へ 枠の高さの分。
+ * ⚠️ 以前は横を「原点から右へ 枠の幅の分」として計算していたので、窓が 枠の幅の半分だけ右へ
+ *    ずれていた。横長の画面で町を小さくして見ると、左上と左下の角で 地面と建物が ななめに
+ *    切れて消え、右がわでは 画面の外のマスを よぶんに作っていた。
  */
 export function computeViewRange({ offsetX, offsetY, zoom, width, height }) {
   const z = zoom > 0 ? zoom : 1;
-  const vl = -offsetX / z - TILE_W;
+  const vl = (-offsetX - width / 2) / z - TILE_W;
   const vt = -offsetY / z - 100;
-  const vr = (-offsetX + width) / z + TILE_W;
+  const vr = (-offsetX + width / 2) / z + TILE_W;
   const vb = (-offsetY + height) / z + 100;
   const corners = [fromIso(vl, vt), fromIso(vr, vt), fromIso(vl, vb), fromIso(vr, vb)];
   const xs = corners.map((c) => c.x);
