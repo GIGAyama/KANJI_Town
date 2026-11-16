@@ -81,6 +81,7 @@ const RangeImportView = lazy(() => import('./components/social/RangeImportView')
 const TutorialOverlay = lazy(() => import('./components/tutorial/TutorialOverlay'));
 const LoginBonusPopup = lazy(() => import('./components/tutorial/LoginBonusPopup'));
 const ResidentCollectionPopup = lazy(() => import('./components/tutorial/ResidentCollectionPopup'));
+const LevelUpModal = lazy(() => import('./components/ui/LevelUpModal'));
 import FeatureHint from './components/tutorial/FeatureHint';
 
 // テーマ別CSS変数。色の正本は constants/themes.js（テストが全テーマのコントラストを確かめる）
@@ -1050,6 +1051,23 @@ export default function App() {
               audioCtrl.playSE('click');
             }}
           />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Lv100 の上限を外した版をはじめて開いたとき: ためていた EXP の分だけ上がったレベルを祝う（1回だけ） */}
+      <AnimatePresence>
+        {stats.pendingLevelUp?.rewards && view === 'home' && !showTutorial && !showLoginBonus && !showResidentCollection && (
+          <Suspense key="level-cap-lifted" fallback={null}>
+            <LevelUpModal
+              levelUpData={stats.pendingLevelUp}
+              capLifted
+              onClose={() => setStats((s) => {
+                const { pendingLevelUp: _shown, ...rest } = s;
+                StorageAPI.saveStats(rest);
+                return rest;
+              })}
+            />
           </Suspense>
         )}
       </AnimatePresence>

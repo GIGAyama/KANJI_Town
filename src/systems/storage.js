@@ -9,7 +9,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { migrateCard } from './srs.js';
 import { migrateVillagers, collectDailyResources, calculateSatisfaction, calculateMaintenanceCost } from './residents.js';
 import { getTodayString, formatDate } from '../utils/date-utils.js';
-import { getLevelInfoFromExp, getThemeFromLevel } from '../utils/level-system.js';
+import { getLevelInfoFromExp, getThemeFromLevel, liftLevelCap } from '../utils/level-system.js';
 import { MAP, ECONOMY, NEGLECT, DEBOUNCE } from '../constants/gameConfig.js';
 import { applyLearningDayHabit, canProtectRestDay, normalizeHabitState } from './habit.js';
 import { recordDiagnosticEvent } from './diagnostics.js';
@@ -629,11 +629,15 @@ const StorageAPI = {
     // ── サボり検出：街が廃れる仕組み ──
     const neglectApplied = StorageAPI._applyNeglectPenalties(stats);
 
+    // ── Lv100 が上限だったころにためた EXP を、新しいレベルに直す（1つの記録につき1回だけ） ──
+    stats = liftLevelCap(stats);
+
     // ── 実績の進捗を起動時に一括更新（新規追加分も反映） ──
     if (!stats.achievements) stats.achievements = {};
     StorageAPI._updateAchievements(stats);
 
-    if (neglectApplied) StorageAPI.saveStatsImmediate(stats);
+    // ごほうびを渡したときは、お祝いを出す前に閉じても二重に渡さないよう、すぐ書く
+    if (neglectApplied || stats.pendingLevelUp) StorageAPI.saveStatsImmediate(stats);
     return stats;
   },
 

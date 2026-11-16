@@ -73,36 +73,69 @@ const LEVEL_TABLE = [
   }
 })();
 
+// ── Lv100 から先 ──
+// 以前は Lv100 が上限で、そこから先は EXP をためても何も起きなかった
+// （夢中で取り組む子は4か月ほどで届き、その先の目標が無かった）。
+// Lv100 から先は、表を持たずに式で決める。1レベルに要る EXP は Lv99→100 と同じ 15,000 のまま
+// 増やさない（上がるほど遠くなる形にしない）。同じ調子で学ぶ子が6年ほどで Lv999 に届く。
+/** レベルの上限 */
+export const MAX_LEVEL = 999;
+/** 表（LEVEL_TABLE）で決めている、いちばん上のレベル */
+const TABLE_TOP = LEVEL_TABLE[LEVEL_TABLE.length - 1];
+/** Lv100 から先で、1レベル上がるのに要る EXP */
+export const EXP_PER_LEVEL_ABOVE_TABLE = 15000;
+
+// Lv100 から先のごほうび。5レベルごとのレアな建物は、この順にくり返す
+const RARE_REWARDS = ['t_torii', 't_cherry_pavilion', 't_temple', 't_hot_spring', 't_dragon', 't_crystal_tower', 't_castle', 't_observatory', 't_guardian_shrine', 't_monument', 't_golden_tower', 't_philosophers_lab', 't_gold_castle', 't_perfect_monument', 't_dragon_shrine'];
+// 100レベルごとの大きな建物
+const GRAND_REWARDS = ['t_mega_imperial_palace', 't_mega_wonder'];
+
+/** そのレベルに上がったときのごほうび（無ければ null） */
+export const getLevelReward = (level) => {
+  if (level <= TABLE_TOP.level) return LEVEL_TABLE[level - 1]?.reward ?? null;
+  if (level > MAX_LEVEL) return null;
+  // 100レベルごとと、いちばん上のレベルは、大きな建物
+  if (level % 100 === 0 || level === MAX_LEVEL) return { type: 'item', id: GRAND_REWARDS[Math.floor(level / 100) % GRAND_REWARDS.length], amount: 1, text: 'とくべつな 大きな たてもの' };
+  if (level % 10 === 0) return { type: 'coins', amount: 50000, text: 'コイン 50000まい' };
+  if (level % 5 === 0) return { type: 'item', id: RARE_REWARDS[((level - 105) / 10) % RARE_REWARDS.length], amount: 1, text: 'レアな たてもの' };
+  return { type: 'coins', amount: 3000, text: 'コイン 3000まい' };
+};
+
 /**
  * 現在の総EXPからレベル情報を取得する
  * @param {number} totalExp - プレイヤーの総獲得EXP
  * @returns {Object} { level, progress, currentLevelExp, nextLevelExp, targetReward }
  */
 export const getLevelInfoFromExp = (totalExp) => {
+  // Lv100 から先は式で決める
+  if (totalExp >= TABLE_TOP.exp) {
+    const level = Math.min(MAX_LEVEL, TABLE_TOP.level + Math.floor((totalExp - TABLE_TOP.exp) / EXP_PER_LEVEL_ABOVE_TABLE));
+    const currentLevelExp = TABLE_TOP.exp + (level - TABLE_TOP.level) * EXP_PER_LEVEL_ABOVE_TABLE;
+    if (level >= MAX_LEVEL) {
+      return { level, progress: 100, currentLevelExp, nextLevelExp: currentLevelExp, targetReward: null, isMaxLevel: true };
+    }
+    const nextLevelExp = currentLevelExp + EXP_PER_LEVEL_ABOVE_TABLE;
+    return {
+      level,
+      progress: ((totalExp - currentLevelExp) / EXP_PER_LEVEL_ABOVE_TABLE) * 100,
+      currentLevelExp,
+      nextLevelExp,
+      remainingExp: nextLevelExp - totalExp,
+      targetReward: getLevelReward(level + 1),
+      isMaxLevel: false,
+    };
+  }
+
   // 該当するレベルを検索（逆順）
   let currentLevelData = LEVEL_TABLE[0];
   let nextLevelData = LEVEL_TABLE[1];
-  let levelIndex = 0;
 
   for (let i = LEVEL_TABLE.length - 1; i >= 0; i--) {
     if (totalExp >= LEVEL_TABLE[i].exp) {
       currentLevelData = LEVEL_TABLE[i];
-      levelIndex = i;
       nextLevelData = LEVEL_TABLE[Math.min(i + 1, LEVEL_TABLE.length - 1)];
       break;
     }
-  }
-
-  // レベル100以降（カンスト状態）
-  if (levelIndex === LEVEL_TABLE.length - 1) {
-    return {
-      level: currentLevelData.level,
-      progress: 100, // MAX
-      currentLevelExp: currentLevelData.exp,
-      nextLevelExp: currentLevelData.exp,
-      targetReward: null,
-      isMaxLevel: true
-    };
   }
 
   const expInCurrentLevel = totalExp - currentLevelData.exp;
@@ -143,10 +176,8 @@ export const checkLevelUp = (oldExp, newExp) => {
     const rewards = [];
     // 飛んでレベルアップした場合も対応（Lv1 -> Lv3など）
     for (let l = oldLvlInfo.level + 1; l <= newLvlInfo.level; l++) {
-      const data = LEVEL_TABLE.find(t => t.level === l);
-      if (data && data.reward) {
-        rewards.push({ level: l, reward: data.reward });
-      }
+      const reward = getLevelReward(l);
+      if (reward) rewards.push({ level: l, reward });
     }
     return { isLevelUp: true, oldLevel: oldLvlInfo.level, newLevel: newLvlInfo.level, rewards };
   }
@@ -165,23 +196,44 @@ export const grantExpWithLevelRewards = (stats, exp) => {
   const oldExp = stats.totalExp || 0;
   const newExp = oldExp + (exp || 0);
   const levelUpData = checkLevelUp(oldExp, newExp);
-  const next = { ...stats, totalExp: newExp };
-  if (levelUpData.isLevelUp) {
-    levelUpData.rewards.forEach(({ reward }) => {
-      if (!reward) return;
-      if (reward.type === 'coins') {
-        next.coins = (next.coins || 0) + reward.amount;
-      } else if (reward.type === 'item') {
-        next.townItems = { ...(next.townItems || {}) };
-        next.townItems[reward.id] = (next.townItems[reward.id] || 0) + reward.amount;
-      } else if (reward.type === 'radius') {
-        next.exploredRadius = Math.max(next.exploredRadius || 3, reward.amount);
-      }
-      // type: 'feature' はレベル値そのものから解放されるため適用不要
-    });
-  }
-  return { stats: next, levelUpData };
+  return { stats: applyLevelRewards({ ...stats, totalExp: newExp }, levelUpData.rewards), levelUpData };
 };
+
+/** レベルアップのごほうび（コイン・アイテム・探索半径）を足した新しい stats を返す */
+function applyLevelRewards(stats, rewards) {
+  const next = { ...stats };
+  rewards.forEach(({ reward }) => {
+    if (!reward) return;
+    if (reward.type === 'coins') {
+      next.coins = (next.coins || 0) + reward.amount;
+    } else if (reward.type === 'item') {
+      next.townItems = { ...(next.townItems || {}) };
+      next.townItems[reward.id] = (next.townItems[reward.id] || 0) + reward.amount;
+    } else if (reward.type === 'radius') {
+      next.exploredRadius = Math.max(next.exploredRadius || 3, reward.amount);
+    }
+    // type: 'feature' はレベル値そのものから解放されるため適用不要
+  });
+  return next;
+}
+
+/**
+ * Lv100 が上限だったころにためた EXP を、新しいレベルに直す（1つの記録につき1回だけ）。
+ *
+ * 上限のあいだも EXP は数えつづけていたので、上限を外した版を開いたとたんに Lv100 をこえる子がいる。
+ * 何もしないと、その分のごほうびを受け取らないまま、だまってレベルだけが変わる。
+ * ここで Lv101 からいまのレベルまでのごほうびを渡し、お祝いに出す内容を pendingLevelUp に残す
+ * （画面が出すまで保存しておく。出したら App が消す）。
+ * @param {object} stats
+ * @returns {object} 直した stats（すでに直してあれば同じもの）
+ */
+export function liftLevelCap(stats) {
+  if (!stats || stats.levelCapLifted) return stats;
+  const levelUpData = checkLevelUp(TABLE_TOP.exp, stats.totalExp || 0);
+  const next = { ...stats, levelCapLifted: true };
+  if (!levelUpData.isLevelUp) return next;
+  return { ...applyLevelRewards(next, levelUpData.rewards), pendingLevelUp: levelUpData };
+}
 
 /**
  * 学年(1-6)から、その学年の要素を解放するのに必要なプレイヤーレベルを返す
