@@ -17,6 +17,15 @@
 import { INK, lot, num, pen, tone } from './kit.js';
 import { HOUSE_PALETTES } from './house-art.js';
 import { flattenOpacity } from './flatten-opacity.js';
+import { PROP_ART } from './props-art.js';
+import { artBounds } from './scale-art.js';
+
+/**
+ * きらめき（4 つの とがりの星）の path。画面の座標 (x, y) に、よこ r・たて rv の大きさで描く。
+ * 以前は 1 つずつ transform で置いていた（その数だけ、ブラウザの合成の単位が増える）。
+ */
+const sparkle = (x, y, r, rv = r) => `M${num(x)} ${num(y - 3 * rv)}L${num(x + 0.7 * r)} ${num(y - 0.7 * rv)}L${num(x + 3 * r)} ${num(y)}L${num(x + 0.7 * r)} ${num(y + 0.7 * rv)}`
+  + `L${num(x)} ${num(y + 3 * rv)}L${num(x - 0.7 * r)} ${num(y + 0.7 * rv)}L${num(x - 3 * r)} ${num(y)}L${num(x - 0.7 * r)} ${num(y - 0.7 * rv)}Z`;
 
 const CREAM = '#fff6e6';
 const STONE = '#ddd6ca';
@@ -473,16 +482,17 @@ function factory() {
 function hospital() {
   const k = lot(2, 1);
   const wall = '#f8fafc'; const wallD = '#dde5ee'; const teal = '#2fb3a4';
-  const u0 = 0.1; const u1 = 1.9; const v0 = 0.16; const v1 = 0.8; const H = 23;
+  const u0 = 0.1; const u1 = 1.9; const v0 = 0.16; const v1 = 0.8; const H = 32.4; // 3 階だて（家や店より ひとまわり高い）
   const front = k.SW(v1); const side = k.SE(u1);
   let s = '';
   s += k.pad(0.03, v1, 1.97, 0.99, PAVING, 0.8, PAVING_LINE);
   s += k.box(u0, v0, u1, v1, 0, H, wall, { se: wallD });
   s += k.panel(front, u0, u1, 0, 2.4, '#b8c2cc', 1.1) + k.panel(side, v0, v1, 0, 2.4, '#a3adb8', 1.1);
-  // 窓の帯（1 階は入口の左右、2 階は はしからはしまで）
-  s += k.glass(front, 0.18, 0.74, 5, 10.8, 4) + k.glass(front, 1.26, 1.82, 5, 10.8, 4) + k.glass(front, 0.18, 1.82, 14.4, 19.8, 10);
-  s += k.glass(side, 0.24, 0.72, 5, 10.8, 3) + k.glass(side, 0.24, 0.72, 14.4, 19.8, 3);
-  s += k.band(front, u0, u1, 20.8, 22, teal) + k.band(side, v0, v1, 20.8, 22, tone(teal, -0.18));
+  // 窓の帯（1 階は入口の左右、2・3 階は はしからはしまで）
+  s += k.glass(front, 0.18, 0.74, 5, 10.8, 4) + k.glass(front, 1.26, 1.82, 5, 10.8, 4);
+  s += k.glass(side, 0.24, 0.72, 5, 10.8, 3);
+  for (const z of [14.4, 23.6]) s += k.glass(front, 0.18, 1.82, z, z + 5.4, 10) + k.glass(side, 0.24, 0.72, z, z + 5.4, 3);
+  s += k.band(front, u0, u1, H - 2.2, H - 1, teal) + k.band(side, v0, v1, H - 2.2, H - 1, tone(teal, -0.18));
   // 屋上と、十字の しるしの小屋
   s += k.parapet(u0, v0, u1, v1, H, 2, '#eef2f6');
   s += k.acUnit(0.24, 0.3, H + 2) + k.acUnit(0.42, 0.3, H + 2) + k.skylight(1.42, 0.3, 1.74, 0.56, H + 2.1);
@@ -561,13 +571,17 @@ function goldenTower() {
     out += k.hipRoof(cu - half, cv - half, cu + half, cv + half, z0 + wallH, rise, roof, { over, drop: 0.8, thick: 1.5, dark: '#c9861c' });
     return out;
   };
-  s += tier(0.34, 3.2, 10, 6.5, 0.1);
-  s += tier(0.25, 15.6, 8.6, 6, 0.09);
-  s += tier(0.17, 26.4, 8, 9, 0.08);
+  // 5 つの層（五重塔）。上の層の かべは、下の層の屋根の中ほどから立つ
+  let z0 = 3.2;
+  for (const [half, wallH, rise, over] of [[0.34, 10, 6, 0.1], [0.295, 8.6, 5.6, 0.095], [0.25, 8, 5.4, 0.09], [0.21, 7.6, 5.2, 0.085], [0.17, 7.2, 9, 0.08]]) {
+    s += tier(half, z0, wallH, rise, over);
+    z0 += wallH + rise * 0.37;
+  }
   // てっぺんの かざり（相輪）と玉
-  s += k.bar([[cu, cv, 43], [cu, cv, 54]], goldD, 1.3, 0.6);
-  for (const z of [45.4, 47.8, 50.2]) s += k.oval(cu, cv, z, 2.5, 1.1, gold, 0.6);
-  s += k.dot(cu, cv, 55.4, 2.2, '#fff0a8', 0.8) + k.dot(cu - 0.01, cv - 0.01, 56.2, 0.8, '#ffffff', 0);
+  const top = z0 - 9 * 0.37 + 9 - 1;
+  s += k.bar([[cu, cv, top], [cu, cv, top + 14]], goldD, 1.3, 0.6);
+  for (const z of [top + 3, top + 5.8, top + 8.6]) s += k.oval(cu, cv, z, 2.5, 1.1, gold, 0.6);
+  s += k.dot(cu, cv, top + 15.4, 2.2, '#fff0a8', 0.8) + k.dot(cu - 0.01, cv - 0.01, top + 16.2, 0.8, '#ffffff', 0);
   s += lamp(0.2, 1.68) + lamp(0.8, 1.68);
   return s;
 }
@@ -591,13 +605,13 @@ function crystalTower() {
       + `<path d="M${num(x - w * 0.5 + lean * 0.5)} ${num(l[1] + 2)}L${num(x - w * 0.42)} ${num(y - 3)}" fill="none"${pen(0.9, '#ffffff')} opacity="0.85"/>`;
   };
   // うしろ → 手前
-  s += shard(-13, -3, 5.4, 30, -5) + shard(13, -2, 5, 26, 5) + shard(4, -6, 4.4, 36, 2);
-  s += shard(0, 1, 9, 62, 0);
-  s += shard(-19, 4, 4.4, 17, -4, { lite: '#d7c8ff', mid: '#a58bf0', dark: '#7a5fd0' }) + shard(18, 5, 4.2, 15, 4, { lite: '#d7c8ff', mid: '#a58bf0', dark: '#7a5fd0' });
-  s += shard(-7, 7, 3.8, 14, -1.4) + shard(8, 8, 3.4, 11, 1.6);
+  s += shard(-13, -3, 5.8, 39, -5.5) + shard(13, -2, 5.4, 34, 5.5) + shard(4, -6, 4.8, 47, 2.2);
+  s += shard(0, 1, 10, 82, 0);
+  s += shard(-19, 4, 4.6, 22, -4.4, { lite: '#d7c8ff', mid: '#a58bf0', dark: '#7a5fd0' }) + shard(18, 5, 4.4, 19, 4.4, { lite: '#d7c8ff', mid: '#a58bf0', dark: '#7a5fd0' });
+  s += shard(-7, 7, 4, 18, -1.6) + shard(8, 8, 3.6, 14, 1.8);
   // きらめき
-  const star = (dx, dy, r) => `<path transform="translate(${num(cx + dx)} ${num(cy + dy)}) scale(${num(r)})" d="M0 -3L.7 -.7L3 0L.7 .7L0 3L-.7 .7L-3 0L-.7 -.7Z" fill="#ffffff"/>`;
-  s += star(-6, -48, 1) + star(11, -30, 0.8) + star(-17, -22, 0.7) + star(3, -66, 0.9);
+  const star = (dx, dy, r) => `<path d="${sparkle(cx + dx, cy + dy, r)}" fill="#ffffff"/>`;
+  s += star(-7, -62, 1) + star(12, -38, 0.8) + star(-18, -27, 0.7) + star(3, -87, 0.9);
   return s;
 }
 
@@ -1236,7 +1250,7 @@ function philosophersLab() {
   s += k.cone(tu, tv, 0.36, TH + 2.4, TH + 25, roof);
   const [rx, ry] = k.xy(tu, tv, TH + 2.4);
   for (const [dx, dy, r] of [[-9, -6, 1.1], [3, -9, 0.9], [-3, -14.4, 0.8], [8, -4, 0.8]]) {
-    s += `<path transform="translate(${num(rx + dx)} ${num(ry + dy)}) scale(${r})" d="M0 -2.4L.6 -.6L2.4 0L.6 .6L0 2.4L-.6 .6L-2.4 0L-.6 -.6Z" fill="${gold}"/>`;
+    s += `<path d="${sparkle(rx + dx, ry + dy, r * 0.8)}" fill="${gold}"/>`;
   }
   s += `<path transform="translate(${num(rx)} ${num(ry - 25.6)})" d="M1.4 -3.6A3.4 3.4 0 1 0 1.4 3.2A2.7 2.7 0 1 1 1.4 -3.6Z" fill="${gold}"${pen(0.6)}/>`;
   // なべ（みどりの くすり）と びん
@@ -1494,7 +1508,7 @@ function observatory() {
   // 星の もよう
   for (const [u, v] of [[0.16, 0.3], [0.84, 0.4], [0.2, 1.5], [0.8, 1.72], [0.5, 1.84], [0.86, 1.2], [0.14, 1.0]]) {
     const [x, y] = k.xy(u, v, 0.1);
-    s += `<path transform="translate(${num(x)} ${num(y)}) scale(.8 .4)" d="M0 -3L.7 -.7L3 0L.7 .7L0 3L-.7 .7L-3 0L-.7 -.7Z" fill="#ffe9a0"/>`;
+    s += `<path d="${sparkle(x, y, 0.8, 0.4)}" fill="#ffe9a0"/>`;
   }
   s += k.roundShadow(cu, cv, 0.4);
   // 丸い本体と 丸屋根
@@ -1546,7 +1560,7 @@ function perfectMonument() {
   // きらめき・リボン・花
   for (const [dx, dz, r] of [[-20, 50, 1], [19, 44, 0.8], [15, 57, 0.7], [-17, 30, 0.7]]) {
     const [x, y] = k.xy(cu, cv, dz);
-    s += `<path transform="translate(${num(x + dx)} ${num(y)}) scale(${r})" d="M0 -3L.7 -.7L3 0L.7 .7L0 3L-.7 .7L-3 0L-.7 -.7Z" fill="#fff3a0"${pen(0.4, '#dba42b')}/>`;
+    s += `<path d="${sparkle(x + dx, y, r)}" fill="#fff3a0"${pen(0.4, '#dba42b')}/>`;
   }
   s += k.flowers([[0.2, 1.56], [0.28, 1.62], [0.72, 1.62], [0.8, 1.56], [0.24, 0.44], [0.76, 0.44]], ['#ff8fb8', '#ffffff', '#ffd24a']);
   s += k.bush(0.16, 1.74, 0.8, { flowers: ['#ff8fb8', '#ffffff'] }) + k.bush(0.82, 1.75, 0.8, { flowers: ['#ffd24a', '#ffffff'] });
@@ -1557,8 +1571,11 @@ function perfectMonument() {
 function tvTower() {
   const k = lot(1, 2);
   const cu = 0.5; const cv = 1; const red = '#f2622e'; const white = '#fbf7ef';
-  const leg = (su, sv, z) => { const t = z / 46; const half = 0.42 - (0.42 - 0.075) * Math.pow(t, 0.72); return [cu + su * half, cv + sv * half, z]; };
-  const legLine = (su, sv) => Array.from({ length: 9 }, (_, i) => leg(su, sv, (46 * i) / 8));
+  // 町で いちばん高い建物にする（オフィスビル・タワマンより高い）。足が ひらく所から てっぺんまで
+  const LEG = 69; // 4 本の足が 1 本に まとまる高さ
+  const leg = (su, sv, z) => { const t = z / LEG; const half = 0.42 - (0.42 - 0.075) * Math.pow(t, 0.72); return [cu + su * half, cv + sv * half, z]; };
+  const legLine = (su, sv) => Array.from({ length: 11 }, (_, i) => leg(su, sv, (LEG * i) / 10));
+  const levels = [[5, 18], [18, 31], [31, 43]];
   let s = '';
   s += k.pad(0.06, 0.5, 0.94, 1.5, PAVING, 0.9, PAVING_LINE);
   // 足もとの建物
@@ -1567,24 +1584,26 @@ function tvTower() {
   // 奥の足・ほね組み
   s += k.bar(legLine(-1, -1), red, 2, 0.6);
   const brace = (a, b, z0, z1) => k.seg([leg(a[0], a[1], z0), leg(b[0], b[1], z1)], red, 1.2) + k.seg([leg(b[0], b[1], z0), leg(a[0], a[1], z1)], red, 1.2);
-  for (const [z0, z1] of [[4, 14], [14, 23], [23, 30]]) {
+  for (const [z0, z1] of levels) {
     s += brace([-1, -1], [1, -1], z0, z1) + brace([-1, -1], [-1, 1], z0, z1);
   }
   s += k.bar(legLine(1, -1), red, 2, 0.6) + k.bar(legLine(-1, 1), red, 2, 0.6);
-  for (const [z0, z1] of [[4, 14], [14, 23], [23, 30]]) {
+  for (const [z0, z1] of levels) {
     s += brace([-1, 1], [1, 1], z0, z1) + brace([1, -1], [1, 1], z0, z1);
     s += k.seg([leg(-1, 1, z1), leg(1, 1, z1)], white, 1.3) + k.seg([leg(1, -1, z1), leg(1, 1, z1)], '#ddd8cb', 1.3);
   }
   s += k.bar(legLine(1, 1), red, 2, 0.6);
-  // 見はらし台
-  s += k.box(cu - 0.17, cv - 0.17, cu + 0.17, cv + 0.17, 30, 36.5, white, { se: '#ddd8cb' });
-  s += k.glass(k.SW(cv + 0.17), cu - 0.15, cu + 0.15, 31.4, 35, 4) + k.glass(k.SE(cu + 0.17), cv - 0.15, cv + 0.15, 31.4, 35, 4);
+  // 見はらし台（2 だん）
+  s += k.box(cu - 0.17, cv - 0.17, cu + 0.17, cv + 0.17, 43, 51, white, { se: '#ddd8cb' });
+  s += k.glass(k.SW(cv + 0.17), cu - 0.15, cu + 0.15, 44.6, 49.4, 4) + k.glass(k.SE(cu + 0.17), cv - 0.15, cv + 0.15, 44.6, 49.4, 4);
+  s += k.box(cu - 0.11, cv - 0.11, cu + 0.11, cv + 0.11, 58, 63, white, { se: '#ddd8cb', lw: 1 });
+  s += k.glass(k.SW(cv + 0.11), cu - 0.095, cu + 0.095, 59, 62, 3) + k.glass(k.SE(cu + 0.11), cv - 0.095, cv + 0.095, 59, 62, 3);
   // 上の はしら（赤と白の しま）と アンテナ
-  for (let i = 0; i < 6; i++) {
-    const z = 46 + i * 7; const half = 0.07 - i * 0.008;
-    s += k.box(cu - half, cv - half, cu + half, cv + half, z, z + 7, i % 2 ? white : red, { lw: 0.9 });
+  for (let i = 0; i < 7; i++) {
+    const z = LEG + i * 9; const half = 0.07 - i * 0.007;
+    s += k.box(cu - half, cv - half, cu + half, cv + half, z, z + 9, i % 2 ? white : red, { lw: 0.9 });
   }
-  s += k.bar([[cu, cv, 88], [cu, cv, 101]], '#8a94a3', 0.9, 0.4) + k.dot(cu, cv, 102, 1.5, '#ff5a4d', 0.6);
+  s += k.bar([[cu, cv, 132], [cu, cv, 150]], '#8a94a3', 0.9, 0.4) + k.dot(cu, cv, 151.5, 1.6, '#ff5a4d', 0.6);
   // 木
   s += k.tree(0.2, 1.72, 1) + k.tree(0.8, 1.72, 1) + k.bush(0.2, 0.3, 0.9) + k.bush(0.78, 0.3, 0.9);
   return s;
@@ -1593,7 +1612,7 @@ function tvTower() {
 // ── 観覧車（色とりどりの ゴンドラ） ──
 function ferrisWheel() {
   const k = lot(1, 2);
-  const cu = 0.5; const cv = 1; const cz = 41; const r = 0.74; const rz = r * 49;
+  const cu = 0.5; const cv = 1; const cz = 50; const r = 0.9; const rz = r * 49;
   const at = (a, f = 1, u = cu) => [u, cv + Math.cos(a) * r * f, cz + Math.sin(a) * rz * f];
   const ring = (f) => Array.from({ length: 49 }, (_, i) => at((i / 48) * Math.PI * 2, f));
   const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#facc15', '#f97316', '#6366f1'];
@@ -1602,18 +1621,18 @@ function ferrisWheel() {
   // 台と きっぷ売り場
   s += k.box(0.24, 0.42, 0.76, 1.58, 0, 2.6, '#e3ded4', { lw: 1 });
   // 奥の ささえ
-  s += k.bar([[0.34, 0.52, 2.6], [0.4, cv, cz]], '#8a94a3', 2, 0.7) + k.bar([[0.34, 1.48, 2.6], [0.4, cv, cz]], '#8a94a3', 2, 0.7);
+  s += k.bar([[0.34, 0.46, 2.6], [0.4, cv, cz]], '#8a94a3', 2.2, 0.7) + k.bar([[0.34, 1.54, 2.6], [0.4, cv, cz]], '#8a94a3', 2.2, 0.7);
   // わ・や
-  for (let i = 0; i < 10; i++) s += k.seg([[cu, cv, cz], at((i / 10) * Math.PI * 2)], '#b8c2cc', 0.9);
+  for (let i = 0; i < 12; i++) s += k.seg([[cu, cv, cz], at((i / 12) * Math.PI * 2)], '#b8c2cc', 0.9);
   s += k.bar(ring(1), '#f6c93c', 1.6, 0.6) + k.seg(ring(0.84), '#f6c93c', 0.9) + k.seg(ring(0.46), '#b8c2cc', 0.8);
   // ゴンドラ
-  for (let i = 0; i < 10; i++) {
-    const p = at((i / 10) * Math.PI * 2 + 0.31);
+  for (let i = 0; i < 12; i++) {
+    const p = at((i / 12) * Math.PI * 2 + 0.26);
     const [x, y] = k.xy(...p);
-    s += `<path d="M${num(x)} ${num(y)}v2" fill="none"${pen(0.7)}/><path d="M${num(x - 3.4)} ${num(y + 2)}h6.8v4.4q0 1.6 -1.6 1.6h-3.6q-1.6 0 -1.6 -1.6z" fill="${colors[i]}"${pen(0.8)}/><path d="M${num(x - 2.4)} ${num(y + 3)}h4.8v2h-4.8z" fill="#dff4ff"/>`;
+    s += `<path d="M${num(x)} ${num(y)}v2" fill="none"${pen(0.7)}/><path d="M${num(x - 3.4)} ${num(y + 2)}h6.8v4.4q0 1.6 -1.6 1.6h-3.6q-1.6 0 -1.6 -1.6z" fill="${colors[i % colors.length]}"${pen(0.8)}/><path d="M${num(x - 2.4)} ${num(y + 3)}h4.8v2h-4.8z" fill="#dff4ff"/>`;
   }
   // 手前の ささえ と じく
-  s += k.bar([[0.66, 0.52, 2.6], [0.6, cv, cz]], '#aab4c0', 2, 0.7) + k.bar([[0.66, 1.48, 2.6], [0.6, cv, cz]], '#aab4c0', 2, 0.7);
+  s += k.bar([[0.66, 0.46, 2.6], [0.6, cv, cz]], '#aab4c0', 2.2, 0.7) + k.bar([[0.66, 1.54, 2.6], [0.6, cv, cz]], '#aab4c0', 2.2, 0.7);
   s += k.bar([[0.4, cv, cz], [0.6, cv, cz]], '#5b6470', 2.4, 0.7) + k.dot(0.6, cv, cz, 3, '#ef4444', 0.9) + k.dot(0.6, cv, cz, 1.2, '#ffffff', 0);
   s += k.box(0.3, 1.62, 0.58, 1.82, 0, 8, '#fff4dc', { lw: 1 }) + k.hipRoof(0.3, 1.62, 0.58, 1.82, 8, 4.6, '#ef4444', { over: 0.04, drop: 0.3, plain: true });
   s += k.panel(k.SW(1.82), 0.36, 0.52, 3, 6.4, '#8fd3f7', 0.7);
@@ -2080,32 +2099,32 @@ function amusementPark() {
   s += k.pad(0.84, 1.2, 1.16, 1.97, PAVING, 0.8, PAVING_LINE) + k.disc(1, 1.1, 0.1, 0.42, PAVING, 0.8);
   // ジェットコースター（奥。レールと ささえ）
   const rail = [];
-  for (let i = 0; i <= 20; i++) { const t = i / 20; rail.push([0.14 + t * 1.72, 0.3 + Math.sin(t * Math.PI * 2) * 0.1, 10 + Math.sin(t * Math.PI * 3 + 0.4) * 9 + t * 4]); }
+  for (let i = 0; i <= 20; i++) { const t = i / 20; rail.push([0.14 + t * 1.72, 0.3 + Math.sin(t * Math.PI * 2) * 0.1, 16 + Math.sin(t * Math.PI * 3 + 0.4) * 14 + t * 6]); }
   for (let i = 1; i < 20; i += 2) s += k.seg([[rail[i][0], rail[i][1], 0], rail[i]], '#aab4c0', 0.8);
   s += k.bar(rail, '#e2473f', 1.8, 0.6);
   s += k.box(rail[7][0] - 0.06, rail[7][1] - 0.04, rail[7][0] + 0.06, rail[7][1] + 0.04, rail[7][2] + 0.6, rail[7][2] + 3.4, '#3f8fd1', { lw: 0.8 })
     + k.box(rail[8][0] - 0.02, rail[8][1] - 0.04, rail[8][0] + 0.1, rail[8][1] + 0.04, rail[8][2] + 0.6, rail[8][2] + 3.4, '#f6c93c', { lw: 0.8 });
   // テント（しまの とんがり）
-  s += k.cyl(0.36, 0.76, 0.2, 0, 7, '#fff7ed', { lw: 1, top: false });
-  for (let i = 0; i < 4; i++) { const [x, y] = k.xy(0.36, 0.76, 0); s += `<path d="M${num(x - 9 + i * 5.4)} ${num(y + 5.4 - Math.abs(i - 1.5) * 0.8)}v-7h2.6v7.4z" fill="#ef4444"/>`; }
-  s += k.cone(0.36, 0.76, 0.24, 7, 19, '#ef4444') + k.flag(0.36, 0.76, 19, 25, '#ffd24a', { len: 4.6, hgt: 3 });
+  s += k.cyl(0.36, 0.76, 0.2, 0, 9, '#fff7ed', { lw: 1, top: false });
+  for (let i = 0; i < 4; i++) { const [x, y] = k.xy(0.36, 0.76, 0); s += `<path d="M${num(x - 9 + i * 5.4)} ${num(y + 5.4 - Math.abs(i - 1.5) * 0.8)}v-9h2.6v9.4z" fill="#ef4444"/>`; }
+  s += k.cone(0.36, 0.76, 0.24, 9, 26, '#ef4444') + k.flag(0.36, 0.76, 26, 33, '#ffd24a', { len: 4.6, hgt: 3 });
   // メリーゴーラウンド（まん中）
   s += k.cyl(1, 1.1, 0.3, 0, 2.2, '#f8c8dc', { lw: 1, top: '#fde2ec' });
-  s += k.bar([[1, 1.1, 2.2], [1, 1.1, 15]], '#ffd24a', 1.6, 0.5);
+  s += k.bar([[1, 1.1, 2.2], [1, 1.1, 19]], '#ffd24a', 1.6, 0.5);
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3; const u = 1 + Math.cos(a) * 0.22; const v = 1.1 + Math.sin(a) * 0.22;
-    s += k.seg([[u, v, 2.2], [u, v, 13]], '#ffd24a', 0.8) + k.oval(u, v, 6, 2.4, 1.7, ['#ffffff', '#ffd9a0', '#c4e8fa'][i % 3], 0.6);
+    s += k.seg([[u, v, 2.2], [u, v, 16]], '#ffd24a', 0.8) + k.oval(u, v, 7, 2.6, 1.9, ['#ffffff', '#ffd9a0', '#c4e8fa'][i % 3], 0.6);
   }
-  s += k.cone(1, 1.1, 0.36, 13, 22, '#ff8fb8');
-  for (let i = 0; i < 5; i++) { const [x, y] = k.xy(1, 1.1, 13); s += `<path d="M${num(x - 16 + i * 8)} ${num(y + 9.4 - Math.abs(i - 2) * 1.6)}L${num(x)} ${num(y - 9)}L${num(x - 12 + i * 8)} ${num(y + 9.8 - Math.abs(i - 1.5) * 1.6)}Z" fill="#ffffff" opacity="0.85"/>`; }
-  s += k.dot(1, 1.1, 23, 1.6, '#ffd24a', 0.7);
+  s += k.cone(1, 1.1, 0.36, 16, 27, '#ff8fb8');
+  for (let i = 0; i < 5; i++) { const [x, y] = k.xy(1, 1.1, 16); s += `<path d="M${num(x - 16 + i * 8)} ${num(y + 9.4 - Math.abs(i - 2) * 1.6)}L${num(x)} ${num(y - 11)}L${num(x - 12 + i * 8)} ${num(y + 9.8 - Math.abs(i - 1.5) * 1.6)}Z" fill="#ffffff" opacity="0.85"/>`; }
+  s += k.dot(1, 1.1, 28, 1.6, '#ffd24a', 0.7);
   // 小さな観覧車（右）
-  const fu = 1.62; const fv = 1.0; const fz = 17; const fr = 0.26; const frz = fr * 49;
-  s += k.bar([[fu, fv - 0.16, 0], [fu, fv, fz]], '#8a94a3', 1.3, 0.5) + k.bar([[fu, fv + 0.16, 0], [fu, fv, fz]], '#8a94a3', 1.3, 0.5);
+  const fu = 1.62; const fv = 1.0; const fz = 25; const fr = 0.38; const frz = fr * 49;
+  s += k.bar([[fu, fv - 0.22, 0], [fu, fv, fz]], '#8a94a3', 1.5, 0.5) + k.bar([[fu, fv + 0.22, 0], [fu, fv, fz]], '#8a94a3', 1.5, 0.5);
   s += k.bar(Array.from({ length: 25 }, (_, i) => { const a = (i / 24) * Math.PI * 2; return [fu, fv + Math.cos(a) * fr, fz + Math.sin(a) * frz]; }), '#f6c93c', 1.3, 0.5);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2; const p = [fu, fv + Math.cos(a) * fr, fz + Math.sin(a) * frz];
-    s += k.seg([[fu, fv, fz], p], '#b8c2cc', 0.7) + k.dot(p[0], p[1], p[2] - 1.6, 1.9, ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899'][i], 0.6);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2; const p = [fu, fv + Math.cos(a) * fr, fz + Math.sin(a) * frz];
+    s += k.seg([[fu, fv, fz], p], '#b8c2cc', 0.7) + k.dot(p[0], p[1], p[2] - 1.6, 2.1, ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#14b8a6', '#facc15'][i], 0.6);
   }
   // 入口の門（アーチと はた）・ふうせん
   s += k.bar([[0.8, 1.9, 0], [0.8, 1.9, 13]], '#3f8fd1', 1.8, 0.6);
@@ -2312,7 +2331,7 @@ function megaWonder() {
     + `<path d="M${num(gx)} ${num(gy - 13)}L${num(gx - 2)} ${num(gy - .6)}L${num(gx)} ${num(gy + 11)}L${num(gx + 2.2)} ${num(gy - .6)}Z" fill="#5cc3f0"/>`
     + `<path d="M${num(gx)} ${num(gy - 13)}L${num(gx - 6.4)} ${num(gy)}L${num(gx)} ${num(gy + 11)}L${num(gx + 6.4)} ${num(gy)}Z" fill="none"${pen(1.1, '#1f5f9e')}/>`;
   for (const [dx, dy, r] of [[-13, -8, 1], [12, -12, 0.8], [10, 8, 0.7], [-10, 9, 0.7], [0, -21, 0.9]]) {
-    s += `<path transform="translate(${num(gx + dx)} ${num(gy + dy)}) scale(${r})" d="M0 -3L.7 -.7L3 0L.7 .7L0 3L-.7 .7L-3 0L-.7 -.7Z" fill="#ffffff"${pen(0.3, '#8fd3f7')}/>`;
+    s += `<path d="${sparkle(gx + dx, gy + dy, r)}" fill="#ffffff"${pen(0.3, '#8fd3f7')}/>`;
   }
   s += '</g>';
   s += obelisk(2.7, 2.7);
@@ -2498,6 +2517,8 @@ export const BUILDING_ART = {
   mega_harbor_town: { size: [2, 2], base: [1.44, 0.6], at: [0.9, 0.44], shadow: 'none', draw: megaHarborTown },
   mega_shrine_complex: { size: [2, 2], base: [0.92, 0.7], at: [1, 0.54], shadow: 'own', draw: megaShrineComplex },
   dragon_shrine: { size: [2, 2], base: [1.24, 1.24], shadow: 'own', draw: dragonShrine },
+  // 小さなもの（かざり・道ばたのもの・のりもの・庭）。絵は props-art.js
+  ...PROP_ART,
 };
 
 export const BUILDING_ART_NAMES = Object.freeze(Object.keys(BUILDING_ART));
@@ -2521,6 +2542,39 @@ export function buildingArtDef(name, variant = 0) {
   const inner = buildingArt(name, variant);
   if (inner === null) return '';
   return lot(art.size[0], art.size[1]).wrap(inner, buildingArtId(name, variant));
+}
+
+/** 町に置くときの viewBox（足もとが 決まった場所に来る。置き方は data/town-item-fit.js） */
+export const PLACE_VIEWBOX = '0 -100 100 200';
+
+const iconBoxes = new Map();
+/**
+ * 見本（もちもの欄・クラフト・ガチャ）に出すときの viewBox。絵ぜんたいが 正方形の わくに ちょうど収まる。
+ * 町に置くときの viewBox だと、ポストのような小さな絵は 見本でも小さく、テレビ塔のような高い絵は
+ * わくから はみ出す。絵の はんいを測って、まん中に いっぱいに出す。
+ * @param {string} name 絵の名前
+ * @returns {string} viewBox（無い名前は 町に置くときと同じ）
+ */
+export function buildingIconBox(name) {
+  let box = iconBoxes.get(name);
+  if (box === undefined) {
+    const art = BUILDING_ART[name];
+    const bounds = art ? artBounds(buildingArt(name, 0)) : null;
+    if (!bounds) box = PLACE_VIEWBOX;
+    else {
+      // 絵の単位 → viewBox の単位（wrap と同じ: 敷地のまん中が (50, 50)、大きさは 5 /（幅 + 奥行き）倍）
+      const k = 5 / (art.size[0] + art.size[1]);
+      const width = (bounds.maxX - bounds.minX) * k;
+      const height = (bounds.maxY - bounds.minY) * k;
+      // うんと小さな絵（ゴミ箱など）を 大きくしすぎない: わくは 1 マスの 4 割より小さくしない
+      const side = Math.max(width, height, 80) * 1.12;
+      const cx = 50 + ((bounds.minX + bounds.maxX) / 2) * k;
+      const cy = 50 + ((bounds.minY + bounds.maxY) / 2) * k;
+      box = [cx - side / 2, cy - side / 2, side, side].map((v) => Math.round(v * 10) / 10).join(' ');
+    }
+    iconBoxes.set(name, box);
+  }
+  return box;
 }
 
 export { INK, tone };

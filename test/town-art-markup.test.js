@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { NATURE_VARIANTS, natureArt, natureArtMarkup } from '../src/data/iso-svg/nature-art.js';
 import { HOUSE_PALETTES, houseArt, houseArtMarkup } from '../src/data/iso-svg/house-art.js';
 import { WILD_PROP_BOX, WILD_PROP_NAMES, wildPropFor, wildPropsMarkup } from '../src/data/wild-props-art.js';
+import { artBounds } from '../src/data/iso-svg/scale-art.js';
 import { GRID_SIZE } from '../src/systems/town-map-view.js';
 
 // 木・花・岩と「小さな家」、野生の木や岩は、絵を文書に 1 回だけ置いて <use href="#…"> で呼びだす。
@@ -34,6 +35,33 @@ test('自然物の絵: 種類ごとの数だけ id があり、壊れていな�
     assert.equal(natureArt(`${kind}-${count}`), null, `${kind} の数が表と合わない`);
   }
   assert.equal((markup.match(/ id="/g) || []).length, Object.values(NATURE_VARIANTS).reduce((sum, n) => sum + n, 0));
+});
+
+test('自然物・「小さな家」の絵は、図形に transform・opacity を付けない', () => {
+  // 木や家は 町に何十も置かれる。transform・opacity の付いた図形は、ブラウザが 1 つずつ別の合成の単位として
+  // 扱うので、その数だけ 地図を動かすのが重くなる。回す・小さくするときは 座標を書きかえる（scale-art.js）。
+  // 半透明は fill-opacity・stroke-opacity で書く（flatten-opacity.js が書きかえる）。
+  const arts = [];
+  for (const [kind, count] of Object.entries(NATURE_VARIANTS)) {
+    for (let i = 0; i < count; i++) arts.push([`${kind}-${i}`, natureArt(`${kind}-${i}`)]);
+  }
+  HOUSE_PALETTES.forEach((palette, i) => arts.push([`house1-${i}`, houseArt(i)]));
+  for (const [label, art] of arts) {
+    assert.ok(!art.includes('transform='), `${label}: transform が付いている`);
+    assert.ok(!/[\s"]opacity=/.test(art), `${label}: opacity が付いている`);
+    assert.ok(!art.includes('<g'), `${label}: <g> で包んでいる`);
+  }
+  // 包む <g>（絵 1 枚に 1 つ。<defs> の中）だけが transform を持つ
+  const markup = natureArtMarkup();
+  assert.equal((markup.match(/transform=/g) || []).length, (markup.match(/ id="/g) || []).length);
+});
+
+test('小さく描き直した かざり: 信号機・かかしは 木より低い', () => {
+  // 絵の原点はマスの手前の頂点で、足もと（マスのまん中）は y = -20
+  const top = (name) => -20 - artBounds(natureArt(name)).minY;
+  assert.ok(top('signal-0') < top('tree-0') * 0.8, `信号機 ${top('signal-0')} / 木 ${top('tree-0')}`);
+  assert.ok(top('scarecrow-0') < top('tree-0') * 0.8, `かかし ${top('scarecrow-0')} / 木 ${top('tree-0')}`);
+  assert.ok(top('sunflower-0') < top('tree-0') * 0.6);
 });
 
 test('nature.jsx が呼びだす種類は、すべて絵がある', () => {

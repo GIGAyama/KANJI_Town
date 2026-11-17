@@ -10,6 +10,7 @@
 // ⚠️ ここで作る文字列は innerHTML に入れる。色と形は、すべてこのファイルの中の値から作る。
 
 import { flattenOpacity } from './flatten-opacity.js';
+import { ellipsePath, rotatePath, scaleArt } from './scale-art.js';
 
 const f = (v) => String(Math.round(v * 100) / 100);
 const circle = (cx, cy, r, fill, extra = '') => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="${fill}"${extra}/>`;
@@ -99,7 +100,7 @@ const FLOWER_PALETTES = [
   { blooms: ['#ffa53d', '#fff06a', '#ff7b59'], center: '#7a4b22' },
 ];
 const bloom = (x, y, r, color, center) => path(`M${f(x)} ${f(y)}V${f(y + 9)}`, 'none', line('#2f7a3c', 1.3))
-  + ellipse(x - 2.4, y + 5.4, 2.4, 1.2, '#4fae53', ` transform="rotate(-28 ${f(x - 2.4)} ${f(y + 5.4)})"`)
+  + path(ellipsePath(x - 2.4, y + 5.4, 2.4, 1.2, -28), '#4fae53')
   + [0, 72, 144, 216, 288].map((a) => {
     const rad = (a - 90) * Math.PI / 180;
     return circle(x + Math.cos(rad) * r * 0.62, y + Math.sin(rad) * r * 0.62, r * 0.56, color, line('#3a1a22', 0.7));
@@ -148,8 +149,9 @@ const stalk = (x, base, h, w, lean) => {
   }
   return out;
 };
-const leaf = (x, y, len, angle, fill) => path(`M${f(x)} ${f(y)}q${f(len * 0.5)} ${f(-len * 0.32)} ${f(len)} 0q${f(-len * 0.5)} ${f(len * 0.2)} ${f(-len)} 0Z`, fill,
-  `${line(BAMBOO.line, 0.8)} transform="rotate(${angle} ${f(x)} ${f(y)})"`);
+// 葉は、つけ根 (x, y) のまわりに angle 度 回す。transform は付けず、座標を回して書く（scale-art.js）
+const leaf = (x, y, len, angle, fill) => path(rotatePath(`M${f(x)} ${f(y)}q${f(len * 0.5)} ${f(-len * 0.32)} ${f(len)} 0q${f(-len * 0.5)} ${f(len * 0.2)} ${f(-len)} 0Z`, angle, x, y), fill,
+  line(BAMBOO.line, 0.8));
 const bamboo = () => stalk(-12, -22, 44, 2.3, -1.5) + stalk(11, -20, 40, 2.2, 1.2)
   + leaf(-13, -62, 11, -160, BAMBOO.leaf) + leaf(-13, -62, 10, -20, BAMBOO.leafLight) + leaf(12, -56, 11, -30, BAMBOO.leaf) + leaf(12, -56, 9, -150, BAMBOO.leafLight)
   + stalk(-4, -15, 54, 2.7, 0.8) + stalk(5, -17, 47, 2.5, -0.6)
@@ -166,7 +168,7 @@ const MAPLE_PALETTES = [
 const GINKGO_PALETTES = [
   { light: '#fff3a0', mid: '#ffd84a', dark: '#eaa91f', line: '#6b4a0a' },
 ];
-const fallen = (pal) => [[-12, -16, 20], [10, -13, -30], [16, -21, 50], [-4, -10, 0]].map(([x, y, a], i) => ellipse(x, y, 2, 1.1, i % 2 ? pal.mid : pal.light, ` transform="rotate(${a} ${f(x)} ${f(y)})"`)).join('');
+const fallen = (pal) => [[-12, -16, 20], [10, -13, -30], [16, -21, 50], [-4, -10, 0]].map(([x, y, a], i) => path(ellipsePath(x, y, 2, 1.1, a), i % 2 ? pal.mid : pal.light)).join('');
 const maple = (pal) => fallen(pal) + trunk(0, -19, -42, 5.2, DARK_BARK, 0.8)
   + foliage([[-12, -45, 10.5], [12, -46, 10.5], [0, -59, 13], [-7, -38, 7.5], [8, -39, 7.5], [0.5, -48, 11.5]], pal)
   + [[-13, -49], [-3, -62], [8, -55], [13, -42], [-7, -41], [3, -46]].map(([x, y]) => path(`M${f(x)} ${f(y - 1.6)}l.9 1.1 1.3-.4-.5 1.3 1 .9-1.3.3-.1 1.4-1.3-.7-1.3.7-.1-1.4-1.3-.3 1-.9-.5-1.3 1.3.4z`, pal.light, ' opacity=".85"')).join('');
@@ -176,8 +178,8 @@ const ginkgo = (pal) => fallen(pal) + trunk(0, -19, -40, 4.8, BARK)
 
 // ── ヤシの木 ──
 const PALM = { light: '#9be37a', mid: '#4fbf5a', dark: '#2f8f4a', line: '#143d27' };
-const frond = (angle, len, fill) => path(`M0 -58q${f(len * 0.5)} ${f(-len * 0.34)} ${f(len)} ${f(len * 0.1)}q${f(-len * 0.5)} ${f(-len * 0.08)} ${f(-len)} ${f(len * 0.02)}Z`, fill,
-  `${line(PALM.line, 1.2)} transform="rotate(${angle} 0 -58)"`);
+const frond = (angle, len, fill) => path(rotatePath(`M0 -58q${f(len * 0.5)} ${f(-len * 0.34)} ${f(len)} ${f(len * 0.1)}q${f(-len * 0.5)} ${f(-len * 0.08)} ${f(-len)} ${f(len * 0.02)}Z`, angle, 0, -58), fill,
+  line(PALM.line, 1.2));
 const palm = () => ellipse(4, -17, 5, 2.2, '#e8cf8a')
   + path('M-3.4 -19Q-1 -34 1.6 -44Q3.4 -52 1.4 -58L4.6 -58Q7 -51 5 -43Q2.6 -33 3.2 -19Z', '#c79a5e', line('#3b2a14', 1.4))
   + path('M-2 -26h5M-.6 -33h4.6M1 -40h4.4M2.2 -47h4', 'none', line('#7a5a2e', 0.9))
@@ -186,16 +188,20 @@ const palm = () => ellipse(4, -17, 5, 2.2, '#e8cf8a')
   + circle(-1.6, -56, 2.2, '#8a5a33', line('#3b2a14', 0.8)) + circle(2.6, -55.4, 2.2, '#9a6639', line('#3b2a14', 0.8));
 
 // ── ひまわり ──
-const sunflowerHead = (x, y, r) => path(`M${f(x)} ${f(y + r * 0.6)}V${f(-16)}`, 'none', line('#2f7a3c', 1.6))
-  + ellipse(x - 3, (y - 16) / 2 + 2, 3.4, 1.7, '#4fae53', `${line('#17402a', 0.7)} transform="rotate(-30 ${f(x - 3)} ${f((y - 16) / 2 + 2)})"`)
-  + ellipse(x + 3, (y - 16) / 2 - 2, 3.4, 1.7, '#66c458', `${line('#17402a', 0.7)} transform="rotate(30 ${f(x + 3)} ${f((y - 16) / 2 - 2)})"`)
-  + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
-    const rad = a * Math.PI / 180;
-    return ellipse(x + Math.cos(rad) * r * 0.82, y + Math.sin(rad) * r * 0.82, r * 0.5, r * 0.32, '#ffd23a', `${line('#7a4b06', 0.6)} transform="rotate(${a} ${f(x + Math.cos(rad) * r * 0.82)} ${f(y + Math.sin(rad) * r * 0.82)})"`);
-  }).join('')
-  + circle(x, y, r * 0.56, '#7a4b22', line('#3b2314', 0.8)) + circle(x - r * 0.14, y - r * 0.16, r * 0.2, '#a36a34');
-const sunflower = () => sunflowerHead(-9, -40, 6) + sunflowerHead(8.5, -37, 5.6) + sunflowerHead(0, -50, 6.8)
-  + blade(-13, -15.5, 7, -4, 1.7, '#66c458', { line: '#17402a' }) + blade(12.5, -15.6, 7, 4, 1.7, '#96cf52', { line: '#17402a' });
+// 花びらは丸、葉は曲線で描く（図形に transform を付けない）。高さは 人の せたけ くらい
+const sunflowerHead = (x, y, r) => {
+  const mid = (y - 16) / 2;
+  let out = path(`M${f(x)} ${f(y + r * 0.6)}V-16`, 'none', line('#2f7a3c', 1.3))
+    + path(`M${f(x)} ${f(mid + 2)}q-3.2 -2.4 -5 0.4q2.6 1.8 5 -0.4Z`, '#4fae53', line('#17402a', 0.6))
+    + path(`M${f(x)} ${f(mid - 1)}q3.2 -2.4 5 0.4q-2.6 1.8 -5 -0.4Z`, '#66c458', line('#17402a', 0.6));
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    out += circle(x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8, r * 0.38, '#ffd23a', line('#7a4b06', 0.5));
+  }
+  return out + circle(x, y, r * 0.56, '#7a4b22', line('#3b2314', 0.7)) + circle(x - r * 0.14, y - r * 0.16, r * 0.2, '#a36a34');
+};
+const sunflower = () => sunflowerHead(-6.2, -31, 4) + sunflowerHead(5.8, -29, 3.7) + sunflowerHead(0, -37.5, 4.4)
+  + blade(-8.6, -15.5, 4.8, -2.8, 1.3, '#66c458', { line: '#17402a' }) + blade(8.2, -15.6, 4.8, 2.8, 1.3, '#96cf52', { line: '#17402a' });
 
 // ── しげみ ──
 const BUSH_PALETTES = [TREE_PALETTES[0], TREE_PALETTES[1]];
@@ -203,12 +209,15 @@ const bushArt = (pal, berry) => foliage([[-9, -22, 8.5, 7], [9, -22.5, 8.5, 7], 
   + (berry ? [[-8, -24], [3, -30], [9, -21], [-1, -21]].map(([x, y]) => circle(x, y, 1.5, berry, line('#5a1414', 0.6))).join('') : '');
 
 // ── かかし ──
-const scarecrow = () => path('M0 -18V-50', 'none', line('#3b2314', 3.2)) + path('M0 -18V-50', 'none', line('#a9744a', 1.8))
-  + path('M-13 -40H13', 'none', line('#3b2314', 3)) + path('M-13 -40H13', 'none', line('#a9744a', 1.6))
+// 絵は大きく描いてあり、町に置く大きさ（人の せたけ くらい）へ 足もとを動かさずに ちぢめる
+const SCARECROW_SCALE = 0.64;
+const scarecrowBig = () => path('M0 -18V-50', 'none', line('#3b2314', 2.4)) + path('M0 -18V-50', 'none', line('#a9744a', 1.2))
+  + path('M-13 -40H13', 'none', line('#3b2314', 2.2)) + path('M-13 -40H13', 'none', line('#a9744a', 1))
   + path('M-9 -44L9 -44L7 -28L-7 -28Z', '#4f8fe0', line('#1c2f57', 1.2)) + path('M0 -44L9 -44L7 -28L0 -28Z', '#3a74c2')
   + path('M-13 -41.6l-3.4 -1.6M-13 -38.4l-3.4 1.6M13 -41.6l3.4 -1.6M13 -38.4l3.4 1.6M-5 -28l-1.6 4M0 -28v4.4M5 -28l1.6 4', 'none', line('#e3c15a', 1.2))
   + circle(0, -50.5, 6.2, '#f4dfb0', line('#3b2314', 1.2)) + path('M-2.4 -51.4h.1M2.4 -51.4h.1', 'none', line('#3b2314', 1.6)) + path('M-2 -48q2 1.8 4 0', 'none', line('#3b2314', 0.9))
   + path('M-10.5 -54.5Q0 -51.5 10.5 -54.5L5.4 -57.4Q0 -66 -5.4 -57.4Z', '#e3c15a', line('#6b4a0a', 1.2)) + path('M-5 -57.6Q0 -55.8 5 -57.6', 'none', line('#c2413b', 1.6));
+const scarecrow = () => scaleArt(scarecrowBig(), SCARECROW_SCALE, 0, -18, 0.85);
 
 // ── こいのぼり ──
 const carp = (y, len, body, belly) => path(`M1.4 ${f(y)}Q${f(len * 0.5)} ${f(y - 5.4)} ${f(len)} ${f(y - 2.4)}L${f(len + 4.6)} ${f(y - 5.6)}L${f(len + 3.4)} ${f(y)}L${f(len + 4.6)} ${f(y + 5.6)}L${f(len)} ${f(y + 2.4)}Q${f(len * 0.5)} ${f(y + 5.4)} 1.4 ${f(y)}Z`, body, line('#2b211c', 1.1))
@@ -221,15 +230,25 @@ const koinobori = () => path('M0 -17V-78', 'none', line('#2b211c', 3)) + path('M
   + carp(-66, 21, '#2b2f3a', '#565d6d') + carp(-54, 18, '#e5484d', '#ff9a8a') + carp(-43, 15, '#3b82f6', '#9cc4ff');
 
 // ── 信号機 ──
-const trafficLight = () => path('M0 -17V-56', 'none', line('#1f2733', 3.4)) + path('M0 -17V-56', 'none', line('#8d98a6', 1.9))
-  + ellipse(0, -17.4, 3.6, 1.7, '#5c6573', line('#1f2733', 0.9))
-  + path('M-5.4 -72h10.8q2 0 2 2v15q0 2 -2 2h-10.8q-2 0 -2 -2v-15q0 -2 2 -2Z', '#39424f', line('#141a22', 1.3))
-  + path('M0 -72h5.4q2 0 2 2v15q0 2 -2 2H0Z', '#2a323d')
-  + circle(0, -67.6, 2.9, '#3ddc6f', line('#141a22', 0.8)) + circle(0, -62.5, 2.9, '#ffd23a', line('#141a22', 0.8)) + circle(0, -57.4, 2.9, '#ff5a52', line('#141a22', 0.8))
-  + circle(-0.9, -68.5, 0.9, '#ffffff', ' opacity=".7"') + circle(-0.9, -63.4, 0.9, '#ffffff', ' opacity=".7"') + circle(-0.9, -58.3, 0.9, '#ffffff', ' opacity=".7"');
+// あかりの はこは そのままに、柱を みじかくしてある（街灯と同じくらいの高さ。前は 小さな家の屋根に とどいた）。
+// ⚠️ 高さを変えたら、夜のあかりの高さ（systems/town-night-light.js の LAMP_LIGHTS）も直すこと
+const SIGNAL_SCALE = 0.74;
+const SIGNAL_TOP = -63; // あかりの はこの 上の y（SIGNAL_SCALE を かける前）
+const trafficLightBig = () => {
+  const t = SIGNAL_TOP;
+  const lamp = (dy, color) => circle(0, t + dy, 2.9, color, line('#141a22', 0.8)) + circle(-0.9, t + dy - 0.9, 0.9, '#ffffff', ' opacity=".7"');
+  return path(`M0 -17V${t + 16}`, 'none', line('#1f2733', 2.8)) + path(`M0 -17V${t + 16}`, 'none', line('#8d98a6', 1.4))
+    + ellipse(0, -17.4, 3.6, 1.7, '#5c6573', line('#1f2733', 0.9))
+    + path(`M-5.4 ${t}h10.8q2 0 2 2v15q0 2 -2 2h-10.8q-2 0 -2 -2v-15q0 -2 2 -2Z`, '#39424f', line('#141a22', 1.3))
+    + path(`M0 ${t}h5.4q2 0 2 2v15q0 2 -2 2H0Z`, '#2a323d')
+    + lamp(4.4, '#3ddc6f') + lamp(9.5, '#ffd23a') + lamp(14.6, '#ff5a52');
+};
+const trafficLight = () => scaleArt(trafficLightBig(), SIGNAL_SCALE, 0, -17.4, 0.9);
 
 // ── 桜並木（小道の両がわに立つ、小さな桜 2 本。足もとの小道は地面のレイヤーが描く） ──
-const cherryRoad = (pal) => `<g transform="translate(-23 -9.4) scale(.56)">${sakura(pal)}</g><g transform="translate(23 -9.4) scale(.56)">${sakura(pal)}</g>`;
+// 桜の絵を 0.56 倍にして 左右に置く。<g transform> で包まず、座標を書きかえる
+// （動かさない点 (∓52.27, -21.36) は、「0.56 倍して (∓23, -9.4) ずらす」のと同じ場所になる点）
+const cherryRoad = (pal) => scaleArt(sakura(pal), 0.56, -52.27, -21.36, 0.56) + scaleArt(sakura(pal), 0.56, 52.27, -21.36, 0.56);
 
 /** 絵の名前 → 中身。名前は `${種類}-${番号}` */
 const ART = {};

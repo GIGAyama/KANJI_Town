@@ -7,6 +7,7 @@ import { ItemArt } from '../../data/town-art';
 import { MATERIALS } from '../../data/materials';
 import { MATERIAL_RECIPES, BUILDING_RECIPES, UPGRADE_RECIPES, MEGA_RECIPES, RARE_RECIPES, DECORATION_RECIPES } from '../../data/recipes';
 import { OCCUPATIONS } from '../../data/residents';
+import { VillagerPortrait } from './VillagerArt';
 import DraggableTownMap, { CULTIVATABLE_TERRAIN, C } from './DraggableTownMap';
 import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
@@ -917,7 +918,8 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
         return (
           <div key={occ.id} className={`border-[2px] border-[var(--text)] rounded-xl overflow-hidden transition-all ${!isUnlocked ? 'opacity-40 grayscale' : ''}`}>
             <button onClick={() => { audioCtrl.playSE('click'); setExpandedOcc(isExpanded ? null : occ.id); }} className="w-full flex items-center gap-2 px-2.5 py-2 bg-[var(--bg)] hover:bg-[var(--bg)]/80 transition-colors text-left">
-              <span className="text-lg shrink-0">{occ.emoji}</span>
+              {/* 職業の顔ぶれ（町を歩いている住民と同じ絵） */}
+              <span className="shrink-0 w-8 flex justify-center"><VillagerPortrait occupation={occ.id} variant={0} size={32} /></span>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-black text-[var(--text)]">{occ.name}</div>
                 <div className="text-[9px] text-[var(--text)] opacity-50 truncate">{occ.desc}</div>
@@ -931,8 +933,9 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
                   <div className="px-2.5 py-2 bg-[var(--panel)] border-t-2 border-[var(--text)]">
                     <div className="flex flex-wrap gap-1">
                       {occVillagers.map(v => (
-                        <span key={v.id} className="inline-flex items-center gap-0.5 bg-[var(--bg)] rounded-full px-2 py-0.5 text-[10px] font-bold border border-[var(--text)]">
-                          <span className="text-[var(--primary)]">{v.kanjiChar}</span>
+                        <span key={v.id} className="inline-flex items-end gap-1 bg-[var(--bg)] rounded-full pl-1.5 pr-2.5 py-0.5 text-sm font-black border border-[var(--text)]">
+                          <VillagerPortrait occupation={v.occupation} id={v.id} size={24} />
+                          <span className="text-[var(--primary)] leading-6">{v.kanjiChar}</span>
                         </span>
                       ))}
                     </div>

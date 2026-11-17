@@ -8,8 +8,9 @@ import TerrainLayer from './TerrainLayer';
 import { WildProp, WILD_PROP_BOX, mountWildProps, wildPropFor } from './WildProps';
 import { audioCtrl } from '../../systems/audio';
 import { isVillagerInViewRange } from '../../systems/town-animation';
-import { buildGroundModel, isGroundItem } from '../../systems/town-ground';
+import { buildGroundModel, isGroundItem, turnedToFit } from '../../systems/town-ground';
 import { itemFit } from '../../data/town-item-fit';
+import { nightLightOf } from '../../systems/town-night-light';
 import { townArtFor, useTownArtReady } from '../../data/town-art';
 import {
   TILE_W, TILE_H, GRID_SIZE, C, toIsoX, toIsoY, fromIso,
@@ -100,7 +101,7 @@ const TownArt = ({ item, itemId, x, y, seed, mirrored, lift, zIndex, fresh }) =>
           transition={POP_TRANSITION} className="absolute inset-0"
           style={{ transformOrigin: '50% 100%' }}>
           <div className="w-full h-full" style={mirrored ? { transform: 'scaleX(-1)' } : undefined}>
-            <Art seed={seed} />
+            <Art seed={seed} place />
           </div>
         </motion.div>
       </AnimatePresence>
@@ -113,7 +114,8 @@ const TownArt = ({ item, itemId, x, y, seed, mirrored, lift, zIndex, fresh }) =>
 // 値の props だけを受け取って memo する。ドラッグで表示範囲が変わっても、
 // 地図が変わらないマスは描き直さない。
 // artReady は、絵の束が読めたときに描き直すためだけに受け取る（中では使わない）
-const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh, freshTop, artReady }) => { // eslint-disable-line no-unused-vars
+// turn・topTurn は、となりの水路・道の向きに そろえて うら返すか（橋・車など。systems/town-ground.js の turnedToFit）
+const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh, freshTop, turn, topTurn, artReady }) => { // eslint-disable-line no-unused-vars
   const depth = Math.floor((x + y) * 100);
   const item = baseItemId ? TOWN_ITEM_MAP.get(baseItemId) || null : null;
   const topItem = topItemId ? TOWN_ITEM_MAP.get(topItemId) || null : null;
@@ -125,8 +127,8 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
   const standZIndex = depth + 140; // 立体物は、同じマスの地面・平面より手前
   // 大きな建物は、いちばん手前のマスの奥行きに合わせる（１マスの建物(+140)と基準をそろえる）
   const itemZIndex = item?.size ? depth + (item.size.w + item.size.h - 2) * 100 + 140 : standZIndex;
-  // 向きがえ（seed で決まる）は 1 マスのものだけ。大きな建物は、足もとの形が変わってしまう
-  const turned = Boolean(item?.hasVariants && !item.size && seedVal % 2 === 0);
+  // 向きがえ: 橋は水路の向きで決まる（turn）。ほかは seed で決まり、1 マスのものだけ（大きな建物は、足もとの形が変わってしまう）
+  const turned = turn ?? Boolean(item?.hasVariants && !item.size && seedVal % 2 === 0);
 
   return (
     <>
@@ -147,7 +149,7 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
       {/* 上乗せ（道の上の車・ベンチなど）。平らなものの厚み（2px）だけ持ち上げる */}
       {topItem && (
         <TownArt item={topItem} itemId={topItemId} x={x} y={y} seed={seedVal}
-          mirrored={itemFit(topItem).flip} lift={2} zIndex={standZIndex + 1} fresh={freshTop} />
+          mirrored={itemFit(topItem).flip !== Boolean(topTurn)} lift={2} zIndex={standZIndex + 1} fresh={freshTop} />
       )}
 
       {/* ゴースト（復習がたまっているとき） */}
@@ -164,34 +166,17 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
 
 // ── 夜のあかり ──
 // 夜は町ぜんたいに暗い色を 1 枚かぶせる（下の「時間帯レイヤー」）。その上に、建物の窓や
-// 街灯のあかりを、ぼんやりした丸として重ねる。建物 1 つにつき要素 1 つで、動かさない
-// （以前は建物ごとに CSS の filter をかけていて、建物が多い町の夜は重かった）。
-const LAMP_ITEMS = new Set(['t_street_light', 't_stone_lantern', 't_signal', 't_vending_machine', 't_festival_stage', 't_phone_booth', 't_bus_stop']);
-const LIT_TYPES = new Set(['building', 'mega', 'rare', 'special']);
-const UNLIT_ITEMS = new Set(['t_road', 't_bridge', 't_wall', 't_fence', 't_well', 't_mine', 't_garden', 't_zen_garden', 't_pool', 't_park', 't_torii', 't_dragon', 't_monument', 't_perfect_monument', 't_brick', 't_asphalt', 't_crosswalk', 't_railway', 't_stone_path']);
-const GLOW = 'radial-gradient(closest-side, rgba(255,221,150,0.62), rgba(255,205,105,0.26) 55%, rgba(255,195,80,0) 100%)';
-
-/** そのアイテムの あかり（無ければ null）。位置は「足もとのまん中」からの ずれ */
-function nightLightOf(itemId, item) {
-  if (!item) return null;
-  if (LAMP_ITEMS.has(itemId)) return { width: 34, height: 30, lift: 22 };
-  if (!LIT_TYPES.has(item.type) || UNLIT_ITEMS.has(itemId)) return null;
-  const fit = itemFit(item);
-  const span = (fit.bw + fit.bh) * 20;
-  // cu・cv: 建物が敷地のまん中から ずれているとき（学校の校舎は敷地の奥、など）の、建物のまん中
-  return { width: Math.max(30, span * 1.5), height: Math.max(22, span * 0.95), lift: 8 + Math.min(item.isoHeight || 20, 40) * 0.28, cu: fit.cu, cv: fit.cv };
-}
+// 街灯のあかりを、ぼんやりした丸として重ねる。どのアイテムが どこで光るかは systems/town-night-light.js が決める。
+//
+// あかりは 1 枚の SVG の中の だ円にする。1 つずつ div で置くと、ブラウザは div ごとに別の かたまりとして
+// 合成を考え、はなれた あかりを 1 枚に まとめない（建物 600 の町の夜で、合成レイヤーが 40 枚あまり ふえていた）。
+const NIGHT_GLOW_ID = 'town-night-glow';
 
 const NightLight = memo(({ x, y, w, h, light }) => (
-  <div aria-hidden="true" style={{
-    position: 'absolute',
-    left: toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.width / 2,
-    top: toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift - light.height / 2,
-    width: light.width,
-    height: light.height,
-    backgroundImage: GLOW,
-    pointerEvents: 'none',
-  }} />
+  <ellipse
+    cx={toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) + light.dx}
+    cy={toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift}
+    rx={light.width / 2} ry={light.height / 2} fill={`url(#${NIGHT_GLOW_ID})`} />
 ));
 
 // ── マスの上に出す目じるし（押しているマス・置ける範囲） ──
@@ -644,13 +629,18 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
         const wildProp = isTerrain ? wildPropFor(baseId, x, y) : null;
         const hasGhost = ghostKeys.has(key);
         if (!stands && !wildProp && !topId && !hasGhost) continue;
-        cellList.push({ x, y, key, baseId: stands ? baseId : undefined, topId, wildProp, hasGhost });
+        cellList.push({
+          x, y, key, baseId: stands ? baseId : undefined, topId, wildProp, hasGhost,
+          turn: stands ? turnedToFit(safeMapData, x, y, baseId) : undefined,
+          topTurn: topId ? turnedToFit(safeMapData, x, y, topId) : undefined,
+        });
       }
     }
     cellList.sort((a, b) => (a.x + a.y) - (b.x + b.y));
-    return cellList.map(({ x, y, key, baseId, topId, wildProp, hasGhost }) => (
+    return cellList.map(({ x, y, key, baseId, topId, wildProp, hasGhost, turn, topTurn }) => (
       <TownCell key={key} x={x} y={y}
         baseItemId={baseId} topItemId={topId} wildProp={wildProp} hasGhost={hasGhost} artReady={artReady}
+        turn={turn} topTurn={topTurn}
         fresh={changed && before[key] !== safeMapData[key]}
         freshTop={changed && before[`${key}:top`] !== topId} />
     ));
@@ -806,7 +796,17 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
           willChange: panning ? 'transform' : undefined,
         }}>
           <div style={{ position: 'absolute', top: 0, left: 0, transform: `scale(${view.zoom})`, transformOrigin: '0 0' }}>
-            {nightLights}
+            <svg aria-hidden="true" width="1" height="1" style={{ position: 'absolute', left: 0, top: 0, display: 'block', overflow: 'visible' }}>
+              <defs>
+                {/* まん中が明るく、外へ うすくなる光（だ円の大きさに合わせて のびる） */}
+                <radialGradient id={NIGHT_GLOW_ID}>
+                  <stop offset="0" stopColor="#ffdd96" stopOpacity="0.62" />
+                  <stop offset="0.55" stopColor="#ffcd69" stopOpacity="0.26" />
+                  <stop offset="1" stopColor="#ffc350" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              {nightLights}
+            </svg>
           </div>
         </div>
       )}

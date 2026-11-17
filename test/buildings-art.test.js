@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { BUILDING_ART, BUILDING_ART_NAMES, buildingArt, buildingArtDef, buildingArtId } from '../src/data/iso-svg/buildings-art.js';
+import { BUILDING_ART, BUILDING_ART_NAMES, PLACE_VIEWBOX, buildingArt, buildingArtDef, buildingArtId, buildingIconBox } from '../src/data/iso-svg/buildings-art.js';
 import { INK, lot, mix, tone } from '../src/data/iso-svg/kit.js';
+import { PROP_ART } from '../src/data/iso-svg/props-art.js';
+import { artBounds } from '../src/data/iso-svg/scale-art.js';
 import { KIT_BASE_SIZES, itemFit } from '../src/data/town-item-fit.js';
 
 // 新しい絵がらの建物は、絵を文字列で作って 文書の <defs> に置き、<use href="#b-名前-番号"> で呼びだす。
@@ -160,4 +162,80 @@ test('部品（kit.js）: 草の かたまりは、transform を使わず 座標
   assert.ok(tuft.startsWith(`<path d="M${Math.round((x - 2.6) * 100) / 100} ${Math.round((y + 0.4) * 100) / 100}q`), tuft);
   assert.ok(k.tuft(0.5, 0.5, 2).startsWith(`<path d="M${Math.round((x - 5.2) * 100) / 100} ${Math.round((y + 0.8) * 100) / 100}q1 -4.8 -1.2 -8.4 `), k.tuft(0.5, 0.5, 2));
   assert.ok(!buildingArt('fence', 0).includes('transform='), '柵の絵に transform が残っている');
+});
+
+// ── 小さなもの（props-art.js）と、大きさの決まり ──
+
+/** 絵の いちばん上の高さ（絵の単位。敷地のまん中から） */
+const artHeight = (name) => -artBounds(buildingArt(name, 0)).minY;
+
+test('小さなもの（props-art.js）は、建物の表に入っていて、図形に transform を付けない', () => {
+  const names = Object.keys(PROP_ART);
+  assert.equal(names.length, 23);
+  for (const name of names) {
+    assert.equal(BUILDING_ART[name], PROP_ART[name], `${name} が建物の表に無い`);
+    assert.deepEqual(PROP_ART[name].size, [1, 1], `${name}: 小さなものは 1 マス`);
+    const count = PROP_ART[name].variants || 1;
+    for (let variant = 0; variant < count; variant++) {
+      const art = buildingArt(name, variant);
+      // 道ばたのものは 町に たくさん置かれる。transform・opacity の付いた図形は、1 つずつ別の合成の単位になる
+      assert.ok(!art.includes('transform='), `${name}-${variant}: transform が付いている`);
+      assert.ok(!/[\s"]opacity=/.test(art), `${name}-${variant}: opacity が付いている（fill-opacity・stroke-opacity を使う）`);
+      assert.ok(!art.includes('<g'), `${name}-${variant}: <g> で包んでいる`);
+    }
+  }
+});
+
+test('大きさの決まり: 道ばたのもの・のりものは お店より低く、テレビ塔が いちばん高い', () => {
+  // 前の絵は どれもマスいっぱいに描いてあり、ポストやベンチが 家と同じ大きさだった。
+  // 描き直した絵は、ほんとうの大きさの 1.5 倍くらい（props-art.js の はじめの説明）。
+  const shop = artHeight('shop');
+  for (const name of Object.keys(PROP_ART)) {
+    if (name === 'windmill') continue; // 風車は 建物なみの大きさで よい
+    assert.ok(artHeight(name) < shop, `${name}（高さ ${artHeight(name).toFixed(1)}）が、お店（${shop.toFixed(1)}）より高い`);
+  }
+  // 手で持つ・こしかける ものは、街灯より低い
+  const light = artHeight('street_light');
+  for (const name of ['trash_can', 'bench', 'mailbox', 'vending_machine', 'phone_booth', 'stone_lantern', 'bicycle', 'bus_stop']) {
+    assert.ok(artHeight(name) < light, `${name} が 街灯より高い`);
+  }
+  assert.ok(artHeight('trash_can') < artHeight('mailbox') && artHeight('mailbox') < artHeight('vending_machine'));
+  assert.ok(artHeight('car') < artHeight('fire_truck') && artHeight('fire_truck') < artHeight('bus'));
+  // 町で いちばん高いのは テレビ塔（前は ビルより低かった）
+  const tallest = [...BUILDING_ART_NAMES].sort((a, b) => artHeight(b) - artHeight(a))[0];
+  assert.equal(tallest, 'tv_tower');
+  assert.ok(artHeight('tv_tower') > artHeight('office_building') * 1.2);
+  assert.ok(artHeight('hospital') > artHeight('fire_station'), '病院は 3 階だて');
+});
+
+test('見本の わく（buildingIconBox）: 絵ぜんたいが 正方形の わくに収まる', () => {
+  for (const name of BUILDING_ART_NAMES) {
+    const box = buildingIconBox(name);
+    assert.equal(buildingIconBox(name), box, '同じ名前なら同じ わく');
+    const [x, y, width, height] = box.split(' ').map(Number);
+    assert.equal(width, height, `${name}: わくが正方形でない`);
+    // 小さな絵を 大きくしすぎない（わくは 1 マスの 4 割より小さくしない）
+    assert.ok(width >= 89.5, `${name}: わくが小さすぎる（${width}）`);
+    // 絵の はんい（viewBox の単位: 敷地のまん中が (50, 50)、5 /（幅 + 奥行き）倍）が、わくの中にある
+    const [w, h] = BUILDING_ART[name].size;
+    const k = 5 / (w + h);
+    const b = artBounds(buildingArt(name, 0));
+    assert.ok(50 + b.minX * k >= x - 0.1 && 50 + b.maxX * k <= x + width + 0.1, `${name}: 左右が はみ出す`);
+    assert.ok(50 + b.minY * k >= y - 0.1 && 50 + b.maxY * k <= y + height + 0.1, `${name}: 上下が はみ出す`);
+    // 絵は わくの まん中に来る
+    assert.ok(Math.abs((50 + ((b.minX + b.maxX) / 2) * k) - (x + width / 2)) < 0.2, `${name}: 左右の まん中`);
+    assert.ok(Math.abs((50 + ((b.minY + b.maxY) / 2) * k) - (y + height / 2)) < 0.2, `${name}: 上下の まん中`);
+  }
+  // 高い塔は たてに合わせ、ゴミ箱は 小さく見せる（わくいっぱいには しない）
+  assert.ok(Number(buildingIconBox('tv_tower').split(' ')[2]) > 300);
+  assert.ok(Number(buildingIconBox('trash_can').split(' ')[2]) < 100);
+  assert.equal(buildingIconBox('no_such_building'), PLACE_VIEWBOX);
+});
+
+test('町に置くときだけ place を付ける（見本の わくで置くと、足もとが ずれる）', () => {
+  assert.equal(PLACE_VIEWBOX, '0 -100 100 200');
+  assert.match(read('../src/data/iso-svg/buildings.jsx'), /viewBox=\{place \? PLACE_VIEWBOX : buildingIconBox\(name\)\}/);
+  assert.match(read('../src/components/town/DraggableTownMap.jsx'), /<Art seed=\{seed\} place \/>/);
+  // 見本（もちもの欄・クラフト）は place を付けない
+  assert.ok(!/place/.test(read('../src/data/town-art.jsx').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')));
 });
