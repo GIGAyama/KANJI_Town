@@ -1,12 +1,13 @@
-export const TOWN_ANIMATION_INTERVAL_MS = 50;
+/** 刻みの間隔（30 回/秒）。住民は canvas に描くので、町の要素は さわらない（VillagerCanvas.jsx） */
+export const TOWN_ANIMATION_INTERVAL_MS = 33;
 export const TOWN_ANIMATION_MAX_DELTA_SECONDS = 0.1;
 
 /**
  * 時計で次の刻みを予約する（requestAnimationFrame は使わない）。
  * rAF を毎フレーム予約していると、何も描き変えなくてもブラウザが毎フレーム
  * 画面の更新を走らせ、そのたびに町マップ全体の合成をやり直していた（重い町では
- * 1 回 10〜20ms）。住民の移動は CSS の transition に任せているので、ここは
- * 行動を決める刻みだけがあればよい。
+ * 1 回 10〜20ms）。住民は この刻みで ふるまいを進め、canvas に描きなおす
+ * （components/town/VillagerCanvas.jsx）。
  */
 const now = () => (globalThis.performance?.now ? globalThis.performance.now() : Date.now());
 const requestTimerFrame = (callback, delayMs) => globalThis.setTimeout(() => callback(now()), delayMs);
@@ -14,7 +15,7 @@ const cancelTimerFrame = (frameId) => globalThis.clearTimeout(frameId);
 
 /**
  * 複数の住民が1本の刻みを共有するスケジューラー。
- * 20fpsへ間引き、非表示タブや購読者がいない間は完全に停止する。
+ * 30fpsへ間引き、非表示タブや購読者がいない間は完全に停止する。
  */
 export function createTownAnimationScheduler({
   requestFrame = (callback) => requestTimerFrame(callback, TOWN_ANIMATION_INTERVAL_MS),
@@ -86,15 +87,6 @@ export function createTownAnimationScheduler({
     resume,
     getSubscriberCount: () => subscribers.size,
   };
-}
-
-/** 画面外の住民を、移動余白を含めて描画対象から外す。 */
-export function isVillagerInViewRange(villager, viewRange, margin = 6) {
-  if (!villager || !viewRange) return false;
-  return villager.x >= viewRange.startX - margin
-    && villager.x <= viewRange.endX + margin
-    && villager.y >= viewRange.startY - margin
-    && villager.y <= viewRange.endY + margin;
 }
 
 export const townAnimationScheduler = createTownAnimationScheduler();

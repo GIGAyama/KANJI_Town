@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   VILLAGER_BOX, VILLAGER_KINDS, VILLAGER_SCALE, VILLAGER_VARIANTS,
-  villagerArt, villagerArtDef, villagerArtId, villagerHeight, villagerKind, villagerTop, villagerVariantOf,
+  villagerArt, villagerArtDef, villagerArtId, villagerHeight, villagerKind, villagerSpriteSvg, villagerTagPath, villagerTagTextY,
+  villagerTop, villagerVariantOf,
 } from '../src/data/villager-art.js';
 import { OCCUPATIONS } from '../src/data/residents.js';
 
-// 住民の絵は、文字列で作って文書に 1 回だけ置き、住民 1 人は <use href="#vil-職業-番号"> で呼びだす。
+// 住民の絵は、文字列で作る。住民の一覧の顔は 文書に 1 回だけ置き、<use href="#vil-職業-番号"> で呼びだす。
 // 職業の id と絵の名前が食いちがうと、その職業の住民だけが見えなくなる（エラーにはならない）。
-// また、住民は 1 人ずつ別の合成レイヤーなので、絵の中に フィルターや opacity を入れると 人数分だけ重くなる。
+// 町を歩く住民は、同じ絵を 画像にして 1 枚の canvas に描く（VillagerCanvas.jsx）。
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -93,16 +94,53 @@ test('絵は枠に収まり、名札は ぼうしの上に出る', () => {
   }
 });
 
-test('住民を描く部品は、新しい絵を使い、フィルターを使わない', () => {
-  const dot = read('../src/components/town/VillagerDot.jsx');
+test('町を歩く住民は 1 枚の canvas に描き、文書（DOM）には 1 人ずつの部品を置かない', () => {
+  const canvas = read('../src/components/town/VillagerCanvas.jsx');
   const art = read('../src/components/town/VillagerArt.jsx');
-  assert.match(dot, /VillagerFigure/);
-  assert.match(art, /villagerArtDef/);
-  for (const [name, source] of [['VillagerDot.jsx', dot], ['VillagerArt.jsx', art]]) {
-    assert.ok(!/iso-avatar|IsoAvatar/.test(source), `${name}: 前の絵を読んでいる`);
-    assert.ok(!/drop-shadow|filter=|filter:/.test(source), `${name}: フィルターを使っている`);
+  const map = read('../src/components/town/DraggableTownMap.jsx');
+  // 住民が 1 歩うごくたびに 文書を書きかえると、町の建物 600 けん ぶんの 重ね合わせを ブラウザが 毎回 やりなおし、
+  // 町を ずらすのが 3〜4 倍 重くなっていた。canvas に描けば、その やりなおしが 0 回になる（測った）
+  assert.match(canvas, /<canvas\b/);
+  assert.match(canvas, /getContext\('2d'\)/);
+  assert.match(canvas, /villagerSpriteSvg/);
+  assert.match(map, /<VillagerCanvas\b/);
+  assert.ok(!/VillagerDot|VillagerLayer|VillagerFigure/.test(map), 'DraggableTownMap.jsx: 前の 住民の部品を使っている');
+  for (const name of ['VillagerDot.jsx', 'VillagerLayer.jsx']) {
+    assert.equal(existsSync(new URL(`../src/components/town/${name}`, import.meta.url)), false, `前の住民の部品 ${name} が残っている`);
   }
   assert.equal(existsSync(new URL('../src/data/iso-avatar.jsx', import.meta.url)), false, '前の絵のファイルが残っている');
-  // 名札の漢字は うら返さない: 向きは <use> だけに付ける
-  assert.match(art, /<use href=\{`#\$\{villagerArtId\(kind, variant\)\}`\} transform=\{facesRight \? FACE_RIGHT : FACE_LEFT\} \/>/);
+  // 住民の一覧の顔は いまの絵（<use>）を使う
+  assert.match(art, /villagerArtDef/);
+  assert.ok(!/VillagerFigure/.test(art), 'VillagerArt.jsx: 町を歩く住民の部品が残っている');
+  for (const [name, source] of [['VillagerCanvas.jsx', canvas], ['VillagerArt.jsx', art]]) {
+    const code = source.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.ok(!/iso-avatar|IsoAvatar/.test(code), `${name}: 前の絵を読んでいる`);
+    assert.ok(!/drop-shadow|filter=|filter:|\.filter = /.test(code), `${name}: フィルターを使っている`);
+    for (const word of ['willChange', 'will-change', 'transition', '.animate(', 'translate3d', 'translateZ']) {
+      assert.ok(!code.includes(word), `${name}: ${word} を使っている`);
+    }
+  }
+  // 名札の漢字は うら返さない: 左右の うら返しは 体の絵だけ（save と restore の あいだ）
+  assert.match(canvas, /ctx\.save\(\);\s*if \(w\.facesRight\) ctx\.scale\(-1, 1\);\s*ctx\.drawImage\([^;]+;\s*ctx\.restore\(\);/);
+  assert.ok(canvas.indexOf('ctx.restore();') < canvas.indexOf('ctx.fillText('), '名札の字を 体と いっしょに うら返している');
+});
+
+test('canvas 用の 1 人ぶんの絵は、枠の大きさのまま 4 倍の こまかさで作り、名札の形は 絵の高さに合わせる', () => {
+  for (const kind of VILLAGER_KINDS) {
+    for (let variant = 0; variant < VILLAGER_VARIANTS; variant++) {
+      const svg = villagerSpriteSvg(kind, variant);
+      assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" /, `${kind}-${variant}`);
+      assert.ok(svg.includes(`viewBox="${VILLAGER_BOX.x} ${VILLAGER_BOX.y} ${VILLAGER_BOX.width} ${VILLAGER_BOX.height}"`));
+      assert.ok(svg.includes(`width="${VILLAGER_BOX.width * 4}" height="${VILLAGER_BOX.height * 4}"`));
+      assert.ok(svg.includes(`<g transform="scale(${VILLAGER_SCALE})">${villagerArt(kind, variant)}</g>`));
+      // data: URL の画像は 外の資源を読めない（読めば 絵が出ない）
+      assert.ok(!/href="(?!#)|url\((?!#)/.test(svg), `${kind}-${variant}: 外を読んでいる`);
+    }
+    const top = villagerTop(kind);
+    const ys = [...villagerTagPath(top).matchAll(/[MLHVA ](-?[\d.]+)/g)].map((m) => Number(m[1]));
+    assert.ok(Math.min(...ys) < -top - 3, `${kind}: 名札が 絵に重なる`);
+    const textY = villagerTagTextY(top);
+    assert.ok(textY < -top - 3 && textY > -top - 17, `${kind}: 名札の字が ふだから はみ出す (${textY})`);
+  }
+  assert.equal(villagerSpriteSvg('nobody'), '', '絵の無い職業は 空');
 });

@@ -97,34 +97,3 @@ export function fitTownView({ width, height, exploredRadius, isEditing = false }
   const centerY = toIsoY(C, C) + TILE_H / 2 + 10;
   return { zoom, offsetX: 0, offsetY: height / 2 - centerY * zoom + (isEditing ? -36 : 0) };
 }
-
-/** 住民の重なり順（奥行き）。マスの地面（depth）・平面（+10）・建物（+140）と同じものさし */
-export const villagerDepth = (x, y) => Math.floor((x + y) * 100);
-
-/** 住民が立ち寄りたくなる建物の種類 */
-const POI_TYPES = new Set(['building', 'mega', 'rare', 'nature']);
-
-/**
- * 住民の行き先の候補（建物のある座標）を 1 回だけ作る。
- * 住民が立ち止まるたびに 2,500 マスを調べなおさないため。
- */
-export function buildPointsOfInterest(mapData, itemMap) {
-  const points = [];
-  for (const [key, itemId] of Object.entries(mapData || {})) {
-    const item = itemMap.get(itemId);
-    if (!item || !POI_TYPES.has(item.type)) continue;
-    const [x, y] = key.split(',').map(Number);
-    if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y, type: item.type });
-  }
-  return points;
-}
-
-/** (x,y) から半径 radius 以内（自分の足もとは除く）の候補を返す */
-export function nearbyPointsOfInterest(points, x, y, radius = 6) {
-  const out = [];
-  for (const p of points) {
-    const d = Math.hypot(p.x - x, p.y - y);
-    if (d > 0.5 && d <= radius) out.push(p);
-  }
-  return out;
-}
