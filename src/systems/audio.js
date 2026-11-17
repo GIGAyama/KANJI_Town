@@ -285,7 +285,8 @@ class AudioController {
 
   /**
    * 効果音を再生する
-   * @param {string} type - 効果音タイプ
+   * @param {string|object} type - 効果音タイプ。複数音の定義（SE_MULTI_DEFINITIONS と同じ形）を そのまま渡してもよい
+   *   （あとから読む画面だけが使う音を、ここの表に足さずに鳴らすため。ボスバトルの boss-sounds.js）
    * @param {number} [volumeScale=1] - 音量スケール（0-1）
    */
   playSE(type, volumeScale = 1) {
@@ -294,7 +295,7 @@ class AudioController {
     const t = this.ctx.currentTime;
 
     // 複数音の効果音
-    const multi = SE_MULTI_DEFINITIONS[type];
+    const multi = typeof type === 'object' ? type : SE_MULTI_DEFINITIONS[type];
     if (multi) {
       this._playMultiNoteSE(multi, t, volumeScale);
       return;

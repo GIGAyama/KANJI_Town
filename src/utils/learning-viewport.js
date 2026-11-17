@@ -71,25 +71,35 @@ export function calculateTrainingViewport(width, height, options = {}) {
     columnChrome = 90,
     sideW = 384,
     stackedExtra = 220,
+    // 縦積みのときの、ますの左右の余白の合計と、ますの下限
+    stackedSidePad = 96,
+    stackedMin = 240,
+    // 縦積みのときに、画面の高さに合わせて のびちぢみする部分（ボスバトルの舞台）。{ ratio, min, max }
+    stackedFlex = null,
+    // はば 768px 以上で、画面の外わくに付く余白の上下の合計（main の md:p-4 と FullScreenWrapper の md:p-6）のうち、
+    // 下の式の 48 を こえる分。0 のままの画面は、headerH・columnChrome に ふくめてある
+    wideExtra = 0,
   } = options;
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 1024;
   const safeHeight = Number.isFinite(height) && height > 0 ? height : 768;
   const isRow = safeWidth >= 1024;
+  const outer = safeWidth >= 768 ? wideExtra : 0;
 
   if (isRow) {
     const availableWidth = safeWidth - sideW - 104;
-    const availableHeight = safeHeight - 48 - headerH - columnChrome;
+    const availableHeight = safeHeight - 48 - headerH - columnChrome - outer;
     return {
       isStacked: false,
       canvasSize: Math.round(clamp(Math.min(availableWidth, availableHeight), 260, CANVAS_MAX)),
     };
   }
 
-  const availableWidth = safeWidth - 96;
-  const availableHeight = safeHeight - 48 - headerH - columnChrome - stackedExtra;
+  const flexHeight = stackedFlex ? clamp(safeHeight * stackedFlex.ratio, stackedFlex.min, stackedFlex.max) : 0;
+  const availableWidth = safeWidth - stackedSidePad;
+  const availableHeight = safeHeight - 48 - headerH - columnChrome - stackedExtra - flexHeight - outer;
   return {
     isStacked: true,
-    canvasSize: Math.round(clamp(Math.min(availableWidth, availableHeight), 240, CANVAS_MAX)),
+    canvasSize: Math.round(clamp(Math.min(availableWidth, availableHeight), stackedMin, CANVAS_MAX)),
   };
 }
 
@@ -97,5 +107,15 @@ export function calculateTrainingViewport(width, height, options = {}) {
 export const TRAINING_VIEWPORT_PRESETS = {
   drillTest: { headerH: 100, columnChrome: 90, sideW: 384 },
   survival: { headerH: 110, columnChrome: 90, sideW: 384 },
-  boss: { headerH: 104, columnChrome: 124, sideW: 296 },
+  // ボスバトル（実測。BossBattleView.jsx の作りを変えたら ここも直す）:
+  //   headerH      … 上の帯（やめる・ハート）52 ＋ 上の余白 8
+  //   columnChrome … ますの列の、ます以外: 上下の余白 16 ＋ ボタン 56 ＋ すきま 8（のこり時間は ますの中に重ねてある）
+  //   sideW        … 横並びのときの左の列（舞台と問題）の いちばん広いとき（clamp(360px, 34vw, 460px)）
+  //   stackedExtra … 縦積みのとき ますの上に入る 問題の札（約 90）と すきま 16。下の表示（32）は 式の 48 に入っている
+  //   stackedFlex  … 縦積みの舞台の いちばん低い高さ（画面の高さの 21%、110〜250px。BossBattleView.jsx の clamp と同じ値）。
+  //                  ますが はばで決まって 高さが あまれば、舞台は その分だけ大きくなる
+  //   stackedMin   … ますの下限。高さ 640px のスマホで ボタンまで 1 画面に入るように、ほかのモード（240）より小さい
+  //   wideExtra    … はば 768px 以上で付く 外わくの余白（上下 80）＋下の表示 32 のうち、48 を こえる分
+  // スマホでは ますを 画面の はば いっぱいに近づける（左右 32）。
+  boss: { headerH: 60, columnChrome: 80, sideW: 460, stackedExtra: 98, stackedSidePad: 32, stackedMin: 220, stackedFlex: { ratio: 0.21, min: 110, max: 250 }, wideExtra: 64 },
 };

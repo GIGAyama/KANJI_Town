@@ -1,192 +1,136 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotionConfig } from 'framer-motion';
+import { ArrowRight, Flame, Heart, Lightbulb, RefreshCw, Swords, Timer } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import LeaveLearningButton from '../ui/LeaveLearningButton';
+import { FormatKun, F, RubyText, SurvivalRubyText } from '../ui/FormatKun';
 import { audioCtrl } from '../../systems/audio';
-import { SvgGhostBoss } from '../../data/town-items';
-import { FormatKun, F, SurvivalRubyText } from '../ui/FormatKun';
 import { pickPromptExample } from '../../systems/prompt-example';
-import { gradeStrokes, isOrderMistake, recommendEvaluation } from '../../systems/strokeGrader';
+import { judgeWriting } from '../../systems/strokeGrader';
 import { writingSkillEvidence } from '../../systems/mastery';
 import { fetchKanjiVg } from '../../systems/kanjiVg';
-import { RefreshCw, Swords, Shield } from 'lucide-react';
-import { attachDrawListeners } from '../../utils/draw-pointer-events';
-import { fitSquareCanvas } from '../../utils/canvas-dpr';
 import { useLearningViewport } from '../../hooks/useLearningViewport';
-import LeaveLearningButton from '../ui/LeaveLearningButton';
+import {
+  BOSSES, bossPhase, coinsFor, createBattle, isBossUnlocked, judgeAttack, recordBossResult,
+  resolveTurn, starsFor, suggestedBossId, timeLimitFor,
+} from '../../systems/boss-battle';
+import { bossProfile } from '../../data/boss-profiles';
+import BossStage from './boss/BossStage';
+import BossCanvas from './boss/BossCanvas';
+import BossIntro from './boss/BossIntro';
+import BossResult from './boss/BossResult';
+import { BOSS_SE } from './boss/boss-sounds';
 
-const PLAYER_MAX_HP = 3;
-const BOSS_MAX_HP = 10;
+// ボスバトル: まちがいの多い字の「書きとりテスト」を、ボスとの たたかいにした画面。
+// 勝ち負け・ダメージ・リベンジの計算は systems/boss-battle.js（React に依存しない。test/boss-battle.test.js）。
+// ここは、その結果を 順に見せる（字が とぶ → 当たる → 数字 → 次の問題）。
+//
+// 流れ（phase）:
+//   writing    … 書いている（のこり時間が進む）
+//   shot       … 書いた字が ボスへ とんでいく
+//   impact     … 当たった（ダメージの数字・ボスが ひるむ）
+//   guard      … おしい字を ボスが ふせいだ
+//   bossAttack … 書けなかった。ボスが こうげきして ハートが 1 つ へる
+//   review     … こたえを見る（「つぎへ」を おすまで 待つ。時間は進まない）
+//   ending     … 勝ち負けが決まった
+
 const WRITING_SKILLS = { skills: ['writing', 'stroke'] };
+const EMPTY = [];
+/** 結果の画面を、おさずに置いたときに 自動で進むまで（ごほうびを 受けとりそこねないように） */
+const RESULT_AUTO_MS = 25000;
 
-// --- ボスバトル専用キャンバス ---
-const BossBattleCanvas = ({ strokeData, paths, canvasSize, onSubmit, disabled }) => {
-  const inkRef = useRef(null);
-  const writeRef = useRef(null);
-  const [userStrokes, setUserStrokes] = useState([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const lastPos = useRef({ x: 0, y: 0 });
-  const currentPathRef = useRef([]);
+/** ふわふわ うく動き・いかりの ひかり。「動きを へらす」設定のときは App.jsx の決まりで 止まる */
+const BOSS_CSS = `
+@keyframes boss-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3%); } }
+.boss-float { animation: boss-float 2.8s ease-in-out infinite; }
+@keyframes boss-aura { 0%, 100% { opacity: .35; } 50% { opacity: .9; } }
+.boss-aura { animation: boss-aura 1.4s ease-in-out infinite; }
+`;
 
-  // キャンバス初期化
-  useEffect(() => {
-    [inkRef, writeRef].forEach(ref => {
-      // 端末の devicePixelRatio に合わせて鮮明化（上限2）。以前は一律2倍だったため、
-      // 等倍の Chromebook では4倍の面積を無駄に描き、3倍端末では線がぼやけていた。
-      fitSquareCanvas(ref.current, canvasSize);
-    });
-    setUserStrokes([]);
-  }, [strokeData, canvasSize]);
+/** 書けなかった・おしかった わけを、子どもに伝えることばにする（毎日のテストと同じ言い方） */
+function reasonText({ reason, judgment }) {
+  const attempt = judgment?.attempt;
+  const diff = attempt ? attempt.actualCount - attempt.expectedCount : 0;
+  if (reason === 'timeout') return <>じかんぎれ… {F('書', 'か')}けなかったね</>;
+  if (reason === 'careless') return <>ほとんど {F('書', 'か')}けなかったね</>;
+  if (reason === 'count') return <>かくすうが ちがうよ{diff > 0 ? `（${diff}かく おおいよ）` : diff < 0 ? `（${-diff}かく たりないよ）` : ''}</>;
+  if (reason === 'small') return <>{F('字', 'じ')}が {F('小', 'ちい')}さいよ。ますいっぱいに {F('書', 'か')}こう</>;
+  if (reason === 'large') return <>{F('字', 'じ')}が {F('大', 'おお')}きすぎるよ。ますの {F('中', 'なか')}に {F('書', 'か')}こう</>;
+  if (reason === 'cross') return <>せんの まじわりが ちがうよ</>;
+  if (reason === 'order') return <>かきじゅんが ちがうよ。すうじの じゅんに {F('書', 'か')}こう</>;
+  return <>{F('形', 'かたち')}が ちがうよ。こたえを よく {F('見', 'み')}よう</>;
+}
 
-  // 書いた線の描画
-  const redrawInk = useCallback((strokes) => {
-    const ctx = inkRef.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvasSize, canvasSize);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = canvasSize * 0.07;
-    strokes.forEach(stroke => {
-      if (stroke.length === 0) return;
-      ctx.beginPath();
-      ctx.moveTo(stroke[0].x, stroke[0].y);
-      stroke.forEach(pt => ctx.lineTo(pt.x, pt.y));
-      ctx.stroke();
-    });
-  }, [canvasSize]);
+/** ボスの こうげきが 当たったときに、書く ますの上に出る絵（ボスごと） */
+const AttackSplash = ({ bossId }) => (
+  <motion.svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"
+    className="absolute inset-0 w-full h-full z-40 pointer-events-none rounded-[20px]"
+    initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 1.1, delay: 0.25 }}>
+    {bossId === 'octopus' && (
+      <g fill="#1f2440">
+        <path d="M30 22C44 12 62 18 66 32C82 34 88 52 76 62C80 78 62 90 48 80C34 92 14 80 20 64C6 56 12 30 30 22Z" />
+        <circle cx="16" cy="18" r="6" /><circle cx="88" cy="24" r="4.5" /><circle cx="84" cy="84" r="6.5" /><circle cx="10" cy="88" r="4" />
+      </g>
+    )}
+    {bossId === 'oni' && (
+      <g stroke="#e11d48" strokeWidth="13" strokeLinecap="round"><path d="M18 18L82 82M82 18L18 82" /></g>
+    )}
+    {bossId === 'dragon' && (
+      <g>
+        <path d="M0 0H100V34C92 60 84 40 76 62C68 86 60 52 50 78C40 52 32 86 24 62C16 40 8 60 0 34Z" fill="#8b5cf6" />
+        <path d="M14 0H86V20C78 40 72 26 64 44C58 58 54 36 50 52C46 36 42 58 36 44C28 26 22 40 14 20Z" fill="#ddd0ff" />
+      </g>
+    )}
+    {/* おばけ: 消しゴムで ごしごし こすった あと（書いた線と まぎれないように、ぎざぎざの 1 本にする） */}
+    {bossId !== 'octopus' && bossId !== 'oni' && bossId !== 'dragon' && (
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 22L88 10L14 40L90 30L12 60L88 52L16 80L90 72L30 92" stroke="#fbcfe8" strokeWidth="13" strokeOpacity="0.55" />
+        <path d="M10 22L88 10L14 40L90 30L12 60L88 52L16 80L90 72L30 92" stroke="#ffffff" strokeWidth="2" strokeOpacity="0.9" strokeDasharray="1 7" />
+      </g>
+    )}
+  </motion.svg>
+);
 
-  const handleStartRef = useRef(null); const handleMoveRef = useRef(null); const handleEndRef = useRef(null);
+const BossBattleView = ({ queue, bossRecord = null, onUpdateStat, onFinish, onBossDefeat, onRequestLeave, paused = false, sessionEarnedExp = 0 }) => {
+  const reduceMotion = useReducedMotionConfig();
+  // 画面回転にも追従する。サイズ変更時は BossCanvas 側で書きかけの画が消える（通常モードと同じ挙動）
+  const { canvasSize, isStacked } = useLearningViewport('boss');
 
-  const getCoords = (e) => {
-    const rect = writeRef.current.getBoundingClientRect();
-    const scaleX = canvasSize / rect.width;
-    const scaleY = canvasSize / rect.height;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
-  };
+  const [screen, setScreen] = useState('intro'); // intro | battle | result
+  const [bossId, setBossId] = useState(() => suggestedBossId(bossRecord));
+  const profile = bossProfile(bossId);
 
-  const handleStart = (e) => {
-    e.preventDefault();
-    if (disabled) return;
-    audioCtrl.init();
-    const { x, y } = getCoords(e);
-    setIsDrawing(true);
-    lastPos.current = { x, y };
-    currentPathRef.current = [{ x, y, time: Date.now() }];
-    const ctx = writeRef.current.getContext('2d');
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = canvasSize * 0.07;
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
+  // たたかいの計算の結果（いつも最新）。画面は shown を見る
+  const battleRef = useRef(null);
+  // 画面に出している状態。えんしゅつの あいだは、計算より おくれて進む
+  const [shown, setShown] = useState(null); // { entry: { kanji, revenge }, turn, bossHp, bossMaxHp, playerHp, playerMaxHp, combo }
+  const [phase, setPhase] = useState('writing');
+  const [fx, setFx] = useState(null);
+  const [banner, setBanner] = useState(null);
+  const [speech, setSpeech] = useState(null);
+  const [review, setReview] = useState(null);
+  const [shot, setShot] = useState(null);
+  const [heartFx, setHeartFx] = useState(null);
+  const [strokeCount, setStrokeCount] = useState(0);
+  // ヒントを ひらいている問題（何問めか）。次の問題に進むと、ひとりでに とじる
+  const [hintTurn, setHintTurn] = useState(0);
+  const [final, setFinal] = useState(null);
+  const fxIdRef = useRef(0);
+  const doneRef = useRef(false);
+  // 1 問に 1 回だけ こうげきを受けつける（ボタンの 2 度おし・時間切れと ボタンが 同時のとき）。次の問題で もどす
+  const lockRef = useRef(false);
+  const rootRef = useRef(null);
+  const bossRef = useRef(null);
+  const canvasBoxRef = useRef(null);
+  const canvasRef = useRef(null);
 
-  const handleMove = (e) => {
-    e.preventDefault();
-    if (!isDrawing || disabled) return;
-    const { x, y } = getCoords(e);
-    currentPathRef.current.push({ x, y, time: Date.now() });
-    const ctx = writeRef.current.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(lastPos.current.x, lastPos.current.y);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    lastPos.current = { x, y };
-  };
-
-  const handleEnd = (e) => {
-    if (e && e.type !== 'mouseleave') e.preventDefault();
-    if (!isDrawing || disabled) return;
-    setIsDrawing(false);
-    const newStrokes = [...userStrokes, [...currentPathRef.current]];
-    setUserStrokes(newStrokes);
-    redrawInk(newStrokes);
-    const ctx = writeRef.current?.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
-  };
-
-  handleStartRef.current = handleStart; handleMoveRef.current = handleMove; handleEndRef.current = handleEnd;
-  useEffect(() => {
-    const canvas = writeRef.current; if (!canvas) return;
-    return attachDrawListeners(canvas, {
-      onStart: (e) => handleStartRef.current(e),
-      onMove: (e) => handleMoveRef.current(e),
-      onEnd: (e) => handleEndRef.current(e),
-    });
-  }, []);
-
-  const handleClear = () => {
-    setUserStrokes([]);
-    [inkRef, writeRef].forEach(ref => {
-      const ctx = ref.current?.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvasSize, canvasSize);
-    });
-  };
-
-  const handleSubmit = () => {
-    if (userStrokes.length === 0) return;
-    onSubmit(userStrokes);
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      <div className="relative border-[4px] border-rose-600 rounded-[20px] bg-slate-900 overflow-hidden touch-none shrink-0 shadow-[0_0_20px_rgba(225,29,72,0.3)]" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
-        {/* 十字ガイド */}
-        <div className="absolute top-0 left-1/2 w-0 h-full border-l-4 border-dashed border-slate-600 opacity-40 -translate-x-1/2 pointer-events-none" />
-        <div className="absolute top-1/2 left-0 w-full h-0 border-t-4 border-dashed border-slate-600 opacity-40 -translate-y-1/2 pointer-events-none" />
-        <canvas ref={inkRef} className="absolute inset-0 z-10 pointer-events-none w-full h-full" />
-        <canvas ref={writeRef} className="absolute inset-0 z-20 cursor-crosshair w-full h-full touch-none" />
-        {disabled && (
-          <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center">
-            <span className="text-white font-black text-lg">{F("判定中","はんていちゅう")}...</span>
-          </div>
-        )}
-      </div>
-      <div className="flex gap-2 w-full" style={{ maxWidth: canvasSize }}>
-        <MotionButton variant="secondary" onClick={handleClear} disabled={disabled || userStrokes.length === 0} className="flex-1 py-3 text-sm font-bold border-[3px] border-slate-600 bg-slate-700 text-slate-200">
-          <RefreshCw size={16} /> {F("書","か")}き{F("直","なお")}す
-        </MotionButton>
-        <MotionButton variant="primary" onClick={handleSubmit} disabled={disabled || userStrokes.length === 0} className="flex-2 py-3 text-lg font-black border-[3px] border-rose-800 bg-rose-600 text-white shadow-[0_4px_0_#9f1239] flex-grow-[2]">
-          <Swords size={20} /> {F("攻撃","こうげき")}する！
-        </MotionButton>
-      </div>
-    </div>
-  );
-};
-
-// --- メインのボスバトルビュー ---
-const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequestLeave, paused = false, sessionEarnedExp = 0 }) => {
-  const [idx, setIdx] = useState(0);
-  const [bossHp, setBossHp] = useState(BOSS_MAX_HP);
-  const bossHpRef = useRef(BOSS_MAX_HP);
-  const [playerHp, setPlayerHp] = useState(PLAYER_MAX_HP);
-  const playerHpRef = useRef(PLAYER_MAX_HP);
-  const earnedRef = useRef({ exp: 0, coins: 0, perfectCount: 0 });
-  const failedKanjiRef = useRef([]);
-  const isDoneRef = useRef(false);
-  // 画面回転にも追従する。サイズ変更時は BossBattleCanvas 側で書きかけの画が消える(通常モードと同じ挙動)
-  const { canvasSize } = useLearningViewport('boss');
-
-  // ストロークデータ
-  const [paths, setPaths] = useState([]);
-  const [strokeData, setStrokeData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // バトル状態
-  const [phase, setPhase] = useState('writing'); // writing | judging | result_hit | result_miss | boss_attack | defeated | victory
-  const [gradeResult, setGradeResult] = useState(null);
-  const [isShaking, setIsShaking] = useState(false);
-  const [playerDamageFlash, setPlayerDamageFlash] = useState(false);
-  const [bossAttackAnim, setBossAttackAnim] = useState(false);
-  const [battleMessage, setBattleMessage] = useState('');
-  const [retryKanji, setRetryKanji] = useState(false);
+  // お手本の線（KanjiVG）。どの字のものかを いっしょに持つ（次の問題に進んだ しゅんかんに、前の字の線で採点しないように）
+  const [vg, setVg] = useState({ char: null, paths: [], strokeData: [], error: false });
+  const [loadTry, setLoadTry] = useState(0);
 
   // タイマー
   const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(30);
   const timerRef = useRef(null);
   const timeLeftRef = useRef(0);
   // 演出のタイマー（setTimeout）は画面を離れたら止める。以前は離れたあとも動き、
@@ -202,15 +146,14 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
   useEffect(() => {
     const onVisibility = () => setPageHidden(document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
+    const pending = pendingTimeoutsRef.current;
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
-      pendingTimeoutsRef.current.forEach(clearTimeout);
-      pendingTimeoutsRef.current.clear();
+      pending.forEach(clearTimeout);
+      pending.clear();
       clearInterval(timerRef.current);
     };
   }, []);
-
-  const kanji = queue[idx % queue.length];
 
   // BGM
   useEffect(() => {
@@ -218,46 +161,196 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
     return () => audioCtrl.stopBGM();
   }, []);
 
-  const [fetchError, setFetchError] = useState(null);
+  const say = useCallback((text, ms = 2400) => {
+    const id = ++fxIdRef.current;
+    setSpeech({ id, text });
+    later(() => setSpeech((cur) => (cur?.id === id ? null : cur)), ms);
+  }, [later]);
+  const announce = useCallback((text, tone = 'plain', ms = 1300) => {
+    const id = ++fxIdRef.current;
+    setBanner({ id, text, tone });
+    later(() => setBanner((cur) => (cur?.id === id ? null : cur)), ms);
+  }, [later]);
+
+  const kanji = shown?.entry?.kanji || null;
+  const char = kanji?.char || null;
 
   // KanjiVGデータ取得（リトライ・キャッシュ付き）
   useEffect(() => {
-    if (!kanji) return;
+    if (!char) return undefined;
     let cancelled = false;
-    const load = async () => {
-      setIsLoading(true); setFetchError(null);
-      try {
-        const { paths: p, strokeData: data } = await fetchKanjiVg(kanji.char);
-        if (cancelled) return;
-        setPaths(p); setStrokeData(data);
-      } catch {
-        if (cancelled) return;
-        setPaths([]); setStrokeData([]);
-        setFetchError(true);
-      }
-      setIsLoading(false);
-    };
-    load();
+    fetchKanjiVg(char).then(({ paths, strokeData }) => {
+      if (!cancelled) setVg({ char, paths, strokeData, error: false });
+    }).catch(() => {
+      if (!cancelled) setVg({ char, paths: [], strokeData: [], error: true });
+    });
     return () => { cancelled = true; };
-  }, [kanji]);
+  }, [char, loadTry]);
+  const vgReady = vg.char === char;
+  const paths = vgReady ? vg.paths : EMPTY;
+  const strokeData = vgReady ? vg.strokeData : EMPTY;
+  const fetchError = vgReady && vg.error;
+  const isLoading = !vgReady;
 
-  // 制限時間の計算（画数×3秒、最低15秒、最大45秒）
-  const calcTimeLimit = useCallback(() => {
-    if (!strokeData.length) return 30;
-    return Math.min(45, Math.max(15, strokeData.length * 3));
-  }, [strokeData]);
-
-  // 新しい問題（またはやりなおし）の制限時間を決める
+  // 新しい問題の制限時間を決める
+  const turn = shown?.turn || 0;
   useEffect(() => {
-    if (phase !== 'writing' || isLoading || !strokeData.length) return;
-    const limit = calcTimeLimit();
+    if (screen !== 'battle' || phase !== 'writing' || isLoading || !strokeData.length) return;
+    const limit = timeLimitFor(strokeData.length);
+    setTimeLimit(limit);
     setTimeLeft(limit);
     timeLeftRef.current = limit;
-  }, [phase, isLoading, strokeData, idx, retryKanji]);
+  }, [screen, phase, isLoading, strokeData, turn]);
+
+  // ── たたかいを はじめる ──
+  const startBattle = () => {
+    audioCtrl.init();
+    const state = createBattle(queue, { bossId });
+    if (!state.current) return;
+    battleRef.current = state;
+    lockRef.current = false;
+    setShown({ entry: state.current, turn: state.turn, bossHp: state.bossHp, bossMaxHp: state.bossMaxHp, playerHp: state.playerHp, playerMaxHp: state.playerMaxHp, combo: 0 });
+    setPhase('writing');
+    setScreen('battle');
+    audioCtrl.playSE(BOSS_SE.appear);
+    say(profile.intro, 2600);
+  };
+
+  // ── 次の問題へ ──
+  const advance = () => {
+    const state = battleRef.current;
+    if (!state || state.status !== 'fighting') return;
+    setFx(null); setReview(null); setBanner(null); setShot(null);
+    setStrokeCount(0);
+    setShown((s) => ({ ...s, entry: state.current, turn: state.turn }));
+    setPhase('writing');
+    lockRef.current = false;
+  };
+
+  // ── 勝ち負けが決まった ──
+  const finishBattle = (won) => {
+    const state = battleRef.current;
+    setPhase('ending');
+    setReview(null); setShot(null);
+    if (won) { audioCtrl.playSE(BOSS_SE.win); say(profile.lose, 2200); } else { audioCtrl.playSE(BOSS_SE.lose); }
+    const stars = starsFor(state);
+    const index = BOSSES.findIndex((boss) => boss.id === bossId);
+    const nextBoss = BOSSES[index + 1];
+    // はじめて たおしたときだけ、次のボスが あらわれる
+    const unlockedBossId = won && nextBoss && !isBossUnlocked(bossRecord, nextBoss.id) ? nextBoss.id : null;
+    later(() => {
+      setFinal({ won, stars, state, coins: coinsFor(state), unlockedBossId, record: recordBossResult(bossRecord, { bossId, stars }) });
+      setScreen('result');
+    }, won ? 1900 : 1300);
+  };
+
+  // 結果を かくていして、学習の結果の画面へ
+  const completeResult = useCallback(() => {
+    if (doneRef.current || !final) return;
+    doneRef.current = true;
+    const { won, state, coins, record } = final;
+    if (won) onFinish({ coins, perfectCount: state.criticals, rareDrop: 't_gold_castle', bossRecord: record });
+    else onBossDefeat({ coins, perfectCount: state.criticals, failedKanji: state.failed });
+  }, [final, onFinish, onBossDefeat]);
+  useEffect(() => {
+    if (screen !== 'result' || !final || paused) return undefined;
+    const id = setTimeout(completeResult, RESULT_AUTO_MS);
+    return () => clearTimeout(id);
+  }, [screen, final, paused, completeResult]);
+
+  // ── 書いた字で こうげきする（timedOut: 時間切れで、書いた所まで） ──
+  const submitStrokes = (strokes, timedOut = false) => {
+    const before = battleRef.current;
+    if (!before || before.status !== 'fighting' || phase !== 'writing' || !shown || !strokeData.length || lockRef.current) return;
+    lockRef.current = true;
+    clearInterval(timerRef.current);
+    const entry = shown.entry;
+    // リベンジ（こたえを見たあとの 2 回目）は、毎日のテストの「2 回目」と同じに、読み取れる字を通す
+    const judgment = strokes.length > 0 ? judgeWriting(strokes, strokeData, canvasSize, { previousFails: entry.revenge ? 1 : 0 }) : null;
+    const attack = judgeAttack(judgment);
+    const result = resolveTurn(before, attack);
+    const next = result.state;
+    battleRef.current = next;
+    onUpdateStat(entry.kanji, result.evaluation, judgment
+      ? { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(judgment.result, result.evaluation) }
+      : WRITING_SKILLS);
+    // 次の字の お手本を 先に読んでおく（えんしゅつの あいだに そろう）
+    if (next.status === 'fighting' && next.current) fetchKanjiVg(next.current.kanji.char).catch(() => {});
+
+    const id = ++fxIdRef.current;
+    const effect = { id, kind: attack.kind, reason: attack.reason, damage: result.damage, parts: result.parts, healed: result.healed, revenge: result.revenge, timedOut, judgment };
+    setFx(effect);
+
+    if (result.damage > 0) {
+      const impact = () => {
+        setPhase('impact');
+        setShot(null);
+        setShown((s) => ({ ...s, bossHp: next.bossHp, combo: next.combo }));
+        audioCtrl.playSE(attack.kind === 'critical' ? BOSS_SE.critical : BOSS_SE.hit);
+        if (attack.kind === 'critical') announce('かいしんの いちげき！', 'gold');
+        else if (attack.kind === 'hit') announce('ヒット！', 'plain');
+        else announce('かすった！ もっと ていねいに', 'plain');
+        if (result.revenge) {
+          later(() => {
+            announce(result.healed ? 'リベンジ せいこう！ ハート かいふく' : 'リベンジ せいこう！', 'heal', 1200);
+            if (result.healed) { setShown((s) => ({ ...s, playerHp: next.playerHp })); setHeartFx({ id, kind: 'heal' }); audioCtrl.playSE(BOSS_SE.heal); }
+          }, 650);
+        }
+        // 体力が半分を切ったら ボスが おこる
+        if (next.status === 'fighting' && bossPhase(before.bossHp, before.bossMaxHp) === 0 && bossPhase(next.bossHp, next.bossMaxHp) >= 1) {
+          // ダメージの数字が消えてから（次の問題が出るころ）に言う
+          later(() => { say(profile.rage, 2400); audioCtrl.playSE(BOSS_SE.rage); }, 1450);
+        }
+        later(() => (next.status === 'won' ? finishBattle(true) : advance()), result.revenge ? 1900 : 1350);
+      };
+      if (reduceMotion) { impact(); return; }
+      // 書いた字を、ますの まん中から ボスへ とばす
+      const root = rootRef.current?.getBoundingClientRect();
+      const from = canvasBoxRef.current?.getBoundingClientRect();
+      const to = bossRef.current?.getBoundingClientRect();
+      if (!root || !from || !to) { impact(); return; }
+      setPhase('shot');
+      setShot({
+        id, char: entry.kanji.char, critical: attack.kind === 'critical',
+        from: { x: from.left + from.width / 2 - root.left, y: from.top + from.height / 2 - root.top },
+        to: { x: to.left + to.width / 2 - root.left, y: to.top + to.height * 0.55 - root.top },
+      });
+      audioCtrl.playSE(BOSS_SE.shot);
+      later(impact, 430);
+      return;
+    }
+
+    setShown((s) => ({ ...s, combo: 0 }));
+    const openReview = () => {
+      setBanner(null);
+      setReview({ id, effect, showOrder: attack.reason === 'order' });
+      setPhase('review');
+    };
+    if (attack.kind === 'blocked') {
+      setPhase('guard');
+      audioCtrl.playSE(BOSS_SE.guard);
+      announce('おしい！ ふせがれた', 'cool', 1100);
+      say(profile.guard, 1800);
+      later(openReview, 1100);
+      return;
+    }
+    // 書けなかった: ボスの こうげき
+    setPhase('bossAttack');
+    audioCtrl.playSE(BOSS_SE.roar);
+    announce(`${profile.attack}！`, 'bad', 1400);
+    later(() => {
+      setShown((s) => ({ ...s, playerHp: next.playerHp }));
+      setHeartFx({ id, kind: 'hurt' });
+      audioCtrl.playSE(BOSS_SE.hurt);
+    }, 650);
+    later(() => (next.status === 'lost' ? finishBattle(false) : openReview()), 1700);
+  };
 
   // 時間を進める。「やめる？」の確認中・タブが見えていない間は止める
   // （以前は確認中も進み、時間切れでボスの強攻撃と「忘れた」の記録が入っていた）
-  const isTimerRunning = phase === 'writing' && !isLoading && strokeData.length > 0 && !paused && !pageHidden;
+  const isTimerRunning = screen === 'battle' && phase === 'writing' && !isLoading && strokeData.length > 0 && !paused && !pageHidden;
+  const submitRef = useRef(submitStrokes);
+  submitRef.current = submitStrokes;
   useEffect(() => {
     if (!isTimerRunning) return undefined;
     clearInterval(timerRef.current);
@@ -266,474 +359,230 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
       setTimeLeft(timeLeftRef.current);
       if (timeLeftRef.current <= 0) {
         clearInterval(timerRef.current);
-        handleTimeout();
+        // 時間切れ: 書いた所までで こうげきする（書きおえて ボタンを おしていない字は、そのまま採点する）
+        submitRef.current(canvasRef.current?.takeStrokes() || [], true);
       }
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [isTimerRunning, idx, retryKanji]);
+  }, [isTimerRunning, turn]);
 
-  // タイムアウト処理
-  const handleTimeout = () => {
-    if (isDoneRef.current) return;
-    clearInterval(timerRef.current);
-    setPhase('judging');
-    setBattleMessage('時間切れ！');
-    audioCtrl.playSE('stamp_bad');
-    setGradeResult({ total: 0, strokeCountMatch: false, crossMatch: false, details: ['時間切れ！書けなかった…'] });
+  if (screen === 'intro') {
+    return (
+      <BossIntro bossId={bossId} record={bossRecord} isStacked={isStacked}
+        onSelect={(id) => { if (isBossUnlocked(bossRecord, id)) { setBossId(id); audioCtrl.playSE('pop'); } }}
+        onStart={startBattle} onRequestLeave={onRequestLeave} />
+    );
+  }
+  if (screen === 'result' && final) {
+    return (
+      <BossResult won={final.won} bossId={bossId} state={final.state} stars={final.stars} coins={final.coins}
+        earnedExp={sessionEarnedExp} unlockedBossId={final.unlockedBossId} isStacked={isStacked} onDone={completeResult} />
+    );
+  }
+  if (!shown || !kanji) return null;
 
-    // ボスからの強攻撃（2ダメージ）
-    later(() => {
-      doBossAttack(2, 'タイムアウト！ボスの強攻撃！');
-      // 復習リスト入り
-      addToFailedKanji(kanji);
-      onUpdateStat(kanji, 'again', WRITING_SKILLS);
-    }, 800);
-  };
+  const won = battleRef.current?.status === 'won';
+  const angry = bossPhase(shown.bossHp, shown.bossMaxHp) >= 1 && shown.bossHp > 0;
+  const mood = phase === 'impact' ? 'hurt'
+    : phase === 'guard' ? 'smug'
+      : phase === 'bossAttack' ? 'attack'
+        : phase === 'ending' && won ? 'down'
+          : angry ? 'angry' : 'idle';
+  const pose = phase === 'impact' ? (fx?.kind === 'critical' ? 'big' : 'hurt')
+    : phase === 'guard' ? 'guard'
+      : phase === 'bossAttack' ? 'attack'
+        : phase === 'ending' && won ? 'down' : 'rest';
+  const stageFx = phase === 'impact' ? 'impact' : phase === 'guard' ? 'guard' : null;
 
-  // ユーザーがストロークを提出
-  const handleSubmitStrokes = (userStrokes) => {
-    if (isDoneRef.current || phase !== 'writing') return;
-    clearInterval(timerRef.current);
-    setPhase('judging');
+  const timeRatio = Math.max(0, Math.min(1, timeLeft / (timeLimit || 1)));
+  const timerColor = timeRatio > 0.5 ? '#34d399' : timeRatio > 0.25 ? '#facc15' : '#f87171';
+  const writing = phase === 'writing';
+  const canWrite = writing && !isLoading && !fetchError && strokeData.length > 0;
 
-    const result = gradeStrokes(userStrokes, strokeData, canvasSize);
-    setGradeResult(result);
+  const promptExample = pickPromptExample(kanji, shown.turn - 1);
+  const hintOpen = hintTurn === shown.turn;
+  const readings = (
+    <>
+      {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
+      {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
+      {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
+        <React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>
+      )) : ''}
+    </>
+  );
 
-    later(() => {
-      if (!result.strokeCountMatch) {
-        // 画数違い → 一撃アウト（0点）、ボス強攻撃2ダメージ
-        setBattleMessage('画数がちがう！一撃アウト！');
-        audioCtrl.playSE('stamp_bad');
-        doBossAttack(2, '画数ミス！ボスの猛攻撃！');
-        addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
-      } else if (!result.crossMatch) {
-        // 交差ミス → 一撃アウト（0点）、ボス強攻撃2ダメージ
-        setBattleMessage('せんの交わりがちがう！一撃アウト！');
-        audioCtrl.playSE('stamp_bad');
-        doBossAttack(2, '交差ミス！ボスの猛攻撃！');
-        addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
-      } else if (isOrderMistake(result)) {
-        // 書き順ちがい → 見た目が合っていても攻撃は通らない。復習リストに入れる。
-        // 点数（上限69点）だけで見ると「ダメージを与えた」になり、まちがった書き順に報酬が出ていた。
-        setBattleMessage('書き順がちがう！ダメージが通らない！');
-        audioCtrl.playSE('stamp_bad');
-        doBossAttack(1, 'ボスの反撃！');
-        addToFailedKanji(kanji);
-        onUpdateStat(kanji, recommendEvaluation(result), { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, recommendEvaluation(result)) });
-      } else if (result.total >= 80) {
-        // 会心の一撃
-        setBattleMessage('会心の一撃！');
-        audioCtrl.playSE('stamp_perfect');
-        doBossHit(1, true);
-        earnedRef.current = {
-          ...earnedRef.current,
-          exp: earnedRef.current.exp + 25,
-          coins: earnedRef.current.coins + 8,
-          perfectCount: earnedRef.current.perfectCount + 1,
-        };
-        onUpdateStat(kanji, 'easy', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'easy') });
-      } else if (result.total >= 60) {
-        // ダメージ！
-        setBattleMessage('ダメージを与えた！');
-        audioCtrl.playSE('boss_hit');
-        doBossHit(1, false);
-        earnedRef.current = {
-          ...earnedRef.current,
-          exp: earnedRef.current.exp + 15,
-          coins: earnedRef.current.coins + 5,
-        };
-        onUpdateStat(kanji, 'good', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'good') });
-      } else if (result.total >= 50) {
-        // ダメージ通らない + ボス反撃1ダメージ
-        setBattleMessage('おしい…ダメージが通らない！');
-        audioCtrl.playSE('stamp_bad');
-        doBossAttack(1, 'ボスの反撃！');
-        onUpdateStat(kanji, 'hard', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'hard') });
-      } else {
-        // 50点未満 → ボス強攻撃2ダメージ + 復習リスト入り
-        setBattleMessage('うまく書けなかった…');
-        audioCtrl.playSE('stamp_bad');
-        doBossAttack(2, 'ボスの強攻撃！');
-        addToFailedKanji(kanji);
-        onUpdateStat(kanji, 'again', { ...WRITING_SKILLS, skillEvidence: writingSkillEvidence(result, 'again') });
-      }
-    }, 600);
-  };
-
-  // ボスにダメージ
-  const doBossHit = (damage, isCritical) => {
-    setPhase(isCritical ? 'result_hit' : 'result_hit');
-    setIsShaking(true);
-    later(() => setIsShaking(false), 600);
-
-    const newHp = Math.max(0, bossHpRef.current - damage);
-    bossHpRef.current = newHp;
-    setBossHp(newHp);
-
-    if (newHp <= 0 && !isDoneRef.current) {
-      isDoneRef.current = true;
-      later(() => {
-        setPhase('victory');
-        audioCtrl.playSE('rare');
-      }, 1000);
-      later(() => {
-        onFinish({ coins: earnedRef.current.coins, perfectCount: earnedRef.current.perfectCount, rareDrop: 't_gold_castle' });
-      }, 3000);
-      return;
-    }
-
-    // 次の漢字へ
-    later(() => {
-      setRetryKanji(false);
-      advanceToNext();
-    }, 2000);
-  };
-
-  // ボスの攻撃
-  const doBossAttack = (damage, msg) => {
-    setPhase('boss_attack');
-    setBossAttackAnim(true);
-    audioCtrl.playSE('boss_hit');
-
-    later(() => {
-      setBossAttackAnim(false);
-      setPlayerDamageFlash(true);
-      audioCtrl.playSE('stamp_bad');
-      setBattleMessage(msg);
-
-      const newHp = Math.max(0, playerHpRef.current - damage);
-      playerHpRef.current = newHp;
-      setPlayerHp(newHp);
-
-      later(() => setPlayerDamageFlash(false), 500);
-
-      if (newHp <= 0 && !isDoneRef.current) {
-        isDoneRef.current = true;
-        later(() => {
-          setPhase('defeated');
-          audioCtrl.playSE('stamp_bad');
-        }, 800);
-        later(() => {
-          onBossDefeat({
-            coins: Math.floor(earnedRef.current.coins / 2),
-            perfectCount: earnedRef.current.perfectCount,
-            failedKanji: failedKanjiRef.current,
-          });
-        }, 4000);
-        return;
-      }
-
-      // 次の漢字へ
-      later(() => {
-        setRetryKanji(false);
-        advanceToNext();
-      }, 1500);
-    }, 600);
-  };
-
-  const addToFailedKanji = (k) => {
-    if (!failedKanjiRef.current.find(fk => fk.id === k.id)) {
-      failedKanjiRef.current = [...failedKanjiRef.current, k];
-    }
-  };
-
-  const advanceToNext = () => {
-    setGradeResult(null);
-    setBattleMessage('');
-    setIdx(prev => prev + 1);
-    setPhase('writing');
-  };
-
-  if (!kanji) return null;
-
-  // --- タイマーバーの色 ---
-  const timeLimit = calcTimeLimit();
-  const timeRatio = timeLeft / (timeLimit || 1);
-  const timerColor = timeRatio > 0.5 ? 'bg-emerald-500' : timeRatio > 0.25 ? 'bg-yellow-500' : 'bg-red-500';
-
-  // --- レンダリング ---
   return (
-    <div className={`flex flex-col h-full w-full bg-slate-950 relative overflow-hidden transition-colors duration-200 ${playerDamageFlash ? 'bg-red-950' : ''}`}>
-      {/* 背景パーティクル演出 */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-rose-500/30 rounded-full"
-            animate={{ y: [0, -800], x: [0, Math.sin(i) * 50], opacity: [0.5, 0] }}
-            transition={{ duration: 4 + i, repeat: Infinity, delay: i * 0.7 }}
-            style={{ left: `${15 + i * 15}%`, top: '100%' }}
-          />
-        ))}
-      </div>
+    <div ref={rootRef} className="flex flex-col h-full w-full bg-slate-950 text-white relative overflow-hidden" data-testid="boss-battle" data-phase={phase}>
+      <style>{BOSS_CSS}</style>
 
-      {/* ヘッダー: プレイヤーHP & ボスHP */}
-      <div className="flex-shrink-0 px-3 py-2 md:px-6 md:py-3 flex flex-col gap-2 z-10">
-        {/* プレイヤーHP */}
-        <div className="flex items-center gap-2">
-          {phase !== 'victory' && phase !== 'defeated' && <LeaveLearningButton onClick={onRequestLeave} tone="dark" />}
-          <div className="text-xs font-bold text-slate-400 w-16 shrink-0">
-            <Shield size={14} className="inline mr-1" />じぶん
-          </div>
-          <div className="flex gap-1">
-            {[...Array(PLAYER_MAX_HP)].map((_, i) => (
-              <motion.div
-                key={i}
-                animate={i >= playerHp ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 500 }}
-                className="text-2xl"
-              >
-                {i < playerHp ? '❤️' : '🖤'}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-        {/* ボスHP */}
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-bold text-rose-400 w-16 shrink-0">👻ボス</div>
-          <div className="flex-1 bg-slate-800 h-5 rounded-full border-2 border-slate-600 overflow-hidden">
-            <motion.div
-              animate={{ width: `${(Math.max(bossHp, 0) / BOSS_MAX_HP) * 100}%` }}
-              transition={{ type: 'spring', stiffness: 300 }}
-              className="h-full bg-gradient-to-r from-rose-700 to-rose-500"
-            />
-          </div>
-          <div className="text-sm font-black text-rose-400 w-14 text-right">{Math.max(bossHp, 0)}/{BOSS_MAX_HP}</div>
-        </div>
-      </div>
-
-      {/* メインエリア */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 min-h-0 overflow-hidden">
-        {/* 左: ボスエリア */}
-        <div className="flex flex-col items-center justify-center gap-2 lg:w-[280px] shrink-0">
-          {/* ボスキャラ */}
-          <div className="relative">
-            <motion.div
-              animate={
-                bossAttackAnim
-                  ? { x: [0, 80, 0], scale: [1, 1.3, 1], rotate: [0, -10, 0] }
-                  : isShaking
-                  ? { x: [-8, 8, -8, 8, 0], opacity: [1, 0.5, 1] }
-                  : phase === 'defeated'
-                  ? { opacity: 0, y: 50, rotate: 20 }
-                  : { y: [-6, 6, -6] }
-              }
-              transition={
-                bossAttackAnim
-                  ? { duration: 0.4 }
-                  : isShaking
-                  ? { duration: 0.3 }
-                  : phase === 'defeated'
-                  ? { duration: 1 }
-                  : { repeat: Infinity, duration: 2.5 }
-              }
-              className="w-28 h-28 md:w-36 md:h-36"
-            >
-              <SvgGhostBoss />
-            </motion.div>
-            {/* ボスのセリフ */}
-            <AnimatePresence>
-              {battleMessage && phase !== 'writing' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 border-2 border-rose-500 text-rose-300 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl whitespace-nowrap shadow-lg z-20"
-                >
-                  {battleMessage}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* 出題：例文の中の◯を書く。読みの並びはヒント（同じ字が続くときは例文を変える） */}
-          {(() => {
-            const promptExample = pickPromptExample(kanji, Math.floor(idx / queue.length) + idx);
-            const readings = (
-              <>
-                {kanji.on.length > 0 ? kanji.on.join(' / ') : ''}
-                {kanji.on.length > 0 && kanji.kun.length > 0 ? ' / ' : ''}
-                {kanji.kun.length > 0 ? kanji.kun.map((k, i) => (
-                  <React.Fragment key={i}><FormatKun text={k} />{i < kanji.kun.length - 1 ? ' / ' : ''}</React.Fragment>
-                )) : ''}
-              </>
-            );
+      {/* 上の帯: やめる・ハート・コンボ・何問め */}
+      <div className="shrink-0 flex items-center gap-2 px-2 md:px-4 pt-2 z-10">
+        {phase !== 'ending' && <LeaveLearningButton onClick={onRequestLeave} tone="dark" />}
+        <motion.div key={heartFx?.kind === 'hurt' ? `hurt-${heartFx.id}` : 'hearts'}
+          animate={heartFx?.kind === 'hurt' ? { x: [0, -7, 7, -5, 5, 0] } : { x: 0 }} transition={{ duration: 0.4 }}
+          className="flex items-center gap-0.5" role="img" aria-label={`ハート ${shown.playerHp}こ`} data-testid="boss-hearts" data-hp={shown.playerHp}>
+          {Array.from({ length: shown.playerMaxHp }, (_, i) => {
+            const full = i < shown.playerHp;
+            const healed = heartFx?.kind === 'heal' && i === shown.playerHp - 1;
             return (
-              // 狭い画面ではボスの絵が下に重なるので、問題文を手前に出す（ヒントを押せるように）
-              <div className="relative z-10 bg-slate-800/95 border-2 border-slate-700 rounded-xl px-4 py-2 text-center w-full max-w-[280px]">
-                <div className="text-[10px] font-bold text-rose-400 mb-1">{F("弱点","じゃくてん")}：「◯」の{F("漢字","かんじ")}を {F("書","か")}け！</div>
-                {promptExample ? (
-                  <>
-                    <p className="text-lg md:text-xl font-black text-white ruby-text leading-relaxed" data-testid="boss-prompt">
-                      <SurvivalRubyText text={promptExample} targetChar={kanji.char} />
-                    </p>
-                    <details className="text-slate-300">
-                      <summary className="min-h-[44px] flex items-center justify-center cursor-pointer list-none text-xs font-bold rounded-lg hover:bg-slate-700/60 [&::-webkit-details-marker]:hidden">
-                        <span>💡 ヒント：{F("読","よ")}みかた</span>
-                      </summary>
-                      <div className="text-sm font-black text-white leading-tight pb-1">{readings}</div>
-                    </details>
-                  </>
-                ) : (
-                  <div className="text-lg md:text-xl font-black text-white leading-tight">{readings}</div>
-                )}
-              </div>
+              <motion.span key={healed ? `heal-${heartFx.id}` : i} animate={healed ? { scale: [0.4, 1.5, 1] } : { scale: 1 }} transition={{ duration: 0.45 }}>
+                <Heart size={28} aria-hidden="true" strokeWidth={2.4} className={full ? 'text-rose-500' : 'text-slate-600'} fill={full ? 'currentColor' : 'none'} />
+              </motion.span>
             );
-          })()}
+          })}
+        </motion.div>
+        <div className="flex-1 min-w-0" />
+        {shown.combo >= 2 && (
+          <motion.div key={shown.combo} initial={{ scale: 0.6 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 14 }}
+            className="shrink-0 px-2.5 py-1 rounded-full bg-amber-400 text-slate-900 text-sm font-black whitespace-nowrap flex items-center gap-1" data-testid="boss-combo">
+            <Flame size={16} aria-hidden="true" />
+            <span>{shown.combo} コンボ</span>
+          </motion.div>
+        )}
+        <div className="shrink-0 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-600 text-xs md:text-sm font-black text-slate-100 whitespace-nowrap tabular-nums" data-testid="boss-turn">
+          {shown.turn}もんめ
+        </div>
+      </div>
 
-          {/* 獲得EXP / 情報 */}
-          <div className="flex gap-2 w-full max-w-[280px]">
-            <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
-              <div className="text-[9px] font-bold text-slate-500">EXP</div>
-              <div className="text-sm font-black text-yellow-400">+{sessionEarnedExp}</div>
-            </div>
-            <div className="flex-1 bg-slate-800/60 border border-slate-700 rounded-lg p-2 text-center">
-              <div className="text-[9px] font-bold text-slate-500">{F("問目","もんめ")}</div>
-              <div className="text-sm font-black text-slate-300">{Math.min(idx + 1, queue.length)}/{queue.length}</div>
-            </div>
+      {/* 読み上げ用（いまの できごと） */}
+      <div className="sr-only" aria-live="polite">{banner?.text || ''}{stageFx === 'impact' && fx ? ` ${fx.damage} ダメージ` : ''}</div>
+
+      <div className={`flex-1 min-h-0 flex ${isStacked ? 'flex-col justify-center gap-2' : 'flex-row gap-4'} px-2 md:px-4 py-2 overflow-y-auto no-scrollbar`}>
+        {/* ボスと問題 */}
+        {/* 縦積みでは 舞台・問題・ますを 1 列に ならべる（contents）。ますが はばで決まって 高さが あまるときは、
+            舞台が その分だけ大きくなる（250px まで） */}
+        <div className={isStacked ? 'contents' : 'flex flex-col gap-3 w-[clamp(360px,34vw,460px)] shrink-0 min-h-0'}>
+          <BossStage ref={bossRef} bossId={bossId} profile={profile} mood={mood} pose={pose}
+            hp={shown.bossHp} maxHp={shown.bossMaxHp} angry={angry} fx={fx} stage={stageFx} banner={banner} speech={speech} side={isStacked}
+            className={isStacked ? 'w-full flex-1 min-h-[clamp(110px,21dvh,250px)] max-h-[250px]' : 'flex-1 min-h-[200px]'} />
+
+          {/* 出題: 例文の中の ◯ を書く。読みの並びは ヒント（同じ字が もう一度出るときは 例文を変える）。
+              こたえを見ているあいだは、書けなかった わけと、字の入った例文を出す */}
+          <div className={`relative shrink-0 rounded-2xl border-2 px-3 py-2 text-center ${review ? 'bg-amber-950 border-amber-300' : shown.entry.revenge ? 'bg-emerald-950 border-emerald-400' : 'bg-slate-800 border-slate-600'}`} data-testid="boss-question" data-revenge={shown.entry.revenge ? 'true' : 'false'}>
+            {review ? (
+              <p className="text-sm md:text-base font-black text-amber-200 leading-snug" data-testid="boss-reason">{reasonText(review.effect)}</p>
+            ) : (
+              <div className={`text-xs font-black ${shown.entry.revenge ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {shown.entry.revenge
+                  ? <span>リベンジ！ {F('書', 'か')}けたら ハートが もどるよ</span>
+                  : <span>じゃくてん：「◯」の {F('字', 'じ')}を {F('書', 'か')}け！</span>}
+              </div>
+            )}
+            {promptExample ? (
+              <>
+                <div className="flex items-center gap-1 min-h-[48px]">
+                  <p className="flex-1 min-w-0 text-lg md:text-xl font-black text-white ruby-text !leading-[2.3]" data-testid="boss-prompt">
+                    {review ? <RubyText text={promptExample} always /> : <SurvivalRubyText text={promptExample} targetChar={kanji.char} />}
+                  </p>
+                  {/* ヒント（読みかた）。おすと 下に出る。問題が かわると とじる */}
+                  {!review && (
+                    <button type="button" onClick={() => setHintTurn((t) => (t === shown.turn ? 0 : shown.turn))} aria-expanded={hintOpen} data-testid="boss-hint"
+                      className={`shrink-0 min-w-[48px] min-h-[48px] px-1 rounded-xl border-2 text-[11px] font-black leading-tight flex flex-col items-center justify-center ${hintOpen ? 'bg-amber-300 border-amber-500 text-slate-900' : 'bg-slate-700 border-slate-500 text-slate-100'}`}>
+                      <Lightbulb size={18} aria-hidden="true" />
+                      <span>ヒント</span>
+                    </button>
+                  )}
+                </div>
+                {hintOpen && !review && <div className="text-sm font-black text-amber-100 leading-snug pb-1" data-testid="boss-readings">{readings}</div>}
+              </>
+            ) : (
+              <div className="text-lg md:text-xl font-black text-white leading-tight py-1" data-testid="boss-prompt">{readings}</div>
+            )}
           </div>
         </div>
 
-        {/* 右: 書き取りエリア */}
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto no-scrollbar gap-2">
-          {/* タイマーバー */}
-          {phase === 'writing' && !isLoading && strokeData.length > 0 && (
-            <div className="w-full px-2" style={{ maxWidth: canvasSize }}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="text-xs font-bold text-slate-400">のこり{F("時間","じかん")}</div>
-                <div className={`text-sm font-black ${timeRatio > 0.25 ? 'text-slate-300' : 'text-red-400 animate-pulse'}`}>{timeLeft}{F("秒","びょう")}</div>
-              </div>
-              <div className="w-full bg-slate-800 h-3 rounded-full border border-slate-600 overflow-hidden">
-                <motion.div
-                  animate={{ width: `${timeRatio * 100}%` }}
-                  transition={{ duration: 0.3 }}
-                  className={`h-full ${timerColor} transition-colors`}
-                />
-              </div>
-            </div>
-          )}
-
+        {/* 書く ます */}
+        <div className={`min-w-0 flex flex-col items-center justify-center gap-2 ${isStacked ? 'shrink-0' : 'flex-1'}`}>
           {isLoading ? (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center" style={{ width: canvasSize, maxWidth: '100%', aspectRatio: '1/1' }}>
               <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : fetchError ? (
             <div className="flex flex-col items-center justify-center gap-4 p-6 text-center">
               <div className="text-5xl">😢</div>
-              <p className="text-slate-300 font-bold text-lg">よみこみに しっぱいしました</p>
-              <button onClick={() => { setFetchError(null); setIsLoading(true); fetchKanjiVg(kanji.char).then(({ paths: p, strokeData: data }) => { setPaths(p); setStrokeData(data); setIsLoading(false); }).catch(() => { setFetchError(true); setIsLoading(false); }); }} className="bg-rose-600 text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-rose-800 shadow-[3px_3px_0_#1e293b] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]">🔄 もういちど ためす</button>
+              <p className="text-slate-200 font-bold text-lg">よみこみに しっぱいしました</p>
+              <button type="button" onClick={() => { setVg({ char: null, paths: [], strokeData: [], error: false }); setLoadTry((n) => n + 1); }} className="min-h-[48px] bg-rose-600 text-white font-black text-lg px-8 py-3 rounded-2xl border-[3px] border-rose-800 active:translate-y-0.5">🔄 もういちど ためす</button>
             </div>
-          ) : phase === 'victory' ? (
-            <VictoryScreen bossHp={bossHp} earned={{ ...earnedRef.current, exp: sessionEarnedExp }} />
-          ) : phase === 'defeated' ? (
-            <DefeatScreen playerHp={playerHp} failedKanji={failedKanjiRef.current} />
           ) : (
             <>
-              <BossBattleCanvas
-                // 問題ごとに作り直す。同じ字が続くと strokeData が変わらず、前の問題の線が
-                // キャンバスに残って「画数ちがい」と誤って採点されていた
-                key={idx}
-                strokeData={strokeData}
-                paths={paths}
-                canvasSize={canvasSize}
-                onSubmit={handleSubmitStrokes}
-                disabled={phase !== 'writing'}
-              />
-
-              {/* 採点結果の表示 */}
-              <AnimatePresence>
-                {gradeResult && phase !== 'writing' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full bg-slate-800/90 border-2 border-slate-600 rounded-xl p-3 text-center"
-                    style={{ maxWidth: canvasSize }}
-                  >
-                    <div className={`text-3xl font-black mb-1 ${gradeResult.total >= 80 ? 'text-yellow-400' : gradeResult.total >= 60 ? 'text-emerald-400' : gradeResult.total >= 50 ? 'text-orange-400' : 'text-red-400'}`}>
-                      {gradeResult.total}点
+              <div ref={canvasBoxRef} className="relative max-w-full">
+                <BossCanvas
+                  // 問題ごとに作り直す。同じ字が続くと strokeData が変わらず、前の問題の線が
+                  // キャンバスに残って「画数ちがい」と誤って採点されていた
+                  key={shown.turn}
+                  ref={canvasRef}
+                  strokeData={strokeData}
+                  paths={paths}
+                  canvasSize={canvasSize}
+                  disabled={!canWrite}
+                  review={review}
+                  accent={profile.color}
+                  onCountChange={setStrokeCount}
+                />
+                {heartFx?.kind === 'hurt' && fx && heartFx.id === fx.id && <AttackSplash key={heartFx.id} bossId={bossId} />}
+                {!review && (
+                  // のこり時間（ますの上のはしに重ねる。さわっても 線は書ける）
+                  <div className="absolute left-3 right-3 top-2.5 z-30 flex items-center gap-1.5 pointer-events-none">
+                    <div className="flex-1 h-2 rounded-full bg-slate-700/90 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${(canWrite ? timeRatio : 1) * 100}%`, background: timerColor, transition: 'width 1s linear, background-color 0.3s' }} />
                     </div>
-                    <div className="flex flex-wrap gap-1 justify-center">
-                      {gradeResult.details.map((d, i) => (
-                        <span key={i} className="text-[10px] font-bold text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{d}</span>
-                      ))}
-                    </div>
-                  </motion.div>
+                    <Timer size={14} aria-hidden="true" className={timeRatio > 0.25 || !writing ? 'text-slate-300' : 'text-red-400'} />
+                    <span className={`w-6 text-right text-sm font-black tabular-nums ${timeRatio > 0.25 || !writing ? 'text-slate-200' : 'text-red-400'}`} data-testid="boss-time" aria-label={`のこり ${timeLeft}びょう`}>{canWrite ? timeLeft : '--'}</span>
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
+
+              <div className="flex gap-2 w-full min-h-[56px]" style={{ maxWidth: canvasSize }}>
+                {review ? (
+                  <MotionButton key="next" variant="primary" onClick={advance} data-testid="boss-next"
+                    className="flex-1 py-3 text-lg font-black border-[3px] border-amber-700 bg-amber-300 text-slate-900 shadow-[0_4px_0_#92400e]">
+                    <span>つぎへ<span className="max-[380px]:hidden">（あとで リベンジ！）</span></span> <ArrowRight size={20} aria-hidden="true" />
+                  </MotionButton>
+                ) : (
+                  <>
+                    <MotionButton key="clear" variant="secondary" onClick={() => canvasRef.current?.clear()} disabled={!canWrite || strokeCount === 0}
+                      className="flex-[2] min-w-0 py-3 text-sm font-bold whitespace-nowrap border-[3px] border-slate-500 bg-slate-700 text-slate-100">
+                      <RefreshCw size={16} aria-hidden="true" /> {F('書', 'か')}き{F('直', 'なお')}す
+                    </MotionButton>
+                    <MotionButton key="attack" variant="primary" onClick={() => submitStrokes(canvasRef.current?.takeStrokes() || [])} disabled={!canWrite || strokeCount === 0} data-testid="boss-attack"
+                      className="flex-[3] min-w-0 py-3 text-lg font-black whitespace-nowrap border-[3px] border-rose-900 bg-rose-600 text-white shadow-[0_4px_0_#881337]">
+                      <Swords size={20} aria-hidden="true" /> {F('攻撃', 'こうげき')}する！
+                    </MotionButton>
+                  </>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
+
+      {/* ハートが へったときの 赤い ふち */}
+      {heartFx?.kind === 'hurt' && (
+        <motion.div key={`flash-${heartFx.id}`} aria-hidden="true" className="absolute inset-0 z-30 pointer-events-none"
+          style={{ boxShadow: 'inset 0 0 90px 30px rgba(244,63,94,0.6)' }}
+          initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.9 }} />
+      )}
+
+      {/* 書いた字が ボスへ とんでいく */}
+      <AnimatePresence>
+        {shot && phase === 'shot' && (
+          <motion.div key={shot.id} aria-hidden="true"
+            className="absolute z-40 pointer-events-none flex items-center justify-center rounded-full font-black text-slate-900"
+            style={{
+              left: 0, top: 0, width: 76, height: 76, marginLeft: -38, marginTop: -38, fontSize: 46, lineHeight: 1,
+              background: shot.critical ? 'radial-gradient(circle, #ffffff 20%, #fde047 62%, #f59e0b)' : 'radial-gradient(circle, #ffffff 20%, #fdba74 62%, #f97316)',
+              border: '3px solid #ffffff',
+            }}
+            initial={{ x: shot.from.x, y: shot.from.y, scale: 1.7, opacity: 0.3 }}
+            animate={{ x: shot.to.x, y: shot.to.y, scale: 0.75, opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.4 }}
+            transition={{ duration: 0.42, ease: [0.5, 0, 0.9, 0.6] }}>
+            {shot.char}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
-
-// 勝利画面
-const VictoryScreen = ({ earned }) => (
-  <motion.div
-    initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1 }}
-    transition={{ type: 'spring', stiffness: 200 }}
-    className="flex flex-col items-center gap-4 text-center p-6"
-  >
-    <motion.div
-      animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.2, 1] }}
-      transition={{ repeat: Infinity, duration: 2 }}
-      className="text-7xl"
-    >
-      🎉
-    </motion.div>
-    <div className="text-4xl font-black text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
-      ボス{F("撃破","げきは")}！！
-    </div>
-    <div className="text-lg font-bold text-slate-300">おみごと！ボスをたおした！</div>
-    <div className="flex gap-4 mt-2">
-      <div className="bg-slate-800 border-2 border-yellow-500 rounded-xl px-6 py-3 text-center">
-        <div className="text-xs text-slate-400 font-bold">EXP</div>
-        <div className="text-2xl font-black text-yellow-400">+{earned.exp}</div>
-      </div>
-      <div className="bg-slate-800 border-2 border-yellow-500 rounded-xl px-6 py-3 text-center">
-        <div className="text-xs text-slate-400 font-bold">コイン</div>
-        <div className="text-2xl font-black text-yellow-400">+{earned.coins}</div>
-      </div>
-    </div>
-  </motion.div>
-);
-
-// 敗北画面
-const DefeatScreen = ({ failedKanji }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ duration: 0.8 }}
-    className="flex flex-col items-center gap-4 text-center p-6"
-  >
-    <motion.div
-      animate={{ y: [0, -5, 0] }}
-      transition={{ repeat: Infinity, duration: 2 }}
-      className="text-6xl"
-    >
-      💀
-    </motion.div>
-    <div className="text-3xl font-black text-red-400">やられた…</div>
-    <div className="text-sm font-bold text-slate-400">ボスにまけてしまった…</div>
-    {failedKanji.length > 0 && (
-      <div className="bg-slate-800 border-2 border-red-500/50 rounded-xl p-4 w-full max-w-[300px]">
-        <div className="text-xs font-bold text-red-400 mb-2">{F("復習","ふくしゅう")}リストに{F("追加","ついか")}された{F("漢字","かんじ")}</div>
-        <div className="flex flex-wrap gap-2 justify-center">
-          {failedKanji.map(k => (
-            <span key={k.id} className="text-2xl font-black text-white bg-red-900/50 border border-red-600 w-10 h-10 rounded-lg flex items-center justify-center">
-              {k.char}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
-    <div className="text-xs text-slate-500 mt-2">もう少しで結果画面に移動します...</div>
-  </motion.div>
-);
 
 export default BossBattleView;
