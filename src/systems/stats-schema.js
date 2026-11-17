@@ -24,7 +24,7 @@ const COUNT_FIELDS = [
 ];
 
 /** ふつうのオブジェクトを持つ欄 */
-const OBJECT_FIELDS = ['kanjiStats', 'townMap', 'townItems', 'achievements', 'materials', 'daily', 'dailyArchive', 'settings'];
+const OBJECT_FIELDS = ['kanjiStats', 'townMap', 'townItems', 'achievements', 'materials', 'daily', 'dailyArchive', 'settings', 'bossRecord'];
 
 /** 配列を持つ欄 */
 const ARRAY_FIELDS = ['myDrills', 'villagers', 'unlockedKanji', 'seenHints', 'dailyMissions', 'carelessLog'];
@@ -140,6 +140,8 @@ export function sanitizeStats(raw) {
   if (stats.townMap) stats.townMap = filterEntries(stats.townMap, keepString);
   if (stats.townItems) stats.townItems = filterEntries(stats.townItems, toCount);
   if (stats.materials) stats.materials = filterEntries(stats.materials, toCount);
+  // ボスバトルの きろく（たおした回数・★）。数だけを持つ
+  if (stats.bossRecord) stats.bossRecord = filterEntries(stats.bossRecord, toCount);
   if (stats.achievements) stats.achievements = filterEntries(stats.achievements, keepPlainObject);
   if (stats.daily) stats.daily = filterEntries(stats.daily, sanitizeDailyEntry);
   if (stats.dailyArchive) stats.dailyArchive = filterEntries(stats.dailyArchive, sanitizeDailyEntry);

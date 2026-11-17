@@ -3,7 +3,6 @@
 //   terrain・structures : 地形と、平らなアイテムの見本・「小さな家」
 //   nature              : 木・花・岩など（絵は nature-art.js）
 //   buildings           : 建物 69 種と 小さなもの 23 種（絵は buildings-art.js・props-art.js、部品は kit.js）
-//   special             : おばけ（ボスバトル）
 import { mountSharedDefs } from './iso-svg/shared.jsx';
 
 // 絵が参照する影・光・グラデーション（url(#…)）を、文書に 1 回だけ置く
@@ -13,4 +12,3 @@ export * from './iso-svg/terrain.jsx';
 export * from './iso-svg/nature.jsx';
 export * from './iso-svg/structures.jsx';
 export * from './iso-svg/buildings.jsx';
-export * from './iso-svg/special.jsx';

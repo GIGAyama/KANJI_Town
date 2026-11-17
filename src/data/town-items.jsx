@@ -15,10 +15,6 @@ const lazySvg = (exportName) => {
   return component;
 };
 
-// BossBattleView が使う、おばけの絵。
-const SvgGhostBoss = lazySvg('SvgGhostBoss');
-export { SvgGhostBoss };
-
 
 // もちもの欄の、カードの背景色。同じ文字列を何十回も書くと、その分だけ入口の束
 // （初回に読む JS。上限 220KiB）が大きくなるので、よく使う色は名前にまとめる。

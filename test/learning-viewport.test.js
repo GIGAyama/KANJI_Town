@@ -100,7 +100,27 @@ test('トレーニングモードは1280x800で360px固定時代より大幅に�
   assert.equal(drill.isStacked, false);
   assert.equal(drill.canvasSize, 562);
   assert.equal(survival.canvasSize, 552);
-  assert.equal(boss.canvasSize, 524);
+  assert.equal(boss.canvasSize, 548);
+});
+
+test('ボスバトル: スマホでは ますを 画面の はば近くまで広げ、舞台の高さ（画面の 21%）の分だけ ますを小さくする', () => {
+  const P = TRAINING_VIEWPORT_PRESETS.boss;
+  // 390×844: はば 390 - 32 = 358 で決まる（高さの のこりは 844 - 48 - 60 - 80 - 98 - 177 = 381）
+  assert.deepEqual(calculateTrainingViewport(390, 844, P), { isStacked: true, canvasSize: 358 });
+  // 375×667（低いスマホ）: 高さで決まる。667 - 48 - 60 - 80 - 98 - 140（舞台）= 241
+  assert.equal(calculateTrainingViewport(375, 667, P).canvasSize, 241);
+  // 360×640: ボタンまで 1 画面に入る大きさ（640 - 286 - 134 = 220）。これより低い画面は 220 のまま（たてに流せる）
+  assert.equal(calculateTrainingViewport(360, 640, P).canvasSize, 220);
+  assert.equal(calculateTrainingViewport(360, 560, P).canvasSize, 220);
+  // タブレットの たて向き（768px 以上）は、外わくの余白の分（64）を さらに引く
+  assert.equal(calculateTrainingViewport(768, 1024, P).canvasSize, 1024 - 48 - 60 - 80 - 98 - 64 - Math.round(1024 * 0.21));
+  // 横並び（Chromebook）: 768 - 48 - 60 - 80 - 64 = 516
+  assert.deepEqual(calculateTrainingViewport(1366, 768, P), { isStacked: false, canvasSize: 516 });
+  // 横並びの せまい画面は、左の列（いちばん広いとき 460）を引いた はばで決まる
+  assert.equal(calculateTrainingViewport(1024, 768, P).canvasSize, 1024 - 460 - 104);
+  // ほかのモードの計算は変えていない
+  assert.equal(calculateTrainingViewport(390, 844, TRAINING_VIEWPORT_PRESETS.survival).canvasSize, 294);
+  assert.equal(calculateTrainingViewport(360, 640, TRAINING_VIEWPORT_PRESETS.survival).canvasSize, 240);
 });
 
 test('トレーニングモードの縦持ちは縦積みで上限640まで広がる', () => {

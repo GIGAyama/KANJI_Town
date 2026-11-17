@@ -77,10 +77,10 @@ test('建物の絵: opacity が残るのは、ぬりと線の両方を持つ図�
   assert.ok(left <= 12, `opacity のまま残る図形が ${left} 個`);
 });
 
-test('JSX で描く絵（おばけ・平らなアイテムの見本）に、図形の opacity は無い', () => {
+test('JSX で描く絵（平らなアイテムの見本）に、図形の opacity は無い', () => {
   // こちらは React が そのまま描くので、書きかえの通り道が無い。うすい色は fillOpacity・strokeOpacity と書く。
   // （井戸・ベンチ・車などの小さなものは、建物と同じ文字列の絵になった。上の建物のテストが いっしょに見る）
-  for (const file of ['special.jsx', 'structures.jsx', 'terrain.jsx', 'nature.jsx', 'buildings.jsx']) {
+  for (const file of ['structures.jsx', 'terrain.jsx', 'nature.jsx', 'buildings.jsx']) {
     const source = readFileSync(new URL(`../src/data/iso-svg/${file}`, import.meta.url), 'utf8');
     const lines = source.split('\n').map((line, i) => [i + 1, line]).filter(([, line]) => /\sopacity=/.test(line));
     assert.deepEqual(lines.map(([no]) => no), [], `${file}: opacity と書いた行`);

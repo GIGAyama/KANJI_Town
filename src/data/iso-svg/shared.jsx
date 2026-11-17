@@ -10,11 +10,6 @@ import { houseArtMarkup } from './house-art.js';
 const SHARED_DEFS_ID = 'iso-svg-shared-defs';
 const SHARED_DEFS_MARKUP =
   '<defs>' +
-  // おばけ（special.jsx）の まわりの光
-  '<filter id="glow-effect" x="-50%" y="-50%" width="200%" height="200%">' +
-  '<feGaussianBlur stdDeviation="3" result="coloredBlur" />' +
-  '<feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>' +
-  '</filter>' +
   // 木・花・岩と「小さな家」の絵のおおもと（nature.jsx・structures.jsx が <use> で呼びだす）
   natureArtMarkup() +
   houseArtMarkup() +
