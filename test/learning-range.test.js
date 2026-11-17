@@ -215,3 +215,12 @@ test('範囲のようす: 字数・習った数・次の段がいつから何字
   assert.equal(all.nextStage, null);
   assert.equal(getLearningRangeStatus(null, {}, '2026-11-10'), null);
 });
+
+test('ホーム: 範囲に無い学年をえらんでいるときは、新出が範囲から出ることを目立つ形で出す', async () => {
+  const { readFileSync } = await import('node:fs');
+  const code = readFileSync(new URL('../src/components/social/HomeAssignments.jsx', import.meta.url), 'utf8');
+  // 範囲の字の学年に、えらんだ学年が無く、範囲がまだ終わっていないときだけ
+  assert.match(code, /const otherGrade = !status\.complete && !grades\.has\(grade\);/);
+  assert.match(code, /data-testid="range-grade-note"/);
+  assert.match(code, /\{grade\}\{F\("年","ねん"\)\}を えらんでいても、あたらしい\{F\("字","じ"\)\}は \{F\("先生","せんせい"\)\}の はんいから \{F\("出","で"\)\}るよ/);
+});
