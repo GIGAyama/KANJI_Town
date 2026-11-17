@@ -676,8 +676,8 @@ EXP が たまると レベルが 上がります。レベルは 100 で 止ま�
 - おいた ものは、そのたびに ほぞんされます。右上の「<ruby>保存<rt>ほぞん</rt></ruby>」を おすと ホームに もどります
 
 <ruby>道<rt>みち</rt></ruby>や <ruby>水路<rt>すいろ</rt></ruby>、<ruby>田<rt>た</rt></ruby>んぼは、となりに ならべると つながって 見えます。
-<ruby>橋<rt>はし</rt></ruby>を <ruby>水路<rt>すいろ</rt></ruby>の とちゅうに おくと、下を 水が ながれます。
-<ruby>道<rt>みち</rt></ruby>の 上には、<ruby>車<rt>くるま</rt></ruby>や ベンチを のせられます。
+<ruby>橋<rt>はし</rt></ruby>を <ruby>水路<rt>すいろ</rt></ruby>の とちゅうに おくと、下を 水が ながれます。<ruby>橋<rt>はし</rt></ruby>は、<ruby>水路<rt>すいろ</rt></ruby>を またぐ むきに かかります。
+<ruby>道<rt>みち</rt></ruby>の 上には、<ruby>車<rt>くるま</rt></ruby>や ベンチを のせられます。<ruby>車<rt>くるま</rt></ruby>や バスは、<ruby>道<rt>みち</rt></ruby>の むきに そろいます。
 <ruby>夜<rt>よる</rt></ruby>に ひらくと、まちの <ruby>建物<rt>たてもの</rt></ruby>に あかりが つきます。
 
 下に 3つの ボタンが あります。「もちもの」「つくる」「<ruby>住民<rt>じゅうみん</rt></ruby>」です。

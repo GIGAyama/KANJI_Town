@@ -106,6 +106,45 @@ export function groundKindOf(itemId, item) {
   return 'soil';
 }
 
+/** 道に そって置くもの（のりもの・ベンチ）。絵は x の方向（右手前）に長い */
+const ROAD_FOLLOWERS = new Set(['t_car', 't_bus', 't_fire_truck', 't_bicycle', 't_bench']);
+
+/** そのマスの地面の種類（地図に書いてある id だけで決まるもの。木などの足もとは見ない） */
+const plainKindAt = (map, x, y) => GROUND_KINDS[KIND_BY_ITEM[map[`${x},${y}`]]];
+
+/**
+ * 絵の左右を うら返して置くか（となりの水路・道の向きに そろえる）。
+ *
+ * 橋の絵は y の方向（左手前 ↔ 右おく）に わたる形で、x の方向に流れる水路を またぐ。
+ * 車・バス・ベンチなどの絵は x の方向（右手前）に長く、x の方向に のびる道に そう。
+ * 水路や道が もう一方の向きに のびているときは、絵を うら返すと ちょうど その向きになる
+ * （ななめ上から見た絵は、左右を うら返すと x と y が入れかわる）。
+ * どちらの向きとも言えないとき（となりに無い・両方に同じだけある）は、絵のまま。
+ * 道に そうものは、道（しき石・レンガも）の上に のせたときだけ そろえる。
+ *
+ * @param {Object<string,string>} map 地図
+ * @param {number} x
+ * @param {number} y
+ * @param {string} itemId そのマスに置いてあるもの（上に のせたものなら、その id）
+ * @returns {boolean | undefined} うら返すなら true、絵のままなら false。向きを そろえない種類は undefined
+ */
+export function turnedToFit(map, x, y, itemId) {
+  const safeMap = map || {};
+  let joins;
+  if (itemId === 't_bridge') {
+    joins = (kind) => kind?.group === 'water';
+  } else if (ROAD_FOLLOWERS.has(itemId)) {
+    if (!plainKindAt(safeMap, x, y)?.paved) return false;
+    joins = (kind) => Boolean(kind?.paved);
+  } else {
+    return undefined;
+  }
+  const count = (dx, dy) => (joins(plainKindAt(safeMap, x + dx, y + dy)) ? 1 : 0);
+  const alongX = count(-1, 0) + count(1, 0);
+  const alongY = count(0, -1) + count(0, 1);
+  return alongY > alongX;
+}
+
 const cellIndex = (x, y) => y * GRID_SIZE + x;
 const inGrid = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
 

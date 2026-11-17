@@ -8,7 +8,7 @@ import TerrainLayer from './TerrainLayer';
 import { WildProp, WILD_PROP_BOX, mountWildProps, wildPropFor } from './WildProps';
 import { audioCtrl } from '../../systems/audio';
 import { isVillagerInViewRange } from '../../systems/town-animation';
-import { buildGroundModel, isGroundItem } from '../../systems/town-ground';
+import { buildGroundModel, isGroundItem, turnedToFit } from '../../systems/town-ground';
 import { itemFit } from '../../data/town-item-fit';
 import { nightLightOf } from '../../systems/town-night-light';
 import { townArtFor, useTownArtReady } from '../../data/town-art';
@@ -114,7 +114,8 @@ const TownArt = ({ item, itemId, x, y, seed, mirrored, lift, zIndex, fresh }) =>
 // 値の props だけを受け取って memo する。ドラッグで表示範囲が変わっても、
 // 地図が変わらないマスは描き直さない。
 // artReady は、絵の束が読めたときに描き直すためだけに受け取る（中では使わない）
-const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh, freshTop, artReady }) => { // eslint-disable-line no-unused-vars
+// turn・topTurn は、となりの水路・道の向きに そろえて うら返すか（橋・車など。systems/town-ground.js の turnedToFit）
+const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh, freshTop, turn, topTurn, artReady }) => { // eslint-disable-line no-unused-vars
   const depth = Math.floor((x + y) * 100);
   const item = baseItemId ? TOWN_ITEM_MAP.get(baseItemId) || null : null;
   const topItem = topItemId ? TOWN_ITEM_MAP.get(topItemId) || null : null;
@@ -126,8 +127,8 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
   const standZIndex = depth + 140; // 立体物は、同じマスの地面・平面より手前
   // 大きな建物は、いちばん手前のマスの奥行きに合わせる（１マスの建物(+140)と基準をそろえる）
   const itemZIndex = item?.size ? depth + (item.size.w + item.size.h - 2) * 100 + 140 : standZIndex;
-  // 向きがえ（seed で決まる）は 1 マスのものだけ。大きな建物は、足もとの形が変わってしまう
-  const turned = Boolean(item?.hasVariants && !item.size && seedVal % 2 === 0);
+  // 向きがえ: 橋は水路の向きで決まる（turn）。ほかは seed で決まり、1 マスのものだけ（大きな建物は、足もとの形が変わってしまう）
+  const turned = turn ?? Boolean(item?.hasVariants && !item.size && seedVal % 2 === 0);
 
   return (
     <>
@@ -148,7 +149,7 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
       {/* 上乗せ（道の上の車・ベンチなど）。平らなものの厚み（2px）だけ持ち上げる */}
       {topItem && (
         <TownArt item={topItem} itemId={topItemId} x={x} y={y} seed={seedVal}
-          mirrored={itemFit(topItem).flip} lift={2} zIndex={standZIndex + 1} fresh={freshTop} />
+          mirrored={itemFit(topItem).flip !== Boolean(topTurn)} lift={2} zIndex={standZIndex + 1} fresh={freshTop} />
       )}
 
       {/* ゴースト（復習がたまっているとき） */}
@@ -630,13 +631,18 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
         const wildProp = isTerrain ? wildPropFor(baseId, x, y) : null;
         const hasGhost = ghostKeys.has(key);
         if (!stands && !wildProp && !topId && !hasGhost) continue;
-        cellList.push({ x, y, key, baseId: stands ? baseId : undefined, topId, wildProp, hasGhost });
+        cellList.push({
+          x, y, key, baseId: stands ? baseId : undefined, topId, wildProp, hasGhost,
+          turn: stands ? turnedToFit(safeMapData, x, y, baseId) : undefined,
+          topTurn: topId ? turnedToFit(safeMapData, x, y, topId) : undefined,
+        });
       }
     }
     cellList.sort((a, b) => (a.x + a.y) - (b.x + b.y));
-    return cellList.map(({ x, y, key, baseId, topId, wildProp, hasGhost }) => (
+    return cellList.map(({ x, y, key, baseId, topId, wildProp, hasGhost, turn, topTurn }) => (
       <TownCell key={key} x={x} y={y}
         baseItemId={baseId} topItemId={topId} wildProp={wildProp} hasGhost={hasGhost} artReady={artReady}
+        turn={turn} topTurn={topTurn}
         fresh={changed && before[key] !== safeMapData[key]}
         freshTop={changed && before[`${key}:top`] !== topId} />
     ));

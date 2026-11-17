@@ -14,6 +14,7 @@ import {
   isGroundItem,
   isLandAt,
   kindAt,
+  turnedToFit,
 } from '../src/systems/town-ground.js';
 import { GROUND_ICON_VIEWBOX, cellHash, paintChunk, paintGroundIcon, shade } from '../src/systems/town-ground-paint.js';
 import { C, GRID_SIZE } from '../src/systems/town-map-view.js';
@@ -305,4 +306,56 @@ test('マスごとの でたらめな数は 0 以上 1 未満で、同じマス�
   assert.equal(shade('#000000', 1), '#ffffff');
   assert.equal(shade('#ffffff', -1), '#000000');
   assert.match(shade('#9dd86b', -0.2), /^#[0-9a-f]{6}$/);
+});
+
+test('橋は、水路を またぐ向きに かかる（水路が y の方向なら、絵を うら返す）', () => {
+  // 橋の絵は y の方向に わたる形。x の方向に流れる水路なら、絵のまま
+  const alongX = { '9,10': 't_water', '10,10': 't_bridge', '11,10': 't_water' };
+  assert.equal(turnedToFit(alongX, 10, 10, 't_bridge'), false);
+  // y の方向に流れる水路なら、うら返して x の方向に わたす
+  const alongY = { '10,9': 't_water', '10,10': 't_bridge', '10,11': 't_water' };
+  assert.equal(turnedToFit(alongY, 10, 10, 't_bridge'), true);
+  // 池・浅瀬・となりの橋も「水」として数える
+  assert.equal(turnedToFit({ '10,9': 't_pond', '10,10': 't_bridge', '10,11': 't_shallow_water' }, 10, 10, 't_bridge'), true);
+  // はば 2 マスの水路（x の方向）に 橋を 2 つ並べても、どちらも またぐ向き
+  const wide = { '9,10': 't_water', '11,10': 't_water', '9,11': 't_water', '11,11': 't_water', '10,10': 't_bridge', '10,11': 't_bridge' };
+  assert.equal(turnedToFit(wide, 10, 10, 't_bridge'), false);
+  assert.equal(turnedToFit(wide, 10, 11, 't_bridge'), false);
+  // どちらとも言えないとき（となりに水が無い・両方にある）は、絵のまま
+  assert.equal(turnedToFit({ '10,10': 't_bridge' }, 10, 10, 't_bridge'), false);
+  assert.equal(turnedToFit({ '9,10': 't_water', '10,9': 't_water', '10,10': 't_bridge' }, 10, 10, 't_bridge'), false);
+  assert.equal(turnedToFit(null, 10, 10, 't_bridge'), false);
+});
+
+test('車・バス・ベンチは、のせた道の向きに そろう（道が y の方向なら、絵を うら返す）', () => {
+  const roadX = { '9,10': 't_road', '10,10': 't_road', '11,10': 't_road', '10,10:top': 't_car' };
+  const roadY = { '10,9': 't_road', '10,10': 't_road', '10,11': 't_asphalt', '10,10:top': 't_car' };
+  for (const id of ['t_car', 't_bus', 't_fire_truck', 't_bicycle', 't_bench']) {
+    assert.equal(turnedToFit(roadX, 10, 10, id), false, `${id}: x の方向の道`);
+    assert.equal(turnedToFit(roadY, 10, 10, id), true, `${id}: y の方向の道`);
+  }
+  // しき石・レンガの道でも そろう
+  assert.equal(turnedToFit({ '10,9': 't_stone_path', '10,10': 't_stone_path', '10,11': 't_brick' }, 10, 10, 't_bench'), true);
+  // 十字路・曲がり角・広場（どちらとも言えない）では、絵のまま
+  const cross = { '9,10': 't_road', '11,10': 't_road', '10,9': 't_road', '10,11': 't_road', '10,10': 't_crosswalk' };
+  assert.equal(turnedToFit(cross, 10, 10, 't_car'), false);
+  assert.equal(turnedToFit({ '9,10': 't_road', '10,9': 't_road', '10,10': 't_road' }, 10, 10, 't_car'), false);
+  // T 字路は、まっすぐ のびているほうに そろう
+  assert.equal(turnedToFit({ '10,9': 't_road', '10,11': 't_road', '11,10': 't_road', '10,10': 't_road' }, 10, 10, 't_bus'), true);
+  // 道の上でなければ（土の上に じかに置いた車）、となりに道があっても 絵のまま
+  assert.equal(turnedToFit({ '10,9': 't_road', '10,10': 't_car', '10,11': 't_road' }, 10, 10, 't_car'), false);
+  assert.equal(turnedToFit({ '10,9': 't_road', '10,10': 't_cleared', '10,11': 't_road' }, 10, 10, 't_car'), false);
+});
+
+test('向きを そろえるのは 橋と 道に そうものだけ（ほかは undefined で、これまでの決め方のまま）', () => {
+  const map = { '10,9': 't_road', '10,10': 't_road', '10,11': 't_road' };
+  for (const id of ['t_tree', 't_house1', 't_shop', 't_street_light', 't_vending_machine', 't_mailbox', 't_signal', 't_fence', undefined]) {
+    assert.equal(turnedToFit(map, 10, 10, id), undefined, String(id));
+  }
+  // 町マップは、この関数の答えを そのまま使う（橋は下のマス、車は上に のせたもの）
+  const source = read('../src/components/town/DraggableTownMap.jsx');
+  assert.match(source, /turn: stands \? turnedToFit\(safeMapData, x, y, baseId\) : undefined/);
+  assert.match(source, /topTurn: topId \? turnedToFit\(safeMapData, x, y, topId\) : undefined/);
+  assert.match(source, /const turned = turn \?\? Boolean\(/);
+  assert.match(source, /mirrored=\{itemFit\(topItem\)\.flip !== Boolean\(topTurn\)\}/);
 });

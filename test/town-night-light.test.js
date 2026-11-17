@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { LAMP_LIGHTS, nightLightOf } from '../src/systems/town-night-light.js';
+import { turnedToFit } from '../src/systems/town-ground.js';
 import { BUILDING_ART, buildingArt } from '../src/data/iso-svg/buildings-art.js';
 import { natureArt } from '../src/data/iso-svg/nature-art.js';
 import { artBounds } from '../src/data/iso-svg/scale-art.js';
@@ -50,9 +51,12 @@ test('あかりを持つ 小さなもの: あかりは 絵の中（高さの 4�
 
 test('あかりを持つ 小さなものは、左右を うら返して置かれない（うら返ると dx が逆になる）', () => {
   const source = read('../src/data/town-items.jsx');
+  // 道の上に のせても、道の向きで うら返さない
+  const roadY = { '10,9': 't_road', '10,10': 't_road', '10,11': 't_road' };
   for (const id of Object.keys(LAMP_LIGHTS)) {
     const line = source.split('\n').find((l) => l.includes(`id: '${id}'`));
     assert.ok(line && !line.includes('hasVariants'), `${id}: 向きがえ（hasVariants）のあるものに dx は使えない`);
+    assert.equal(turnedToFit(roadY, 10, 10, id), undefined, `${id}: 道の向きで うら返るものに dx は使えない`);
   }
 });
 
