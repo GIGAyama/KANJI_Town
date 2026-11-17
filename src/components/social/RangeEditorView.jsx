@@ -12,6 +12,7 @@ import { RANGE_KANJI_MAX, RANGE_STAGE_MAX, buildRangeShareUrl, sanitizeLearningR
 import { addDays, formatMonthDay } from '../../systems/homework-status';
 import { getTodayString } from '../../utils/date-utils';
 import ShareLinkPanel from './ShareLinkPanel';
+import { KanjiFinderControls, KanjiFinderResults, useKanjiFinder } from '../ui/KanjiFinder';
 
 const KANJI_BY_ID = new Map(KANJI_DATA.map(k => [k.id, k]));
 const GRADES = [1, 2, 3, 4, 5, 6];
@@ -36,15 +37,17 @@ const nextDate = (stages, today) => {
   return last ? addDays(last.from, WEEK) : today;
 };
 
-/** 字を えらぶ（学年タブ・タップ）。ほかの段にある字は えらべない */
-const KanjiPicker = ({ stageIndex, stages, onToggle, onClose, totalCount, initialGrade }) => {
-  const [grade, setGrade] = useState(initialGrade);
-  const owner = useMemo(() => {
+/** 字を えらぶ（さがす・学年・画数で しぼりこむ・タップ）。ほかの段にある字は えらべない */
+const KanjiPicker = ({ stageIndex, stages, onToggle, onAddMany, onRemoveMany, onClose, totalCount, initialGrade }) => {
+  const finder = useKanjiFinder({ initialGrade });
+  // ほかの段にある字（ふだに 段の番号を出す）
+  const locked = useMemo(() => {
     const map = new Map();
-    stages.forEach((stage, i) => stage.kanjis.forEach(id => map.set(id, i)));
+    stages.forEach((stage, i) => {
+      if (i !== stageIndex) stage.kanjis.forEach(id => map.set(id, { badge: String(i + 1), label: `${i + 1}だんめ` }));
+    });
     return map;
-  }, [stages]);
-  const list = KANJI_DATA.filter(k => k.grade === grade);
+  }, [stages, stageIndex]);
   const full = totalCount >= RANGE_KANJI_MAX;
   return (
     <ModalDialog labelId="range-picker-title" onEscape={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-stretch justify-center p-2 md:p-6 bg-black/40">
@@ -53,35 +56,21 @@ const KanjiPicker = ({ stageIndex, stages, onToggle, onClose, totalCount, initia
           <h3 id="range-picker-title" className="font-black text-[var(--text)]">{stageIndex + 1}だんめの{F("字","じ")}を えらぶ（{stages[stageIndex].kanjis.length}{F("字","じ")}）</h3>
           <MotionButton variant="primary" onClick={onClose} data-autofocus className="px-4 min-h-[48px] text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239]"><Check size={18} /> できた</MotionButton>
         </div>
-        <div className="flex gap-1 overflow-x-auto no-scrollbar p-2">
-          {GRADES.map(g => (
-            <button key={g} type="button" aria-pressed={grade === g} onClick={() => { audioCtrl.playSE('click'); setGrade(g); }} className={`shrink-0 min-h-[44px] px-4 rounded-full text-sm font-black whitespace-nowrap border-[2px] ${grade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--panel)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'}`}>{g}{F("年","ねん")}</button>
-          ))}
+        <div className="p-2 border-b-2 border-[var(--text)]/15">
+          <KanjiFinderControls finder={finder} idPrefix="range-finder" />
         </div>
-        {full && <p className="px-3 text-xs font-bold text-amber-700">{F("字","じ")}は ぜんぶで {RANGE_KANJI_MAX}{F("字","じ")}までです。{F("範囲","はんい")}を{F("分","わ")}けてください。</p>}
+        {full && <p className="px-3 pt-2 text-xs font-bold text-amber-700">{F("字","じ")}は ぜんぶで {RANGE_KANJI_MAX}{F("字","じ")}までです。{F("範囲","はんい")}を{F("分","わ")}けてください。</p>}
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
-          <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-            {list.map(k => {
-              const at = owner.get(k.id);
-              const mine = at === stageIndex;
-              const other = at !== undefined && !mine;
-              return (
-                <button
-                  key={k.id}
-                  type="button"
-                  aria-pressed={mine}
-                  disabled={other || (!mine && full)}
-                  aria-label={other ? `${k.char}（${at + 1}だんめ）` : k.char}
-                  onClick={() => onToggle(k.id)}
-                  className={`relative min-h-[48px] rounded-xl border-[3px] font-black text-2xl transition-all ${mine ? 'bg-[var(--primary)] text-[var(--panel)] border-[var(--primary)]' : other ? 'bg-[var(--bg)] text-[var(--text-muted)] border-transparent opacity-60' : 'bg-[var(--panel)] text-[var(--text)] border-[var(--text)]/40 hover:border-[var(--text)]'}`}
-                  style={{ fontFamily: "'Klee One', serif" }}
-                >
-                  {k.char}
-                  {other && <span className="absolute -top-1 -right-1 rounded-full bg-[var(--text)] text-[var(--panel)] text-[10px] font-black px-1 leading-4" aria-hidden="true">{at + 1}</span>}
-                </button>
-              );
-            })}
-          </div>
+          <KanjiFinderResults
+            finder={finder}
+            selectedIds={stages[stageIndex].kanjis}
+            lockedLabels={locked}
+            canAdd={!full}
+            onToggle={onToggle}
+            onAddMany={onAddMany}
+            onRemoveMany={onRemoveMany}
+            gridClassName="grid-cols-5 sm:grid-cols-8 md:grid-cols-10"
+          />
         </div>
       </motion.div>
     </ModalDialog>
@@ -361,6 +350,8 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
             stages={draft.stages}
             totalCount={totalCount}
             onToggle={toggleKanji}
+            onAddMany={(ids) => addKanjisToStage(picker, ids)}
+            onRemoveMany={(ids) => updateStage(picker, { kanjis: draft.stages[picker].kanjis.filter(id => !ids.includes(id)) })}
             onClose={() => setPicker(null)}
             initialGrade={KANJI_BY_ID.get(draft.stages[picker].kanjis[draft.stages[picker].kanjis.length - 1])?.grade || stats.targetGrade || 1}
           />
