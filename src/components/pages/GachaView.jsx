@@ -72,19 +72,22 @@ const GachaView = ({ stats, setStats, onBack }) => {
         >
           <ArrowLeft size={24} className="text-[var(--text)]" />
         </button>
-        <div className="flex flex-col items-center">
-          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-            <Sparkles className="text-amber-500" /> まちのガチャ
+        {/* 入らないとき（せまい画面で 文字を大きくしたとき）は、題を「まちの / ガチャ」の 2 行にする
+            （keep-all と <wbr /> で、ことばの とちゅうでは割らない。前は コインに押されて「まちのガチ / ャ」になりえた） */}
+        <div className="flex flex-col items-center min-w-0 text-center">
+          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2 [word-break:keep-all]">
+            <Sparkles className="text-amber-500 shrink-0" /> <span>まちの<wbr />ガチャ</span>
           </h2>
-          <div className="text-xs font-bold text-[var(--text)] opacity-40">レアアイテムをゲットしよう！</div>
+          <div className="text-xs font-bold text-[var(--text)] opacity-40 [word-break:keep-all]">レア<wbr />アイテムを<wbr />ゲットしよう！</div>
         </div>
-        <div className="bg-[var(--accent)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] font-black flex items-center gap-1.5 shadow-sm text-sm">
+        <div className="shrink-0 bg-[var(--accent)] px-4 py-1.5 rounded-full border-[3px] border-[var(--text)] font-black flex items-center gap-1.5 shadow-sm text-sm">
           <Coins size={16} /> {stats.coins}
         </div>
       </div>
 
-      {/* Main Area */}
-      <div className="flex-grow flex flex-col items-center justify-center min-h-[400px]">
+      {/* Main Area。中身は my-auto で たてのまん中に置く（justify-center だと、中身が箱より高いとき
+          上へも はみ出して 題に重なった。せまい画面で 文字を大きくしたとき） */}
+      <div className="flex-grow flex flex-col items-center min-h-[400px]">
         <AnimatePresence mode="wait">
           {phase === 'idle' && (
             <motion.div 
@@ -92,7 +95,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="w-full space-y-8"
+              className="w-full space-y-8 my-auto"
             >
               {/* Machine visual */}
               <div className="relative w-48 h-48 mx-auto">
@@ -154,7 +157,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-center"
+              className="text-center my-auto"
             >
               <div className="relative">
                 <motion.div 
@@ -183,7 +186,7 @@ const GachaView = ({ stats, setStats, onBack }) => {
               key="reveal"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full"
+              className="w-full my-auto"
             >
               <div className="text-center mb-6">
                 <h3 className="text-2xl font-black text-[var(--text)] mb-1">ガチャの{F("結果","けっか")}</h3>
@@ -243,10 +246,10 @@ const GachaView = ({ stats, setStats, onBack }) => {
       {phase === 'idle' && (
         <div className="mt-8 bg-[var(--bg)] rounded-2xl p-4 border-[2px] border-[var(--text)] opacity-60">
           <div className="text-xs font-black mb-2 flex items-center gap-1 opacity-80">
-            <Check size={14} className="text-[var(--secondary)]" /> アイテムは「まちづくり」で{F("設置","せっち")}できます。
+            <Check size={14} className="text-[var(--secondary)]" /> <span>アイテムは「まちづくり」で{F("設置","せっち")}できます。</span>
           </div>
           <div className="text-xs font-black flex items-center gap-1 opacity-80">
-            <Check size={14} className="text-[var(--secondary)]" /> {F("学習","がくしゅう")}を{F("頑張","がんば")}ってコインを{F("貯","た")}めよう！
+            <Check size={14} className="text-[var(--secondary)]" /> <span>{F("学習","がくしゅう")}を{F("頑張","がんば")}ってコインを{F("貯","た")}めよう！</span>
           </div>
         </div>
       )}

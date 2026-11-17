@@ -70,7 +70,7 @@ const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center gap-3">
         <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
-        <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><BarChart3 size={24} className="text-[var(--secondary)]" /> {F("学習","がくしゅう")}きろく</h2>
+        <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><BarChart3 size={24} className="text-[var(--secondary)]" /> <span>{F("学習","がくしゅう")}きろく</span></h2>
       </div>
 
       {/* 習得状況サマリー */}
@@ -131,9 +131,9 @@ const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
           <div className="text-xs font-bold text-[var(--text-muted)]">{F("連続","れんぞく")}{F("学習","がくしゅう")}{F("日数","にっすう")}</div>
           <div className="mt-2 text-[10px] font-black text-sky-700">🛡️ {habitStatus.restPassAvailable ? 'おやすみパスあり' : `あと${habitStatus.rechargeRemaining}日でパス`}</div>
         </div>
-        <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
+        <div className="fit-num-box bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
           <div className="text-3xl mb-1">⚡</div>
-          <div className="text-3xl font-black text-amber-600">{(stats.totalExp || 0).toLocaleString()}</div>
+          <div className="fit-num font-black text-amber-600">{(stats.totalExp || 0).toLocaleString()}</div>
           <div className="text-xs font-bold text-[var(--text-muted)]">{F("累計","るいけい")}EXP</div>
         </div>
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm text-center">
@@ -153,7 +153,7 @@ const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
 
       {/* 7日間の学習グラフ */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
-        <div className="text-sm font-black text-[var(--text)] mb-1 flex items-center gap-2"><TrendingUp size={16} className="text-[var(--secondary)]" /> {F("直近","ちょっきん")}7{F("日","にち")}の{F("学習","がくしゅう")}EXP</div>
+        <div className="text-sm font-black text-[var(--text)] mb-1 flex items-center gap-2"><TrendingUp size={16} className="text-[var(--secondary)]" /> <span>{F("直近","ちょっきん")}7{F("日","にち")}の{F("学習","がくしゅう")}EXP</span></div>
         <div className="mb-3 text-[10px] font-bold text-[var(--text-muted)]">緑のバーは1日{weeklySummary.goal}{F("字","じ")}の{F("目標","もくひょう")}クリア</div>
         <div className="flex items-end gap-2 h-24">
           {dailyData.map((day, i) => (
@@ -198,7 +198,7 @@ const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
       {/* 間隔反復の復習予報 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><CalendarClock size={17} className="text-sky-500" /> 7{F("日間","にちかん")}の{F("復習","ふくしゅう")}{F("予報","よほう")}</div>
+          <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><CalendarClock size={17} className="text-sky-500" /> <span>7{F("日間","にちかん")}の{F("復習","ふくしゅう")}{F("予報","よほう")}</span></div>
           <div className="rounded-full bg-sky-50 border-2 border-sky-200 px-2.5 py-1 text-xs font-black text-sky-700">{reviewForecast.weekCount}{F("字","じ")}</div>
         </div>
         <div className={`mb-3 text-[11px] font-bold ${reviewForecast.overdueCount > 0 ? 'text-rose-600' : 'text-[var(--text-muted)]'}`}>
@@ -234,14 +234,14 @@ const StatsView = ({ setView, stats, setStats, startWeakSession }) => {
       {weakKanji.length > 0 && (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><AlertCircle size={16} className="text-rose-500" /> {F("苦手","にがて")}な{F("漢字","かんじ")} TOP5</div>
+            <div className="text-sm font-black text-[var(--text)] flex items-center gap-2"><AlertCircle size={16} className="text-rose-500" /> <span>{F("苦手","にがて")}な{F("漢字","かんじ")} TOP5</span></div>
             <button
               type="button"
               onClick={startWeakSession}
               className="min-h-[44px] rounded-xl border-[2px] border-[var(--text)] bg-rose-400 px-3 py-2 text-xs font-black text-white shadow-[0_2px_0_var(--text)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-rose-300"
               aria-label={`苦手な漢字${weakKanji.length}字の集中練習を始める`}
             >
-              <span className="flex items-center gap-1.5"><Target size={16} aria-hidden="true" /> にがて{F("特訓","とっくん")} {weakKanji.length}{F("字","じ")}</span>
+              <span className="flex items-center gap-1.5"><Target size={16} aria-hidden="true" /> <span>にがて{F("特訓","とっくん")} {weakKanji.length}{F("字","じ")}</span></span>
             </button>
           </div>
           <div className="flex flex-col gap-2">

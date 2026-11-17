@@ -2,19 +2,18 @@ import React, { memo, useState, useRef, useEffect, useCallback, useMemo } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon, CloudRain, Snowflake, ZoomIn, ZoomOut, Users } from 'lucide-react';
 import { TOWN_ITEM_MAP } from '../../data/town-items';
-import VillagerDot from './VillagerDot';
+import VillagerCanvas from './VillagerCanvas';
 import WeatherOverlay from './WeatherOverlay';
 import TerrainLayer from './TerrainLayer';
 import { WildProp, WILD_PROP_BOX, mountWildProps, wildPropFor } from './WildProps';
 import { audioCtrl } from '../../systems/audio';
-import { isVillagerInViewRange } from '../../systems/town-animation';
 import { buildGroundModel, isGroundItem, turnedToFit } from '../../systems/town-ground';
 import { itemFit } from '../../data/town-item-fit';
 import { nightLightOf } from '../../systems/town-night-light';
 import { townArtFor, useTownArtReady } from '../../data/town-art';
 import {
   TILE_W, TILE_H, GRID_SIZE, C, toIsoX, toIsoY, fromIso,
-  computeViewRange, isExplored, buildPointsOfInterest, clampZoom, zoomAround, fitTownView,
+  computeViewRange, isExplored, clampZoom, zoomAround, fitTownView,
 } from '../../systems/town-map-view';
 
 export { GRID_SIZE, C };
@@ -545,10 +544,7 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
     if (residentDisplayMode === 'none') return [];
     if (residentDisplayMode === 'all') return villagers;
 
-    // 'limited' モード: 最大10人
-    // 移動中(aiStateがMOVING)の住民を優先的に選ぶ（生存感のため）
-    // aiStateは各VillagerDot内部で管理されているため、ここでは単純に
-    // 住民リストの先頭から選ぶが、将来的にはActivityレベルなどをvillagersデータに持たせると良い
+    // 'limited' モード: 最大10人（住民リストの先頭から）
     return villagers.slice(0, 10);
   }, [villagers, residentDisplayMode]);
 
@@ -556,11 +552,6 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
   // 範囲は整数 4 つ。ドラッグ中でも境目をまたぐまでは同じなので、全マスを作り直さない
   const range = computeViewRange({ offsetX: view.x, offsetY: view.y, zoom: view.zoom, width: containerSize.w, height: containerSize.h });
   const viewRange = useMemo(() => range, [range.startX, range.startY, range.endX, range.endY]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const renderedVillagers = useMemo(
-    () => visibleVillagers.filter((villager) => isVillagerInViewRange(villager, viewRange)),
-    [visibleVillagers, viewRange],
-  );
 
   // ── 地面（地形・道・水・がけ・影）の表。地図が変わったときだけ作る ──
   const groundModel = useMemo(() => buildGroundModel(safeMapData, TOWN_ITEM_MAP, exploredRadius), [safeMapData, exploredRadius]);
@@ -586,7 +577,6 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
   }, [safeMapData]);
 
   // 住民の行き先の候補は、地図が変わったときだけ作る
-  const pointsOfInterest = useMemo(() => buildPointsOfInterest(safeMapData, TOWN_ITEM_MAP), [safeMapData]);
 
   // ── ゴースト（レビュー未完了時の演出） ──
   const ghosts = useMemo(() => {
@@ -771,16 +761,6 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
       }}>
         <TerrainLayer model={groundModel} viewRange={viewRange} danger={isDark} grid={Boolean(isEditing)} />
         {cells}
-        {/* 住民（セルと同じtransformコンテナ内でz-indexによる深度制御） */}
-        {renderedVillagers.map(v => (
-          <VillagerDot
-            key={v.id}
-            villager={v}
-            mapData={safeMapData}
-            pointsOfInterest={pointsOfInterest}
-            exploredRadius={exploredRadius}
-          />
-        ))}
         {/* 押している（指している）マスの目じるし */}
         {hoveredCell && isEditing && hint !== false && (
           <CellHighlight x={hint?.x ?? hoveredCell.x} y={hint?.y ?? hoveredCell.y} w={hint?.w || 1} h={hint?.h || 1} tone={hint?.tone} label={hint?.label} />
@@ -788,6 +768,10 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
         {effect && <CellEffect key={effect.id} effect={effect} />}
       </div>
       </div>
+      {/* 住民。町の上に重ねた 1 枚の canvas に描く（町の要素で描くと、1 歩ごとに町ぜんたいの計算が走る。
+          VillagerCanvas.jsx の説明）。夜の色（z-20）は この上に かぶさる */}
+      <VillagerCanvas villagers={visibleVillagers} mapData={safeMapData} exploredRadius={exploredRadius}
+        view={view} width={containerSize.w} height={containerSize.h} />
       {/* 夜のあかり。暗い色をかぶせた上（z-20 より上）に、町と同じ位置・拡大率で重ねる */}
       {nightLights && nightLights.length > 0 && (
         <div className="pointer-events-none" style={{

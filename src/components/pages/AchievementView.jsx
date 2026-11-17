@@ -42,7 +42,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
       <div className="flex items-center gap-3">
         <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all"><ArrowLeft size={24} /></button>
         <div className="flex-1">
-          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> <RubyText text="実績（じっせき）" /></h2>
+          <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><Medal size={24} className="text-amber-500" /> <span><RubyText text="実績（じっせき）" /></span></h2>
           <div className="text-xs text-[var(--text-muted)]">{claimedCount}/{totalCount} <RubyText text="達成（たっせい）" /> ({completedCount}<RubyText text="個（こ）受取（うけとり）可能（かのう）" />)</div>
         </div>
       </div>
@@ -66,7 +66,7 @@ const AchievementView = ({ setView, stats, setStats }) => {
                 isActive ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'
               }`}
             >
-              {cat.emoji} <RubyText text={cat.name} />
+              <span>{cat.emoji} <RubyText text={cat.name} /></span>
               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--panel)] text-[var(--text)]' : 'bg-[var(--text)]/10'}`}>
                 {catClaimed}/{catAchievements.length}
               </span>

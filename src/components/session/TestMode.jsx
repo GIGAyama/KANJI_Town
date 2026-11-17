@@ -314,7 +314,7 @@ const TestMode = ({ kanji, card = null, isPractice = false, paths = [], isLoadin
           </p>
           <details className="text-[var(--text)]">
             <summary className="min-h-[44px] flex items-center justify-center gap-1 cursor-pointer list-none text-xs md:text-sm font-bold opacity-70 rounded-xl hover:bg-[var(--bg)] [&::-webkit-details-marker]:hidden">
-              💡 ヒント：{F("読","よ")}みかた
+              <span>💡 ヒント：{F("読","よ")}みかた</span>
             </summary>
             <div className="text-base md:text-lg font-black tracking-wider pb-1">{readings}</div>
           </details>

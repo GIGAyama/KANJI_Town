@@ -31,7 +31,7 @@ const TownMapFallback = () => (
   >
     <div className="flex items-center gap-2 rounded-full border-2 border-[var(--text)] bg-[var(--panel)]/90 px-4 py-2 text-xs font-black text-[var(--text)] shadow-sm">
       <span className="h-3 w-3 animate-pulse rounded-full bg-[var(--secondary)]" aria-hidden="true" />
-      まちを{F("準備","じゅんび")}しています...
+      <span>まちを{F("準備","じゅんび")}しています...</span>
     </div>
   </div>
 );
@@ -42,14 +42,16 @@ const TownMapFallback = () => (
 
 /** ステータスバー（レベル・コイン・繁栄度） */
 const StatusBar = ({ levelInfo: { badge, title, level }, stage, population, satLabel, coins, prosperity }) => (
-  <div className="flex items-center justify-between shrink-0 px-1">
+  // 入らないとき（せまい画面で 文字を大きくしたとき）は、右がわを 2 行めへ送る。前は ステージの名前が
+  // 「🏯…」まで切れていた。右がわは 2 行めでも右に寄せる（ml-auto）
+  <div className="flex flex-wrap items-center justify-between gap-y-1 shrink-0 px-1">
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
       <span className="text-xs md:text-sm font-bold text-[var(--text-muted)] truncate">{badge} {title}</span>
       <span className="text-base md:text-lg font-black text-[var(--text)]">Lv.{level}</span>
       <span className="hidden sm:inline text-xs font-bold text-[var(--text-muted)]">{stage.emoji} {stage.title}</span>
     </div>
-    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-      <span className="text-[10px] md:text-xs font-bold text-[var(--text-muted)] flex items-center gap-0.5"><Users size={12} />{population || 0}{F("人","にん")}</span>
+    <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-auto">
+      <span className="text-[10px] md:text-xs font-bold text-[var(--text-muted)] flex items-center gap-0.5"><Users size={12} /><span>{population || 0}{F("人","にん")}</span></span>
       {/* 住民がまだいないときは満足度を出さない（初回から「😢とても ふまん」と出ていた） */}
       {(population || 0) > 0 && <span className="text-[10px] md:text-xs font-bold flex items-center gap-0.5" style={{ color: satLabel.color }}>{satLabel.emoji}{satLabel.text}</span>}
       <span className="flex items-center gap-1 bg-[var(--accent)] px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[var(--text)] border-[2px] border-[var(--text)] font-black text-xs md:text-sm shadow-sm"><Coins size={14} />{coins}</span>
@@ -145,7 +147,7 @@ const TownMap = memo(({ className = '', isTownEditorUnlocked, onOpenEditor, town
     )}
     {!isTownEditorUnlocked && (
       <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-10">
-        <span className="bg-[var(--panel)] border-[2px] border-[var(--text)] rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1"><Lock size={12} /> {F("漢字","かんじ")}を{F("覚","おぼ")}えると{F("開放","かいほう")}</span>
+        <span className="bg-[var(--panel)] border-[2px] border-[var(--text)] rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1"><Lock size={12} /> <span>{F("漢字","かんじ")}を{F("覚","おぼ")}えると{F("開放","かいほう")}</span></span>
       </div>
     )}
   </div>
@@ -186,7 +188,7 @@ const SpecialTraining = ({ isUnlocked, startFlashcard, startSurvival, startBossB
   <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-2xl p-2 md:p-2.5 relative overflow-hidden shrink-0">
     {!isUnlocked && (
       <div className="absolute inset-0 z-10 bg-[var(--panel)]/80 backdrop-blur-[2px] flex items-center justify-center">
-        <span className="text-xs font-bold text-[var(--text)] bg-[var(--bg)] px-3 py-1.5 rounded-full border-2 border-[var(--text)] flex items-center gap-1 shadow-sm"><AlertCircle size={14} className="text-amber-500" /> まずは{F("漢字","かんじ")}を{F("覚","おぼ")}えよう！</span>
+        <span className="text-xs font-bold text-[var(--text)] bg-[var(--bg)] px-3 py-1.5 rounded-full border-2 border-[var(--text)] flex items-center gap-1 shadow-sm"><AlertCircle size={14} className="text-amber-500" /> <span>まずは{F("漢字","かんじ")}を{F("覚","おぼ")}えよう！</span></span>
       </div>
     )}
     <div className="grid grid-cols-3 gap-2">

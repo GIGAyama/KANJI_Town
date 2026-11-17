@@ -113,7 +113,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, danger }) => (
           <X size={16} /> やめる
         </button>
         <button onClick={onConfirm} className={`flex-1 py-3 rounded-xl border-[3px] border-[var(--text)] font-bold text-sm transition-opacity hover:opacity-80 flex items-center justify-center gap-1 ${danger ? 'bg-red-700 text-white' : 'bg-[var(--primary)] text-[var(--panel)]'}`}>
-          <Check size={16} /> {F("実行","じっこう")}する
+          <Check size={16} /> <span>{F("実行","じっこう")}する</span>
         </button>
       </div>
     </motion.div>
@@ -503,7 +503,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
                 「{learningRange.name}」（{learningRange.stages.length}だん・{learningRange.stages.reduce((n, stage) => n + stage.kanjis.length, 0)}{F("字","じ")}）の{F("字","じ")}だけが、{F("新出","しんしゅつ")}に でます
               </div>
               <button type="button" onClick={() => { audioCtrl.playSE('click'); handleStopRange(); }} className="w-full min-h-[48px] rounded-xl border-[3px] border-[var(--text)] bg-[var(--bg)] text-sm font-black text-[var(--text)] flex items-center justify-center gap-1 hover:opacity-80">
-                <X size={16} aria-hidden="true" /> {F("範囲","はんい")}を やめる
+                <X size={16} aria-hidden="true" /> <span>{F("範囲","はんい")}を やめる</span>
               </button>
             </div>
           )}
@@ -547,7 +547,7 @@ const SettingsView = ({ setView, stats, setStats, isMuted, setIsMuted, levelInfo
           )}
 
           <button onClick={handleReset} className="mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-[3px] border-red-300 text-red-500 font-bold text-xs hover:bg-red-50 transition-colors">
-            <Trash2 size={16} /> すべてのデータを{F("消","け")}す
+            <Trash2 size={16} /> <span>すべてのデータを{F("消","け")}す</span>
           </button>
         </div>
       </Section>

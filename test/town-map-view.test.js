@@ -5,8 +5,6 @@ import {
   GRID_SIZE,
   VIEW_RANGE_STEP,
   computeViewRange,
-  buildPointsOfInterest,
-  nearbyPointsOfInterest,
   isExplored,
   toIsoX,
   toIsoY,
@@ -160,24 +158,3 @@ test('はじめの表示: 島が枠に収まり、中心のマスが枠のまん
   }
 });
 
-test('住民の行き先の候補は地図から 1 回だけ作り、近いものを返す', () => {
-  const items = new Map([
-    ['t_house1', { type: 'building' }],
-    ['t_tree', { type: 'nature' }],
-    ['t_cleared', { type: 'terrain' }],
-    ['t_bench', { type: 'decoration' }],
-  ]);
-  const map = {
-    [`${C},${C}`]: 't_house1',
-    [`${C + 3},${C}`]: 't_tree',
-    [`${C + 1},${C}`]: 't_cleared',
-    [`${C + 2},${C}`]: 't_bench',
-    [`${C + 20},${C}`]: 't_house1',
-    [`${C},${C}:top`]: 't_tree',
-  };
-  const points = buildPointsOfInterest(map, items);
-  assert.deepEqual(points.map((p) => p.type).sort(), ['building', 'building', 'nature']);
-  const near = nearbyPointsOfInterest(points, C, C, 6);
-  // 足もと（距離 0）と遠いものは外れる
-  assert.deepEqual(near, [{ x: C + 3, y: C, type: 'nature' }]);
-});

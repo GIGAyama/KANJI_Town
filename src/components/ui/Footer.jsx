@@ -17,9 +17,17 @@ import React from 'react';
  *    「なぜ作ったか」を、まだ使っていない先生に向けて書いたもので、いま画面の
  *    前で困っている人が求めるものではない。艦隊のほかのアプリでも外れている。
  *
- * ⚠️ 1 行に収める（h-8）。ここが太ると、そのぶんマップが狭くなる。
- *    幅が足りないときは、クレジットだけを … で切る。KanjiVG の表示は
+ * ⚠️ ふだんは 1 行（高さ 32px）。ここが太ると、そのぶんマップが狭くなる。
+ *    幅が足りないときは、まずクレジットだけを … で切る。KanjiVG の表示は
  *    ライセンスの条件なので切らない。
+ *    スマホ（幅 640px まで）では、クレジットを切っても入らないことがある
+ *    （利用規約などのリンクが 48px の アイコン 3 つになり、144px ある）。
+ *    前は 1 行のまま まん中に寄せていたので、入らない分が 左右の両はしで切れ、
+ *    「© Ulrich Ape」のように KanjiVG の表示まで欠けていた。いまは、入らないときだけ
+ *    KanjiVG の表示を 2 行めへ送る（max-sm:flex-wrap）。クレジットは幅を取らない部品にして
+ *    （max-sm:basis-0）、それだけで 2 行めに落ちることは無いようにしてある。
+ *    640px より広い画面（タブレット）は前のまま 1 行で、クレジットだけを切る
+ *    （リンクに字が付いて幅が広がり、折り返すと iPad のたて向きで 2 行になるため）。
  */
 export default function Footer({ compact = false }) {
   // 学習中は、リンクの無い 1 行にする。学習画面の操作ボタンのすぐ下にリンクがあると、
@@ -29,9 +37,9 @@ export default function Footer({ compact = false }) {
   // いちばん下へ出しなおしてしまう（public/giga-app-links.js の見張り）。
   const linkClass = 'font-normal text-inherit underline underline-offset-2 py-1';
   return (
-    <footer className="flex-shrink-0 h-8 flex flex-nowrap justify-center items-center gap-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[40] transition-colors select-none">
+    <footer className="flex-shrink-0 min-h-8 flex flex-nowrap max-sm:flex-wrap justify-center items-center gap-x-2 bg-[var(--bg)] border-t border-[var(--text)]/10 z-[40] transition-colors select-none">
       {!compact && (
-        <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)]">
+        <div className="min-w-0 truncate text-[11px] text-[var(--text-muted)] max-sm:basis-0 max-sm:grow max-sm:text-right">
           ©2026 マイ漢字タウン{' '}
           <a
             href="https://giga-school.com"
@@ -51,7 +59,7 @@ export default function Footer({ compact = false }) {
           docs/manual/manual.md に置いたので、属性ごと外して既定に戻した。 */}
       <span data-giga-links hidden={compact} />
       {/* KanjiVG の表示はライセンス（CC BY-SA 3.0）の条件。消さない・切らない。 */}
-      <div className="whitespace-nowrap text-[11px] text-[var(--text-muted)]">
+      <div className="whitespace-nowrap text-[11px] text-[var(--text-muted)] max-sm:leading-4 max-sm:pb-0.5">
         書き順データ:{' '}
         {compact ? 'KanjiVG' : (
           <a

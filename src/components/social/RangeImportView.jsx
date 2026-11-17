@@ -70,7 +70,7 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
   return (
     <div className="flex flex-col gap-4 pb-8">
       <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-        <BookOpen size={24} className="text-[var(--secondary)]" /> ならった{F("範囲","はんい")}が とどきました
+        <BookOpen size={24} className="text-[var(--secondary)]" /> <span>ならった{F("範囲","はんい")}が とどきました</span>
       </h2>
 
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -90,7 +90,7 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
               <li key={i} className={`rounded-xl border-2 px-3 py-2 ${started ? 'border-[var(--secondary)] bg-[var(--bg)]' : 'border-[var(--text)]/25'}`}>
                 <div className="text-xs font-black text-[var(--text)] flex items-center gap-1">
                   {started && <Check size={14} className="text-[var(--secondary)]" aria-hidden="true" />}
-                  {i + 1}だんめ・{formatMonthDay(stage.from)}から {stage.kanjis.length}{F("字","じ")}
+                  <span>{i + 1}だんめ・{formatMonthDay(stage.from)}から {stage.kanjis.length}{F("字","じ")}</span>
                 </div>
                 {started ? (
                   <div className="flex flex-wrap gap-1 mt-1">

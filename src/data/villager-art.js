@@ -251,3 +251,30 @@ export function villagerVariantOf(id) {
 
 /** 絵の枠（原点は「足もとのまん中の地面」）。よこ 40・たて 48、地面は下から 2px 上 */
 export const VILLAGER_BOX = Object.freeze({ x: -20, y: -46, width: 40, height: 48 });
+
+const r2 = (v) => Math.round(v * 100) / 100;
+
+/**
+ * 名札（角の丸い ふだ + 下向きの とがり）の形（path の d）。top は ぼうしの いちばん上の高さ（px）。
+ * ふだの下は ぼうしの 3px 上、ふだの高さは 13.2px、とがりは 2.4px。原点は 足もと。
+ */
+export function villagerTagPath(top) {
+  const y1 = r2(-(top + 3)); // ふだの下
+  const y0 = r2(y1 - 13.2); // ふだの上
+  return `M-3.5 ${y0}H3.5A4 4 0 0 1 7.5 ${r2(y0 + 4)}V${r2(y1 - 4)}A4 4 0 0 1 3.5 ${y1}H2.1L0 ${r2(y1 + 2.4)}L-2.1 ${y1}H-3.5A4 4 0 0 1 -7.5 ${r2(y1 - 4)}V${r2(y0 + 4)}A4 4 0 0 1 -3.5 ${y0}Z`;
+}
+/** 名札の字の 下の位置（y。足もとから） */
+export const villagerTagTextY = (top) => r2(-(top + 5.7));
+
+/**
+ * 町の canvas に描くための、住民 1 人の絵（ひとりだちの SVG）。町に置く大きさ（VILLAGER_SCALE 倍）で、
+ * viewBox は VILLAGER_BOX（原点は 足もと）。画像は 4 倍の大きさで作る（拡大しても あらくならないように）。
+ * 名札は入れない（左右を うら返さないので、canvas で別に描く）。無い職業は ''。
+ */
+export function villagerSpriteSvg(kind, variant = 0) {
+  const art = villagerArt(kind, variant);
+  if (art === null) return '';
+  const b = VILLAGER_BOX;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.x} ${b.y} ${b.width} ${b.height}" width="${b.width * 4}" height="${b.height * 4}">`
+    + `<g transform="scale(${VILLAGER_SCALE})">${art}</g></svg>`;
+}

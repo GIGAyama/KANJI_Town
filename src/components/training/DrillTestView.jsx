@@ -766,7 +766,7 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequ
       <div className="flex-1 overflow-auto px-4 pb-4 min-h-0">
         <div className="flex items-center justify-center gap-1.5 mb-2 text-[11px] font-black text-[var(--text)] opacity-60">
           <Search size={13} />
-          カードを タップすると、なぜ その{F("点数","てんすう")}か わかるよ
+          <span>カードを タップすると、なぜ その{F("点数","てんすう")}か わかるよ</span>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {answers.map((answer, i) => (
@@ -785,7 +785,7 @@ const DrillTestView = ({ queue, onUpdateStat, onFinish, onReviewMistakes, onRequ
               </div>
               <div className="text-2xl font-black text-[var(--text)]">{answer.kanji.char}</div>
               <div className={`text-[10px] font-black flex items-center gap-0.5 ${answer.passed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {answer.gradeResult.total}{F("点","てん")}
+                <span>{answer.gradeResult.total}{F("点","てん")}</span>
                 <ChevronRight size={11} className="opacity-60" />
               </div>
             </button>

@@ -146,6 +146,16 @@ ruby.survival-blank rt {
   font-weight: 700;
 }
 
+/* 大きな数（累計 EXP など）を、カードの幅に合わせて小さくする。
+   せまい画面で 文字を大きくすると「3,000,000」がカードから はみ出していた。
+   カード（.fit-num-box）の幅に対する大きさ（cqi）で決め、上限は text-3xl と同じ。
+   古いブラウザ（cqi が無い）では、上の 1.875rem のまま。 */
+.fit-num-box { container-type: inline-size; }
+.fit-num { font-size: 1.875rem; line-height: 2.25rem; }
+@supports (font-size: 1cqi) {
+  .fit-num { font-size: clamp(1.125rem, 17cqi, 1.875rem); line-height: 1.2; }
+}
+
 /* モバイルセーフエリア対応（ノッチ・ホームバー） */
 .safe-area-bottom {
   padding-bottom: var(--safe-b);

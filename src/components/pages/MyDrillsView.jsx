@@ -35,12 +35,13 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <div className="flex items-center justify-between">
+      {/* 入らないとき（せまい画面で 文字を大きくしたとき）は「作る」を次の行へ送る（前は「作 / る」と割れていた） */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <button onClick={() => setView('home')} aria-label="ホームに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"><ArrowLeft size={24} /></button>
           <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2"><FileText size={24} className="text-[var(--secondary)]" /> マイドリル</h2>
         </div>
-        <MotionButton variant="primary" onClick={() => setView('drillEditor')} className="px-4 py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239] min-h-[44px]"><Plus size={16} /> {F("作","つく")}る</MotionButton>
+        <MotionButton variant="primary" onClick={() => setView('drillEditor')} className="ml-auto shrink-0 whitespace-nowrap px-4 py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239] min-h-[44px]"><Plus size={16} /> {F("作","つく")}る</MotionButton>
       </div>
       {/* 授業で習った字だけを毎日の新出に出す予定を、日付つきで配る（先生向け） */}
       <MotionButton variant="secondary" onClick={() => setView('rangeEditor')} className="w-full py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] min-h-[48px]"><CalendarDays size={18} /> ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）</MotionButton>
@@ -55,7 +56,7 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
           {drills.map((drill, i) => (
             <div key={i} className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-4 shadow-[4px_4px_0_var(--text)] flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <div className="font-black text-[var(--text)] text-lg truncate">{drill.name}</div>
+                <div className="font-black text-[var(--text)] text-lg leading-snug [overflow-wrap:anywhere]">{drill.name}</div>
                 <div className="text-sm text-[var(--text-muted)]">{drill.kanjis?.length || 0}{F("文字","もじ")}</div>
                 <div className="flex flex-wrap gap-1 mt-1">{(drill.kanjis || []).slice(0, 8).map(id => { const k = KANJI_DATA.find(k => k.id === id); return k ? <span key={id} className="text-lg font-black">{k.char}</span> : null; })}{(drill.kanjis?.length || 0) > 8 && <span className="text-xs font-bold text-[var(--text-muted)] self-center">+{drill.kanjis.length - 8}</span>}</div>
                 <DrillHomeworkLine drill={drill} today={today} />

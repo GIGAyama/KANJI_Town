@@ -535,7 +535,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             className="absolute z-40 left-1/2 -translate-x-1/2 pointer-events-none"
             style={{ bottom: 84 }}>
             <div className="bg-[var(--panel)]/95 border-[2px] border-[var(--text)] rounded-full px-4 py-1.5 shadow-md font-bold text-xs flex items-center gap-1.5 whitespace-nowrap text-[var(--text)] opacity-90">
-              💡 アイテムをタップして{F("移動","いどう")}・{F("再配置","さいはいち")}
+              <span>💡 アイテムをタップして{F("移動","いどう")}・{F("再配置","さいはいち")}</span>
             </div>
           </motion.div>
         )}
@@ -548,7 +548,7 @@ const TownEditorView = ({ setView, stats, setStats, onCraft, onPlace }) => {
             className="absolute z-40 left-1/2 -translate-x-1/2"
             style={{ bottom: dockOpen ? 'calc(50% + 44px)' : 84 }}>
             <div className="bg-[var(--panel)] border-[3px] border-[var(--text)] rounded-full px-4 py-2 shadow-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <>{TOWN_ITEM_MAP.get(selectedItem)?.name} を{F("配置中","はいちちゅう")}</>}
+              {selectedItem === 'eraser' ? <><Eraser size={16} /> けしゴムモード</> : <span>{TOWN_ITEM_MAP.get(selectedItem)?.name} を{F("配置中","はいちちゅう")}</span>}
               <button onClick={() => setSelectedItem(null)} aria-label="選択解除" className="ml-1 text-[var(--text)] opacity-50 hover:opacity-100 text-lg leading-none w-6 h-6 flex items-center justify-center">✕</button>
             </div>
           </motion.div>
@@ -683,8 +683,9 @@ const ItemsPanel = ({ filteredItems, filterType, setFilterType, selectedItem, se
               <ItemArt item={item} />
               {isGradeLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded"><Lock size={14} className="text-white" /></div>}
             </div>
-            {/* 名前は白い ふだに のせる（鍛冶場・要塞のような こい色の カードでも読めるように） */}
-            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight truncate max-w-full bg-[var(--panel)]/85 rounded px-1">{item.name}</div>
+            {/* 名前は白い ふだに のせる（鍛冶場・要塞のような こい色の カードでも読めるように）。
+                せまい画面では 2 行まで折り返す（… で切ると「ハンバーガー…」のように何か分からない） */}
+            <div className="text-[9px] font-black text-[var(--text)] text-center leading-tight line-clamp-2 [overflow-wrap:anywhere] max-w-full bg-[var(--panel)]/85 rounded px-1">{item.name}</div>
             {item.size && <div className="text-[7px] font-black bg-amber-100 text-amber-700 px-1 rounded-full border border-amber-300">{item.size.w}×{item.size.h}</div>}
             {isGradeLocked
               ? <div className="text-[8px] font-black bg-gray-300 px-1.5 rounded-full">Lv.{getMinLevelForGrade(item.minGrade)}</div>
@@ -733,7 +734,7 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
     {/* Materials inventory - sticky */}
     <div className="sticky top-0 z-10 bg-[var(--panel)] -mx-3 px-3 pt-0 pb-2 -mt-0">
       <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("手持","ても")}ちの{F("素材","そざい")}</h3>
+        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> <span>{F("手持","ても")}ちの{F("素材","そざい")}</span></h3>
         <div className="flex flex-wrap gap-1">
           {Object.entries(MATERIALS).map(([id, mat]) => {
             const count = materials[id] || 0;
@@ -762,7 +763,8 @@ const CraftPanel = ({ craftCategory, setCraftCategory, craftRecipes, filterTier,
       {CRAFT_CATEGORIES.map(cat => (
         <button key={cat.key} onClick={() => { setCraftCategory(cat.key); setCraftQuantities({}); setFilterTier(0); audioCtrl.playSE('click'); }}
           className={`px-2.5 py-1.5 rounded-lg border-[2px] text-xs font-black whitespace-nowrap transition-all flex items-center gap-0.5 ${craftCategory === cat.key ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--bg)] text-[var(--text)] border-transparent opacity-60 hover:opacity-100'}`}>
-          {cat.icon} {cat.label}
+          {/* ラベルは ふりがな付きの字を 2 つ並べたもの（加工・素材）。1 つの部品にまとめる */}
+          <span>{cat.icon} {cat.label}</span>
         </button>
       ))}
     </div>
@@ -895,7 +897,7 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
     {/* Daily collection preview */}
     {residentStats.total > 0 && (
       <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> {F("毎日","まいにち")}の{F("収集","しゅうしゅう")}</h3>
+        <h3 className="text-xs font-black text-[var(--text)] mb-1.5 flex items-center gap-1"><Package size={12} className="text-[var(--secondary)]" /> <span>{F("毎日","まいにち")}の{F("収集","しゅうしゅう")}</span></h3>
         <div className="flex flex-wrap gap-1">
           {Object.entries(dailyPreview.materials).map(([matId, amount]) => {
             const mat = MATERIALS[matId];
@@ -950,7 +952,7 @@ const ResidentsPanel = ({ stats, satisfaction, satLabel, multiplier, residentSta
 
     {/* Tips */}
     <div className="bg-[var(--bg)] rounded-xl p-2.5 border-[2px] border-[var(--text)]">
-      <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-1.5"><Heart size={12} className="text-rose-500" /> {F("満足度","まんぞくど")}を{F("上","あ")}げるには</h3>
+      <h3 className="text-xs font-black text-[var(--text)] flex items-center gap-1 mb-1.5"><Heart size={12} className="text-rose-500" /> <span>{F("満足度","まんぞくど")}を{F("上","あ")}げるには</span></h3>
       <div className="flex flex-col gap-1 text-xs text-[var(--text)]">
         <div>🏠 {F("家","いえ")}を{F("建","た")}てて{F("住","す")}む{F("場所","ばしょ")}を{F("増","ふ")}やす</div>
         <div>🏛 いろいろな{F("建物","たてもの")}を{F("建","た")}てる</div>

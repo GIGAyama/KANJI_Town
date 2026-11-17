@@ -52,7 +52,7 @@ export default function InstallAppPanel() {
           }}
           className="flex items-center justify-center gap-2 min-h-[44px] py-3 rounded-xl border-[3px] border-[var(--text)] bg-[var(--primary)] text-[var(--panel)] font-black text-sm shadow-[2px_2px_0_var(--text)] hover:opacity-90 transition-opacity"
         >
-          <Smartphone size={18} strokeWidth={3} /> ホームに{F("入","い")}れる
+          <Smartphone size={18} strokeWidth={3} /> <span>ホームに{F("入","い")}れる</span>
         </button>
         {result && (
           <p role="status" aria-live="polite" className="text-xs font-bold text-[var(--text-muted)] text-center">

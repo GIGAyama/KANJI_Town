@@ -55,7 +55,7 @@ const KanjiPicker = ({ stageIndex, stages, onToggle, onClose, totalCount, initia
         </div>
         <div className="flex gap-1 overflow-x-auto no-scrollbar p-2">
           {GRADES.map(g => (
-            <button key={g} type="button" aria-pressed={grade === g} onClick={() => { audioCtrl.playSE('click'); setGrade(g); }} className={`min-h-[44px] px-4 rounded-full text-sm font-black whitespace-nowrap border-[2px] ${grade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--panel)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'}`}>{g}{F("年","ねん")}</button>
+            <button key={g} type="button" aria-pressed={grade === g} onClick={() => { audioCtrl.playSE('click'); setGrade(g); }} className={`shrink-0 min-h-[44px] px-4 rounded-full text-sm font-black whitespace-nowrap border-[2px] ${grade === g ? 'bg-[var(--text)] text-[var(--panel)] border-[var(--text)]' : 'bg-[var(--panel)] text-[var(--text)] border-[var(--text)]/25 hover:border-[var(--text)]'}`}>{g}{F("年","ねん")}</button>
           ))}
         </div>
         {full && <p className="px-3 text-xs font-bold text-amber-700">{F("字","じ")}は ぜんぶで {RANGE_KANJI_MAX}{F("字","じ")}までです。{F("範囲","はんい")}を{F("分","わ")}けてください。</p>}
@@ -234,7 +234,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
         <ArrowLeft size={24} />
       </button>
       <h2 className="text-xl md:text-2xl font-black text-[var(--text)] flex items-center gap-2">
-        <CalendarDays size={22} /> ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）
+        <CalendarDays size={22} /> <span>ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）</span>
       </h2>
     </div>
   );
@@ -300,7 +300,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-[var(--text)]">{i + 1}だんめ</span>
                 <label className="flex items-center gap-1 text-sm font-bold text-[var(--text)]">
-                  この{F("日","ひ")}から
+                  <span>この{F("日","ひ")}から</span>
                   <input type="date" value={stage.from} min="2020-01-01" max="2099-12-31" onChange={e => updateStage(i, { from: e.target.value })} aria-label={`${i + 1}だんめの はじまる日`} className="min-h-[44px] bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl px-2 font-bold text-[var(--text)] focus:outline-none focus:border-[var(--primary)]" />
                 </label>
                 <button type="button" onClick={() => removeStage(i)} aria-label={`${i + 1}だんめを けす`} className="ml-auto min-w-[44px] min-h-[44px] rounded-xl border-2 border-rose-300 text-rose-600 flex items-center justify-center hover:bg-[var(--bg)]"><Trash2 size={18} /></button>

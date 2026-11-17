@@ -2,11 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createTownAnimationScheduler,
-  isVillagerInViewRange,
   TOWN_ANIMATION_INTERVAL_MS,
 } from '../src/systems/town-animation.js';
 
-test('複数の住民は1本のフレーム予約を共有し20fpsで更新される', () => {
+test('複数の住民は1本のフレーム予約を共有し30fpsで更新される', () => {
   const frames = [];
   const cancelled = [];
   const scheduler = createTownAnimationScheduler({
@@ -28,7 +27,8 @@ test('複数の住民は1本のフレーム予約を共有し20fpsで更新さ�
   assert.equal(ticks.length, 0);
   frames.shift()(TOWN_ANIMATION_INTERVAL_MS);
 
-  assert.deepEqual(ticks, [['first', 0.05], ['second', 0.05]]);
+  const delta = TOWN_ANIMATION_INTERVAL_MS / 1000;
+  assert.deepEqual(ticks, [['first', delta], ['second', delta]]);
   unsubscribeFirst();
   unsubscribeSecond();
   assert.equal(scheduler.getSubscriberCount(), 0);
@@ -52,15 +52,6 @@ test('一時停止中はフレームを予約せず、再開時に1本だけ予�
   scheduler.resume();
   assert.equal(frames.length, 1);
   unsubscribe();
-});
-
-test('画面外の住民を移動余白込みでカリングする', () => {
-  const viewRange = { startX: 10, startY: 10, endX: 20, endY: 20 };
-
-  assert.equal(isVillagerInViewRange({ x: 15, y: 15 }, viewRange), true);
-  assert.equal(isVillagerInViewRange({ x: 5, y: 15 }, viewRange), true);
-  assert.equal(isVillagerInViewRange({ x: 3, y: 15 }, viewRange), false);
-  assert.equal(isVillagerInViewRange({ x: 15, y: 27 }, viewRange), false);
 });
 
 test('既定では requestAnimationFrame を使わず、時計で刻む（毎フレームの画面更新を起こさない）', async () => {
