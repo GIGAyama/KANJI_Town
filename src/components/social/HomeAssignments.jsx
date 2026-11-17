@@ -10,8 +10,11 @@ import { HomeworkCard, startHomeworkFor } from './HomeworkParts';
 // ホームに出す「しゅくだい」と「ならった範囲」。HomeView から lazy() で読む
 // （宿題も範囲も無い子の初回の JS を増やさないため）。
 
-const KNOWN_KANJI_IDS = new Set(KANJI_DATA.map((k) => k.id));
-const isKnownKanji = (id) => KNOWN_KANJI_IDS.has(id);
+const GRADE_BY_ID = new Map(KANJI_DATA.map((k) => [k.id, k.grade]));
+const isKnownKanji = (id) => GRADE_BY_ID.has(id);
+
+/** 範囲に入っている字の学年（1 年と 2 年が まざることもある） */
+export const rangeGrades = (range) => new Set((range?.stages || []).flatMap((stage) => stage?.kanjis || []).map((id) => GRADE_BY_ID.get(id)).filter(Boolean));
 
 /** ホームの「しゅくだい」カード（まだの宿題と、しめきりの日までの できた宿題） */
 export const HomeworkCardForHome = ({ drills, today, start, onOpenList, max }) => {
@@ -58,10 +61,23 @@ export const RangeStatusLine = ({ range, kanjiStats, today, grade }) => {
   } else {
     detail = <>（{status.totalCount}{F("字","じ")}）</>;
   }
-  return (
-    <div className="flex items-start gap-1 px-1 text-[11px] font-bold leading-snug text-[var(--text-muted)]" role="note" aria-label="ならった範囲">
+  // 範囲を使っている間は、学年の ボタンを かえても 新出は 範囲の字から出る。
+  // えらんだ学年の字が 範囲に 1 字も無いときは「こわれた」と思われやすいので、目立つ形で わけを出す
+  const grades = useMemo(() => rangeGrades(range), [range]);
+  const otherGrade = !status.complete && !grades.has(grade);
+  const line = (
+    <div className="flex items-start gap-1 px-1 text-[11px] font-bold leading-snug text-[var(--text-muted)]">
       <BookOpen size={13} className="shrink-0 mt-[2px] text-[var(--secondary)]" aria-hidden="true" />
       <span className="min-w-0"><span className="font-black text-[var(--text)]">{status.name}</span>{detail}</span>
+    </div>
+  );
+  if (!otherGrade) return <div role="note" aria-label="ならった範囲">{line}</div>;
+  return (
+    <div role="note" aria-label="ならった範囲" className="rounded-xl border-2 border-[var(--secondary)] bg-[var(--panel)] py-1.5 flex flex-col gap-1" data-testid="range-grade-note">
+      <p className="px-2 text-xs font-black leading-snug text-[var(--text)]">
+        <span>{grade}{F("年","ねん")}を えらんでいても、あたらしい{F("字","じ")}は {F("先生","せんせい")}の はんいから {F("出","で")}るよ</span>
+      </p>
+      {line}
     </div>
   );
 };
