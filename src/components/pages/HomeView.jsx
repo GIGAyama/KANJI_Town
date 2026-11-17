@@ -333,7 +333,7 @@ const HomeView = ({ setView, stats, setStats, startSession, startDrillSession, s
       plannedTotalCount={plannedTotalCount}
       plannedReviewCount={plannedReviewCount}
       plannedNewCount={plannedNewCount}
-      footer={learningRange ? <Suspense fallback={null}><RangeStatusLine range={learningRange} kanjiStats={stats.kanjiStats} today={today} grade={selectedGrade} /></Suspense> : null}
+      footer={learningRange ? <Suspense fallback={null}><RangeStatusLine range={learningRange} kanjiStats={stats.kanjiStats} today={today} grade={selectedGrade} setStats={setStats} /></Suspense> : null}
     />
   );
   // 宿題があるときだけ出す（学習を始めるボタンの下）

@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { BookOpen, NotebookPen } from 'lucide-react';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { listHomeworkForHome, formatMonthDay } from '../../systems/homework-status';
 import { getLearningRangeStatus } from '../../systems/learning-range';
+import { withRangeDrills } from '../../systems/range-tools';
+import { StorageAPI } from '../../systems/storage';
 import { HomeworkCard, startHomeworkFor } from './HomeworkParts';
 
 // ホームに出す「しゅくだい」と「ならった範囲」。HomeView から lazy() で読む
@@ -45,7 +47,17 @@ export const HomeworkBadge = ({ drills, today }) => {
  * ならった範囲の小さな表示（学習を始めるボタンの下）。
  * 例「📘 3年 2学期（5/17字）・11/20から あたらしい字が 12字」（5/17 は日付が来た字の数／ぜんぶの字の数）
  */
-export const RangeStatusLine = ({ range, kanjiStats, today, grade }) => {
+export const RangeStatusLine = ({ range, kanjiStats, today, grade, setStats }) => {
+  // 日付が来た段を、マイドリルに 入れる（受け取ったときに まだ日付の前だった段）
+  useEffect(() => {
+    if (!setStats) return;
+    setStats((prev) => {
+      const next = withRangeDrills(prev, today)?.stats;
+      if (!next) return prev;
+      StorageAPI.saveStats(next);
+      return next;
+    });
+  }, [setStats, today, range]);
   const status = useMemo(() => getLearningRangeStatus(range, kanjiStats, today, isKnownKanji), [range, kanjiStats, today]);
   if (!status) return null;
   const next = status.nextStage;
