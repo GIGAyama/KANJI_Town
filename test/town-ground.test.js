@@ -113,6 +113,8 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   map[`${C + 2},${C}`] = 't_tree';
   map[`${C + 4},${C}`] = 't_road';
   map[`${C + 4},${C}:top`] = 't_car';
+  map[`${C + 6},${C}`] = 't_road';
+  map[`${C + 6},${C}:top`] = 't_bench';
   map[`${C},${C + 2}`] = 't_castle';
   map[`${C + 3},${C + 2}`] = 't_garden';
   map[`${C - 2},${C}`] = 't_road';
@@ -125,7 +127,10 @@ test('影を落とすのは立っているものだけ。大きさは絵の足�
   const house = castAt(model, C, C);
   assert.ok(house && !house.round && house.height > 0);
   assert.ok(castAt(model, C + 2, C).round, '木の影は丸い');
-  assert.ok(castAt(model, C + 4, C).round, '道の上に乗せた車の影');
+  // 道の上に のせたもの: ベンチの影は 地面のレイヤーが丸く落とす。車は 影を絵の中に（車の形で）描く
+  assert.ok(castAt(model, C + 6, C).round, '道の上に乗せたベンチの影');
+  assert.ok(castAt(model, C + 6, C).bw < 0.5, 'ベンチの影は、ベンチの大きさ');
+  assert.equal(castAt(model, C + 4, C), null, '車の影は絵の中にある');
   assert.equal(castAt(model, C - 2, C), null, '道そのものは影を落とさない');
   const castle = castAt(model, C, C + 2);
   assert.deepEqual([castle.w, castle.h], [2, 2]);

@@ -1,24 +1,27 @@
 import React from 'react';
 import { ensureDef } from './shared.jsx';
-import { BUILDING_ART, buildingArtDef, buildingArtId } from './buildings-art.js';
+import { BUILDING_ART, PLACE_VIEWBOX, buildingArtDef, buildingArtId, buildingIconBox } from './buildings-art.js';
 
-// 建物（新しい絵がら）
+// 建物と、小さなもの（井戸・ベンチ・車など）
 //
-// 絵のおおもとは buildings-art.js にあり、その建物を はじめて描くときに 文書へ 1 回だけ置く
+// 絵のおおもとは buildings-art.js・props-art.js にあり、はじめて描くときに 文書へ 1 回だけ置く
 // （shared.jsx の ensureDef）。ここの部品は、それを <use> で呼びだすだけ（1 つ 2 要素）。
 
 /**
  * 絵の名前から、町のアイテムの部品を作る。
  * 色ちがい（variants）のある絵は、置いた場所（seed）で どれにするかが決まる。
+ *
+ * place … 町のマスに置くとき（DraggableTownMap が付ける）。足もとが決まった場所に来る viewBox で描く。
+ * 付けないとき（もちもの欄・クラフト・ガチャなどの見本）は、絵ぜんたいが わくに収まる viewBox で描く。
  */
 const artOf = (name) => {
   const count = BUILDING_ART[name].variants || 1;
-  return ({ seed = 0 }) => {
+  return ({ seed = 0, place = false }) => {
     const variant = count > 1 && Number.isFinite(seed) ? Math.abs(Math.floor(seed)) % count : 0;
     const id = buildingArtId(name, variant);
     ensureDef(id, () => buildingArtDef(name, variant));
     return (
-      <svg viewBox="0 -100 100 200" className="w-full h-full" style={{ overflow: 'visible' }}>
+      <svg viewBox={place ? PLACE_VIEWBOX : buildingIconBox(name)} className="w-full h-full" style={{ overflow: 'visible' }}>
         <use href={`#${id}`} />
       </svg>
     );
@@ -94,3 +97,28 @@ export const SvgMegaWonder = artOf('mega_wonder');
 export const SvgMegaHarborTown = artOf('mega_harbor_town');
 export const SvgMegaShrineComplex = artOf('mega_shrine_complex');
 export const SvgDragonShrine = artOf('dragon_shrine');
+
+// 小さなもの（かざり・道ばたのもの・のりもの・庭）。絵は props-art.js
+export const SvgWell = artOf('well');
+export const SvgStoneLantern = artOf('stone_lantern');
+export const SvgFountain = artOf('fountain');
+export const SvgStatue = artOf('statue');
+export const SvgGoldStatue = artOf('gold_statue');
+export const SvgWindmill = artOf('windmill');
+export const SvgGarden = artOf('garden');
+export const SvgZenGarden = artOf('zen_garden');
+export const SvgPlayground = artOf('playground');
+export const SvgBench = artOf('bench');
+export const SvgMailbox = artOf('mailbox');
+export const SvgPhoneBooth = artOf('phone_booth');
+export const SvgStreetLight = artOf('street_light');
+export const SvgBusStop = artOf('bus_stop');
+export const SvgVendingMachine = artOf('vending_machine');
+export const SvgTrashCan = artOf('trash_can');
+export const SvgCar = artOf('car');
+export const SvgBus = artOf('bus');
+export const SvgFireTruck = artOf('fire_truck');
+export const SvgBicycle = artOf('bicycle');
+export const SvgShipVehicle = artOf('ship_vehicle');
+export const SvgAirplane = artOf('airplane');
+export const SvgBridge = artOf('bridge');

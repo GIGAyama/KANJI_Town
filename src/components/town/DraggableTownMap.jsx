@@ -10,6 +10,7 @@ import { audioCtrl } from '../../systems/audio';
 import { isVillagerInViewRange } from '../../systems/town-animation';
 import { buildGroundModel, isGroundItem } from '../../systems/town-ground';
 import { itemFit } from '../../data/town-item-fit';
+import { nightLightOf } from '../../systems/town-night-light';
 import { townArtFor, useTownArtReady } from '../../data/town-art';
 import {
   TILE_W, TILE_H, GRID_SIZE, C, toIsoX, toIsoY, fromIso,
@@ -100,7 +101,7 @@ const TownArt = ({ item, itemId, x, y, seed, mirrored, lift, zIndex, fresh }) =>
           transition={POP_TRANSITION} className="absolute inset-0"
           style={{ transformOrigin: '50% 100%' }}>
           <div className="w-full h-full" style={mirrored ? { transform: 'scaleX(-1)' } : undefined}>
-            <Art seed={seed} />
+            <Art seed={seed} place />
           </div>
         </motion.div>
       </AnimatePresence>
@@ -164,28 +165,13 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
 
 // ── 夜のあかり ──
 // 夜は町ぜんたいに暗い色を 1 枚かぶせる（下の「時間帯レイヤー」）。その上に、建物の窓や
-// 街灯のあかりを、ぼんやりした丸として重ねる。建物 1 つにつき要素 1 つで、動かさない
-// （以前は建物ごとに CSS の filter をかけていて、建物が多い町の夜は重かった）。
-const LAMP_ITEMS = new Set(['t_street_light', 't_stone_lantern', 't_signal', 't_vending_machine', 't_festival_stage', 't_phone_booth', 't_bus_stop']);
-const LIT_TYPES = new Set(['building', 'mega', 'rare', 'special']);
-const UNLIT_ITEMS = new Set(['t_road', 't_bridge', 't_wall', 't_fence', 't_well', 't_mine', 't_garden', 't_zen_garden', 't_pool', 't_park', 't_torii', 't_dragon', 't_monument', 't_perfect_monument', 't_brick', 't_asphalt', 't_crosswalk', 't_railway', 't_stone_path']);
+// 街灯のあかりを、ぼんやりした丸として重ねる。どのアイテムが どこで光るかは systems/town-night-light.js が決める。
 const GLOW = 'radial-gradient(closest-side, rgba(255,221,150,0.62), rgba(255,205,105,0.26) 55%, rgba(255,195,80,0) 100%)';
-
-/** そのアイテムの あかり（無ければ null）。位置は「足もとのまん中」からの ずれ */
-function nightLightOf(itemId, item) {
-  if (!item) return null;
-  if (LAMP_ITEMS.has(itemId)) return { width: 34, height: 30, lift: 22 };
-  if (!LIT_TYPES.has(item.type) || UNLIT_ITEMS.has(itemId)) return null;
-  const fit = itemFit(item);
-  const span = (fit.bw + fit.bh) * 20;
-  // cu・cv: 建物が敷地のまん中から ずれているとき（学校の校舎は敷地の奥、など）の、建物のまん中
-  return { width: Math.max(30, span * 1.5), height: Math.max(22, span * 0.95), lift: 8 + Math.min(item.isoHeight || 20, 40) * 0.28, cu: fit.cu, cv: fit.cv };
-}
 
 const NightLight = memo(({ x, y, w, h, light }) => (
   <div aria-hidden="true" style={{
     position: 'absolute',
-    left: toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.width / 2,
+    left: toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) + light.dx - light.width / 2,
     top: toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift - light.height / 2,
     width: light.width,
     height: light.height,

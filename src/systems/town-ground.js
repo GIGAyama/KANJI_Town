@@ -88,7 +88,7 @@ const KIND_BY_ITEM = Object.freeze({
  */
 // ⚠️ 建物（iso-svg/buildings-art.js）のうち、影を絵の中に描くもの・平らなものは、絵の側の
 //    shadow（'own'・'none'）で決まる（town-item-fit.js の ownShadow）。ここに書くのは それ以外。
-const NO_SHADOW = new Set(['t_bridge', 't_garden', 't_zen_garden', 't_playground', 't_fence']);
+const NO_SHADOW = new Set(['t_fence']);
 const ROUND_SHADOW = new Set(['t_torii', 't_well', 't_dragon', 't_mine', 't_ferris_wheel', 't_tv_tower']);
 
 /** 地面として描くので、建物のレイヤーでは絵を出さない id */
@@ -156,7 +156,8 @@ export function buildGroundModel(map, itemMap, exploredRadius) {
       }
       const topId = safeMap[`${key}:top`];
       const topItem = topId ? itemMap.get(topId) : null;
-      if (topItem && !casts[i] && !NO_SHADOW.has(topId)) {
+      // 上に のせたもの（道の上の車・ベンチなど）。影を絵の中に描くもの（車など）には落とさない
+      if (topItem && !casts[i] && !NO_SHADOW.has(topId) && !itemFit(topItem).ownShadow) {
         const fit = itemFit(topItem);
         casts[i] = { w: 1, h: 1, bw: fit.bw, bh: fit.bh, height: topItem.isoHeight || 8, round: true };
       }
