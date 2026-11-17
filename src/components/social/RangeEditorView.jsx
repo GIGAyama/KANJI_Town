@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Plus, Trash2, Pencil, FileText, Link2, X, Check } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Plus, Trash2, Pencil, FileText, FilePlus2, Link2, Presentation, Printer, X, Check } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModalDialog from '../ui/ModalDialog';
 import { KANJI_DATA } from '../../data/kanji-data';
@@ -8,11 +8,17 @@ import { StorageAPI } from '../../systems/storage';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
 import { DRILL_NAME_MAX_LENGTH, SHARE_URL_SAFE_LENGTH, isValidDateKey } from '../../systems/drill-share';
-import { RANGE_KANJI_MAX, RANGE_STAGE_MAX, buildRangeShareUrl, sanitizeLearningRange } from '../../systems/learning-range';
+import { RANGE_KANJI_MAX, RANGE_STAGE_MAX, buildRangeShareUrl, encodeRangeParam, sanitizeLearningRange } from '../../systems/learning-range';
+import { addStageDrill, stageToDrill } from '../../systems/range-tools';
 import { addDays, formatMonthDay } from '../../systems/homework-status';
 import { getTodayString } from '../../utils/date-utils';
 import ShareLinkPanel from './ShareLinkPanel';
 import { KanjiFinderControls, KanjiFinderResults, useKanjiFinder } from '../ui/KanjiFinder';
+import { useShareLogging } from './useShareRecorder';
+
+// 段から開く画面は、使うときにだけ読む（プリント・授業モード）
+const PrintTestView = lazy(() => import('../pages/PrintTestView'));
+const LessonMode = lazy(() => import('../lesson/LessonMode'));
 
 const KANJI_BY_ID = new Map(KANJI_DATA.map(k => [k.id, k]));
 const GRADES = [1, 2, 3, 4, 5, 6];
@@ -132,6 +138,10 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
   const [step, setStep] = useState('edit'); // edit | share
   const [confirmReset, setConfirmReset] = useState(false);
   const drills = stats.myDrills || [];
+  // 段を そのまま使う: プリント（その段の字の紙のテスト）・授業モード（電子黒板に映す）・マイドリルにした知らせ
+  const [printDrill, setPrintDrill] = useState(null);
+  const [lesson, setLesson] = useState(null);
+  const [stageNotice, setStageNotice] = useState(null); // { index, added, name }
 
   // 下書きは、変えるたびに端末へ残す（タブを閉じても作りかけが消えないように）
   const firstRun = useRef(true);
@@ -151,7 +161,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
   const tooBig = totalCount > RANGE_KANJI_MAX || (range && !shareUrl);
   const tooLong = shareUrl && shareUrl.length > SHARE_URL_SAFE_LENGTH;
 
-  const updateStage = (index, patch) => setDraft(d => ({ ...d, stages: d.stages.map((stage, i) => (i === index ? { ...stage, ...patch } : stage)) }));
+  const updateStage = (index, patch) => { setStageNotice(null); setDraft(d => ({ ...d, stages: d.stages.map((stage, i) => (i === index ? { ...stage, ...patch } : stage)) })); };
   const addKanjisToStage = (index, ids) => setDraft(d => {
     const used = new Set(d.stages.flatMap(stage => stage.kanjis));
     let room = RANGE_KANJI_MAX - used.size;
@@ -210,6 +220,25 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
       return { ...d, stages: stages.length > 0 ? stages : d.stages };
     });
   };
+  // 段を マイドリルにする（テスト・宿題・4けたの数字で送る は マイドリルから）
+  const saveStageAsDrill = (index) => {
+    const drill = stageToDrill(draft, index);
+    if (!drill) return;
+    const { added } = addStageDrill(stats.myDrills, drill);
+    if (added) {
+      setStats(prev => {
+        const next = { ...prev, myDrills: addStageDrill(prev.myDrills, drill).drills };
+        StorageAPI.saveStatsImmediate(next);
+        return next;
+      });
+    }
+    audioCtrl.playSE(added ? 'success' : 'click');
+    setStageNotice({ index, added, name: drill.name });
+  };
+
+  // 配ったものの控え（先生の端末に残す）。URL をコピーした・Classroom を開いた ときと、配る画面を はなれるときに残す
+  const recordShared = useShareLogging(setStats, 'range', step === 'share' && range && shareUrl ? encodeRangeParam(range) : null);
+
   const handleReset = () => {
     audioCtrl.playSE('click');
     setDraft({ name: '', stages: [{ from: today, kanjis: [] }] });
@@ -227,6 +256,14 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
       </h2>
     </div>
   );
+
+  if (printDrill) {
+    return (
+      <Suspense fallback={null}>
+        <PrintTestView drill={printDrill} setView={setView} onBack={() => setPrintDrill(null)} backLabel="ならった範囲に戻る" />
+      </Suspense>
+    );
+  }
 
   if (step === 'share' && range && shareUrl) {
     return (
@@ -248,6 +285,7 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
           title={`ならった範囲：${range.name}`}
           label="範囲のURL"
           inputId="range-share-url"
+          onShared={recordShared}
           tooLongNote={<>{F("字","じ")}と だんが {F("多","おお")}いため、URLが とても{F("長","なが")}くなっています。うまく{F("開","ひら")}けない{F("端末","たんまつ")}があるときは、{F("範囲","はんい")}を{F("分","わ")}けて（{F("例","れい")}：1{F("学期","がっき")}・2{F("学期","がっき")}）{F("配","くば")}ってください。</>}
         />
         <div className="bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl p-4 flex flex-col gap-1 text-sm text-[var(--text)]">
@@ -311,6 +349,24 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
                 <MotionButton variant="primary" onClick={() => setPicker(i)} className="min-h-[48px] text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239]"><Pencil size={16} /> {F("字","じ")}を えらぶ</MotionButton>
                 <MotionButton variant="secondary" onClick={() => setDrillPicker({ mode: 'stage', index: i })} disabled={drills.length === 0} className="min-h-[48px] text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]"><FileText size={16} /> マイドリルから</MotionButton>
               </div>
+              {/* この段の字を そのまま使う（週の小テスト・授業）。字を えらびなおさなくてよい */}
+              {stage.kanjis.length > 0 && (
+                <div className="flex flex-col gap-1 border-t-2 border-[var(--text)]/15 pt-2" data-testid="range-stage-tools">
+                  <div className="text-xs font-black text-[var(--text-muted)]"><span>この だんの{F("字","じ")}を つかう</span></div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <MotionButton variant="secondary" onClick={() => saveStageAsDrill(i)} className="min-h-[48px] px-1 text-xs flex-col gap-0.5 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)]" data-testid="range-stage-drill"><FilePlus2 size={18} /> マイドリルに する</MotionButton>
+                    <MotionButton variant="secondary" onClick={() => setPrintDrill(stageToDrill(draft, i))} className="min-h-[48px] px-1 text-xs flex-col gap-0.5 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)]" data-testid="range-stage-print"><Printer size={18} /> プリントに する</MotionButton>
+                    <MotionButton variant="secondary" onClick={() => { const drill = stageToDrill(draft, i); if (drill) setLesson({ title: drill.name, kanjiIds: drill.kanjis }); }} className="min-h-[48px] px-1 text-xs flex-col gap-0.5 border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)]" data-testid="range-stage-lesson"><Presentation size={18} /> {F("授業","じゅぎょう")}で うつす</MotionButton>
+                  </div>
+                  {stageNotice?.index === i && (
+                    <p role="status" className="text-xs font-bold text-[var(--text)] bg-[var(--bg)] rounded-lg px-2 py-1.5 leading-relaxed" data-testid="range-stage-notice">
+                      <span>{stageNotice.added
+                        ? <>マイドリルに「{stageNotice.name}」を {F("入","い")}れました。テスト・{F("宿題","しゅくだい")}・4けたの すうじで{F("送","おく")}る は、マイドリルから できます。</>
+                        : <>「{stageNotice.name}」は、もう マイドリルに あります。</>}</span>
+                    </p>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}
@@ -358,6 +414,11 @@ const RangeEditorView = ({ setView, stats, setStats }) => {
         )}
         {drillPicker && <DrillPicker mode={drillPicker.mode} drills={drills} onPick={handlePickDrills} onClose={() => setDrillPicker(null)} />}
       </AnimatePresence>
+      {lesson && (
+        <Suspense fallback={null}>
+          <LessonMode title={lesson.title} kanjiIds={lesson.kanjiIds} onClose={() => setLesson(null)} />
+        </Suspense>
+      )}
     </div>
   );
 };

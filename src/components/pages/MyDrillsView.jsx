@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2, Printer, CalendarDays } from 'lucide-react';
+import { FileText, Plus, PenTool, Share2, Trash2, ArrowLeft, ClipboardCheck, Link2, Printer, CalendarDays, History, Presentation } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import ModalDialog from '../ui/ModalDialog';
 import { KANJI_DATA } from '../../data/kanji-data';
@@ -12,6 +12,10 @@ import { getTodayString } from '../../utils/date-utils';
 import { DrillHomeworkLine } from '../social/HomeworkParts';
 import { homeworkIdFor } from '../../systems/homework-status';
 
+// 先生向けの重ね画面は、開くときにだけ読む（授業モード・配ったものの控え）
+const LessonMode = lazy(() => import('../lesson/LessonMode'));
+const ShareLogDialog = lazy(() => import('../social/ShareLogDialog'));
+
 const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPractice, startDrillTest: startTest, setHostDrill }) => {
   // 宿題のドリルは、やることが合っていれば（テストは決められた問題数以上なら）宿題として記録する
   const startDrillSession = (drill) => startPractice(drill, homeworkIdFor(drill, 'practice'));
@@ -19,6 +23,8 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
   const drills = stats.myDrills || [];
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [testDrill, setTestDrill] = useState(null);
+  const [lessonDrill, setLessonDrill] = useState(null);
+  const [showShareLog, setShowShareLog] = useState(false);
   const today = getTodayString();
 
   const handleDelete = (idx) => {
@@ -44,7 +50,11 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
         <MotionButton variant="primary" onClick={() => setView('drillEditor')} className="ml-auto shrink-0 whitespace-nowrap px-4 py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239] min-h-[44px]"><Plus size={16} /> {F("作","つく")}る</MotionButton>
       </div>
       {/* 授業で習った字だけを毎日の新出に出す予定を、日付つきで配る（先生向け） */}
-      <MotionButton variant="secondary" onClick={() => setView('rangeEditor')} className="w-full py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] min-h-[48px]"><CalendarDays size={18} /> ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）</MotionButton>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <MotionButton variant="secondary" onClick={() => setView('rangeEditor')} className="w-full py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] min-h-[48px]"><CalendarDays size={18} /> ならった{F("範囲","はんい")}を{F("配","くば")}る（{F("先生","せんせい")}{F("向","む")}け）</MotionButton>
+        {/* 配ったリンク・宿題・範囲を、配ったときの中身のまま もう一度 出す（先生向け） */}
+        <MotionButton variant="secondary" onClick={() => setShowShareLog(true)} className="w-full py-2 text-sm border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)] min-h-[48px]" data-testid="open-share-log"><History size={18} /> {F("配","くば")}ったものの{F("控","ひか")}え（{F("先生","せんせい")}{F("向","む")}け）</MotionButton>
+      </div>
       {drills.length === 0 ? (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-2xl p-8 text-center shadow-sm">
           <div className="text-5xl mb-3">📋</div>
@@ -67,6 +77,7 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
                 <MotionButton variant="accent" onClick={() => { setHostDrill(drill); setView('drillShare'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_#b45309] min-h-[36px]"><Link2 size={14} /> リンク</MotionButton>
                 <MotionButton variant="secondary" onClick={() => { setHostDrill(drill); setView('peerHost'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] min-h-[36px]"><Share2 size={14} /> {F("送","おく")}る</MotionButton>
                 <MotionButton variant="secondary" onClick={() => { setHostDrill(drill); setView('printTest'); }} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] min-h-[36px]"><Printer size={14} /> <span className="leading-tight text-center">プリント<br />（{F("先生","せんせい")}{F("向","む")}け）</span></MotionButton>
+                <MotionButton variant="secondary" onClick={() => setLessonDrill(drill)} className="px-3 py-2 text-xs border-[2px] border-[var(--text)] shadow-[0_2px_0_var(--text)] min-h-[36px]" data-testid="drill-lesson"><Presentation size={14} /> <span className="leading-tight text-center">{F("授業","じゅぎょう")}で うつす<br />（{F("先生","せんせい")}{F("向","む")}け）</span></MotionButton>
                 <button onClick={() => setConfirmDelete(i)} aria-label="ドリルを削除" className="px-3 py-2 text-xs border-[2px] border-rose-300 text-rose-500 rounded-[16px] font-bold hover:bg-rose-50 transition-colors min-h-[36px] flex items-center gap-1"><Trash2 size={14} /> {F("削除","さくじょ")}</button>
               </div>
             </div>
@@ -112,6 +123,20 @@ const MyDrillsView = ({ setView, stats, setStats, startDrillSession: startPracti
               <MotionButton variant="secondary" onClick={() => setTestDrill(null)} className="w-full py-3 border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">キャンセル</MotionButton>
             </motion.div>
           </ModalDialog>
+        )}
+      </AnimatePresence>
+
+      {/* 授業モード（電子黒板に映す）・配ったものの控え */}
+      {lessonDrill && (
+        <Suspense fallback={null}>
+          <LessonMode title={lessonDrill.name} kanjiIds={lessonDrill.kanjis || []} onClose={() => setLessonDrill(null)} />
+        </Suspense>
+      )}
+      <AnimatePresence>
+        {showShareLog && (
+          <Suspense fallback={null}>
+            <ShareLogDialog stats={stats} setStats={setStats} setView={setView} onClose={() => setShowShareLog(false)} />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>

@@ -8,7 +8,8 @@ import PresentationToggle from '../ui/PresentationToggle';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
 import { buildDrillMessage, drillCheckCode } from '../../systems/drill-p2p';
-import { sanitizeHomework } from '../../systems/drill-share';
+import { encodeDrillParam, sanitizeHomework } from '../../systems/drill-share';
+import { useShareRecorder } from './useShareRecorder';
 
 // 4桁のランダムな数字IDを生成
 const generate4DigitId = () => {
@@ -17,7 +18,7 @@ const generate4DigitId = () => {
 
 const STATUS_EMOJI = { wait: '📡', sending: '📨', sent: '✅', error: '❌' };
 
-const TeacherHostView = ({ setView, drill }) => {
+const TeacherHostView = ({ setView, drill, setStats }) => {
   const { Peer, loadError: peerLoadError, offline } = usePeerJS();
   const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
   const [numericId, setNumericId] = useState('');
@@ -36,6 +37,10 @@ const TeacherHostView = ({ setView, drill }) => {
   const checkCode = useMemo(() => (drill ? drillCheckCode(drill) : ''), [drill]);
   // 「リンクで配る」で宿題にしてから来たときは、宿題の決まりも送る（リンクと同じ中身）
   const homework = sanitizeHomework(drill?.homework);
+  // 送れたら、配ったものの控えに残す（リンクと同じ中身。何台に送っても 1 件）
+  const record = useShareRecorder(setStats);
+  const recordRef = useRef(null);
+  recordRef.current = () => { if (drill) record({ kind: 'drill', param: encodeDrillParam(drill), via: 'number' }); };
 
   // QRコード描画（接続用URLをエンコード）
   const renderQR = useCallback((numId) => {
@@ -75,6 +80,7 @@ const TeacherHostView = ({ setView, drill }) => {
           setTimeout(() => {
             setStatus({ tone: 'sent', text: 'おくれました！' });
             audioCtrl.playSE('success');
+            recordRef.current?.();
           }, 500);
         });
       });

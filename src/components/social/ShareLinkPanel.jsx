@@ -15,8 +15,9 @@ const CLASSROOM_GREEN = '#0f9d58';
  *   title         … Classroom の共有画面に渡す題
  *   label         … URL の欄の名前
  *   tooLongNote   … URL が長すぎるときに出す文
+ *   onShared      … URL をコピーした・Classroom の共有を開いた ときに呼ぶ（配ったものの控えに残すため）
  */
-const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 'drill-share-url', tooLongNote }) => {
+const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 'drill-share-url', tooLongNote, onShared }) => {
   const { lib: QRCode, isLoaded: isQRLoaded, loadError: qrLoadError } = useQRCode();
   const qrCanvasRef = useRef(null);
   const urlInputRef = useRef(null);
@@ -45,6 +46,7 @@ const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 
 
   const handleCopy = useCallback(async () => {
     if (!shareUrl) return;
+    onShared?.();
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     try {
       if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
@@ -58,7 +60,7 @@ const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 
       setCopyState('failed');
     }
     copyTimerRef.current = setTimeout(() => setCopyState('idle'), 2500);
-  }, [shareUrl]);
+  }, [shareUrl, onShared]);
 
   if (!shareUrl) return null;
 
@@ -100,7 +102,7 @@ const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 
           href={classroomUrl}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => audioCtrl.playSE('click')}
+          onClick={() => { audioCtrl.playSE('click'); onShared?.(); }}
           className="w-full py-4 rounded-[20px] font-black text-white text-base flex items-center justify-center gap-2 border-none shadow-[0_4px_0_#0b7043] hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all touch-manipulation"
           style={{ backgroundColor: CLASSROOM_GREEN }}
         >

@@ -4,10 +4,11 @@ import MotionButton from '../ui/MotionButton';
 import { KANJI_DATA } from '../../data/kanji-data';
 import { audioCtrl } from '../../systems/audio';
 import { F } from '../ui/FormatKun';
-import { HOMEWORK_TEST_COUNTS, buildDrillShareUrl, isValidDateKey, sanitizeHomework } from '../../systems/drill-share';
+import { HOMEWORK_TEST_COUNTS, buildDrillShareUrl, encodeDrillParam, isValidDateKey, sanitizeHomework } from '../../systems/drill-share';
 import { addDays, daysUntil, formatMonthDay } from '../../systems/homework-status';
 import { getTodayString } from '../../utils/date-utils';
 import ShareLinkPanel from './ShareLinkPanel';
+import { useShareLogging } from './useShareRecorder';
 
 /** 合格の目安（%）のえらびかた */
 const PASS_OPTIONS = [60, 70, 80, 90, 100];
@@ -33,7 +34,7 @@ const Choice = ({ active, onClick, children, className = '' }) => (
  * 「宿題にする（先生向け）」を選ぶと、しめきり・やること・問題数・合格の目安もリンクに入る。
  * どの配り方でも同じ中身（drill-share.js の param）が届く。
  */
-const DrillShareView = ({ setView, drill, setHostDrill }) => {
+const DrillShareView = ({ setView, drill, setHostDrill, setStats }) => {
   const today = getTodayString();
   const kanjiCount = drill?.kanjis?.length || 0;
   // 4けたの数字の画面から戻ってきたときは、えらんでいた宿題の決まりを続ける
@@ -60,6 +61,9 @@ const DrillShareView = ({ setView, drill, setHostDrill }) => {
     return buildDrillShareUrl(sharedDrill, `${window.location.origin}${window.location.pathname}`);
   }, [sharedDrill, homeworkInvalid]);
   const title = homework ? `しゅくだい ${formatMonthDay(homework.due)}まで：${drill?.name || ''}` : drill?.name;
+
+  // 配ったものの控え（先生の端末に残す）。URL をコピーした・Classroom を開いた ときと、この画面を はなれるときに残す
+  const recordShared = useShareLogging(setStats, 'drill', shareUrl && sharedDrill ? encodeDrillParam(sharedDrill) : null);
 
   const sendByNumber = () => {
     setHostDrill?.(sharedDrill);
@@ -179,7 +183,7 @@ const DrillShareView = ({ setView, drill, setHostDrill }) => {
             )}
           </div>
 
-          <ShareLinkPanel shareUrl={shareUrl} title={title} label={homework ? '宿題のURL' : 'ドリルのURL'} />
+          <ShareLinkPanel shareUrl={shareUrl} title={title} label={homework ? '宿題のURL' : 'ドリルのURL'} onShared={recordShared} />
 
           <div className="bg-[var(--bg)] border-[3px] border-[var(--text)] rounded-xl p-4 flex flex-col gap-1 text-sm text-[var(--text)] opacity-70">
             <p className="font-black opacity-100">リンクについて</p>
