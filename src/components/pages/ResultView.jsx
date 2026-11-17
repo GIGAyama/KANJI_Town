@@ -5,7 +5,8 @@ import MotionButton from '../ui/MotionButton';
 import LevelUpModal from '../ui/LevelUpModal';
 import AnimatedCounter from '../ui/AnimatedCounter';
 import Confetti from '../ui/Confetti';
-import { TOWN_ITEMS, SvgVillager } from '../../data/town-items';
+import { TOWN_ITEMS } from '../../data/town-items';
+import { VillagerPortrait } from '../town/VillagerArt';
 import { GACHA_POOL } from '../../data/gacha-pool';
 import { STORY_STAGES, getCurrentStage } from '../../data/story-stages';
 import { STORY_STAGE_TEXT } from '../../data/story-stage-text';
@@ -218,7 +219,7 @@ const ResultView = ({ sessionMetrics, oldExp, setView, stats, setStats, onContin
         <motion.div initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, delay: 0.2 }}
           className="bg-emerald-50 border-[4px] border-emerald-400 rounded-2xl p-4 shadow-[4px_4px_0_#059669] flex items-center gap-4">
           <div className="w-14 h-14 shrink-0 bg-emerald-100 rounded-2xl flex items-center justify-center border-[3px] border-emerald-400">
-            <SvgVillager />
+            <VillagerPortrait occupation={newVillager.occupation} id={newVillager.id} size={46} />
           </div>
           <div className="flex-1">
             <div className="font-black text-emerald-700 text-base">🎉 {F("新","あたら")}しい{F("住民","じゅうみん")}が{F("誕生","たんじょう")}！</div>

@@ -15,10 +15,9 @@ const lazySvg = (exportName) => {
   return component;
 };
 
-// ResultView / BossBattleView が利用する互換エクスポート。
-const SvgVillager = lazySvg('SvgVillager');
+// BossBattleView が使う、おばけの絵。
 const SvgGhostBoss = lazySvg('SvgGhostBoss');
-export { SvgGhostBoss, SvgVillager };
+export { SvgGhostBoss };
 
 
 // もちもの欄の、カードの背景色。同じ文字列を何十回も書くと、その分だけ入口の束

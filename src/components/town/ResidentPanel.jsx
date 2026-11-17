@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Users, Heart, Package, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import { OCCUPATIONS, getOccupation } from '../../data/residents';
+import { VillagerPortrait } from './VillagerArt';
 import { MATERIALS } from '../../data/materials';
 import {
   calculateSatisfaction,
@@ -131,7 +132,8 @@ const ResidentPanel = ({ stats, setView }) => {
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 bg-[var(--bg)] hover:bg-[var(--bg)]/80 transition-colors text-left"
                 >
-                  <span className="text-xl shrink-0">{occ.emoji}</span>
+                  {/* 職業の顔ぶれ（町を歩いている住民と同じ絵） */}
+                  <span className="shrink-0 w-9 flex justify-center"><VillagerPortrait occupation={occ.id} variant={0} size={36} /></span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-black text-[var(--text)]">{occ.name}</div>
                     <div className="text-[10px] text-[var(--text)] opacity-50 truncate">{occ.desc}</div>
@@ -175,9 +177,9 @@ const ResidentPanel = ({ stats, setView }) => {
                         <div className="text-[10px] font-bold text-[var(--text)] opacity-60 mb-1">{F("住民","じゅうみん")}:</div>
                         <div className="flex flex-wrap gap-1">
                           {occVillagers.map(v => (
-                            <span key={v.id} className="inline-flex items-center gap-0.5 bg-[var(--bg)] rounded-full px-2 py-0.5 text-[10px] font-bold border border-[var(--text)]">
-                              <span className="text-[var(--primary)]">{v.kanjiChar}</span>
-                              <span className="text-[var(--text)] opacity-50">🧑</span>
+                            <span key={v.id} className="inline-flex items-end gap-1 bg-[var(--bg)] rounded-full pl-1.5 pr-2.5 py-0.5 text-sm font-black border border-[var(--text)]">
+                              <VillagerPortrait occupation={v.occupation} id={v.id} size={24} />
+                              <span className="text-[var(--primary)] leading-6">{v.kanjiChar}</span>
                             </span>
                           ))}
                         </div>

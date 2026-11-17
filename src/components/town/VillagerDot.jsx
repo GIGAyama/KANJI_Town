@@ -8,20 +8,8 @@ const TILE_H = 32;
 const toIsoX = (gx, gy) => (gx - gy) * (TILE_W / 2);
 const toIsoY = (gx, gy) => (gx + gy) * (TILE_H / 2);
 
-import { IsoAvatar } from '../../data/iso-avatar';
-
-// 職業IDから対応するAvatarコンポーネントを取得
-const getAvatarComponent = (occupationId) => {
-  switch (occupationId) {
-    case 'farmer': return IsoAvatar.Farmer;
-    case 'merchant': return IsoAvatar.Merchant;
-    case 'craftsman': return IsoAvatar.Craftsman;
-    case 'blacksmith': return IsoAvatar.Blacksmith;
-    case 'scholar': return IsoAvatar.Scholar;
-    case 'legendary': return IsoAvatar.Legendary;
-    default: return IsoAvatar.Farmer;
-  }
-};
+import { VILLAGER_BOX, villagerKind, villagerTop } from '../../data/villager-art';
+import { VillagerFigure } from './VillagerArt';
 
 const CULTIVATABLE_TERRAIN = new Set([
   't_roughland', 't_weed', 't_grassland', 't_forest_floor', 't_highland', 't_sand'
@@ -32,14 +20,15 @@ const NO_POINTS = [];
 /** 町は雲の上の島なので、島の外（まだ見えていない土地）へは歩いて出ない */
 const keepOnIsland = (value, exploredRadius) => Math.min(C + exploredRadius + 0.3, Math.max(C - exploredRadius - 0.3, value));
 
-// 歩くときの上下の揺れ（sin 波・3px・約 0.63 秒）と、喜んで跳ねる動き（6px）。
-// どちらも Web Animations で描き、ブラウザの合成だけで動かす（毎フレーム描き直さない）
+// 歩くときの動き（左右に小さく ゆれながら、とことこ はねる。約 0.63 秒で 2 歩）と、喜んで跳ねる動き（6px）。
+// どちらも Web Animations で描き、ブラウザの合成だけで動かす（毎フレーム描き直さない）。
+// ゆれの中心は足もと（BODY_ORIGIN）。名札も体といっしょに ゆれる
 const BOB_FRAMES = [
-  { transform: 'translateY(0px)', easing: 'ease-out' },
-  { transform: 'translateY(3px)', easing: 'ease-in' },
-  { transform: 'translateY(0px)', easing: 'ease-out' },
-  { transform: 'translateY(-3px)', easing: 'ease-in' },
-  { transform: 'translateY(0px)' },
+  { transform: 'translateY(0px) rotate(-4deg)', easing: 'ease-out' },
+  { transform: 'translateY(-2.5px) rotate(0deg)', easing: 'ease-in' },
+  { transform: 'translateY(0px) rotate(4deg)', easing: 'ease-out' },
+  { transform: 'translateY(-2.5px) rotate(0deg)', easing: 'ease-in' },
+  { transform: 'translateY(0px) rotate(-4deg)' },
 ];
 const JUMP_FRAMES = [
   { transform: 'translateY(0px)', easing: 'ease-out' },
@@ -59,9 +48,17 @@ const BUBBLE_OUT = [
   { transform: 'scale(1)', opacity: 1 },
   { transform: 'scale(0)', opacity: 0 },
 ];
-const EMOTION_EMOJI = { heart: '❤️', note: '🎵', exclamation: '❕', sleep: '💤' };
+// ふきだしの中の しるし（絵文字は端末で形が変わるので、絵で描く）
+const EMOTION_ICON = {
+  heart: <path d="M6 10.4C2.6 7.9 1.1 6.2 1.1 4.3c0-1.5 1.1-2.5 2.4-2.5 1 0 1.9.5 2.5 1.5.6-1 1.5-1.5 2.5-1.5 1.3 0 2.4 1 2.4 2.5 0 1.9-1.5 3.6-4.9 6.1z" fill="#f0483e" stroke="#2b211c" strokeWidth="0.9" strokeLinejoin="round" />,
+  note: <path d="M4.7 8.9a1.7 1.4 0 1 1-1-1.3V2.7l5.4-1.3v6.2a1.7 1.4 0 1 1-1-1.3V3.4L4.7 4.2z" fill="#3f86d8" stroke="#2b211c" strokeWidth="0.8" strokeLinejoin="round" />,
+  exclamation: <path d="M6 1.9v4.9M6 9.7v.2" fill="none" stroke="#ee7b22" strokeWidth="2.2" strokeLinecap="round" />,
+  sleep: <path d="M2.2 5.6h3.6L2.2 10h3.6M7 1.8h2.8L7 5h2.8" fill="none" stroke="#5f73c9" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />,
+};
+const BUBBLE_SIZE = 18;
 
-const EmotionBubble = ({ emotion }) => {
+/** 気持ちの ふきだし。名札の上に出す（bottom は 足もとの地面からの高さ） */
+const EmotionBubble = ({ emotion, bottom }) => {
   const [shown, setShown] = useState(emotion);
   const ref = useRef(null);
   const visible = Boolean(shown);
@@ -82,17 +79,27 @@ const EmotionBubble = ({ emotion }) => {
   }, [visible]);
 
   if (!shown) return null;
+  // まん中に置くのに transform は使わない（出入りの動きが transform を書きかえるため）
   return (
-    <div ref={ref}
-      className="absolute -top-4 bg-white/90 rounded-full px-1.5 py-0.5 shadow-md shadow-black/20 text-xs border border-slate-200 z-20">
-      {EMOTION_EMOJI[shown]}
+    <div ref={ref} aria-hidden="true"
+      style={{
+        position: 'absolute', left: '50%', marginLeft: -BUBBLE_SIZE / 2, bottom, width: BUBBLE_SIZE, height: BUBBLE_SIZE,
+        boxSizing: 'border-box', borderRadius: '50%', background: '#fffdf5', border: '1.5px solid #2b211c',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: '50% 100%',
+      }}>
+      <svg width="12" height="12" viewBox="0 0 12 12">{EMOTION_ICON[shown]}</svg>
     </div>
   );
 };
 
-// VillagerDotの幅・高さ（transform:translate(-50%,-100%)の代わりに手動オフセット）
-const vW = 40;
-const vH = 48;
+// 住民の絵の枠（よこ 40・たて 48）。足もとの地面は、枠の下から GROUND_GAP だけ上にある
+const vW = VILLAGER_BOX.width;
+const vH = VILLAGER_BOX.height;
+const GROUND_GAP = VILLAGER_BOX.y + VILLAGER_BOX.height;
+/** 歩くときに ゆれる中心（足もとの地面） */
+const BODY_ORIGIN = `50% ${vH - GROUND_GAP}px`;
+/** 名札の高さ（とがり 2.4 + ふだ 13.2）と、ふきだしとの すきま */
+const TAG_HEIGHT = 15.6;
 
 /**
  * 住民 1 人。
@@ -130,8 +137,6 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
     timer: 0, // 状態遷移用の汎用タイマー
     baseSpeed: 0.02 + (villager.id.length % 3) * 0.005, // 個体別の歩行速度
   });
-
-  const Avatar = getAvatarComponent(villager.occupation);
 
   useEffect(() => {
     if (shouldReduceMotion) return undefined;
@@ -271,7 +276,7 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
 
   // CSS描画用位置計算（歩いている間は行き先の位置。そこまでは transition が運ぶ）
   const screenX = toIsoX(gridPos.x, gridPos.y) + visualOffset.x - vW / 2;
-  const screenY = toIsoY(gridPos.x, gridPos.y) + visualOffset.y - vH;
+  const screenY = toIsoY(gridPos.x, gridPos.y) + visualOffset.y - vH + GROUND_GAP;
 
   // 現在地のタイルIDを取得し、未開拓（草木）か判定する
   const currentTileId = mapData[`${Math.round(gridPos.x)},${Math.round(gridPos.y)}`];
@@ -292,26 +297,10 @@ const VillagerDot = React.memo(({ villager, mapData = NO_MAP, pointsOfInterest =
         transition: `transform ${moveSeconds.toFixed(2)}s linear, opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)`,
         willChange: 'transform',
       }}>
-      <div ref={bodyRef} className="flex flex-col items-center justify-end w-full h-full">
-        {/* 感情ふきだし (AIステート起因) */}
-        <EmotionBubble emotion={emotion} />
-
-        {/* 3Dアイソメトリックアバター + 頭上の漢字 */}
-        <div className="relative w-10 h-10 transition-transform duration-200">
-          {/* 頭上の漢字（アバターに密着させる） */}
-          <div className="absolute top-[2px] left-1/2 -translate-x-1/2 text-[10px] font-black leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] z-10 w-full text-center"
-            style={{ color: '#fff', textShadow: '0 0 4px #e11d48, 0 0 2px #e11d48, 0 0 1px #e11d48' }}>
-            {villager.kanjiChar}
-          </div>
-
-          {/* アバター本体 */}
-          <div
-            className="w-full h-full origin-bottom transform"
-            style={{ transform: `scaleX(${facesRight ? -1 : 1})` }}
-          >
-            <Avatar />
-          </div>
-        </div>
+      {/* 体・名札・ふきだしを ひとまとめにして、歩くときに上下に ゆらす */}
+      <div ref={bodyRef} style={{ position: 'relative', width: vW, height: vH, transformOrigin: BODY_ORIGIN }}>
+        <VillagerFigure occupation={villager.occupation} id={villager.id} char={villager.kanjiChar} facesRight={facesRight} />
+        <EmotionBubble emotion={emotion} bottom={GROUND_GAP + villagerTop(villagerKind(villager.occupation)) + 3 + TAG_HEIGHT} />
       </div>
     </div>
   );
