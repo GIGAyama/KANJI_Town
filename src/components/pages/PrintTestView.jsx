@@ -163,7 +163,11 @@ const Choice = ({ id, legend, options, value, onChange }) => (
   </div>
 );
 
-const PrintTestView = ({ setView, drill }) => {
+/**
+ * onBack・backLabel: マイドリル以外の画面（ならった範囲の段）から開いたときの もどり先。
+ * 渡さなければ マイドリルへ もどる。
+ */
+const PrintTestView = ({ setView, drill, onBack = null, backLabel = 'マイドリルに戻る' }) => {
   const [options, setOptions] = useState(() => ({ ...DEFAULT_PRINT_OPTIONS, seed: newSeed() }));
   const previewRef = useRef(null);
   const { scale, gap } = usePreviewLayout(previewRef);
@@ -213,11 +217,11 @@ const PrintTestView = ({ setView, drill }) => {
     loadPrintFonts().then(go, go);
   }, [loadPrintFonts]);
 
-  const goBack = () => { audioCtrl.playSE('click'); setView('myDrills'); };
+  const goBack = () => { audioCtrl.playSE('click'); if (onBack) onBack(); else setView('myDrills'); };
 
   const header = (
     <div className="flex items-center gap-3">
-      <button onClick={goBack} aria-label="マイドリルに戻る" className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[48px] min-h-[48px] flex items-center justify-center">
+      <button onClick={goBack} aria-label={backLabel} className="text-[var(--text-muted)] hover:text-[var(--text)] p-2 rounded-full hover:bg-[var(--bg)] transition-all min-w-[48px] min-h-[48px] flex items-center justify-center">
         <ArrowLeft size={24} />
       </button>
       <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
@@ -235,7 +239,7 @@ const PrintTestView = ({ setView, drill }) => {
           <p className="font-bold text-[var(--text)]">プリントにできる{F("字","じ")}がありません</p>
           <p className="text-sm text-[var(--text-muted)] mt-1">マイドリルからもう{F("一度","いちど")}えらんでください</p>
         </div>
-        <MotionButton variant="secondary" onClick={() => setView('myDrills')} className="w-full py-3 min-h-[48px] border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">もどる</MotionButton>
+        <MotionButton variant="secondary" onClick={goBack} className="w-full py-3 min-h-[48px] border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">もどる</MotionButton>
       </div>
     );
   }
@@ -314,7 +318,7 @@ const PrintTestView = ({ setView, drill }) => {
           <MotionButton variant="primary" onClick={handlePrint} className="w-full py-3 min-h-[52px] text-base font-black border-[3px] border-[var(--text)] shadow-[0_3px_0_#9f1239]">
             <Printer size={20} aria-hidden="true" /> <span>{F("印刷","いんさつ")}する</span>
           </MotionButton>
-          <MotionButton variant="secondary" onClick={() => setView('myDrills')} className="w-full py-3 min-h-[48px] border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">
+          <MotionButton variant="secondary" onClick={goBack} className="w-full py-3 min-h-[48px] border-[3px] border-[var(--text)] shadow-[0_3px_0_var(--text)]">
             もどる
           </MotionButton>
 
