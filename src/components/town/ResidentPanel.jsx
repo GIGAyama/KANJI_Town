@@ -41,7 +41,7 @@ const ResidentPanel = ({ stats, setView }) => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="text-xl font-black text-[var(--text)] flex items-center gap-2">
-          <Users size={20} className="text-[var(--primary)]" /> {F("住民","じゅうみん")}のようす
+          <Users size={20} className="text-[var(--primary)]" /> <span>{F("住民","じゅうみん")}のようす</span>
         </h2>
       </div>
 
@@ -80,7 +80,7 @@ const ResidentPanel = ({ stats, setView }) => {
       {residentStats.total > 0 && (
         <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[2px_2px_0_var(--text)]">
           <h3 className="text-sm font-black text-[var(--text)] flex items-center gap-1 mb-3">
-            <Package size={16} className="text-[var(--secondary)]" /> {F("毎日","まいにち")}の{F("収集量","しゅうしゅうりょう")}（{F("見込","みこ")}み）
+            <Package size={16} className="text-[var(--secondary)]" /> <span>{F("毎日","まいにち")}の{F("収集量","しゅうしゅうりょう")}（{F("見込","みこ")}み）</span>
           </h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(dailyPreview.materials).map(([matId, amount]) => {
@@ -196,7 +196,7 @@ const ResidentPanel = ({ stats, setView }) => {
       {/* 満足度の仕組み説明 */}
       <div className="bg-[var(--panel)] border-[4px] border-[var(--text)] rounded-[20px] p-4 shadow-[2px_2px_0_var(--text)]">
         <h3 className="text-sm font-black text-[var(--text)] flex items-center gap-1 mb-2">
-          <Heart size={16} className="text-rose-500" /> {F("満足度","まんぞくど")}を{F("上","あ")}げるには
+          <Heart size={16} className="text-rose-500" /> <span>{F("満足度","まんぞくど")}を{F("上","あ")}げるには</span>
         </h3>
         <div className="flex flex-col gap-1.5 text-[11px] text-[var(--text)]">
           <div className="flex items-start gap-2"><span className="shrink-0">🏠</span><span>{F("家","いえ")}を{F("建","た")}てて{F("住","す")}む{F("場所","ばしょ")}を{F("増","ふ")}やす（3{F("人","にん")}/1{F("軒","けん")}）</span></div>

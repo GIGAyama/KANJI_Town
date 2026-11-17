@@ -128,7 +128,7 @@ const TeacherHostView = ({ setView, drill }) => {
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-          <Wifi size={22} /> ドリルを{F("送","おく")}る
+          <Wifi size={22} /> <span>ドリルを{F("送","おく")}る</span>
         </h2>
         {/* この画面は電子黒板に映して使う。後ろの席から4けたの数字とQRが
             読めるよう、提示モードへ切り替えられるようにしておく。 */}

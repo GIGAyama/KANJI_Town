@@ -282,7 +282,7 @@ const SessionView = ({ queue: initialQueue, totalCount, stats, settings = {}, on
       <div className="flex justify-between items-center mb-1.5 md:mb-2 shrink-0 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <LeaveLearningButton onClick={onRequestLeave} />
-          <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite">のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</div>
+          <div className="text-[var(--text)] font-bold text-xs md:text-sm bg-[var(--bg)] px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-[var(--text)] shadow-sm flex items-center gap-1.5" aria-live="polite"><span>のこり <span className="text-base md:text-lg font-black">{queue.length}</span> {F("文字","もじ")}</span></div>
         </div>
         <div className="flex gap-2">
           {voicedCount > 0 && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-slate-800 font-black text-xs md:text-sm bg-emerald-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full border-[3px] border-emerald-400 shadow-sm flex items-center gap-1">🎤 ×{voicedCount}</motion.div>}

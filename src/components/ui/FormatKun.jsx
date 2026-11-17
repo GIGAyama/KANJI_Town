@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { DEFAULT_FURIGANA_MODE, shouldShowRuby } from '../../utils/furigana';
+import { INLINE_RUBY } from './inline-text.js';
 
 /**
  * ふりがなの出し方（設定の「ふりがな」）。App が stats.settings と学年から与える。
@@ -116,5 +117,11 @@ const SurvivalRubyText = ({ text, targetChar }) => {
   }
   return <>{parts}</>;
 };
+
+// ボタンの中で、ふつうの字と ひとつづきの文として まとめる しるし（inline-text.js の groupInlineText）
+Ruby[INLINE_RUBY] = 'one';
+R[INLINE_RUBY] = 'one';
+RubyText[INLINE_RUBY] = 'many';
+SurvivalRubyText[INLINE_RUBY] = 'many';
 
 export { R, F, Ruby, FuriganaContext, FormatKun, RubyText, SurvivalRubyText };

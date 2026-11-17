@@ -90,7 +90,7 @@ const DrillImportView = ({ setView, stats, setStats, drillParam, startDrillSessi
   return (
     <div className="flex flex-col gap-4 pb-8">
       <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-        <Gift size={24} className="text-[var(--secondary)]" /> {homework ? <>{F("宿題","しゅくだい")}が とどきました</> : 'ドリルがとどきました'}
+        <Gift size={24} className="text-[var(--secondary)]" /> <span>{homework ? <>{F("宿題","しゅくだい")}が とどきました</> : 'ドリルがとどきました'}</span>
       </h2>
 
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}

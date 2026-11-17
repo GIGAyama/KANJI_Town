@@ -571,7 +571,7 @@ const BossBattleView = ({ queue, onUpdateStat, onFinish, onBossDefeat, onRequest
                     </p>
                     <details className="text-slate-300">
                       <summary className="min-h-[44px] flex items-center justify-center cursor-pointer list-none text-xs font-bold rounded-lg hover:bg-slate-700/60 [&::-webkit-details-marker]:hidden">
-                        💡 ヒント：{F("読","よ")}みかた
+                        <span>💡 ヒント：{F("読","よ")}みかた</span>
                       </summary>
                       <div className="text-sm font-black text-white leading-tight pb-1">{readings}</div>
                     </details>

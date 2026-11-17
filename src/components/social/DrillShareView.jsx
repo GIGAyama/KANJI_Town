@@ -73,7 +73,7 @@ const DrillShareView = ({ setView, drill, setHostDrill }) => {
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-          <Link2 size={22} /> リンクで{F("配","くば")}る
+          <Link2 size={22} /> <span>リンクで{F("配","くば")}る</span>
         </h2>
       </div>
 
@@ -106,7 +106,7 @@ const DrillShareView = ({ setView, drill, setHostDrill }) => {
                 className="w-7 h-7 shrink-0 accent-[var(--primary)]"
               />
               <span className="flex flex-col">
-                <span className="font-black text-[var(--text)] flex items-center gap-1"><NotebookPen size={18} aria-hidden="true" /> {F("宿題","しゅくだい")}にする（{F("先生","せんせい")}{F("向","む")}け）</span>
+                <span className="font-black text-[var(--text)] flex items-center gap-1"><NotebookPen size={18} aria-hidden="true" /> <span>{F("宿題","しゅくだい")}にする（{F("先生","せんせい")}{F("向","む")}け）</span></span>
                 <span className="text-xs font-bold text-[var(--text-muted)]">しめきりと やることも いっしょに {F("配","くば")}ります。{F("児童","じどう")}のホームに「しゅくだい」が{F("出","で")}ます。</span>
               </span>
             </label>

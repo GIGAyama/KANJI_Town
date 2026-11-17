@@ -317,7 +317,7 @@ const StudentClientView = ({ setView, stats, setStats, initialConnectId }) => {
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
-          <Download size={22} /> {F("通信","つうしん")}でもらう
+          <Download size={22} /> <span>{F("通信","つうしん")}でもらう</span>
         </h2>
       </div>
 

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { audioCtrl } from '../../systems/audio.js';
+import { groupInlineText } from './inline-text.js';
 
 const MotionButton = ({ children, onClick, className, disabled, variant = "default", ...props }) => {
   // 地の色はテーマの変数のまま、マウスを乗せても変えない（以前の hover:bg-rose-600 などは、
@@ -14,7 +15,8 @@ const MotionButton = ({ children, onClick, className, disabled, variant = "defau
   else if (variant === "warning") variantClasses = "bg-amber-400 text-amber-900 hover:bg-amber-500 shadow-[0_4px_0_#92400e]";
   return (
     <motion.button whileHover={!disabled ? { scale: 1.02 } : {}} whileTap={!disabled ? { scale: 0.95, y: 2, boxShadow: "none" } : {}} onClick={() => { if (disabled) return; audioCtrl.playSE('click'); if (onClick) onClick(); }} className={`rounded-[20px] font-bold border-none outline-none flex items-center justify-center gap-2 select-none touch-manipulation transition-colors ${disabled ? 'opacity-50 cursor-not-allowed filter grayscale' : ''} ${variantClasses} ${className}`} {...props}>
-      {children}
+      {/* 字とふりがなを 1 つの部品にまとめる（すきまが入る・その字だけ下がる・1 語が割れる のを防ぐ） */}
+      {groupInlineText(children)}
     </motion.button>
   );
 };

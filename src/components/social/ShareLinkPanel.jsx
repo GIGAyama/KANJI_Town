@@ -104,7 +104,7 @@ const ShareLinkPanel = ({ shareUrl, title, label = 'ドリルのURL', inputId = 
           className="w-full py-4 rounded-[20px] font-black text-white text-base flex items-center justify-center gap-2 border-none shadow-[0_4px_0_#0b7043] hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all touch-manipulation"
           style={{ backgroundColor: CLASSROOM_GREEN }}
         >
-          <ExternalLink size={20} /> Google Classroom で{F("共有","きょうゆう")}する
+          <ExternalLink size={20} /> <span>Google Classroom で{F("共有","きょうゆう")}する</span>
         </a>
         <p className="text-xs text-[var(--text)] opacity-50 -mt-2">
           Classroomがひらいたら、クラスと「{F("課題","かだい")}」「{F("資料","しりょう")}」などをえらんで{F("投稿","とうこう")}してください。

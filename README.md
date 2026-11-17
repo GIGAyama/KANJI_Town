@@ -168,6 +168,16 @@ CI（`.github/workflows`）は `main` への push と PR で `npm test` → `npm
 `npm audit --omit=dev --audit-level=high` → `npm run build` を実行し、push のときだけ
 GitHub Pages へデプロイして配信中のcommit SHAまで確認する。
 
+### ふりがな付きの字と flex の箱
+
+アイコンと字を並べる見出し・ボタンは `flex` の箱にしてある。その中に
+`<Icon /> ならった{F("範囲","はんい")}を配る` と書くと、ふつうの字と `<ruby>` が 1 つずつ別の部品になり、
+すきまが入る・ふりがなの付いた字だけ下がる・せまい画面で 1 語がたてに割れる。
+字のところは `<span>` で包む（`<Icon /> <span>ならった{F(...)}を配る</span>`）。
+`MotionButton` は中身を自分でまとめる（`src/components/ui/inline-text.js`）。
+`test/inline-text.test.js` がソースを読んで、ばらばらの所が無いかを見る。
+横に流すタブの列（`overflow-x-auto`）の中のボタンには `shrink-0` を付ける（縮むと字が重なる）。
+
 ## 📲 PWA
 
 ホーム画面に入れるとアプリとして起動し、オフラインでも使える。
