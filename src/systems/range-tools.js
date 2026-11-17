@@ -46,3 +46,40 @@ export function addStageDrill(myDrills, drill, now = Date.now()) {
   if (drills.some((item) => item && item.name === drill.name && !item.homework && sameKanjis(item.kanjis, drill.kanjis))) return { drills, added: false };
   return { drills: [...drills, { name: drill.name, kanjis: [...drill.kanjis], createdAt: now }], added: true };
 }
+
+/**
+ * 受け取った範囲の段を、ぜんぶ 児童の マイドリルに 入れる（日付の前の段も。予習したい子が使えるように）。
+ * 新出に出る順番は 今までどおり 日付を見る（learning-plan.js）。ここは マイドリルだけ。
+ * 入れた段の番号は 範囲の drillStages に のこす。児童が けしたドリルを また 入れないため。
+ * 同じ名前・同じ字の ドリルが もう あれば 足さない（先生の端末・2 回 受け取ったとき）。
+ * この仕組みの前に 範囲を受け取った端末は、ホームを開いたときに 入る（HomeAssignments.jsx）。
+ * @param {object[]} myDrills
+ * @param {{ name: string, stages: { from: string, kanjis: string[] }[], drillStages?: number[] }} range
+ * @returns {{ drills: object[], drillStages: number[], added: string[] } | null} 何も変わらないときは null
+ */
+export function syncRangeDrills(myDrills, range, now = Date.now()) {
+  if (!Array.isArray(range?.stages)) return null;
+  const done = new Set(Array.isArray(range.drillStages) ? range.drillStages.filter(Number.isInteger) : []);
+  let drills = Array.isArray(myDrills) ? myDrills : [];
+  const added = [];
+  let changed = false;
+  range.stages.forEach((stage, index) => {
+    if (done.has(index) || !stage) return;
+    done.add(index);
+    changed = true;
+    const result = addStageDrill(drills, stageToDrill(range, index), now);
+    if (result.added) { drills = result.drills; added.push(drills[drills.length - 1].name); }
+  });
+  return changed ? { drills, drillStages: [...done].sort((a, b) => a - b), added } : null;
+}
+
+/** stats に syncRangeDrills を あてる（変わらなければ null） */
+export function withRangeDrills(stats, now = Date.now()) {
+  const range = stats?.settings?.learningRange;
+  const result = syncRangeDrills(stats?.myDrills, range, now);
+  if (!result) return null;
+  return {
+    stats: { ...stats, myDrills: result.drills, settings: { ...stats.settings, learningRange: { ...range, drillStages: result.drillStages } } },
+    added: result.added,
+  };
+}

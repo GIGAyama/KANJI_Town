@@ -9,6 +9,7 @@ import { F } from '../ui/FormatKun';
 import { decodeRangeParam, getLearningRangeStatus, sanitizeLearningRange } from '../../systems/learning-range';
 import { formatMonthDay } from '../../systems/homework-status';
 import { getTodayString } from '../../utils/date-utils';
+import { withRangeDrills } from '../../systems/range-tools';
 
 const KANJI_BY_ID = new Map(KANJI_DATA.map(k => [k.id, k]));
 
@@ -41,7 +42,9 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
 
   const handleUse = () => {
     if (!range) return;
-    const newStats = { ...stats, settings: { ...(stats.settings || {}), learningRange: { ...range, receivedAt: Date.now() } } };
+    const received = { ...stats, settings: { ...(stats.settings || {}), learningRange: { ...range, receivedAt: Date.now() } } };
+    // 段は ぜんぶ マイドリルにも 入れる（日付の前の段で 予習も できる。新出の順番は 日付どおり）
+    const newStats = withRangeDrills(received)?.stats || received;
     setStats(newStats);
     // リンクからの受け取りは一度きり（URLはすでに消えている）なので、すぐに保存する
     StorageAPI.saveStatsImmediate(newStats);
@@ -82,6 +85,9 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
         <p className="text-sm font-bold text-[var(--text)] leading-relaxed">
           まいにちの {F("学習","がくしゅう")}の「{F("新出","しんしゅつ")}」に、この {F("範囲","はんい")}の {F("字","じ")}だけが でるよ。
           {F("日","ひ")}づけが きた だんの {F("字","じ")}から、じゅんばんに でるよ。{F("復習","ふくしゅう")}は いままでどおり。
+        </p>
+        <p className="text-sm font-bold text-[var(--text)] leading-relaxed" data-testid="range-import-drills">
+          <span>だんは ぜんぶ、マイドリルにも はいるよ（「{range.name} 1だんめ」など）。さきの だんで よしゅうも できるよ。</span>
         </p>
         <ol className="flex flex-col gap-1.5">
           {range.stages.map((stage, i) => {
