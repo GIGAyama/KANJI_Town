@@ -48,23 +48,23 @@ export function addStageDrill(myDrills, drill, now = Date.now()) {
 }
 
 /**
- * 受け取った範囲の段を、児童の マイドリルに 入れる（日付が来た段だけ）。
- * 日付の前の段は 字を見せない約束なので、その日が来てから 入れる（ホームを開いたとき）。
+ * 受け取った範囲の段を、ぜんぶ 児童の マイドリルに 入れる（日付の前の段も。予習したい子が使えるように）。
+ * 新出に出る順番は 今までどおり 日付を見る（learning-plan.js）。ここは マイドリルだけ。
  * 入れた段の番号は 範囲の drillStages に のこす。児童が けしたドリルを また 入れないため。
  * 同じ名前・同じ字の ドリルが もう あれば 足さない（先生の端末・2 回 受け取ったとき）。
+ * この仕組みの前に 範囲を受け取った端末は、ホームを開いたときに 入る（HomeAssignments.jsx）。
  * @param {object[]} myDrills
  * @param {{ name: string, stages: { from: string, kanjis: string[] }[], drillStages?: number[] }} range
- * @param {string} today YYYY-MM-DD（端末のローカル日付）
  * @returns {{ drills: object[], drillStages: number[], added: string[] } | null} 何も変わらないときは null
  */
-export function syncRangeDrills(myDrills, range, today, now = Date.now()) {
+export function syncRangeDrills(myDrills, range, now = Date.now()) {
   if (!Array.isArray(range?.stages)) return null;
   const done = new Set(Array.isArray(range.drillStages) ? range.drillStages.filter(Number.isInteger) : []);
   let drills = Array.isArray(myDrills) ? myDrills : [];
   const added = [];
   let changed = false;
   range.stages.forEach((stage, index) => {
-    if (done.has(index) || !(stage?.from <= today)) return;
+    if (done.has(index) || !stage) return;
     done.add(index);
     changed = true;
     const result = addStageDrill(drills, stageToDrill(range, index), now);
@@ -74,9 +74,9 @@ export function syncRangeDrills(myDrills, range, today, now = Date.now()) {
 }
 
 /** stats に syncRangeDrills を あてる（変わらなければ null） */
-export function withRangeDrills(stats, today, now = Date.now()) {
+export function withRangeDrills(stats, now = Date.now()) {
   const range = stats?.settings?.learningRange;
-  const result = syncRangeDrills(stats?.myDrills, range, today, now);
+  const result = syncRangeDrills(stats?.myDrills, range, now);
   if (!result) return null;
   return {
     stats: { ...stats, myDrills: result.drills, settings: { ...stats.settings, learningRange: { ...range, drillStages: result.drillStages } } },

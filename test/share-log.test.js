@@ -187,51 +187,50 @@ test('段を そのまま使う: マイドリルにする・プリントにす�
   assert.ok(!/onClick=\{\(\) => setView\('myDrills'\)\}/.test(print), 'もどるボタンが onBack を通っていない');
 });
 
-test('受け取った範囲: 日付が来た段だけ マイドリルに入り、あとの段は その日に入る', async () => {
+test('受け取った範囲: 日付の前の段も ふくめて、段は ぜんぶ マイドリルに入る（予習できる）', async () => {
   const { syncRangeDrills, withRangeDrills } = await import('../src/systems/range-tools.js');
   const range = {
     name: '1年 1学期',
     stages: [
       { from: '2026-11-01', kanjis: ['k1_1', 'k1_2'] },
       { from: '2026-11-10', kanjis: ['k1_3'] },
-      { from: '2026-11-20', kanjis: ['k1_4', 'k1_5'] },
+      { from: '2099-11-20', kanjis: ['k1_4', 'k1_5'] },
     ],
   };
-  const first = syncRangeDrills([], range, '2026-11-10', 5);
-  assert.deepEqual(first.added, ['1年 1学期 1だんめ', '1年 1学期 2だんめ']);
-  assert.deepEqual(first.drillStages, [0, 1]);
-  assert.deepEqual(first.drills.map((d) => d.kanjis), [['k1_1', 'k1_2'], ['k1_3']]);
-  // 日付の前の段は 入れない（字を 先に見せない）
-  assert.equal(syncRangeDrills(first.drills, { ...range, drillStages: first.drillStages }, '2026-11-19'), null);
-  // その日が来たら 入る
-  const later = syncRangeDrills(first.drills, { ...range, drillStages: first.drillStages }, '2026-11-20');
-  assert.deepEqual(later.added, ['1年 1学期 3だんめ']);
-  assert.deepEqual(later.drillStages, [0, 1, 2]);
+  const first = syncRangeDrills([], range, 5);
+  assert.deepEqual(first.added, ['1年 1学期 1だんめ', '1年 1学期 2だんめ', '1年 1学期 3だんめ']);
+  assert.deepEqual(first.drillStages, [0, 1, 2]);
+  assert.deepEqual(first.drills.map((d) => d.kanjis), [['k1_1', 'k1_2'], ['k1_3'], ['k1_4', 'k1_5']]);
+  // 入れずみなら 何もしない
+  assert.equal(syncRangeDrills(first.drills, { ...range, drillStages: first.drillStages }), null);
   // 児童が けした ドリルは、もう一度 入れない
-  assert.equal(syncRangeDrills([], { ...range, drillStages: [0, 1, 2] }, '2026-12-01'), null);
+  assert.equal(syncRangeDrills([], { ...range, drillStages: [0, 1, 2] }), null);
+  // 一部だけ入れた 端末（前の版で 受け取った）には、のこりを 入れる
+  const rest = syncRangeDrills(first.drills.slice(0, 2), { ...range, drillStages: [0, 1] });
+  assert.deepEqual(rest.added, ['1年 1学期 3だんめ']);
   // 同じ ドリルが もう あれば 足さない（番号は のこす）
-  const dup = syncRangeDrills(first.drills, range, '2026-11-10');
+  const dup = syncRangeDrills(first.drills, range);
   assert.deepEqual(dup.added, []);
-  assert.equal(dup.drills.length, 2);
-  assert.deepEqual(dup.drillStages, [0, 1]);
+  assert.equal(dup.drills.length, 3);
+  assert.deepEqual(dup.drillStages, [0, 1, 2]);
   // 範囲が無いときは 何もしない
-  assert.equal(syncRangeDrills([], null, '2026-11-10'), null);
+  assert.equal(syncRangeDrills([], null), null);
 
   const stats = { myDrills: [{ name: 'じぶんの', kanjis: ['k2_1'], createdAt: 1 }], settings: { volume: 0.5, learningRange: range } };
-  const applied = withRangeDrills(stats, '2026-11-01', 7);
-  assert.equal(applied.stats.myDrills.length, 2);
+  const applied = withRangeDrills(stats, 7);
+  assert.equal(applied.stats.myDrills.length, 4);
   assert.equal(applied.stats.myDrills[0].name, 'じぶんの');
   assert.equal(applied.stats.settings.volume, 0.5);
-  assert.deepEqual(applied.stats.settings.learningRange.drillStages, [0]);
+  assert.deepEqual(applied.stats.settings.learningRange.drillStages, [0, 1, 2]);
   assert.equal(stats.myDrills.length, 1, '元の stats は かえない');
-  assert.equal(withRangeDrills(applied.stats, '2026-11-01'), null);
+  assert.equal(withRangeDrills(applied.stats), null);
 });
 
 test('受け取った範囲の段を マイドリルに入れる画面の つなぎ', async () => {
   const { readFileSync } = await import('node:fs');
   const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-  assert.match(read('../src/components/social/RangeImportView.jsx'), /const newStats = withRangeDrills\(received, today\)\?\.stats \|\| received;/);
+  assert.match(read('../src/components/social/RangeImportView.jsx'), /const newStats = withRangeDrills\(received\)\?\.stats \|\| received;/);
   const home = read('../src/components/social/HomeAssignments.jsx');
-  assert.match(home, /const next = withRangeDrills\(prev, today\)\?\.stats;/);
+  assert.match(home, /const next = withRangeDrills\(prev\)\?\.stats;/);
   assert.match(read('../src/components/pages/HomeView.jsx'), /grade=\{selectedGrade\} setStats=\{setStats\} \/>/);
 });

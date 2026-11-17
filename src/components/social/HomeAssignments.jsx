@@ -48,16 +48,16 @@ export const HomeworkBadge = ({ drills, today }) => {
  * 例「📘 3年 2学期（5/17字）・11/20から あたらしい字が 12字」（5/17 は日付が来た字の数／ぜんぶの字の数）
  */
 export const RangeStatusLine = ({ range, kanjiStats, today, grade, setStats }) => {
-  // 日付が来た段を、マイドリルに 入れる（受け取ったときに まだ日付の前だった段）
+  // 段を マイドリルに 入れる（この仕組みの前に 範囲を受け取った端末のため。入れずみなら 何もしない）
   useEffect(() => {
     if (!setStats) return;
     setStats((prev) => {
-      const next = withRangeDrills(prev, today)?.stats;
+      const next = withRangeDrills(prev)?.stats;
       if (!next) return prev;
       StorageAPI.saveStats(next);
       return next;
     });
-  }, [setStats, today, range]);
+  }, [setStats, range]);
   const status = useMemo(() => getLearningRangeStatus(range, kanjiStats, today, isKnownKanji), [range, kanjiStats, today]);
   if (!status) return null;
   const next = status.nextStage;

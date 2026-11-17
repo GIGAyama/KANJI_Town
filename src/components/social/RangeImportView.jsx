@@ -43,8 +43,8 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
   const handleUse = () => {
     if (!range) return;
     const received = { ...stats, settings: { ...(stats.settings || {}), learningRange: { ...range, receivedAt: Date.now() } } };
-    // 日付が来た段は、マイドリルにも 入れる（あとの段は、その日に ホームで 入る）
-    const newStats = withRangeDrills(received, today)?.stats || received;
+    // 段は ぜんぶ マイドリルにも 入れる（日付の前の段で 予習も できる。新出の順番は 日付どおり）
+    const newStats = withRangeDrills(received)?.stats || received;
     setStats(newStats);
     // リンクからの受け取りは一度きり（URLはすでに消えている）なので、すぐに保存する
     StorageAPI.saveStatsImmediate(newStats);
@@ -87,7 +87,7 @@ const RangeImportView = ({ setView, stats, setStats, rangeParam }) => {
           {F("日","ひ")}づけが きた だんの {F("字","じ")}から、じゅんばんに でるよ。{F("復習","ふくしゅう")}は いままでどおり。
         </p>
         <p className="text-sm font-bold text-[var(--text)] leading-relaxed" data-testid="range-import-drills">
-          <span>{F("日","ひ")}づけが きた だんは、マイドリルにも はいるよ（「{range.name} 1だんめ」など）。</span>
+          <span>だんは ぜんぶ、マイドリルにも はいるよ（「{range.name} 1だんめ」など）。さきの だんで よしゅうも できるよ。</span>
         </p>
         <ol className="flex flex-col gap-1.5">
           {range.stages.map((stage, i) => {
