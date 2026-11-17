@@ -167,18 +167,16 @@ const TownCell = memo(({ x, y, baseItemId, topItemId, wildProp, hasGhost, fresh,
 // ── 夜のあかり ──
 // 夜は町ぜんたいに暗い色を 1 枚かぶせる（下の「時間帯レイヤー」）。その上に、建物の窓や
 // 街灯のあかりを、ぼんやりした丸として重ねる。どのアイテムが どこで光るかは systems/town-night-light.js が決める。
-const GLOW = 'radial-gradient(closest-side, rgba(255,221,150,0.62), rgba(255,205,105,0.26) 55%, rgba(255,195,80,0) 100%)';
+//
+// あかりは 1 枚の SVG の中の だ円にする。1 つずつ div で置くと、ブラウザは div ごとに別の かたまりとして
+// 合成を考え、はなれた あかりを 1 枚に まとめない（建物 600 の町の夜で、合成レイヤーが 40 枚あまり ふえていた）。
+const NIGHT_GLOW_ID = 'town-night-glow';
 
 const NightLight = memo(({ x, y, w, h, light }) => (
-  <div aria-hidden="true" style={{
-    position: 'absolute',
-    left: toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) + light.dx - light.width / 2,
-    top: toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift - light.height / 2,
-    width: light.width,
-    height: light.height,
-    backgroundImage: GLOW,
-    pointerEvents: 'none',
-  }} />
+  <ellipse
+    cx={toIsoX(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) + light.dx}
+    cy={toIsoY(x + (light.cu ?? w / 2), y + (light.cv ?? h / 2)) - light.lift}
+    rx={light.width / 2} ry={light.height / 2} fill={`url(#${NIGHT_GLOW_ID})`} />
 ));
 
 // ── マスの上に出す目じるし（押しているマス・置ける範囲） ──
@@ -798,7 +796,17 @@ const DraggableTownMap = memo(({ mapData, isDanger, isEditing, onCellTap, review
           willChange: panning ? 'transform' : undefined,
         }}>
           <div style={{ position: 'absolute', top: 0, left: 0, transform: `scale(${view.zoom})`, transformOrigin: '0 0' }}>
-            {nightLights}
+            <svg aria-hidden="true" width="1" height="1" style={{ position: 'absolute', left: 0, top: 0, display: 'block', overflow: 'visible' }}>
+              <defs>
+                {/* まん中が明るく、外へ うすくなる光（だ円の大きさに合わせて のびる） */}
+                <radialGradient id={NIGHT_GLOW_ID}>
+                  <stop offset="0" stopColor="#ffdd96" stopOpacity="0.62" />
+                  <stop offset="0.55" stopColor="#ffcd69" stopOpacity="0.26" />
+                  <stop offset="1" stopColor="#ffc350" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              {nightLights}
+            </svg>
           </div>
         </div>
       )}

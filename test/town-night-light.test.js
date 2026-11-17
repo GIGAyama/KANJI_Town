@@ -78,5 +78,9 @@ test('建物は 窓のあかりが つき、道・庭・木などは つかな�
 test('町マップは、この表から あかりを作る', () => {
   const map = read('../src/components/town/DraggableTownMap.jsx');
   assert.match(map, /import \{ nightLightOf \} from '\.\.\/\.\.\/systems\/town-night-light'/);
-  assert.match(map, /\+ light\.dx - light\.width \/ 2/);
+  assert.match(map, /\+ light\.dx\}/);
+  // あかりは 1 枚の SVG の中に置く（1 つずつ div にすると、はなれた あかりが 別々の合成レイヤーになる）
+  assert.match(map, /<ellipse\s+cx=\{toIsoX\(/);
+  assert.match(map, /<radialGradient id=\{NIGHT_GLOW_ID\}>/);
+  assert.ok(!/backgroundImage: GLOW/.test(map), 'あかりを div の背景で描いている');
 });
